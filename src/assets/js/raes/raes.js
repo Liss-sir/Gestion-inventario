@@ -138,11 +138,33 @@ function toggleView(view) {
     const gridView = document.getElementById("gridView");
     const tableBtn = document.getElementById("viewTableBtn");
     const gridBtn = document.getElementById("viewGridBtn");
-
+    const emptyState = document.getElementById("emptyStateRaes");
+    const emptySearch = document.getElementById("emptySearchRaes");
+    
     // Cerrar todos los menús desplegables al cambiar de vista
     const allMenus = document.querySelectorAll('[id^="actionMenu"]');
     allMenus.forEach((menu) => menu.classList.add("hidden"));
-
+    
+    // Si no hay RAEs, mantener estado vacío
+    if (!window.currentRaes || window.currentRaes.length === 0) {
+        emptyState?.classList.remove("hidden");
+        emptySearch?.classList.add("hidden");
+        tableView?.classList.add("hidden");
+        gridView?.classList.add("hidden");
+        return;
+    }
+    
+    // Verificar si hay filtros activos
+    const searchText = document.getElementById("searchRae").value.toLowerCase().trim();
+    const nivelFilter = document.getElementById("selectFiltroNivel").value;
+    const hasActiveFilters = searchText !== "" || nivelFilter !== "";
+    
+    if (hasActiveFilters) {
+        // Si hay filtros, usar updateFilter que ya maneja estados vacíos
+        updateFilter();
+        return;
+    }
+    
     if (view === "table") {
         // Mostrar vista de tabla
         tableView.classList.remove("hidden");
@@ -156,6 +178,10 @@ function toggleView(view) {
         tableBtn.classList.remove("bg-muted");
         gridBtn.classList.add("bg-muted");
     }
+    
+    // Asegurar que los estados vacíos estén ocultos cuando hay vista activa
+    emptyState?.classList.add("hidden");
+    emptySearch?.classList.add("hidden");
 }
 
 // Función para mostrar/ocultar el menú de acciones
@@ -185,7 +211,7 @@ document.addEventListener("click", (event) => {
     }
 });
 
-function openDetailsModal(id, descripcion, programa, estado) {
+function openDetailsModal(id, descripcion, programa, estado, codigo) {
     // Cerrar todos los menús desplegables
     const allMenus = document.querySelectorAll('[id^="actionMenu"]');
     allMenus.forEach((menu) => menu.classList.add("hidden"));
@@ -197,9 +223,15 @@ function openDetailsModal(id, descripcion, programa, estado) {
     try {
         programa = decodeURIComponent(programa);
     } catch (e) {}
+    try {
+        // Decodificar el código si existe
+        if (codigo) {
+            codigo = decodeURIComponent(codigo);
+        }
+    } catch (e) {}
 
     // Actualizar contenido del modal
-    document.getElementById("detailsRaeCode").textContent = "RAE #" + id;
+    document.getElementById("detailsRaeCode").textContent = codigo ? `RAE # ${codigo}` : `RAE #${id}`;
     document.getElementById("detailsRaeDescription").textContent = descripcion;
     document.getElementById("detailsPrograma").textContent = programa;
 
@@ -349,12 +381,31 @@ async function loadRaes() {
         });
         if (!res.ok) throw new Error("Error al obtener RAEs");
         const data = await res.json();
-
+        
         // Almacenar los RAEs para búsqueda
         window.currentRaes = data;
-
+        
+        // Inicializar estados vacíos si no hay datos
+        if (!data || data.length === 0) {
+            const emptyState = document.getElementById("emptyStateRaes");
+            const emptySearch = document.getElementById("emptySearchRaes");
+            const tableView = document.getElementById("tableView");
+            const gridView = document.getElementById("gridView");
+            
+            if (emptyState) emptyState.classList.remove("hidden");
+            if (emptySearch) emptySearch.classList.add("hidden");
+            if (tableView) tableView.classList.add("hidden");
+            if (gridView) gridView.classList.add("hidden");
+            return;
+        }
+        
+        // Si hay datos, renderizar
         renderTable(data);
         renderGrid(data);
+        
+        // Aplicar filtros iniciales si existen
+        updateFilter();
+        
     } catch (err) {
         console.error(err);
         toastError("Error al cargar los RAEs. Intente nuevamente.");
@@ -584,11 +635,41 @@ async function changeRaeEstado(id, estado) {
 function renderTable(items) {
     const tbody = document.getElementById("raesTableBody");
     if (!tbody) return;
+    
+    const emptyState = document.getElementById("emptyStateRaes");
+    const emptySearch = document.getElementById("emptySearchRaes");
+    const tableView = document.getElementById("tableView");
+    const gridView = document.getElementById("gridView");
+    
+    // Limpiar contenido previo
     tbody.innerHTML = "";
-
+    
     if (!items || items.length === 0) {
+        // Verificar si estamos filtrando o si realmente no hay RAEs
+        const searchInput = document.getElementById("searchRae");
+        const levelFilter = document.getElementById("selectFiltroNivel");
+        const hasActiveFilters = (searchInput && searchInput.value.trim() !== "") || 
+                                (levelFilter && levelFilter.value !== "");
+        
+        if (hasActiveFilters) {
+            // Hay filtros activos pero no resultados
+            emptySearch?.classList.remove("hidden");
+            emptyState?.classList.add("hidden");
+        } else {
+            // No hay RAEs en el sistema
+            emptyState?.classList.remove("hidden");
+            emptySearch?.classList.add("hidden");
+        }
+        
+        // Ocultar vistas
+        tableView?.classList.add("hidden");
+        gridView?.classList.add("hidden");
         return;
     }
+    
+    // Hay RAEs, ocultar estados vacíos
+    emptyState?.classList.add("hidden");
+    emptySearch?.classList.add("hidden");
 
     items.forEach((r, idx) => {
         const id = _getField(r, "id", "id_rae");
@@ -652,7 +733,7 @@ function renderTable(items) {
                         <i class="fas fa-ellipsis-h"></i>
                     </button>
                     <div id="actionMenu${idx}" class="hidden absolute right-0 mt-2 w-48 rounded-xl border border-border bg-popover shadow-md py-1 z-50">
-                        <button onclick="openDetailsModal('${id}', '${ed}', '${ep}', '${estado}')" class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted transition-colors">
+                        <button onclick="openDetailsModal('${id}', '${ed}', '${ep}', '${estado}', '${codigo ? encodeURIComponent(codigo) : ""}')" class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted transition-colors">
                             <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M1 12S4.5 5 12 5s11 7 11 7-3.5 7-11 7S1 12 1 12z"/>
                                 <circle cx="12" cy="12" r="3"></circle>
@@ -697,11 +778,41 @@ function renderTable(items) {
 function renderGrid(items) {
     const container = document.getElementById("gridViewContainer");
     if (!container) return;
+    
+    const emptyState = document.getElementById("emptyStateRaes");
+    const emptySearch = document.getElementById("emptySearchRaes");
+    const tableView = document.getElementById("tableView");
+    const gridView = document.getElementById("gridView");
+    
+    // Limpiar contenido previo
     container.innerHTML = "";
-
+    
     if (!items || items.length === 0) {
+        // Verificar si estamos filtrando o si realmente no hay RAEs
+        const searchInput = document.getElementById("searchRae");
+        const levelFilter = document.getElementById("selectFiltroNivel");
+        const hasActiveFilters = (searchInput && searchInput.value.trim() !== "") || 
+                                (levelFilter && levelFilter.value !== "");
+        
+        if (hasActiveFilters) {
+            // Hay filtros activos pero no resultados
+            emptySearch?.classList.remove("hidden");
+            emptyState?.classList.add("hidden");
+        } else {
+            // No hay RAEs en el sistema
+            emptyState?.classList.remove("hidden");
+            emptySearch?.classList.add("hidden");
+        }
+        
+        // Ocultar vistas
+        tableView?.classList.add("hidden");
+        gridView?.classList.add("hidden");
         return;
     }
+    
+    // Hay RAEs, ocultar estados vacíos
+    emptyState?.classList.add("hidden");
+    emptySearch?.classList.add("hidden");
 
     items.forEach((r, idx) => {
         const id = _getField(r, "id", "id_rae");
@@ -912,16 +1023,90 @@ function filterRaesByLevel() {
 
 // Función para actualizar el filtro (se llama desde ambos inputs)
 function updateFilter() {
-    filterRaesByLevel();
+    const searchText = document.getElementById("searchRae").value.toLowerCase().trim();
+    const nivelFilter = document.getElementById("selectFiltroNivel").value;
+    const allRaes = window.currentRaes || [];
+    const emptyState = document.getElementById("emptyStateRaes");
+    const emptySearch = document.getElementById("emptySearchRaes");
+    const tableView = document.getElementById("tableView");
+    const gridView = document.getElementById("gridView");
+    
+    // Si no hay RAEs en absoluto
+    if (!allRaes || allRaes.length === 0) {
+        emptyState?.classList.remove("hidden");
+        emptySearch?.classList.add("hidden");
+        tableView?.classList.add("hidden");
+        gridView?.classList.add("hidden");
+        return;
+    }
+    
+    // Filtrar RAEs
+    const filteredRaes = allRaes.filter((rae) => {
+        const id = _getField(rae, "id", "id_rae");
+        const codigo = _getField(rae, "codigo_rae", "codigo");
+        const descripcion = _getField(rae, "descripcion", "descripcion_rae");
+        const programa = _getField(rae, "programa", "nombre_programa") || "";
+        const estado = _getField(rae, "estado") || "";
+        
+        // Obtener el ID del programa para buscar el nivel
+        const pid = _getField(rae, "id_programa", "id_programa", "id_programa");
+        const nivelPrograma = pid && window._programLevelMap ? window._programLevelMap[pid] : "";
+        
+        // Buscar en todos los campos
+        const matchesSearch = !searchText ||
+            (codigo && codigo.toLowerCase().includes(searchText)) ||
+            (descripcion && descripcion.toLowerCase().includes(searchText)) ||
+            (programa && programa.toLowerCase().includes(searchText)) ||
+            (estado && estado.toLowerCase().includes(searchText)) ||
+            (id && id.toString().includes(searchText));
+        
+        // Filtrar por nivel
+        const matchesLevel = !nivelFilter || nivelPrograma === nivelFilter;
+        
+        return matchesSearch && matchesLevel;
+    });
+    
+    if (filteredRaes.length === 0) {
+        // Hay RAEs pero no coinciden con los filtros
+        emptyState?.classList.add("hidden");
+        emptySearch?.classList.remove("hidden");
+        tableView?.classList.add("hidden");
+        gridView?.classList.add("hidden");
+    } else {
+        // Hay resultados, mostrar la vista activa
+        emptyState?.classList.add("hidden");
+        emptySearch?.classList.add("hidden");
+        
+        // Determinar qué vista está activa
+        const viewTableBtn = document.getElementById("viewTableBtn");
+        const isTableView = viewTableBtn && viewTableBtn.classList.contains("bg-muted");
+        
+        if (isTableView) {
+            tableView?.classList.remove("hidden");
+            gridView?.classList.add("hidden");
+        } else {
+            tableView?.classList.add("hidden");
+            gridView?.classList.remove("hidden");
+        }
+        
+        // Renderizar resultados
+        renderTable(filteredRaes);
+        renderGrid(filteredRaes);
+    }
 }
 
 function showEmptySearchMessage() {
     const emptySearchContainer = document.getElementById("emptySearchRaes");
     const tableView = document.getElementById("tableView");
     const gridView = document.getElementById("gridView");
+    const emptyState = document.getElementById("emptyStateRaes");
 
     if (emptySearchContainer) {
         emptySearchContainer.classList.remove("hidden");
+    }
+    
+    if (emptyState) {
+        emptyState.classList.add("hidden");
     }
 
     // Ocultar las vistas de tabla y grid
@@ -937,9 +1122,14 @@ function hideEmptySearchMessage() {
     const emptySearchContainer = document.getElementById("emptySearchRaes");
     const tableView = document.getElementById("tableView");
     const gridView = document.getElementById("gridView");
+    const emptyState = document.getElementById("emptyStateRaes");
 
     if (emptySearchContainer) {
         emptySearchContainer.classList.add("hidden");
+    }
+    
+    if (emptyState) {
+        emptyState.classList.add("hidden");
     }
 
     // Mostrar las vistas según el botón activo

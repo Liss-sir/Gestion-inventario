@@ -447,35 +447,40 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
 
     <button
       id="btnCerrarModalPerfilEditar"
-      class="absolute right-5 top-5 inline-flex h-8 w-8 items-center justify-center bg-white rounded-full"
+      class="absolute right-5 top-5 inline-flex h-8 w-8 items-center justify-center bg-white rounded-full z-20"
       type="button"
     >
       <i data-lucide="x" class="h-4 w-4 text-slate-600"></i>
     </button>
 
-    <!-- ✅ NUEVO: (i) + tu botón de cambiar contraseña, sin dañar tu base -->
-   <div class="absolute right-20 top-5 inline-flex items-center gap-2">
-  <button
-    id="btnInfoDatosSensibles"
-    type="button"
-    title="Cambiar datos sensibles"
-    class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-  >
-    <i data-lucide="info" class="h-4 w-4"></i>
-    <span class="whitespace-nowrap">Editar datos sensibles</span>
-  </button>
+    <!-- ✅ NUEVO: MÁS ESPACIO + LÍNEA DEBAJO DE LOS BOTONES (SIN DAÑAR TU BASE) -->
+    <div class="absolute left-0 right-0 top-0 px-6 pt-5 md:px-8 z-10">
+      <div class="flex items-center justify-end gap-2 pr-12">
+        <button
+          id="btnInfoDatosSensibles"
+          type="button"
+          title="Cambiar datos sensibles"
+          class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+        >
+          <i data-lucide="info" class="h-4 w-4"></i>
+          <span class="whitespace-nowrap">Editar datos sensibles</span>
+        </button>
 
-  <button
-    id="btnAbrirCambiarPassword"
-    type="button"
-    class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-4 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-  >
-    Cambiar contraseña
-  </button>
-</div>
+        <button
+          id="btnAbrirCambiarPassword"
+          type="button"
+          class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-4 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Cambiar contraseña
+        </button>
+      </div>
 
+      <!-- ✅ Línea debajo de los botones -->
+      <div class="mt-4 border-b border-slate-200"></div>
+    </div>
 
-    <div class="p-6 md:p-8">
+    <!-- ✅ Más padding arriba para separar botones de la info del usuario -->
+    <div class="p-6 pt-24 md:p-8 md:pt-28">
       <div class="flex items-center gap-4 mb-6">
         <div class="relative h-16 w-16 cursor-pointer" id="avatarPerfilEditar">
           <div

@@ -70,7 +70,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
           </div>
 
-          <!-- Nueva ficha -->
+          <!-- New ficha -->
           <button id="btnNuevaFicha"
             class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-white shadow-sm gap-2">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -84,7 +84,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       </div>
 
       <!-- SEARCH + ESTADO FILTER -->
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between my-6">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
         <!-- Search -->
         <div class="w-full sm:max-w-xs relative">
@@ -102,10 +102,10 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </div>
 
         <!-- Estado filter -->
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between my-6">
-    <!-- ... (búsqueda) ... -->
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <!-- ... (search) ... -->
     
-        <!-- Estado filter actualizado para 3 estados -->
+        <!-- State filter updated for 3 states -->
         <div class="flex items-center gap-2">
             <svg class="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24">
                 <path d="M5 5h14a1 1 0 0 1 .8 1.6L15 12v4.5a1 1 0 0 1-.553.894l-3 1.5A1 1 0 0 1 10 18v-6L4.2 6.6A1 1 0 0 1 5 5z"
@@ -126,7 +126,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
       <!-- TABLE VIEW -->
       <div id="vistaTabla"
-        class="overflow-visible rounded-xl border border-border bg-card relative">
+        class="rounded-xl border border-border bg-card overflow-hidden">
         <table class="min-w-full divide-y divide-border text-sm">
           <thead class="bg-gray-50">
             <tr>
@@ -151,7 +151,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
     </div>
   </main>
 
-  <!-- MODAL CREAR / EDITAR -->
+  <!-- MODAL CREATE / EDIT -->
   <div id="modalFicha" class="modal-overlay">
     <div class="relative w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
 
@@ -170,14 +170,14 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </button>
       </div>
 
-      <!-- FORMULARIO COMPLETO -->
+      <!-- COMPLETED FORM -->
       <form id="formFicha" class="space-y-4" novalidate>
 
         <!-- id_ficha -->
         <input type="hidden" id="hiddenFichaId">
         <input type="hidden" id="id_ficha">
 
-        <!-- Número -->
+        <!-- Number -->
         <div class="space-y-2">
           <label for="numero_ficha" class="text-sm font-medium">Número de ficha*</label>
           <input id="numero_ficha" type="text"
@@ -185,7 +185,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                  placeholder="2567890">
         </div>
 
-        <!-- Programa -->
+        <!-- Program -->
         <div class="space-y-2">
           <label for="id_programa" class="text-sm font-medium">Programa*</label>
           <select id="id_programa"
@@ -194,7 +194,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </select>
         </div>
 
-        <!-- Jornada -->
+        <!-- Day -->
         <div class="space-y-2">
           <label for="jornada" class="text-sm font-medium">Jornada*</label>
           <select id="jornada"
@@ -206,7 +206,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </select>
         </div>
 
-        <!-- Modalidad -->
+        <!-- Mode -->
         <div class="space-y-2">
           <label for="modalidad" class="text-sm font-medium">Modalidad*</label>
           <select id="modalidad"
@@ -218,7 +218,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </select>
         </div>
 
-        <!-- Fechas -->
+        <!-- Dates -->
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
             <label for="fecha_inicio" class="text-sm font-medium">Fecha inicio*</label>
@@ -236,7 +236,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         <!-- FOOTER -->
         <div class="flex justify-end gap-2 pt-4">
           <button id="btnCancelarModalFicha" type="button"
-            class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm hover:bg-muted">
+            class="inline-flex items-center justify-center rounded-md border border-input px-4 py-2 text-sm hover:bg-muted">
             Cancelar
           </button>
 
@@ -251,7 +251,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
     </div>
   </div>
 
-  <!-- MODAL VER DETALLES -->
+  <!-- MODAL SEE DETAILS -->
   <div id="modalVerFicha" class="modal-overlay">
     <div class="relative w-full max-w-md rounded-xl border border-border bg-card from-white p-6 shadow-lg">
 

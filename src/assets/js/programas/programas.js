@@ -197,12 +197,16 @@ function applyFilterAndUpdateEmptyStates() {
   }
 }
 
+// programs.js - Modifica la función toggleView()
+
 // Function to switch between table and grid view
 function toggleView(view) {
   const tableView = document.getElementById("tableView")
   const gridView = document.getElementById("gridView")
   const tableBtn = document.getElementById("viewTableBtn")
   const gridBtn = document.getElementById("viewGridBtn")
+  const emptyState = document.getElementById("emptyStateProgramas")
+  const emptySearch = document.getElementById("emptySearchProgramas")
 
   // Close all open menus when changing view
   closeAllMenus()
@@ -211,16 +215,132 @@ function toggleView(view) {
     // Show table view
     tableView.classList.remove("hidden")
     gridView.classList.add("hidden")
-    tableBtn.classList.add("bg-muted")
-    gridBtn.classList.remove("bg-muted")
+    tableBtn.classList.add("bg-muted", "text-foreground")
+    gridBtn.classList.remove("bg-muted", "text-foreground")
+    gridBtn.classList.add("text-muted-foreground")
   } else {
     // Show grid view
     tableView.classList.add("hidden")
     gridView.classList.remove("hidden")
-    gridBtn.classList.add("bg-muted")
-    tableBtn.classList.remove("bg-muted")
+    gridBtn.classList.add("bg-muted", "text-foreground")
+    tableBtn.classList.remove("bg-muted", "text-foreground")
+    tableBtn.classList.add("text-muted-foreground")
+  }
+
+  // After changing view, check if we should show empty states
+  checkAndShowEmptyStates(view)
+}
+
+// Nueva función para verificar y mostrar estados vacíos según la vista actual
+function checkAndShowEmptyStates(currentView) {
+  const tableView = document.getElementById("tableView")
+  const gridView = document.getElementById("gridView")
+  const emptyState = document.getElementById("emptyStateProgramas")
+  const emptySearch = document.getElementById("emptySearchProgramas")
+  
+  // Verificar si hay filas o tarjetas visibles
+  let hasVisibleItems = false
+  
+  if (currentView === "table") {
+    // Contar filas visibles en la tabla
+    const visibleRows = document.querySelectorAll('#tableView tbody tr:not(.hidden)')
+    hasVisibleItems = visibleRows.length > 0
+  } else {
+    // Contar tarjetas visibles en la vista de cuadrícula
+    const visibleCards = document.querySelectorAll('#gridView [data-index]:not(.hidden)')
+    hasVisibleItems = visibleCards.length > 0
+  }
+  
+  // Verificar si hay programas en total en el sistema
+  const totalRows = document.querySelectorAll('#tableView tbody tr[data-index]').length
+  const totalCards = document.querySelectorAll('#gridView [data-index]').length
+  const hasAnyPrograms = totalRows > 0 || totalCards > 0
+  
+  // Determinar qué mostrar
+  if (!hasAnyPrograms) {
+    // No hay programas en el sistema
+    emptyState?.classList.remove('hidden')
+    emptySearch?.classList.add('hidden')
+    tableView?.classList.add('hidden')
+    gridView?.classList.add('hidden')
+  } else if (!hasVisibleItems) {
+    // Hay programas pero no coinciden con los filtros/búsqueda
+    emptyState?.classList.add('hidden')
+    emptySearch?.classList.remove('hidden')
+    tableView?.classList.add('hidden')
+    gridView?.classList.add('hidden')
+  } else {
+    // Hay programas visibles
+    emptyState?.classList.add('hidden')
+    emptySearch?.classList.add('hidden')
+    
+    // Mostrar la vista activa
+    if (currentView === "table") {
+      tableView?.classList.remove('hidden')
+      gridView?.classList.add('hidden')
+    } else {
+      tableView?.classList.add('hidden')
+      gridView?.classList.remove('hidden')
+    }
   }
 }
+
+// También modifica applyFilterAndUpdateEmptyStates para usar la nueva función
+function applyFilterAndUpdateEmptyStates() {
+  const searchInput = document.querySelector('input[placeholder="Buscar por nombre..."]')
+  const searchTerm = (searchInput?.value ?? '').toLowerCase().trim()
+  const filterEstado = document.getElementById('selectFiltroEstado').value
+  
+  // Get all table rows and grid cards
+  const tableRows = document.querySelectorAll('#tableView tbody tr[data-index]')
+  const gridCards = document.querySelectorAll('#gridView [data-index]')
+  
+  // Filter table rows
+  tableRows.forEach(row => {
+    const nombre = row.dataset.nombre?.toLowerCase() ?? ''
+    const estado = String(row.dataset.estado ?? '')
+    
+    const matchesSearch = searchTerm === '' || nombre.includes(searchTerm)
+    const matchesFilter = filterEstado === '' || estado === filterEstado
+    
+    if (matchesSearch && matchesFilter) {
+      row.classList.remove('hidden')
+    } else {
+      row.classList.add('hidden')
+    }
+  })
+  
+  // Filter grid cards
+  gridCards.forEach(card => {
+    const nombre = card.dataset.nombre?.toLowerCase() ?? ''
+    const estado = String(card.dataset.estado ?? '')
+    
+    const matchesSearch = searchTerm === '' || nombre.includes(searchTerm)
+    const matchesFilter = filterEstado === '' || estado === filterEstado
+    
+    if (matchesSearch && matchesFilter) {
+      card.classList.remove('hidden')
+    } else {
+      card.classList.add('hidden')
+    }
+  })
+  
+  // Determinar qué vista está activa actualmente
+  const tableView = document.getElementById("tableView")
+  const currentView = tableView.classList.contains("hidden") ? "grid" : "table"
+  
+  // Verificar y mostrar estados vacíos según la vista actual
+  checkAndShowEmptyStates(currentView)
+}
+
+// En el evento DOMContentLoaded, añade esta inicialización:
+document.addEventListener("DOMContentLoaded", () => {
+  
+  // Inicializar el estado correcto al cargar la página
+  const tableView = document.getElementById("tableView")
+  const initialView = tableView.classList.contains("hidden") ? "grid" : "table"
+  checkAndShowEmptyStates(initialView)
+})
 
 // Function to toggle action menu
 function toggleActionMenu(index) {
@@ -431,9 +551,14 @@ function validateProgramData(data, isEdit = false) {
     return false;
   }
 
-  // Validate level
-  const validLevels = ['Técnico', 'Tecnólogo'];
-  if (!validLevels.includes(data.nivel_programa)) {
+  // Validate level - acepta versiones con y sin acentos
+  const nivelNormalizado = data.nivel_programa.toLowerCase();
+  const esValido = nivelNormalizado.includes('técnico') || 
+                   nivelNormalizado.includes('tecnico') ||
+                   nivelNormalizado.includes('tecnólogo') || 
+                   nivelNormalizado.includes('tecnologo');
+  
+  if (!esValido) {
     toastError("El nivel debe ser 'Técnico' o 'Tecnólogo'.");
     return false;
   }
@@ -567,7 +692,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const duracionText = document.getElementById("edit_duracion").value.trim();
       
       // Normalize level
-      const nivelNormalized = nivelSelect.toLowerCase().includes("técnico") ? "Técnico" : "Tecnólogo";
+      const nivelNormalized = document.getElementById("edit_nivel").value;
       
       // Extract hours number from text
       const duracionHoras = Number.parseInt(duracionText.replace(/[^\d]/g, "")) || 0;

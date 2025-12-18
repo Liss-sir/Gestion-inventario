@@ -144,6 +144,37 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 </div>
             </div>
 
+            <!-- Aviso de sin RAEs en el sistema -->
+            <div id="emptyStateRaes" class="hidden overflow-visible rounded-lg border border-border bg-card relative p-6 mb-6">
+                <div class="flex flex-col items-center justify-center py-12 px-4">
+                    <div class="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-foreground mb-2">No hay RAEs registrados</h3>
+                    <p class="text-sm text-muted-foreground text-center max-w-md">
+                        Comienza creando un nuevo RAE usando el botón "Nuevo RAE".
+                    </p>
+                </div>
+            </div>
+
+            <!-- Aviso de búsqueda sin resultados (YA EXISTE - mantener) -->
+            <div id="emptySearchRaes" class="hidden overflow-visible rounded-lg border border-border bg-card relative p-6 mb-6">
+                <div class="flex flex-col items-center justify-center py-12 px-4">
+                    <div class="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <circle cx="11" cy="11" r="6" stroke-linecap="round" stroke-linejoin="round"></circle>
+                            <line x1="16" y1="16" x2="20" y2="20" stroke-linecap="round" stroke-linejoin="round"></line>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-foreground mb-2">No se encontraron resultados</h3>
+                    <p class="text-sm text-muted-foreground text-center max-w-md">
+                        No se encontraron RAEs que coincidan con la descripción ingresada.
+                    </p>
+                </div>
+            </div>
+
             <!-- VISTA DE TABLA -->
             <div id="tableView" class="border border-border rounded-lg">
                 <table class="w-full border-collapse">
@@ -217,7 +248,10 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 <!-- Icono + Código + Estado -->
                 <div class="flex items-center gap-4">
                     <div class="w-16 h-16 bg-avatar-secondary-39 rounded-md flex items-center justify-center flex-shrink-0;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#007832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-graduation-cap-icon lucide-graduation-cap"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#007832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-open">
+                            <path d="M12 7v14"/>
+                            <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>
+                        </svg>
                     </div>
                     <div class="flex-1">
                         <h3 id="detailsRaeCode" class="text-lg font-semibold">RAE #001</h3>
@@ -235,7 +269,11 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 <div>
                     <label class="block text-sm font-semibold mb-2">Programa:</label>
                     <div class="flex items-center gap-2 text-sm font-medium">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-graduation-cap-icon lucide-graduation-cap"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"></path><path d="M22 10v6"></path><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"></path></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-graduation-cap">
+                            <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"></path>
+                            <path d="M22 10v6"></path>
+                            <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"></path>
+                        </svg>
                         <span id="detailsPrograma" class="text-sm"></span>
                     </div>
                 </div>
@@ -267,7 +305,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 <!-- Código RAE -->
                 <div>
                     <label for="editRaeCodigo" class="block text-sm font-medium mb-2">Código RAE *</label>
-                    <input id="editRaeCodigo" type="text" placeholder="Ej: RAE-001" class="w-full px-4 py-2 border border-border rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-ring transition-all">
+                    <input id="editRaeCodigo" type="text" placeholder="Ej: 001" class="w-full px-4 py-2 border border-border rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-ring transition-all">
                 </div>
 
                 <!-- Programa -->
@@ -330,7 +368,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 <!-- Código RAE -->
                 <div>
                     <label for="createRaeCodigo" class="block text-sm font-medium text-foreground mb-2">Código RAE *</label>
-                    <input id="createRaeCodigo" type="text" placeholder="Ej: RAE-001" class="w-full px-4 py-2 border border-border rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all">
+                    <input id="createRaeCodigo" type="text" placeholder="Ej: 001" class="w-full px-4 py-2 border border-border rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all">
                 </div>
 
                 <!-- Programa -->

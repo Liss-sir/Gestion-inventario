@@ -403,20 +403,53 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </div>
 
           <!-- Password (full width) -->
-          <div class="space-y-2 sm:col-span-2">
-            <label
-              for="password"
-              class="text-sm font-medium"
-            >
-              Contraseña *
-            </label>
-            <input
-              id="password"
-              type="password"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
-              placeholder="Ingrese una contraseña segura"
-            />
-          </div>
+<div class="space-y-2 sm:col-span-2">
+  <label for="password" class="text-sm font-medium">
+    Contraseña *
+  </label>
+
+  <div class="relative">
+    <input
+      id="password"
+      type="password"
+      readonly
+      class="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm input-siga"
+      placeholder="Ingrese una contraseña segura"
+    />
+
+    <!-- Ojito -->
+    <button
+      id="btnTogglePassword"
+      type="button"
+      class="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+      title="Ver contraseña"
+      aria-label="Ver contraseña"
+    >
+      <!-- eye -->
+      <svg id="iconEye" class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+           viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+      </svg>
+
+      <!-- eye-off -->
+      <svg id="iconEyeOff" class="h-4 w-4 hidden" xmlns="http://www.w3.org/2000/svg" fill="none"
+           viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M3 3l18 18"/>
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M10.5 10.677A2.5 2.5 0 0 0 13.323 13.5"/>
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M7.362 7.561C5.274 8.74 3.772 10.6 3 12c1.274 4.057 5.064 7 9.542 7 1.46 0 2.85-.313 4.107-.88"/>
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9.88 5.12A9.67 9.67 0 0 1 12 5c4.478 0 8.268 2.943 9.542 7-.448 1.427-1.23 2.72-2.25 3.77"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
 
           <!-- Address (full width) -->
           <div class="space-y-2 sm:col-span-2">

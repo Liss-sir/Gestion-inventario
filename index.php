@@ -1,4 +1,3 @@
-
 <?php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -14,7 +13,6 @@ $protocol   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'http
 $host       = $_SERVER['HTTP_HOST'];
 $script_dir = str_replace(basename($_SERVER['SCRIPT_NAME']), '', $_SERVER['SCRIPT_NAME']);
 define('BASE_URL', $protocol . $host . $script_dir);
-
 
 // URL base para los assets
 define('ASSETS_URL', BASE_URL . "src/assets/");
@@ -46,11 +44,11 @@ if ($page === 'landing') {
 }
 
 // 2) A PARTIR DE AQUÍ, TODAS LAS PÁGINAS SON PROTEGIDAS
-//    Si NO hay sesión → mandar al login (que puede ser tu login.php que me pasaste)
+//    Si NO hay sesión → mandar al login (tu login real)
 
 if (!isset($_SESSION['usuario_id'])) {
-    // Ajusta la ruta según dónde tengas el login
-    header('Location: ' . BASE_URL . 'src/view/auth/login.php');
+    // ✅ CORREGIDO: tu login real es src/view/login/login.php
+    header('Location: ' . BASE_URL . 'src/view/login/login.php');
     exit;
 }
 ?>

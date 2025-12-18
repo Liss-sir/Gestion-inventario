@@ -18,6 +18,7 @@ const btnVolver = document.getElementById("sol-btn-volver");
 const btnGuardar = document.getElementById("sol-btn-guardar");
 
 const contenedorCards = document.getElementById("sol-cards");
+const paginationContainer = document.getElementById("sol-pagination");
 const filtros = document.querySelectorAll(".sol-filtro-btn");
 
 
@@ -73,13 +74,92 @@ let solicitudes = [
     ],
     observaciones: "Para mi casita XD",
   },
+  {
+    id: 5,
+    fecha: "2021-01-15",
+    instructor: "Pepito Perez Ozuna",
+    ficha: "6969696",
+    estado: "rechazada",
+    materiales: [
+      { nombre: "Cemento Gris", cantidad: 15 },
+      { nombre: "Ladrillos pios", cantidad: 3 },
+    ],
+    observaciones: "Para mi casita XD",
+  },
+  {
+    id: 6,
+    fecha: "2021-01-15",
+    instructor: "Pepito Perez Ozuna",
+    ficha: "6969696",
+    estado: "rechazada",
+    materiales: [
+      { nombre: "Cemento Gris", cantidad: 15 },
+      { nombre: "Ladrillos pios", cantidad: 3 },
+    ],
+    observaciones: "Para mi casita XD",
+  },
+    {
+    id: 7,
+    fecha: "2021-01-15",
+    instructor: "Pepito Perez Ozuna",
+    ficha: "6969696",
+    estado: "rechazada",
+    materiales: [
+      { nombre: "Cemento Gris", cantidad: 15 },
+      { nombre: "Ladrillos pios", cantidad: 3 },
+    ],
+    observaciones: "Para mi casita XD",
+  },
+    {
+    id: 8,
+    fecha: "2021-01-15",
+    instructor: "Pepito Perez Ozuna",
+    ficha: "6969696",
+    estado: "rechazada",
+    materiales: [
+      { nombre: "Cemento Gris", cantidad: 15 },
+      { nombre: "Ladrillos pios", cantidad: 3 },
+    ],
+    observaciones: "Para mi casita XD",
+  },
+    {
+    id: 9,
+    fecha: "2021-01-15",
+    instructor: "Pepito Perez Ozuna",
+    ficha: "6969696",
+    estado: "rechazada",
+    materiales: [
+      { nombre: "Cemento Gris", cantidad: 15 },
+      { nombre: "Ladrillos pios", cantidad: 3 },
+    ],
+    observaciones: "Para mi casita XD",
+  },
+    {
+    id: 10  ,
+    fecha: "2021-01-15",
+    instructor: "Pepito Perez Ozuna",
+    ficha: "6969696",
+    estado: "rechazada",
+    materiales: [
+      { nombre: "Cemento Gris", cantidad: 15 },
+      { nombre: "Ladrillos pios", cantidad: 3 },
+    ],
+    observaciones: "Para mi casita XD",
+  },
 ];
 
 let filtroActivo = "todas";
 
 
+// =========================
+// PAGINACIÓN
+// =========================
+let currentPage = 1;            // PAGINACIÓN
+const PAGE_SIZE = 9;            // PAGINACIÓN (3x3)
+
+
 // ============================================================
-//  HTML: EMPTY STATE (SE RENDERIZA DENTRO DE #sol-cards)
+//  HTML: EMPTY STATE
 // ============================================================
 function renderEmptyState() {
   contenedorCards.innerHTML = `
@@ -93,6 +173,7 @@ function renderEmptyState() {
       </p>
     </div>
   `;
+  if (paginationContainer) paginationContainer.innerHTML = ""; // PAGINACIÓN
 }
 
 
@@ -108,17 +189,23 @@ function renderSolicitudes() {
     lista = solicitudes.filter((s) => s.estado === filtroActivo);
   }
 
-  // 2) Si está vacía -> pintar empty dentro del grid (NO BLANCO)
+  // 2) Empty state
   if (lista.length === 0) {
     renderEmptyState();
     lucide.createIcons();
     return;
   }
 
-  // 3) Si hay data -> pintar cards
+  // PAGINACIÓN
+  const totalItems = lista.length;
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const end = start + PAGE_SIZE;
+  const listaPaginada = lista.slice(start, end);
+
+  // 3) Render cards
   contenedorCards.innerHTML = "";
 
-  lista.forEach((sol) => {
+  listaPaginada.forEach((sol) => {
     const card = document.createElement("div");
     card.className = "sol-card";
 
@@ -148,16 +235,12 @@ function renderSolicitudes() {
       <div class="sol-card-section">
         <div class="sol-section-title">Materiales solicitados:</div>
         <div class="sol-materials">
-          ${sol.materiales
-            .map(
-              (m) => `
-                <span class="sol-material">
-                  <i data-lucide="cube"></i>
-                  ${m.nombre} (${m.cantidad})
-                </span>
-              `
-            )
-            .join("")}
+          ${sol.materiales.map(m => `
+            <span class="sol-material">
+              <i data-lucide="cube"></i>
+              ${m.nombre} (${m.cantidad})
+            </span>
+          `).join("")}
         </div>
       </div>
 
@@ -185,19 +268,31 @@ function renderSolicitudes() {
     contenedorCards.appendChild(card);
   });
 
+  // PAGINACIÓN
+  renderPaginationControls(
+    paginationContainer,
+    totalItems,
+    PAGE_SIZE,
+    currentPage,
+    (page) => {
+      currentPage = page;
+      renderSolicitudes();
+    }
+  );
+
   lucide.createIcons();
 }
 
 
 // ============================================================
-//  ACCIONES (APROBAR / RECHAZAR)
+//  ACCIONES
 // ============================================================
 function aprobarSolicitud(id) {
   const sol = solicitudes.find((s) => s.id === id);
   if (!sol) return;
 
   sol.estado = "aprobada";
-  actualizarContadores();
+  currentPage = 1; // PAGINACIÓN
   renderSolicitudes();
 }
 
@@ -206,36 +301,12 @@ function rechazarSolicitud(id) {
   if (!sol) return;
 
   sol.estado = "rechazada";
-  actualizarContadores();
+  currentPage = 1; // PAGINACIÓN
   renderSolicitudes();
 }
 
-// IMPORTANTE:
-// como estás usando onclick="" en el HTML generado,
-// estas funciones deben quedar en el scope global.
 window.aprobarSolicitud = aprobarSolicitud;
 window.rechazarSolicitud = rechazarSolicitud;
-
-
-// ============================================================
-//  CONTADORES (FILTROS)
-// ============================================================
-function actualizarContadores() {
-  const total = solicitudes.length;
-  const p = solicitudes.filter((s) => s.estado === "pendiente").length;
-  const a = solicitudes.filter((s) => s.estado === "aprobada").length;
-  const r = solicitudes.filter((s) => s.estado === "rechazada").length;
-
-  const btnTodas = document.querySelector('[data-filtro="todas"]');
-  const btnPend = document.querySelector('[data-filtro="pendiente"]');
-  const btnApro = document.querySelector('[data-filtro="aprobada"]');
-  const btnRech = document.querySelector('[data-filtro="rechazada"]');
-
-  if (btnTodas) btnTodas.textContent = `Todas (${total})`;
-  if (btnPend) btnPend.textContent = `Pendientes (${p})`;
-  if (btnApro) btnApro.textContent = `Aprobadas (${a})`;
-  if (btnRech) btnRech.textContent = `Rechazadas (${r})`;
-}
 
 
 // ============================================================
@@ -247,13 +318,99 @@ filtros.forEach((btn) => {
     btn.classList.add("sol-filtro-btn-activo");
 
     filtroActivo = btn.dataset.filtro;
+    currentPage = 1; // PAGINACIÓN
     renderSolicitudes();
   });
 });
 
 
 // ============================================================
-//  MODAL (2 PASOS) – (se deja estable, sin inventar lógica extra)
+//  UTILIDADES
+// ============================================================
+function capitalizar(texto) {
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+function iconoEstado(estado) {
+  if (estado === "pendiente") return "clock";
+  if (estado === "aprobada") return "check-circle";
+  return "x-circle";
+}
+
+
+// =========================
+// GENERIC PAGINATION RENDER
+// =========================
+function renderPaginationControls(container, totalItems, pageSize, currentPage, onPageChange) {
+  if (!container) return;
+
+  const totalPages = Math.ceil(totalItems / pageSize);
+
+  if (totalPages <= 1) {
+    container.innerHTML = "";
+    return;
+  }
+
+  container.innerHTML = "";
+  container.className = "flex items-center justify-end gap-2 mt-6";
+
+  const baseBtn =
+    "px-3 py-1.5 text-sm rounded-md border transition-colors";
+
+  const btnNormal =
+    "bg-white border-border hover:bg-muted";
+
+  const btnActive =
+    "bg-primary text-white border-primary";
+
+  const btnDisabled =
+    "opacity-40 cursor-not-allowed";
+
+  // ===== Anterior =====
+  const btnPrev = document.createElement("button");
+  btnPrev.type = "button";
+  btnPrev.textContent = "Anterior";
+  btnPrev.className = `${baseBtn} ${btnNormal}`;
+
+  if (currentPage === 1) {
+    btnPrev.disabled = true;
+    btnPrev.classList.add(...btnDisabled.split(" "));
+  } else {
+    btnPrev.onclick = () => onPageChange(currentPage - 1);
+  }
+
+  container.appendChild(btnPrev);
+
+  // ===== Números =====
+  for (let i = 1; i <= totalPages; i++) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = i;
+    btn.className = `${baseBtn} ${
+      i === currentPage ? btnActive : btnNormal
+    }`;
+    btn.onclick = () => onPageChange(i);
+    container.appendChild(btn);
+  }
+
+  // ===== Siguiente =====
+  const btnNext = document.createElement("button");
+  btnNext.type = "button";
+  btnNext.textContent = "Siguiente";
+  btnNext.className = `${baseBtn} ${btnNormal}`;
+
+  if (currentPage === totalPages) {
+    btnNext.disabled = true;
+    btnNext.classList.add(...btnDisabled.split(" "));
+  } else {
+    btnNext.onclick = () => onPageChange(currentPage + 1);
+  }
+
+  container.appendChild(btnNext);
+}
+
+// ============================================================
+//  MODAL – NUEVA SOLICITUD
 // ============================================================
 if (btnNueva && modal) {
   btnNueva.onclick = () => {
@@ -264,7 +421,9 @@ if (btnNueva && modal) {
 }
 
 if (btnCerrarModal && modal) {
-  btnCerrarModal.onclick = () => modal.classList.remove("sol-modal-show");
+  btnCerrarModal.onclick = () => {
+    modal.classList.remove("sol-modal-show");
+  };
 }
 
 if (btnPaso2) {
@@ -283,28 +442,12 @@ if (btnVolver) {
 
 if (btnGuardar && modal) {
   btnGuardar.onclick = () => {
-    alert("Solicitud creada (simulación)");
     modal.classList.remove("sol-modal-show");
   };
 }
 
 
 // ============================================================
-//  UTILIDADES
-// ============================================================
-function capitalizar(texto) {
-  return texto.charAt(0).toUpperCase() + texto.slice(1);
-}
-
-function iconoEstado(estado) {
-  if (estado === "pendiente") return "clock";
-  if (estado === "aprobada") return "check-circle";
-  return "x-circle";
-}
-
-
-// ============================================================
 //  INIT
 // ============================================================
-actualizarContadores();
 renderSolicitudes();
