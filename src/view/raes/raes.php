@@ -305,7 +305,13 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 <!-- Código RAE -->
                 <div>
                     <label for="editRaeCodigo" class="block text-sm font-medium mb-2">Código RAE *</label>
-                    <input id="editRaeCodigo" type="text" placeholder="Ej: 001" class="w-full px-4 py-2 border border-border rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-ring transition-all">
+                    <input 
+                        id="editRaeCodigo" 
+                        type="text" 
+                        placeholder="Ej: 001" 
+                        class="w-full px-4 py-2 border border-border rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+                        onkeypress="return validarSoloNumeros(event)"
+                    >
                 </div>
 
                 <!-- Programa -->
@@ -368,7 +374,13 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 <!-- Código RAE -->
                 <div>
                     <label for="createRaeCodigo" class="block text-sm font-medium text-foreground mb-2">Código RAE *</label>
-                    <input id="createRaeCodigo" type="text" placeholder="Ej: 001" class="w-full px-4 py-2 border border-border rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all">
+                    <input 
+                        id="createRaeCodigo" 
+                        type="text" 
+                        placeholder="Ej: 001" 
+                        class="w-full px-4 py-2 border border-border rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+                        onkeypress="return validarSoloNumeros(event)"
+                    >
                 </div>
 
                 <!-- Programa -->

@@ -9,7 +9,7 @@ let instructores = [];
 // ==============================
 
 // URL COMPLETA DE LA API (usa esta)
-const API_URL = 'http://localhost/Productiva/ProyectoInventario/Gestion-inventario/src/controllers/obra_controller.php';
+const API_URL = 'src/controllers/obra_controller.php';
 
 // Para debugging
 console.log('API URL configurada:', API_URL);
