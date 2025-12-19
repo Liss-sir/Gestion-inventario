@@ -3,40 +3,52 @@
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 
+require_once 'src/utils/notificaciones_sin_db.php';
+
+/* ===========================
+   RESUMEN (KPI)
+   =========================== */
+$resumen = NotificacionSesion::obtenerResumen();
+
 $stats = [
-  'total' => 5,
-  'unread' => 1,
-  'critical' => 1,
-  'low' => 3
+  'total'    => $resumen['total'],
+  'unread'   => $resumen['no_leidas'],
+  'critical' => $resumen['por_color']['danger'] ?? 0,
+  'low'      => $resumen['por_color']['warning'] ?? 0
 ];
 
-$alerts = [
-  [
-    'name' => 'Arena de río',
-    'status' => 'Stock Crítico',
-    'value' => '8/10 m³',
-    'code' => 'MC-002',
-    'type' => 'warning',
-    'time' => '18 de noviembre, 07:00 p.m.'
-  ],
-  [
-    'name' => 'Guantes industriales',
-    'status' => 'Agotado',
-    'value' => '0/60 pares',
-    'code' => 'EP-120',
-    'type' => 'critical',
-    'time' => '16 de noviembre, 15:20 p.m.'
-  ],
-  [
-    'name' => 'Pintura acrílica blanca',
-    'status' => 'Bajo',
-    'value' => '7/12 galones',
-    'code' => 'PT-009',
-    'type' => 'low',
-    'time' => '23 de noviembre, 10:45 a.m.'
-  ]
-];
+/* ===========================
+   ALERTAS (LISTADO)
+   =========================== */
+$notificaciones = NotificacionSesion::obtenerNotificaciones(null, 50);
+
+/*
+ Mapear notificaciones → estructura que el diseño ya usa
+ NO se cambia el HTML
+*/
+$alerts = array_map(function ($n) {
+
+  $type = match ($n['color']) {
+    'danger'  => 'critical',
+    'warning' => 'warning',
+    default   => 'low'
+  };
+
+  return [
+    'name'           => $n['titulo'],
+    'status'         => ucfirst(str_replace('_', ' ', $n['tipo'])),
+    'value'          => '—',
+    'code'           => 'USR-' . $n['usuario_id'],
+    'usuario_nombre' => $n['usuario_nombre'] ?? ('Usuario ID ' . $n['usuario_id']),
+    'descripcion'    => $n['descripcion'] ?? '',
+    'type'           => $type,
+    'time'           => $n['fecha'],
+    'id'             => $n['id'],
+    'leido'          => $n['leido']
+  ];
+}, $notificaciones);
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -178,12 +190,16 @@ $alerts = [
 
           <div>
             <p class="font-semibold">
-              <?= $a['name'] ?> – <?= $a['status'] ?> (<?= $a['value'] ?>)
+              <?= $a['name'] ?> 
             </p>
 
             <p class="text-xs text-muted-foreground">
-              <?= $a['code'] ?> – <?= $a['name'] ?>
+              <?= htmlspecialchars($a['usuario_nombre']) ?> – <?= $a['code'] ?>
             </p>
+
+            <div class="mt-2 text-sm text-muted-foreground">
+              <?= $a['descripcion'] ?>
+            </div>
 
             <div class="flex items-center gap-3 mt-1">
               <span class="text-xs text-muted-foreground"><?= $a['time'] ?></span>
@@ -197,7 +213,11 @@ $alerts = [
           </div>
         </div>
 
-        <button class="text-red-500 hover:text-red-700">
+        <button 
+          class="btn-eliminar-notificacion hover:bg--color-error/10"
+          data-notif-id="<?= $a['id'] ?>"
+          title="Eliminar notificación"
+        >
           <i data-lucide="trash-2" class="w-5 h-5"></i>
         </button>
 
@@ -210,6 +230,61 @@ $alerts = [
 
   <script>
     lucide.createIcons();
+
+    // Eliminar notificación
+    document.querySelectorAll('.btn-eliminar-notificacion').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        
+        const notifId = btn.getAttribute('data-notif-id');
+        if (!notifId) return;
+        
+        // Buscar el contenedor de la alerta (el div padre más cercano con la clase específica)
+        const alertDiv = btn.closest('.flex.items-start.justify-between');
+        
+        if (!alertDiv) {
+          console.error('No se encontró contenedor de alerta');
+          return;
+        }
+        
+        try {
+          const formData = new FormData();
+          formData.append('notificacion_id', notifId);
+          
+          console.log('Eliminando notificación:', notifId);
+          
+          const resp = await fetch('src/controllers/usuario_controller.php?accion=eliminar_notificacion', {
+            method: 'POST',
+            body: formData
+          });
+          
+          const data = await resp.json();
+          console.log('Respuesta:', data);
+          
+          if (data.success) {
+            // Remover del DOM con animación
+            alertDiv.style.transition = 'all 0.3s ease-out';
+            alertDiv.style.opacity = '0';
+            alertDiv.style.height = alertDiv.offsetHeight + 'px';
+            
+            setTimeout(() => {
+              alertDiv.style.height = '0px';
+              alertDiv.style.marginBottom = '0px';
+              alertDiv.style.overflow = 'hidden';
+            }, 10);
+            
+            setTimeout(() => {
+              alertDiv.remove();
+            }, 300);
+          } else {
+            alert('Error: ' + (data.error || 'No se pudo eliminar la notificación'));
+          }
+        } catch (error) {
+          console.error('Error eliminando notificación:', error);
+          alert('Error al eliminar la notificación: ' + error.message);
+        }
+      });
+    });
   </script>
 
 </main>

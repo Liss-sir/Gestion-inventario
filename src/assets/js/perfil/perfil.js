@@ -343,16 +343,135 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  if (formDatosSensibles) {
-    formDatosSensibles.addEventListener("submit", (e) => {
-      e.preventDefault();
+if (formDatosSensibles) {
+  formDatosSensibles.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-      const selected = Array.from(sensibleChecks || []).filter((c) => c.checked);
+    const selected = Array.from(sensibleChecks || []).filter((c) => c.checked);
 
-      if (selected.length === 0) {
-        toastError("Selecciona al menos un dato sensible para continuar.");
+    if (selected.length === 0) {
+      toastError("Selecciona al menos un dato sensible para continuar.");
+      return;
+    }
+
+    // Recopilar datos actuales del formulario de edición
+    const datosActuales = {};
+    const formEditar = document.getElementById('formEditarPerfil');
+    if (formEditar) {
+      const fd = new FormData(formEditar);
+      for (const [key, value] of fd.entries()) {
+        if (value instanceof File) continue;
+        datosActuales[key] = String(value ?? "").trim();
+      }
+    }
+
+    // Recopilar datos sensibles seleccionados
+    const datosSolicitados = {};
+    for (const chk of selected) {
+      const key = chk.getAttribute("data-sensible");
+      const fieldWrap = document.getElementById("field_" + key);
+      if (!fieldWrap) continue;
+
+      const input = fieldWrap.querySelector("input, select, textarea");
+      if (!input) continue;
+
+      const value = String(input.value ?? "").trim();
+      if (!value) {
+        toastError("Completa todos los campos seleccionados antes de continuar.");
         return;
       }
+      
+      // Obtener valor actual (de los datos del formulario o de la sesión)
+      const valorActual = datosActuales[key] || obtenerValorActual(key);
+      
+      datosSolicitados[key] = {
+        anterior: valorActual,
+        nuevo: value
+      };
+    }
+
+    // Función auxiliar para obtener valores actuales
+    function obtenerValorActual(campo) {
+      const camposSesion = {
+        'nombre_completo': '<?php echo $profileData["nombre_completo"]; ?>',
+        'tipo_documento': '<?php echo $profileData["tipo_documento"]; ?>',
+        'numero_documento': '<?php echo $profileData["numero_documento"]; ?>',
+        'correo': '<?php echo $profileData["correo"]; ?>'
+      };
+      return camposSesion[campo] || '';
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("accion", "solicitar_cambio_datos_sensibles");
+      formData.append("datos_cambiados", JSON.stringify(datosSolicitados));
+
+      const resp = await fetch("src/controllers/usuario_controller.php?accion=solicitar_cambio_datos_sensibles", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await resp.json();
+
+      if (data.error) {
+        toastError(data.error);
+        return;
+      }
+
+      toastSuccess(data.message || "Solicitud registrada. Un administrador será notificado.");
+      closeDatosSensibles();
+      
+      // Actualizar contador de notificaciones en el header
+      actualizarContadorNotificaciones();
+      
+    } catch (error) {
+      console.error("Error enviando solicitud:", error);
+      toastError("Ocurrió un error al enviar la solicitud.");
+    }
+  });
+}
+
+// Función para actualizar el contador de notificaciones
+async function actualizarContadorNotificaciones() {
+  try {
+    const resp = await fetch('src/utils/notificaciones_sesion.php?accion=contar');
+    const data = await resp.json();
+    
+    const badge = document.querySelector('.badge-notificaciones');
+    if (badge && data.no_leidas > 0) {
+      badge.textContent = data.no_leidas > 9 ? '9+' : data.no_leidas;
+      badge.style.display = 'inline-block';
+    }
+  } catch (error) {
+    console.error('Error actualizando contador:', error);
+  }
+}
+
+// Función para marcar notificación como leída
+async function marcarNotificacionLeida(notificacionId) {
+  try {
+    const formData = new FormData();
+    formData.append('notificacion_id', notificacionId);
+    
+    await fetch('src/utils/notificaciones_sesion.php?accion=marcar_leido', {
+      method: 'POST',
+      body: formData
+    });
+    
+    // Remover indicador visual
+    const notifElement = document.querySelector(`[data-notif-id="${notificacionId}"]`);
+    if (notifElement) {
+      notifElement.classList.remove('no-leida');
+      notifElement.classList.add('leida');
+      
+      // Actualizar contador
+      actualizarContadorNotificaciones();
+    }
+    
+  } catch (error) {
+    console.error('Error marcando notificación:', error);
+  }
+}
 
       // Validación básica: si selecciona un campo, que no quede vacío
       for (const chk of selected) {
@@ -374,7 +493,7 @@ document.addEventListener("DOMContentLoaded", function () {
       toastSuccess("Datos sensibles listos para enviar.");
       closeDatosSensibles();
     });
-  }
+  
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
@@ -587,4 +706,33 @@ document.addEventListener("DOMContentLoaded", function () {
       if (e.target === modalPassword) resetPasswordForm();
     });
   }
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  const btn = document.getElementById('btnEnviarDatosSensibles');
+  const form = document.getElementById('formDatosSensibles');
+
+  if (!btn || !form) return;
+
+  btn.addEventListener('click', () => {
+
+    const formData = new FormData(form);
+
+    fetch("src/controllers/usuario_controller.php?accion=solicitar_cambio_datos_sensibles", {
+      method: 'POST',
+      body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        alert(data.error);
+        return;
+      }
+
+      // Éxito
+      alert('Solicitud enviada correctamente');
+      // cerrar modal aquí
+    })
+    .catch(err => console.error(err));
+  });
 });

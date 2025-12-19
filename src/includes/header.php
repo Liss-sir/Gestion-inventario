@@ -162,45 +162,230 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
 
   <div class="flex items-center gap-4 ml-4">
 
+    <?php
+    require_once 'src/utils/notificaciones_sin_db.php';
+
+    // Obtener resumen de notificaciones
+    $resumenNotificaciones = NotificacionSesion::obtenerResumen();
+    $notificacionesRecientes = NotificacionSesion::obtenerNotificaciones(null, 5);
+    ?>
+
     <!-- Notificaciones -->
-    <div class="relative group">
+    <div class="relative group" id="contenedor-notificaciones">
       <button class="relative flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted/70 transition">
         <i data-lucide="bell" class="h-5 w-5 text-slate-500"></i>
 
-        <?php if (count($mockAlerts) > 0): ?>
-          <span class="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-[#ff4b4b] ring-2 ring-card"></span>
+        <?php if ($resumenNotificaciones['no_leidas'] > 0): ?>
+          <span class="absolute right-1.5 top-1.5 h-5 w-5 rounded-full bg-[#ff4b4b] ring-2 ring-card flex items-center justify-center text-[10px] font-bold text-white badge-notificaciones">
+            <?php echo $resumenNotificaciones['no_leidas'] > 9 ? '9+' : $resumenNotificaciones['no_leidas']; ?>
+          </span>
         <?php endif; ?>
       </button>
 
-      <div class="absolute right-0 mt-2 hidden w-80 rounded-md border border-border bg-card shadow-md group-hover:block">
-        <div class="flex items-center justify-between px-3 py-2">
+      <div class="absolute right-0 mt-2 hidden w-96 rounded-md border border-border bg-card shadow-md group-hover:block" id="dropdown-notificaciones">
+        <div class="flex items-center justify-between px-3 py-2 border-b">
           <span class="text-sm font-semibold">Notificaciones</span>
-          <span class="rounded-full bg-muted px-2 py-0.5 text-xs">
-            <?php echo count($mockAlerts); ?>
-          </span>
+          <div class="flex items-center gap-2">
+            <span class="rounded-full bg-muted px-2 py-0.5 text-xs">
+              <?php echo $resumenNotificaciones['total']; ?>
+            </span>
+            <?php if ($resumenNotificaciones['no_leidas'] > 0): ?>
+              <button 
+                onclick="marcarTodasLeidas()" 
+                class="text-xs text-blue-600 hover:text-blue-800"
+                title="Marcar todas como leídas"
+              >
+                Limpiar
+              </button>
+            <?php endif; ?>
+          </div>
         </div>
-        <hr class="border-border" />
 
-        <?php if (count($mockAlerts) === 0): ?>
-          <p class="px-3 py-3 text-xs text-muted-foreground">No hay notificaciones nuevas.</p>
+        <?php if (empty($notificacionesRecientes)): ?>
+          <div class="px-3 py-6 text-center">
+            <i data-lucide="bell-off" class="h-8 w-8 text-slate-300 mx-auto mb-2"></i>
+            <p class="text-xs text-muted-foreground">No hay notificaciones nuevas.</p>
+          </div>
         <?php else: ?>
-          <div class="<?php echo $manyAlerts ? 'max-h-60 overflow-y-auto' : ''; ?>">
-            <?php foreach ($mockAlerts as $alert): ?>
-              <div class="flex flex-col gap-1 px-3 py-2 hover:bg-muted/50">
-                <div class="flex items-center gap-2">
-                  <span class="h-2 w-2 rounded-full bg-warning"></span>
-                  <span class="text-xs font-medium">Stock bajo</span>
+          <div class="max-h-96 overflow-y-auto" id="lista-notificaciones">
+            <?php foreach ($notificacionesRecientes as $notif): ?>
+              <div 
+                class="flex flex-col gap-1 px-3 py-3 hover:bg-muted/50 border-b border-border last:border-b-0 transition-all duration-200 
+                      <?php echo !$notif['leido'] ? 'bg-blue-50 no-leida border-l-2 border-l-blue-500' : 'leida'; ?>"
+                data-notif-id="<?php echo $notif['id']; ?>"
+              >
+                <div class="flex items-start justify-between">
+                  <div class="flex items-center gap-2 flex-1">
+                    <div class="h-8 w-8 rounded-full flex items-center justify-center 
+                              <?php echo match($notif['color']) {
+                                'warning' => 'bg-amber-100 text-amber-600',
+                                'danger' => 'bg-red-100 text-red-600',
+                                'success' => 'bg-emerald-100 text-emerald-600',
+                                default => 'bg-blue-100 text-blue-600'
+                              }; ?>">
+                      <i data-lucide="<?php echo $notif['icono']; ?>" class="h-4 w-4"></i>
+                    </div>
+                    
+                    <div class="flex-1 min-w-0">
+                      <p class="text-xs font-semibold text-slate-800 truncate">
+                        <?php echo htmlspecialchars($notif['titulo']); ?>
+                      </p>
+                      <p class="text-[10px] text-slate-500">
+                        <?php echo date('d/m H:i', strtotime($notif['fecha'])); ?>
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div class="flex items-center gap-1">
+                    <?php if (!$notif['leido']): ?>
+                      <span class="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+                    <?php endif; ?>
+                    
+                    <button 
+                      onclick="eliminarNotificacion('<?php echo $notif['id']; ?>')"
+                      class="h-5 w-5 flex items-center justify-center text-slate-400 hover:text-red-500"
+                      title="Eliminar"
+                    >
+                      <i data-lucide="x" class="h-3 w-3"></i>
+                    </button>
+                  </div>
                 </div>
-                <p class="text-xs text-muted-foreground">
-                  <?php echo $alert["material_nombre"]; ?>:
-                  <?php echo $alert["stock_actual"]; ?>/<?php echo $alert["stock_minimo"]; ?> unidades
-                </p>
+                
+                <div class="mt-2 pl-10">
+                  <div class="text-xs text-slate-600 whitespace-pre-line leading-relaxed">
+                    <?php echo $notif['descripcion']; ?>
+                  </div>
+                  
+                  <div class="mt-2 flex justify-between items-center">
+                    <span class="text-[10px] text-slate-400">
+                      Usuario ID: <?php echo $notif['usuario_id']; ?>
+                    </span>
+                    
+                    <?php if (!$notif['leido']): ?>
+                      <button 
+                        onclick="marcarNotificacionLeida('<?php echo $notif['id']; ?>')"
+                        class="text-[10px] text-blue-600 hover:text-blue-800 hover:underline"
+                      >
+                        Marcar como leído
+                      </button>
+                    <?php endif; ?>
+                  </div>
+                </div>
               </div>
             <?php endforeach; ?>
           </div>
+          
+          <?php if ($resumenNotificaciones['total'] > 5): ?>
+            <div class="px-3 py-2 border-t text-center">
+              <a href="notificaciones.php" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">
+                Ver todas las notificaciones
+              </a>
+            </div>
+          <?php endif; ?>
         <?php endif; ?>
       </div>
     </div>
+
+    <script>
+    // Funciones JavaScript para manejar notificaciones
+    function marcarNotificacionLeida(notifId) {
+      fetch('src/utils/notificaciones_sesion.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'accion=marcar_leido&notificacion_id=' + notifId
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const notifElement = document.querySelector(`[data-notif-id="${notifId}"]`);
+          if (notifElement) {
+            notifElement.classList.remove('no-leida', 'bg-blue-50', 'border-l-blue-500');
+            notifElement.classList.add('leida');
+            
+            // Actualizar contador
+            actualizarContadorNotificaciones();
+          }
+        }
+      });
+    }
+
+    function marcarTodasLeidas() {
+      fetch('src/utils/notificaciones_sesion.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'accion=marcar_todas_leidas'
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Actualizar todas las notificaciones visualmente
+          document.querySelectorAll('.no-leida').forEach(el => {
+            el.classList.remove('no-leida', 'bg-blue-50', 'border-l-blue-500');
+            el.classList.add('leida');
+          });
+          
+          // Actualizar contador
+          actualizarContadorNotificaciones();
+        }
+      });
+    }
+
+    function eliminarNotificacion(notifId) {
+      if (!confirm('¿Eliminar esta notificación?')) return;
+      
+      fetch('src/utils/notificaciones_sesion.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'accion=eliminar&notificacion_id=' + notifId
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const notifElement = document.querySelector(`[data-notif-id="${notifId}"]`);
+          if (notifElement) {
+            notifElement.style.opacity = '0';
+            notifElement.style.transform = 'translateX(100%)';
+            setTimeout(() => notifElement.remove(), 300);
+            
+            // Actualizar contador
+            actualizarContadorNotificaciones();
+          }
+        }
+      });
+    }
+
+    async function actualizarContadorNotificaciones() {
+      try {
+        const resp = await fetch('src/utils/notificaciones_sesion.php?accion=contar');
+        const data = await resp.json();
+        
+        const badge = document.querySelector('.badge-notificaciones');
+        if (data.no_leidas > 0) {
+          if (!badge) {
+            // Crear badge si no existe
+            const newBadge = document.createElement('span');
+            newBadge.className = 'absolute right-1.5 top-1.5 h-5 w-5 rounded-full bg-[#ff4b4b] ring-2 ring-card flex items-center justify-center text-[10px] font-bold text-white badge-notificaciones';
+            document.querySelector('#contenedor-notificaciones button').appendChild(newBadge);
+          }
+          const badgeElement = badge || document.querySelector('.badge-notificaciones');
+          badgeElement.textContent = data.no_leidas > 9 ? '9+' : data.no_leidas;
+        } else if (badge) {
+          badge.remove();
+        }
+      } catch (error) {
+        console.error('Error actualizando contador:', error);
+      }
+    }
+
+    // Actualizar notificaciones cada 30 segundos
+    setInterval(actualizarContadorNotificaciones, 30000);
+    </script> <!-- FIN DE NOTIFICACIONES -->
 
     <!-- Menú de usuario (CLICK TOGGLE, NO HOVER) -->
     <div class="relative">
@@ -695,6 +880,7 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
           </button>
           <button
             type="submit"
+            id="btnEnviarDatosSensibles"
             class="inline-flex items-center justify-center rounded-lg bg-secondary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-secondary/90 transition"
           >
             Continuar
