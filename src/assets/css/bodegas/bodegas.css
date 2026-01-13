@@ -1,6 +1,5 @@
 /* =========================================================
    VARIABLES GLOBALES DEL MÓDULO BODEGAS
-   (Ajustadas a tu sistema SIGA)
 ========================================================= */
 :root {
   --color-primary: #39A900;
@@ -15,7 +14,7 @@
 }
 
 /* =========================================================
-   INPUTS SIGA
+   INPUTS
 ========================================================= */
 .input-siga {
   background-color: var(--color-bg);
@@ -30,6 +29,11 @@
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(57,169,0,0.25);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 90px;
 }
 
 /* =========================================================
@@ -68,7 +72,7 @@ table thead {
   background: #f3f4f6;
 }
 
-table th, 
+table th,
 table td {
   padding: 0.75rem 1rem;
 }
@@ -123,30 +127,20 @@ table td {
   border-radius: 50%;
 }
 
-.badge-estado-activo {
-  background-color: color-mix(in srgb, var(--color-primary) 29%, transparent);
-  color: var(--color-primary);
-}
-
-.badge-estado-inactivo {
-  background-color: color-mix(in srgb, #64748b 18%, transparent);
-  color: #64748b;
-}
-
-/* Animación */
+/* Animación modal */
 @keyframes slideDown {
   from {
     transform: translateY(-12px);
     opacity: 0;
   }
   to {
-    transform: translateY(0px);
+    transform: translateY(0);
     opacity: 1;
   }
 }
 
 /* =========================================================
-   BADGES
+   BADGES / CHIPS
 ========================================================= */
 .badge {
   display: inline-flex;
@@ -159,16 +153,7 @@ table td {
   width: fit-content;
 }
 
-/* ===== FIX BADGE ESTADO EN MODAL DETALLE ===== */
-#detalleEstado {
-  display: inline-flex !important;
-  width: fit-content !important;
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
+/* Clasificación */
 .detalle-chip {
   display: inline-flex;
   align-items: center;
@@ -181,25 +166,28 @@ table td {
   width: fit-content;
 }
 
-.badge-disponible {
-  background-color: #dcfce7;
-  color: #15803d;
+/* Estado Bodega */
+.badge-estado-activo {
+  background-color: color-mix(in srgb, var(--color-primary) 29%, transparent);
+  color: var(--color-primary);
+}
+
+.badge-estado-inactivo {
+  background-color: color-mix(in srgb, #64748b 18%, transparent);
+  color: #64748b;
+}
+
+/* FIX estado en modal detalle */
+#detalleEstado {
+  display: inline-flex;
+  width: fit-content;
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 500;
 }
 
-.badge-prestado {
-  background-color: #e5e7eb;
-  color: #374151;
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-/* ===== BADGES ESTADO MATERIALES ===== */
+/* Materiales */
 .badge-material-disponible {
   background-color: #dcfce7;
   color: #15803d;
@@ -218,51 +206,11 @@ table td {
   font-weight: 500;
 }
 
-/* ===== CHIP PARA CLASIFICACIÓN / TIPO ===== */
-.detalle-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  border: 1px solid var(--color-border);
-  background: #fff;
-  color: #374151;
-  width: fit-content;
-}
-
-/* ===== FIX ESTADO BODEGA ===== */
-#detalleEstado {
-  display: inline-flex;
-  width: fit-content;
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-/* ===== BADGES MATERIALES ===== */
-.badge-material-disponible {
-  background-color: #dcfce7;
-  color: #15803d;
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.badge-material-prestado {
-  background-color: #e5e7eb;
-  color: #475569;
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-/* ===== CONTEXT MENU MÁS COMPACTO ===== */
+/* =========================================================
+   CONTEXT MENU
+========================================================= */
 #context-menu {
-  width: 190px;      
+  width: 190px;
   border-radius: 0.75rem;
   position: fixed;
   z-index: 1000;
@@ -286,3 +234,4 @@ table td {
 #context-menu li.border-t {
   margin: 0.25rem 0;
 }
+

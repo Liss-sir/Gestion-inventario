@@ -395,7 +395,7 @@ function showAlert(message, type = "success") {
 
 function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
   const nameRegex = /^[A-Za-z0-9ÁÉÍÓÚÜÑñáéíóúüñ\s\-.]{3,80}$/
-  const codeRegex = /^[A-Za-z0-9_-]{3,30}$/
+  const codeRegex = /^\d{3,30}$/
 
   if (!data.nombre) {
     showAlert("El nombre es obligatorio", "error")
@@ -440,7 +440,7 @@ function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
       return false
     }
     if (!codeRegex.test(data.codigo_inventario)) {
-      showAlert("Código inválido: 3-30 caracteres alfanuméricos, guion o guion bajo", "error")
+      showAlert("Código inválido: solo números (3-30 dígitos)", "error")
       document.getElementById(isEdit ? "editCodigo" : "codigo")?.focus()
       return false
     }
@@ -610,6 +610,8 @@ function renderTable() {
   }
   const paginationEl = document.getElementById("pagination")
 
+  const hasAnyMaterial = materialsData.length > 0
+
   if (!dataToRender.length) {
     if (tableWrapper) tableWrapper.classList.add("hidden")
     if (tableEl) tableEl.classList.add("hidden")
@@ -619,7 +621,11 @@ function renderTable() {
     }
 
     const hasFilters = Boolean(searchTerm || filterValue)
-    if (hasFilters) {
+    if (!hasAnyMaterial) {
+      // No hay datos en absoluto, mostrar el estado vacío base aunque haya filtros
+      if (emptyStateTable) emptyStateTable.classList.remove("hidden")
+      if (emptySearchTable) emptySearchTable.classList.add("hidden")
+    } else if (hasFilters) {
       if (emptySearchTable) emptySearchTable.classList.remove("hidden")
       if (emptyStateTable) emptyStateTable.classList.add("hidden")
     } else {
@@ -732,6 +738,8 @@ function renderCards() {
   cardsContainer.innerHTML = ""
   const cardPaginationEl = document.getElementById("cardPagination")
 
+  const hasAnyMaterial = materialsData.length > 0
+
   if (!dataToRender.length) {
     cardsContainer.classList.add("hidden")
     if (cardPaginationEl) {
@@ -740,7 +748,11 @@ function renderCards() {
     }
 
     const hasFilters = Boolean(searchTerm || filterValue)
-    if (hasFilters) {
+    if (!hasAnyMaterial) {
+      // No hay datos en absoluto, mostrar el estado vacío base aunque haya filtros
+      if (emptyStateCards) emptyStateCards.classList.remove("hidden")
+      if (emptySearchCards) emptySearchCards.classList.add("hidden")
+    } else if (hasFilters) {
       if (emptySearchCards) emptySearchCards.classList.remove("hidden")
       if (emptyStateCards) emptyStateCards.classList.add("hidden")
     } else {
@@ -1097,12 +1109,10 @@ function toggleCodigoField() {
   if (clasificacion === "Inventariado") {
     codigoContainer.style.display = "block"
     codigoHelpText.style.display = "block"
-    codigoInput.required = true
     precioCodigoGrid.style.gridTemplateColumns = "1fr 1fr"
   } else {
     codigoContainer.style.display = "none"
     codigoHelpText.style.display = "none"
-    codigoInput.required = false
     codigoInput.value = ""
     precioCodigoGrid.style.gridTemplateColumns = "1fr"
   }
@@ -1121,7 +1131,6 @@ function toggleEditCodigoField() {
 
   if (clasificacion === "Inventariado") {
     codigoContainer.style.display = "block"
-    codigoInput.required = true
 
     if (editPrecioCodigoGrid && editPrecioCodigoGrid.classList) {
       editPrecioCodigoGrid.classList.remove("grid-cols-1")
@@ -1129,7 +1138,6 @@ function toggleEditCodigoField() {
     }
   } else {
     codigoContainer.style.display = "none"
-    codigoInput.required = false
     codigoInput.value = ""
 
     if (editPrecioCodigoGrid && editPrecioCodigoGrid.classList) {
@@ -1164,6 +1172,13 @@ async function createMaterial() {
 
   if (!validateMaterialPayload(materialData)) return
 
+  const imagenInput = document.getElementById("imagen")
+  if (!imagenInput || imagenInput.files.length === 0) {
+    showAlert("Debes seleccionar una imagen del material", "error")
+    document.getElementById("dropzoneImagen")?.scrollIntoView({ behavior: "smooth", block: "center" })
+    return
+  }
+
   const formData = new FormData()
   formData.append("nombre", materialData.nombre)
   formData.append("descripcion", materialData.descripcion)
@@ -1171,11 +1186,7 @@ async function createMaterial() {
   formData.append("codigo_inventario", materialData.codigo_inventario || "")
   formData.append("unidad_medida", materialData.unidad_medida)
   formData.append("precio", materialData.precio)
-
-  const imagenInput = document.getElementById("imagen")
-  if (imagenInput.files.length > 0) {
-    formData.append("foto", imagenInput.files[0])
-  }
+  formData.append("foto", imagenInput.files[0])
 
   const result = await createMaterialAPI(formData)
 
@@ -1213,8 +1224,14 @@ async function updateMaterial() {
 
   const editImagenInput = document.getElementById("editImagen")
   const hasNewPhoto = editImagenInput && editImagenInput.files.length > 0
-
   const original = materialsData.find((m) => m.id === id)
+
+  if (!hasNewPhoto && (!original || !original.foto)) {
+    showAlert("Debes seleccionar una imagen del material", "error")
+    document.getElementById("editDropzoneImagen")?.scrollIntoView({ behavior: "smooth", block: "center" })
+    return
+  }
+
   if (original) {
     const norm = (v) => (v ?? "").toString().trim()
     const samePrecio = Number(parsePriceValue(original.precio)) === Number(parsePriceValue(materialData.precio))
