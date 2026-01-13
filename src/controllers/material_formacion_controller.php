@@ -2,113 +2,182 @@
 require_once "../../config/database.php";
 require_once "../models/material_formacion.php";
 
-
 class MaterialFormacionController {
 
     private $model;
+
+    // Save uploaded material photo
+    private function savePhoto($file)
+    {
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+        $maxSize = 2 * 1024 * 1024; // 2MB
+
+        if (!in_array($file['type'], $allowedTypes)) {
+            return null;
+        }
+
+        if ($file['size'] > $maxSize) {
+            return null;
+        }
+
+        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $filename = 'material_' . time() . '.' . $extension;
+
+        $path = __DIR__ . '/../uploads/materiales/' . $filename;
+
+        if (!move_uploaded_file($file['tmp_name'], $path)) {
+            return null;
+        }
+
+        return $filename; // This is what is stored in DB
+    }
+
 
     public function __construct($conn)
     {
         $this->model = new MaterialFormacionModel($conn);
     }
 
- 
-    //   LIST MATERIALS
+    // Get all materials
     public function listar()
     {
         return $this->model->getAll();
     }
 
- 
-    //   GET MATERIAL BY ID
+    // Get material by ID
     public function obtener($id)
     {
+        if (!$id) {
+            return null;
+        }
+
         return $this->model->getById($id);
     }
 
- 
-    //   CREATE MATERIAL
+    // Create new material
     public function crear($data)
     {
-        // Model returns false when validation fails
+    // Handle optional photo upload
+        if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
+            $data['foto'] = $this->savePhoto($_FILES['foto']);
+        } else {
+            $data['foto'] = null;
+        }
+
         $ok = $this->model->create($data);
 
         if (!$ok) {
             return [
                 "status" => "error",
-                "message" => "El Material no fue creado. Revisa la clasificación y el código de inventario."
+                "message" => "No se pudo crear el material."
             ];
         }
 
         return [
             "status" => "success",
-            "message" => "El Material fue creado exitosamente."
+            "message" => "Material creado correctamente."
         ];
     }
 
- 
-    //   UPDATE MATERIAL
+
+    // Update material
     public function actualizar($id, $data)
     {
+        if (!$id || !$data) {
+            return [
+                "status" => "error",
+                "message" => "Datos inválidos para actualizar el material."
+            ];
+        }
+
+        // AGREGADO: Mantener foto actual si no se envía una nueva
+        $actual = $this->model->getById($id);
+        $fotoActual = $actual['foto'] ?? null;
+
+        if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
+            $nuevaFoto = $this->savePhoto($_FILES['foto']);
+            if (!$nuevaFoto) {
+                return [
+                    "status" => "error",
+                    "message" => "La imagen no es válida (tipo o tamaño)."
+                ];
+            }
+            $data['foto'] = $nuevaFoto;
+        } else {
+            $data['foto'] = $fotoActual;
+        }
+
         $ok = $this->model->update($id, $data);
 
         if (!$ok) {
             return [
                 "status" => "error",
-                "message" => "El Material no fue actualizado. Revisa la clasificación y el código de inventario."
+                "message" => "El material no fue actualizado. Verifique la clasificación y el código de inventario."
             ];
         }
 
         return [
             "status" => "success",
-            "message" => "El Material fue actualizado exitosamente."
+            "message" => "El material fue actualizado correctamente."
         ];
     }
 
- 
-    //   DELETE MATERIAL
-    public function eliminar($id)
-    {
-        $ok = $this->model->delete($id);
+    // // Delete material
+    // public function eliminar($id)
+    // {
+    //     if (!$id) {
+    //         return [
+    //             "status" => "error",
+    //             "message" => "ID de material no válido."
+    //         ];
+    //     }
 
-        if (!$ok) {
-            return [
-                "status" => "error",
-                "message" => "El Material no puede ser eliminado porque está en uso en otras tablas."
-            ];
-        }
+    //     // Model returns false if material is used
+    //     $ok = $this->model->delete($id);
 
-        return [
-            "status" => "success",
-            "message" => "El Material fue eliminado exitosamente."
-        ];
-    }
+    //     if (!$ok) {
+    //         return [
+    //             "status" => "error",
+    //             "message" => "El material no se puede eliminar porque está siendo usado en otras tablas."
+    //         ];
+    //     }
 
- 
-    //   SEARCH MATERIAL
+    //     return [
+    //         "status" => "success",
+    //         "message" => "El material fue eliminado correctamente."
+    //     ];
+    // }
+
+    // Search material
     public function buscar($term)
     {
         return $this->model->search($term);
     }
 
- 
-    //   MATERIAL STOCK
+    // Get total stock
     public function stock($id)
     {
+        if (!$id) {
+            return [
+                "stock_bodega" => 0,
+                "stock_subbodega" => 0
+            ];
+        }
+
         return $this->model->getStockTotal($id);
     }
 }
 
-
-// API-LIKE ACTION HANDLER (switch)
-
+/* =====================================
+   Action handler (switch)
+   ===================================== */
 
 $controller = new MaterialFormacionController($conn);
 
-// read action
+// Read action
 $accion = $_GET['accion'] ?? null;
 
-// simple JSON response function
+// Send JSON response
 function sendJSON($data, $code = 200)
 {
     header("Content-Type: application/json");
@@ -136,22 +205,27 @@ switch ($accion) {
         break;
 
     case "crear":
-        $data = json_decode(file_get_contents("php://input"), true);
+        // Solo FormData: los campos vienen en $_POST y la imagen en $_FILES
+        $data = $_POST;
         sendJSON($controller->crear($data));
         break;
 
     case "actualizar":
         $id = $_GET['id'] ?? null;
-        $data = json_decode(file_get_contents("php://input"), true);
+        // Solo FormData también para actualizar (campos en $_POST, imagen en $_FILES)
+        $data = $_POST;
         sendJSON($controller->actualizar($id, $data));
         break;
 
-    case "eliminar":
-        sendJSON($controller->eliminar($_GET['id'] ?? null));
-        break;
+    // case "eliminar":
+    //     sendJSON($controller->eliminar($_GET['id'] ?? null));
+    //     break;
 
     default:
-        sendJSON(["status" => "error", "message" => "Acción no reconocida"]);
+        sendJSON([
+            "status" => "error",
+            "message" => "La acción solicitada no es válida."
+        ], 400);
         break;
 }
 

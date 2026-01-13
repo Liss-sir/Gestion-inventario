@@ -45,86 +45,15 @@
 }
 
 /* Badge styles - Nivel */
-.badge-nivel-tecnologo {
-  background-color: #f3f4f6;
+.badge-nivel-tecnologo, .badge-nivel-tecnico {
   color: #374151;
   border: 1px solid #d1d5db;
 }
 
-.badge-nivel-tecnico {
-  background-color: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
-}
-
-.badge-nivel-auxiliar {
-  background-color: #fef3c7;
-  color: #92400e;
-}
-
-.badge-nivel-operario {
-  background-color: #dbeafe;
-  color: #1e40af;
-}
 
 .badge-nivel-default {
-  background-color: #f3f4f6;
   color: #374151;
   border: 1px solid #d1d5db;
-}
-
-/* Badge styles - Estado */
-.badge-estado-base {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 9999px;
-  padding: 0.25rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-/* Estado Activa - verde con borde */
-.badge-estado-activo {
-  background-color: #d1fae5;
-  color: #065f46;
-  border: 1px solid #10b981;
-}
-
-/* Estado Inactiva - rojo con borde outline */
-.badge-estado-inactivo {
-  background-color: transparent;
-  color: #dc2626;
-  border: 1px solid #fca5a5;
-}
-
-/* Switch toggle styles - verde esmeralda */
-.switch-siga {
-  position: relative;
-  width: 44px;
-  height: 24px;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  border: none;
-  padding: 2px;
-}
-
-.switch-siga.on {
-  background-color: #10b981;
-}
-
-.switch-siga.off {
-  background-color: #d1d5db;
-}
-
-.switch-siga .thumb {
-  display: block;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background-color: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  transition: transform 0.2s ease;
 }
 
 /* Animation */

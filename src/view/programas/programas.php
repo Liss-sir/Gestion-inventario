@@ -6,14 +6,20 @@ $programas = [];
 
 try {
     $sql = "SELECT 
-                id_programa, 
-                codigo_programa, 
-                nombre_programa, 
-                nivel_programa, 
-                descripcion_programa, 
-                duracion_horas, 
-                estado 
-            FROM programas_formacion";
+                p.id_programa, 
+                p.codigo_programa, 
+                p.nombre_programa, 
+                p.nivel_programa, 
+                p.descripcion_programa, 
+                p.duracion_horas, 
+                p.estado,
+                COUNT(DISTINCT u.id_usuario) as num_instructores
+            FROM programas_formacion p
+            LEFT JOIN usuarios u ON p.id_programa = u.id_programa 
+                AND u.cargo = 'Instructor'
+                AND u.estado = 1
+            GROUP BY p.id_programa
+            ORDER BY p.nombre_programa";
 
     $stmt = $conn->prepare($sql);
     $stmt->execute();
@@ -24,13 +30,13 @@ try {
     // Map DB fields → HTML expected fields
     foreach ($raw as $r) {
         $programas[] = [
-            'id_programa' => $r['id_programa'],  // Added id_programa
+            'id_programa' => $r['id_programa'],
             'codigo'      => $r['codigo_programa'],
             'nombre'      => $r['nombre_programa'],
             'descripcion' => $r['descripcion_programa'],
             'nivel'       => $r['nivel_programa'],
             'duracion'    => $r['duracion_horas'] . ' horas',
-            'instructores'=> 0,
+            'instructores'=> (int)$r['num_instructores'],
             'estado'      => $r['estado']
         ];
     }
@@ -102,16 +108,18 @@ try {
             <!-- Right-side controls: view switch and "Nuevo Programa" -->
             <div class="flex items-center gap-3">
                 <div class="inline-flex rounded-lg border border-border bg-card shadow-sm overflow-hidden">
-                    <button type="button" id="viewTableBtn" onclick="toggleView('table')" class="px-3 py-2 text-xs sm:text-sm flex items-center gap-1 bg-muted text-foreground" title="Vista tabla">
-
-                        <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M4 6h16M4 12h16M4 18h16" />
+                    <button 
+                        type="button" 
+                        id="viewTableBtn" 
+                        onclick="toggleView('table')" 
+                        class="px-3 py-2 text-xs sm:text-sm flex items-center gap-1 bg-muted text-foreground" 
+                        title="Vista tabla"
+                    >
+                        <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
-
+                    
                     <button
                         type="button"
                         id="viewGridBtn"
@@ -119,8 +127,7 @@ try {
                         class="px-3 py-2 text-xs sm:text-sm flex items-center gap-1 text-muted-foreground"
                         title="Vista tarjetas"
                     >
-                        <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                             <rect x="4" y="4" width="7" height="7" rx="1"></rect>
                             <rect x="13" y="4" width="7" height="7" rx="1"></rect>
                             <rect x="4" y="13" width="7" height="7" rx="1"></rect>
@@ -143,7 +150,17 @@ try {
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between my-6">
                 <!-- Search bar (left) -->
                 <div class="relative w-full sm:max-w-xs">
-                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"></i>
+                   <svg
+                        class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
                     <input 
                         type="text" 
                         placeholder="Buscar por nombre..." 
@@ -203,28 +220,34 @@ try {
             </div>
 
             <!-- TABLE VIEW -->
-            <div id="tableView" class="border border-border rounded-lg">
-                <table class="w-full border-collapse">
+            <!-- ✅ CORREGIDO: bordes y esquinas como "Usuarios" + dropdown sin recorte -->
+            <div id="tableView" class="relative rounded-xl border border-border bg-card p-[1px] overflow-visible">
+                <table class="min-w-full border-separate border-spacing-0 text-sm rounded-[11px] bg-card">
                     
                     <!-- Table headers -->
                     <thead>
-                        <tr class="border-b border-border bg-muted">
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Código</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Programas de Formación</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Nivel</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Duración</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Instructores</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Estado</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Acciones</th>
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted first:rounded-tl-[11px]">Código</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted">Programas de Formación</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted">Nivel</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted">Duración</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted">Instructores</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted">Estado</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted last:rounded-tr-[11px]">Acciones</th>
                         </tr>
                     </thead>
                     
                     <!-- Data rows -->
-                    <tbody>
+                    <tbody
+                        class="divide-y divide-border bg-card
+                               [&>tr>td]:bg-card
+                               [&>tr:last-child>td:first-child]:rounded-bl-[11px]
+                               [&>tr:last-child>td:last-child]:rounded-br-[11px]"
+                    >
                         <?php foreach ($programas as $index => $programa): ?>
                         <?php $isActive = (isset($programa['estado']) && (strtolower(trim((string)$programa['estado'])) === 'activo' || (string)$programa['estado'] === '1' || $programa['estado'] == 1)); ?>
                         <tr 
-                            class="border-b border-border hover:bg-muted transition-colors"
+                            class="hover:bg-muted transition-colors"
                             data-index="<?php echo $index; ?>"
                             data-id-programa="<?php echo htmlspecialchars($programa['id_programa']); ?>"
                             data-codigo="<?php echo htmlspecialchars($programa['codigo']); ?>"
@@ -281,7 +304,7 @@ try {
                                 </div>
                             </td>
                             
-                            <!-- Number of instructors -->
+                            <!-- Number of instructors (contador real) -->
                             <td class="py-4 px-4">
                                 <div class="flex items-center gap-2 text-sm text-muted-foreground opacity-75">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-icon lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>
@@ -289,7 +312,6 @@ try {
                                 </div>
                             </td>
 
-                            
                             <!-- Status badge (Active/Inactive) -->
                             <td class="py-4 px-4">
                                 <span class="js-estado">
@@ -320,7 +342,6 @@ try {
                                     </button>
                                     
                                     <div id="actionMenu<?php echo $index; ?>" class="hidden absolute right-0 mt-2 w-48 rounded-xl border border-border bg-popover shadow-md py-1 z-50">
-
                                         <button onclick="openViewModal(<?php echo $index; ?>)" class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted transition-colors">
                                             <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M1 12S4.5 5 12 5s11 7 11 7-3.5 7-11 7S1 12 1 12z"/>
@@ -376,12 +397,12 @@ try {
                     <!-- ICONO + TÍTULO + EDIT -->
                     <div class="flex justify-between items-start mb-3 flex-shrink-0">
                         <!-- Info + Icon -->
-                        <div class="flex items-start gap-3 flex-1 min-w-0"> <!-- Cambios aquí -->
+                        <div class="flex items-start gap-3 flex-1 min-w-0">
                             <div class="w-12 h-12 bg-avatar-secondary-39 rounded-md flex items-center justify-center flex-shrink-0">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#007832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-graduation-cap-icon lucide-graduation-cap"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
                             </div>
 
-                            <div class="min-w-0 flex-1"> <!-- Cambios aquí -->
+                            <div class="min-w-0 flex-1">
                                 <h3 class="font-semibold text-foreground js-name truncate" title="<?php echo htmlspecialchars($programa['nombre']); ?>">
                                     <?php echo $programa['nombre']; ?>
                                 </h3>
@@ -398,7 +419,7 @@ try {
                         <button onclick="openEditModal(<?php echo $index; ?>)" 
                         class="text-muted-foreground hover:text-foreground transition flex-shrink-0 ml-2">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
                             </svg>
                         </button>
                     </div>
@@ -442,7 +463,7 @@ try {
 
                     <hr class="border-border mb-3 flex-shrink-0">
                     <!-- Instructors + Toggle -->
-                    <div class="flex items-center justify-between mt-auto flex-shrink-0"> <!-- Cambios aquí -->
+                    <div class="flex items-center justify-between mt-auto flex-shrink-0">
                         <div class="flex items-center gap-2 text-sm text-muted-foreground opacity-75">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-icon lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>
                             <span class="js-instructores truncate max-w-[80px]">
@@ -500,8 +521,9 @@ try {
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs text-muted-foreground mb-1">Duración *</label>
-                            <input id="edit_duracion" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga">
+                            <label class="block text-xs text-muted-foreground mb-1">Duración (horas) *</label>
+                            <input id="edit_duracion" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="Ej: 1200">
+                            <p class="text-xs text-muted-foreground mt-1">Solo números, sin texto</p>
                         </div>
                     </div>
                     <div class="flex items-center justify-end gap-3 mt-4">
@@ -578,8 +600,8 @@ try {
                         <div>
                             <label class="block text-xs text-muted-foreground mb-1">Nivel *</label>
                             <select id="create_nivel" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga">
-                                <option value="Tecnico">Técnico</option>
-                                <option value="Tecnologo">Tecnólogo</option>
+                                <option value="Técnico">Técnico</option>
+                                <option value="Tecnólogo">Tecnólogo</option>
                             </select>
                         </div>
                     </div>
@@ -595,8 +617,9 @@ try {
                     </div>
 
                     <div>
-                        <label class="block text-xs text-muted-foreground mb-1">Duración *</label>
-                        <input id="create_duracion" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="X Horas">
+                        <label class="block text-xs text-muted-foreground mb-1">Duración (horas) *</label>
+                        <input id="create_duracion" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="Ej: 1200">
+                        <p class="text-xs text-muted-foreground mt-1">Solo números, sin texto</p>
                     </div>
 
                     <div class="flex items-center justify-end gap-3 mt-4">

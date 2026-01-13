@@ -1,0 +1,53 @@
+.main-content {
+    margin-left: 280px;
+    width: calc(100% - 280px);
+    max-width: none;
+    transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+body.sidebar-collapsed .main-content {
+    margin-left: 90px;
+    width: calc(100% - 90px);
+}
+
+@media (max-width: 1024px) {
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+    }
+    
+    body.sidebar-collapsed .main-content {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+
+/* Animaciones para las alertas */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out;
+}
+
+/* Animación para el modal de confirmación */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fixed.inset-0.bg-black.bg-opacity-50 {
+  animation: fade-in 0.2s ease-out;
+}

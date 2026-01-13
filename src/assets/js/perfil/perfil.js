@@ -520,12 +520,14 @@ async function marcarNotificacionLeida(notificacionId) {
   });
 
   const dispararSelectorFotoEditar = (e) => {
-    e.preventDefault();
+  e.preventDefault();
+  e.stopPropagation(); // ✅ evita que el click del lápiz llegue al avatar y se dispare 2 veces
     if (inputFotoPerfilEditar) inputFotoPerfilEditar.click();
   };
 
   if (avatarPerfilEditar) avatarPerfilEditar.addEventListener("click", dispararSelectorFotoEditar);
   if (btnCambiarFotoEditar) btnCambiarFotoEditar.addEventListener("click", dispararSelectorFotoEditar);
+
 
   if (inputFotoPerfilEditar && avatarPerfilEditar) {
     inputFotoPerfilEditar.addEventListener("change", (e) => {
@@ -736,3 +738,41 @@ document.addEventListener('DOMContentLoaded', () => {
     .catch(err => console.error(err));
   });
 });
+
+// =========================
+// TOGGLE "OJITOS" PASSWORD (mostrar/ocultar)
+// =========================
+document.addEventListener("DOMContentLoaded", () => {
+  // Render icons (por si tu archivo no lo hace)
+  if (window.lucide && typeof window.lucide.createIcons === "function") {
+    window.lucide.createIcons();
+  }
+
+  document.querySelectorAll('button[data-toggle-password="true"]').forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const wrapper = btn.closest(".relative");
+      if (!wrapper) return;
+
+      const input = wrapper.querySelector('input[type="password"], input[type="text"]');
+      if (!input) return;
+
+      const iconEye = btn.querySelector('[data-lucide="eye"]');
+      const iconEyeOff = btn.querySelector('[data-lucide="eye-off"]');
+
+      const isPassword = input.type === "password";
+      input.type = isPassword ? "text" : "password";
+
+      // Cambiar iconos
+      if (iconEye && iconEyeOff) {
+        if (isPassword) {
+          iconEye.classList.add("hidden");
+          iconEyeOff.classList.remove("hidden");
+        } else {
+          iconEye.classList.remove("hidden");
+          iconEyeOff.classList.add("hidden");
+        }
+      }
+    });
+  });
+});
+

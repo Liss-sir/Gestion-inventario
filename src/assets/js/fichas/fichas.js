@@ -166,7 +166,7 @@ const hiddenFichaId = document.getElementById("hiddenFichaId")
 const modalFichaTitulo = document.getElementById("modalFichaTitulo")
 const modalFichaDescripcion = document.getElementById("modalFichaDescripcion")
 
-// Inputs del formulario de Fichas
+// Inputs of the Fichas form
 const inputNumeroFicha = document.getElementById("numero_ficha");
 const inputPrograma = document.getElementById("id_programa");
 const inputJornada = document.getElementById("jornada");
@@ -318,7 +318,7 @@ function openModalFicha(editFicha = null) {
     modalFichaDescripcion.textContent = "Modifica la información de la ficha"
     hiddenFichaId.value = editFicha.id
 
-    // Cargar datos al formulario
+    // Upload data to the form
     inputNumeroFicha.value = editFicha.numero_ficha || ""
     inputPrograma.value = editFicha.id_programa || ""
     inputJornada.value = editFicha.jornada || ""
@@ -326,7 +326,7 @@ function openModalFicha(editFicha = null) {
     inputFechaInicio.value = editFicha.fecha_inicio || ""
     inputFechaFin.value = editFicha.fecha_fin || ""
 
-    // Datos originales para comparar cambios
+    // Original data for comparing changes
     originalEditData = {
       numero_ficha: String(editFicha.numero_ficha ?? "").trim(),
       id_programa: editFicha.id_programa ? String(editFicha.id_programa) : "",
@@ -341,7 +341,7 @@ function openModalFicha(editFicha = null) {
     modalFichaDescripcion.textContent = "Complete los datos para registrar una nueva ficha de formación"
     hiddenFichaId.value = ""
 
-    // Limpiar el formulario
+    // Clear the form
     inputNumeroFicha.value = ""
     inputPrograma.value = ""
     inputJornada.value = ""
@@ -379,21 +379,28 @@ function openModalVerFicha(ficha) {
       </div>
       <div>
         <h3 class="font-semibold text-xl">${ficha.numero_ficha}</h3>
-        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-          nivelBadgeStyles[ficha.nivel] || "badge-nivel-default"
-        }">
-          ${nivelLabels[ficha.nivel] || nivelNombre || "N/A"}
-        </span>
+          <div class="flex items-center gap-3 mt-1">
+          <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+            nivelBadgeStyles[ficha.nivel] || "badge-nivel-default"
+          }">
+            ${nivelLabels[ficha.nivel] || nivelNombre || "N/A"}
+          </span>
+
+          <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
+            ficha.estado === 'Activa' ? 'badge-estado-activo' :
+            ficha.estado === 'Finalizada' ? 'badge-estado-inactivo' :
+            ficha.estado === 'Cancelada' ? 'badge-estado-inactivo' :
+            'bg-gray-100 text-gray-800'
+          }">
+            ${ficha.estado || 'Activa'}
+          </span>
+        </div>
       </div>
     </div>
     <div class="space-y-3 text-sm mt-4">
       <div class="flex items-start gap-3">
         <span class="text-muted-foreground min-w-[80px]">Programa:</span>
         <span class="font-medium">${programaNombre}</span>
-      </div>
-      <div class="flex items-start gap-3">
-        <span class="text-muted-foreground min-w-[80px]">Nivel:</span>
-        <span class="font-medium">${nivelNombre}</span>
       </div>
       <div class="flex items-start gap-3">
         <span class="text-muted-foreground min-w-[80px]">Jornada:</span>
@@ -410,10 +417,6 @@ function openModalVerFicha(ficha) {
       <div class="flex items-start gap-3">
         <span class="text-muted-foreground min-w-[80px]">Fecha Fin:</span>
         <span class="font-medium">${ficha.fecha_fin || "No especificado"}</span>
-      </div>
-      <div class="flex items-start gap-3">
-        <span class="text-muted-foreground min-w-[80px]">Estado:</span>
-        <span class="font-medium">${ficha.estado || "Activa"}</span>
       </div>
     </div>
   `
@@ -481,7 +484,6 @@ async function cargarFichas() {
     renderTable()
   } catch (error) {
     console.error("Error al cargar fichas:", error)
-    toastError("Error al cargar las fichas")
     fichas = []
     renderTable()
   }
@@ -496,7 +498,7 @@ function actualizarFicha(payload) {
 }
 
 // =========================
-// FUNCIONES PARA CAMBIAR ESTADO
+// FUNCTIONS TO CHANGE STATE
 // =========================
 
 async function cambiarEstadoFicha(id, accion) {
@@ -505,21 +507,21 @@ async function cambiarEstadoFicha(id, accion) {
         return;
     }
 
-    // Validar acciones permitidas según tu controlador
+    // Validate allowed actions according to your controller
     const accionesPermitidas = ['activar', 'finalizar', 'cancelar'];
     if (!accionesPermitidas.includes(accion)) {
         toastError("Acción no válida");
         return;
     }
     try {
-        // Llamar al endpoint correspondiente según la acción
+        // Call the corresponding endpoint according to the action
         const res = await fetch(`${API_URL}?accion=${accion}&id_ficha=${id}`, {
-            method: "GET" // Tu controlador usa GET con parámetros en la URL
+            method: "GET"  
         });
 
         const text = await res.text();
         
-        // Parsear la respuesta
+        // Parse the response
         let data;
         try {
             const start = text.indexOf("{");
@@ -536,7 +538,7 @@ async function cambiarEstadoFicha(id, accion) {
         if (data.error) {
             toastError(data.error);
         } else if (data.success) {
-            // Mensajes según la acción
+            // Messages based on action
             const mensajesExito = {
                 'activar': 'Ficha activada correctamente',
                 'finalizar': 'Ficha finalizada correctamente',
@@ -544,7 +546,7 @@ async function cambiarEstadoFicha(id, accion) {
             };
             
             toastSuccess(data.message || mensajesExito[accion]);
-            await cargarFichas(); // Recargar la lista
+            await cargarFichas(); // Reload the list
         } else {
             toastError(data.message || `Error al ${accion} la ficha`);
         }
@@ -554,7 +556,7 @@ async function cambiarEstadoFicha(id, accion) {
     }
 }
 
-// Funciones específicas para compatibilidad
+// Specific features for compatibility
 async function activarFicha(id) {
     await cambiarEstadoFicha(id, 'activar');
 }
@@ -625,7 +627,7 @@ function renderPaginationControls(container, totalItems, pageSize, currentPage, 
     btn.textContent = i
     btn.className =
       "px-3 py-1 text-sm rounded-lg border border-border " +
-      (i === currentPage ? "bg-emerald-500 text-white" : "bg-card hover:bg-muted")
+      (i === currentPage ? "bg-primary text-white" : "bg-card hover:bg-muted")
     btn.addEventListener("click", () => {
       if (i !== currentPage) onPageChange(i)
     })
@@ -719,7 +721,7 @@ function renderTable() {
 
     const nivelNombre = ficha.nivel || "N/A";
 
-    // Determinar qué acciones mostrar según el estado
+    // Determine which actions to display based on the status
     let accionesHTML = '';
     if (ficha.estado === 'Activa') {
         accionesHTML = `
@@ -871,7 +873,7 @@ function renderTable() {
 
     const nivelNombre = ficha.nivel || "N/A";
 
-    // Determinar qué acciones mostrar según el estado (para tarjetas)
+    // Determine which actions to show based on the status (for cards)
     let accionesHTML = '';
     if (ficha.estado === 'Activa') {
         accionesHTML = `
@@ -923,10 +925,8 @@ function renderTable() {
     card.innerHTML = `
       <div class="flex items-start justify-between gap-2 mb-3">
         <div class="flex items-center gap-3">
-          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
-            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-badge-secondary text-badge-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-kanban-icon lucide-folder-kanban"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><path d="M8 10v4"/><path d="M12 10v2"/><path d="M16 10v6"/></svg>
           </div>
           <div>
             <p class="font-semibold text-base">${ficha.numero_ficha}</p>
@@ -935,10 +935,10 @@ function renderTable() {
             }">
               ${nivelLabels[ficha.nivel] || nivelNombre}
             </span>
-            <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium mt-1 ${
-              ficha.estado === 'Activa' ? 'bg-green-100 text-green-800' :
-              ficha.estado === 'Finalizada' ? 'bg-blue-100 text-blue-800' :
-              ficha.estado === 'Cancelada' ? 'bg-red-100 text-red-800' :
+            <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
+              ficha.estado === 'Activa' ? 'badge-estado-activo' :
+              ficha.estado === 'Finalizada' ? 'badge-estado-inactivo' :
+              ficha.estado === 'Cancelada' ? 'badge-estado-inactivo' :
               'bg-gray-100 text-gray-800'
             }">
               ${ficha.estado || 'Activa'}
@@ -997,9 +997,7 @@ function renderTable() {
 
       <div class="space-y-2 text-sm text-muted-foreground flex-1">
         <div class="flex items-center gap-2">
-          <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-graduation-cap-icon lucide-graduation-cap"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
           <span>${programaNombre}</span>
         </div>
         <div class="flex items-center gap-2">
@@ -1100,14 +1098,14 @@ function attachActionEvents() {
       
       if (!id || !action) return
 
-      // Cerrar el menú
+      // Close menu
       const menu = btn.closest("[data-menu]")
       if (menu) {
         menu.classList.add("hidden")
         menu.classList.remove("show")
       }
 
-      // Manejar diferentes acciones
+      // Manage different actions
       if (action === "ver") {
         const ficha = fichas.find((f) => String(f.id) === String(id))
         if (ficha) openModalVerFicha(ficha)
@@ -1115,7 +1113,7 @@ function attachActionEvents() {
         const ficha = fichas.find((f) => String(f.id) === String(id))
         if (ficha) openModalFicha(ficha)
       } else if (['activar', 'finalizar', 'cancelar'].includes(action)) {
-        // Usar la nueva función unificada
+        // Use the new unified feature
         await cambiarEstadoFicha(id, action)
       }
     })
@@ -1153,7 +1151,7 @@ btnVistaTarjetas.addEventListener("click", setVistaTarjetas)
 formFicha.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    // Determinar si es edición o creación
+    // Determine if it is editing or creation
     const isEdit = hiddenFichaId.value !== "" && hiddenFichaId.value !== null && hiddenFichaId.value !== undefined;
 
     const payload = {
@@ -1163,12 +1161,12 @@ formFicha.addEventListener("submit", async (e) => {
         modalidad: inputModalidad.value || null,
         fecha_inicio: inputFechaInicio.value || null,
         fecha_fin: inputFechaFin.value || null,
-        estado: "Activa" // Siempre se crea como Activa
+        estado: "Activa" // It is always created as "Activa"
     };
 
     const numeroRegex = /^[0-9]+$/;
 
-    // VALIDACIONES BÁSICAS
+    // BASIC VALIDATIONS
     if (!payload.numero_ficha) {
         toastError("El número de ficha es obligatorio.");
         inputNumeroFicha.focus();
@@ -1217,7 +1215,7 @@ formFicha.addEventListener("submit", async (e) => {
         return;
     }
 
-    // Agregar ID si es edición
+    // Add ID if it's an edit
     if (isEdit) {
         payload.id_ficha = hiddenFichaId.value;
     }
@@ -1264,11 +1262,11 @@ document.addEventListener("keydown", (e) => {
 
 async function inicializar() {
   await Promise.all([
-      cargarProgramas(),  // Cargar programas primero
-      cargarFichas()      // Cargar fichas en paralelo
+      cargarProgramas(),  // Load programs first
+      cargarFichas()      // Load chips in parallel
   ]);
-  setVistaTabla();        // Renderizar después de que ambos hayan cargado
+  setVistaTabla();        // Render after both have loaded
 }
 
-// Iniciar
+// Start
 inicializar();

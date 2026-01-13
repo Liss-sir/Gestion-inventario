@@ -1,5 +1,10 @@
 <?php
 
+// ✅ NECESARIO: si NO inicias sesión, $_SESSION estará vacío y el modal nunca se activa
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 // ===============================
@@ -88,11 +93,23 @@ foreach ($categoriaDataRaw as $index => $cat) {
 
 // ===============================
 //  Cálculos equivalentes a los de React
+//  ✅ CORREGIDO: sin fn() => (compatibilidad PHP < 7.4)
 // ===============================
-$solicitudesPendientes = count(array_filter($mockSolicitudes, fn($s) => $s["estado"] === "pendiente"));
-$materialesActivos     = count(array_filter($mockMateriales,  fn($m) => $m["estado"] === "disponible"));
-$bodegasActivas        = count(array_filter($mockBodegas,     fn($b) => !empty($b["estado"])));
-$movimientosHoy        = count(array_filter($mockMovimientos, fn($m) => $m["fecha"] === "2024-11-27"));
+$solicitudesPendientes = count(array_filter($mockSolicitudes, function($s){
+    return $s["estado"] === "pendiente";
+}));
+
+$materialesActivos = count(array_filter($mockMateriales, function($m){
+    return $m["estado"] === "disponible";
+}));
+
+$bodegasActivas = count(array_filter($mockBodegas, function($b){
+    return !empty($b["estado"]);
+}));
+
+$movimientosHoy = count(array_filter($mockMovimientos, function($m){
+    return $m["fecha"] === "2024-11-27";
+}));
 
 $maxConsumo = max(array_column($consumoData, "consumo"));
 
@@ -116,7 +133,27 @@ $pieGradient = implode(", ", $gradientParts);
     <title>Dashboard</title>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- ✅ Flowbite (para notificaciones estilo Flowbite, igual que en Usuarios) -->
+    <script src="https://unpkg.com/flowbite@2.5.1/dist/flowbite.min.js"></script>
+
     <link rel="stylesheet" href="src/assets/css/globals.css">
+
+    <!-- ✅ FIX SIN TOCAR TU BASE:
+         Fallback de estilos del modal por si globals.css no tiene .modal-overlay / .active -->
+    <style>
+      .modal-overlay{
+        position:fixed;
+        inset:0;
+        display:none;              /* oculto por defecto */
+        align-items:center;
+        justify-content:center;
+        background:rgba(15, 23, 42, .55);
+        padding:16px;
+        z-index:9999;
+      }
+      .modal-overlay.active{ display:flex; }  /* ✅ esto es lo que tu JS usa */
+    </style>
 </head>
 <body>
     <main class="p-6 transition-all duration-300"
@@ -208,10 +245,10 @@ $pieGradient = implode(", ", $gradientParts);
     <div class="flex items-center justify-between">
         <p class="mg-7px text-2x1 font-medium text-muted-foreground">Alertas Stock</p>
 
-        <!-- ✅ CORREGIDO: tu div tenía el atributo roto. Se deja como cuadrito 29% + verde secundario -->
-        <div class="rounded-md p-2 bg-[#0078324A]">
-            <i data-lucide="alert-triangle" class="h-5 w-5 text-[#007832]"></i>
-        </div>
+        <!-- ✅ Amarillo institucional: ícono + fondo -->
+      <div class="rounded-md p-2 bg-[#FDC3004A]">
+        <i data-lucide="alert-triangle" class="h-5 w-5 text-[#FDC300]"></i>
+      </div>
 
     </div>
     <div class="flex items-center gap-2 mt-2">
@@ -301,8 +338,10 @@ $pieGradient = implode(", ", $gradientParts);
             <div class="space-y-2">
             <div class="flex items-center justify-between">
                 <span class="text-sm font-medium"><?php echo htmlspecialchars($alert["material_nombre"]); ?></span>
-                <span class="px-3 py-1 rounded-full bg-[#FDC30050] font-medium text-sm text-[#FDC300]">
-                Bajo
+
+                <!-- ✅ CORREGIDO: misma etiqueta (tamaño/padding) que "Solicitudes Recientes" -->
+                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-[#FDC30040] text-[#FDC300]">
+                  Bajo
                 </span>
             </div>
             <div class="flex items-center gap-2">
@@ -373,17 +412,19 @@ $pieGradient = implode(", ", $gradientParts);
     </div>
     <div class="px-6 pb-4 space-y-4">
         <?php foreach (array_slice($mockMovimientos, 0, 4) as $mov):
+        // ✅ Estilo como la foto: bolita perfecta + verde suave
         if ($mov["tipo"] === "entrada") {
-            $movClasses = "bg-success/10 text-success";
+            $movClasses = "bg-[#39A9001A] text-[#39A900]";
         } elseif ($mov["tipo"] === "salida") {
-            $movClasses = "bg-primary/10 text-primary";
+            $movClasses = "bg-[#39A9001A] text-[#39A900]";
         } else {
-            $movClasses = "bg-accent/10 text-accent-foreground";
+            $movClasses = "bg-[#FDC3001A] text-[#FDC300]";
         }
         ?>
         <div class="flex items-start gap-3 pb-3 border-b border-border last:border-0 last:pb-0">
-            <div class="mt-0.5 rounded-full p-1.5 <?php echo $movClasses; ?>">
-            <i data-lucide="arrow-down-up" class="h-3 w-3"></i>
+            <!-- ✅ Ícono estilo foto: círculo perfecto + centrado -->
+            <div class="mt-0.5 h-8 w-8 rounded-full flex items-center justify-center <?php echo $movClasses; ?>">
+            <i data-lucide="arrow-down-up" class="h-4 w-4"></i>
             </div>
             <div class="flex-1 min-w-0">
             <p class="text-sm font-medium capitalize"><?php echo htmlspecialchars($mov["tipo"]); ?></p>
@@ -398,16 +439,270 @@ $pieGradient = implode(", ", $gradientParts);
     </div>
 </div>
 </div>
+
+<!-- ========================================= -->
+<!-- MODAL: CAMBIO DE CONTRASEÑA OBLIGATORIO   -->
+<!-- ========================================= -->
+<div id="modalForcePassword" class="modal-overlay">
+  <div class="relative w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-lg">
+    <div class="mb-4">
+      <h2 class="text-lg font-semibold">Cambio de contraseña obligatorio</h2>
+      <p class="text-sm text-muted-foreground">
+        Por seguridad, debes cambiar la contraseña antes de continuar.
+      </p>
+    </div>
+
+    <form id="formForcePassword" class="space-y-4" novalidate>
+      <div class="space-y-2">
+        <label for="fp_actual" class="text-sm font-medium">Contraseña actual *</label>
+
+        <!-- ✅ Ojito (toggle) -->
+        <div class="relative">
+          <input id="fp_actual" type="password"
+                 class="w-full rounded-md border border-input bg-background px-3 py-2 pr-11 text-sm input-siga"
+                 placeholder="Ingresa la contraseña actual" />
+          <button type="button"
+                  data-toggle-password="#fp_actual"
+                  class="absolute inset-y-0 right-0 inline-flex items-center justify-center px-3 text-slate-500 hover:text-slate-700"
+                  aria-label="Mostrar u ocultar contraseña actual"
+                  title="Mostrar/Ocultar">
+            <i data-lucide="eye" class="h-4 w-4 toggle-eye-on"></i>
+            <i data-lucide="eye-off" class="h-4 w-4 toggle-eye-off hidden"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <label for="fp_nueva" class="text-sm font-medium">Nueva contraseña *</label>
+
+        <!-- ✅ Ojito (toggle) -->
+        <div class="relative">
+          <input id="fp_nueva" type="password"
+                 class="w-full rounded-md border border-input bg-background px-3 py-2 pr-11 text-sm input-siga"
+                 placeholder="Ingresa la nueva contraseña" />
+          <button type="button"
+                  data-toggle-password="#fp_nueva"
+                  class="absolute inset-y-0 right-0 inline-flex items-center justify-center px-3 text-slate-500 hover:text-slate-700"
+                  aria-label="Mostrar u ocultar nueva contraseña"
+                  title="Mostrar/Ocultar">
+            <i data-lucide="eye" class="h-4 w-4 toggle-eye-on"></i>
+            <i data-lucide="eye-off" class="h-4 w-4 toggle-eye-off hidden"></i>
+          </button>
+        </div>
+
+        <!-- ✅ Reglas -->
+        <p class="text-xs text-muted-foreground">
+          Debe tener mínimo 8 caracteres e incluir: <span class="font-medium">1 mayúscula</span>, <span class="font-medium">1 número</span> y <span class="font-medium">1 caracter especial</span>.
+        </p>
+      </div>
+
+      <div class="space-y-2">
+        <label for="fp_confirmar" class="text-sm font-medium">Confirmar nueva contraseña *</label>
+
+        <!-- ✅ Ojito (toggle) -->
+        <div class="relative">
+          <input id="fp_confirmar" type="password"
+                 class="w-full rounded-md border border-input bg-background px-3 py-2 pr-11 text-sm input-siga"
+                 placeholder="Confirma la nueva contraseña" />
+          <button type="button"
+                  data-toggle-password="#fp_confirmar"
+                  class="absolute inset-y-0 right-0 inline-flex items-center justify-center px-3 text-slate-500 hover:text-slate-700"
+                  aria-label="Mostrar u ocultar confirmación de contraseña"
+                  title="Mostrar/Ocultar">
+            <i data-lucide="eye" class="h-4 w-4 toggle-eye-on"></i>
+            <i data-lucide="eye-off" class="h-4 w-4 toggle-eye-off hidden"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-2">
+        <button type="submit"
+          class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:opacity-90">
+          Actualizar contraseña
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 </main>
 
+<!-- ✅ Contenedor de toasts (AHORA EN ESQUINA SUPERIOR DERECHA) -->
+<div
+  id="toastContainer"
+  class="fixed top-6 right-6 z-[10000] flex flex-col gap-3 w-full max-w-md px-4 pointer-events-none"
+></div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  window.FORCE_PASSWORD_CHANGE = <?= !empty($_SESSION['force_password_change']) ? 'true' : 'false' ?>;
+  // ✅ Debug visible (puedes dejarlo o quitarlo)
+  console.log("FORCE_PASSWORD_CHANGE:", window.FORCE_PASSWORD_CHANGE);
+</script>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     if (window.lucide && typeof lucide.createIcons === "function") {
         lucide.createIcons();
     }
+
+    // ✅ Toasts Flowbite (reemplaza alerts y unifica notificaciones) - AHORA TAMAÑO PEQUEÑO COMO USUARIOS
+    initFlowbiteToasts();
+
+    // ✅ Ojitos (toggle show/hide password)
+    initPasswordToggles();
+
+    // ✅ Ejecutar el flujo del modal ya con DOM cargado
+    forcePasswordFlow();
 });
+
+// =========================
+// ✅ ALERTAS TIPO USUARIOS (PEQUEÑAS)
+// =========================
+function initFlowbiteToasts() {
+  // Define funciones globales si no existen (tu código ya las invoca)
+  if (typeof window.toastSuccess !== "function") {
+    window.toastSuccess = function(message) {
+      showFlowbiteToast("success", message);
+    };
+  }
+  if (typeof window.toastError !== "function") {
+    window.toastError = function(message) {
+      showFlowbiteToast("error", message);
+    };
+  }
+  if (typeof window.toastWarning !== "function") {
+    window.toastWarning = function(message) {
+      showFlowbiteToast("warning", message);
+    };
+  }
+}
+
+function showFlowbiteToast(type, message) {
+  const container = document.getElementById("toastContainer");
+  if (!container) return;
+
+  const id = "toast_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+
+  // ✅ Estilo igual a USUARIOS: tarjeta pequeña + borde izquierdo + tipografía sm
+  let borderColor = "border-amber-500";
+  let textColor = "text-amber-900";
+  let titleText = "Advertencia";
+  let iconSVG = `
+    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg"
+         fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+      <path d="M8.257 3.099c.765-1.36 2.72-1.36 3.485 0l6.518 11.59A1.75 1.75 0 0 1 16.768 17H3.232a1.75 1.75 0 0 1-1.492-2.311L8.257 3.1z"/>
+      <path d="M11 13H9V9h2zm0 3H9v-2h2z" fill="#fff"/>
+    </svg>
+  `;
+
+  if (type === "success") {
+    borderColor = "border-emerald-500";
+    textColor = "text-emerald-900";
+    titleText = "Éxito";
+    iconSVG = `
+      <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg"
+           fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm-1 15-4-4 1.414-1.414L9 12.172l4.586-4.586L15 9z"/>
+      </svg>
+    `;
+  }
+
+  // ✅ En dashboard usamos "error" (en usuarios usan warning). Aquí lo dejamos rojo.
+  if (type === "error") {
+    borderColor = "border-red-500";
+    textColor = "text-red-900";
+    titleText = "Error";
+    iconSVG = `
+      <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg"
+           fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+        <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm3.536 13.536a1 1 0 0 1-1.414 0L10 11.414 7.879 13.536a1 1 0 1 1-1.415-1.414L8.586 10 6.464 7.879a1 1 0 0 1 1.415-1.415L10 8.586l2.122-2.122a1 1 0 0 1 1.414 1.415L11.414 10l2.122 2.122a1 1 0 0 1 0 1.414Z"/>
+      </svg>
+    `;
+  }
+
+  const toast = document.createElement("div");
+  toast.id = id;
+
+  toast.className = `
+    relative flex items-center w-full mx-auto pointer-events-auto
+    rounded-2xl border-l-4 ${borderColor} bg-white shadow-md
+    px-4 py-3 text-sm ${textColor}
+    opacity-0 -translate-y-2
+    transition-all duration-300 ease-out
+    animate-fade-in-up
+  `;
+
+  toast.setAttribute("role", "alert");
+  toast.innerHTML = `
+    <div class="flex-shrink-0 mr-3 text-current">
+      ${iconSVG}
+    </div>
+
+    <div class="flex-1 min-w-0">
+      <p class="font-semibold">${escapeHtml(titleText)}</p>
+      <p class="mt-0.5 text-sm">${escapeHtml(String(message || ""))}</p>
+    </div>
+  `;
+
+  container.appendChild(toast);
+
+  // Smooth fade-in
+  requestAnimationFrame(() => {
+    toast.classList.remove("opacity-0", "-translate-y-2");
+    toast.classList.add("opacity-100", "translate-y-0");
+  });
+
+  // Click para cerrar (opcional)
+  toast.addEventListener("click", () => {
+    toast.classList.add("opacity-0", "-translate-y-2");
+    toast.classList.remove("opacity-100", "translate-y-0");
+    setTimeout(() => toast.remove(), 250);
+  });
+
+  // Auto-dismiss como en usuarios
+  setTimeout(() => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add("opacity-0", "-translate-y-2");
+    el.classList.remove("opacity-100", "translate-y-0");
+    setTimeout(() => el.remove(), 250);
+  }, 4000);
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// =========================
+// ✅ OJITOS (TOGGLE PASSWORD)
+// =========================
+function initPasswordToggles() {
+  const buttons = document.querySelectorAll("[data-toggle-password]");
+  if (!buttons || buttons.length === 0) return;
+
+  buttons.forEach((btn) => {
+    const selector = btn.getAttribute("data-toggle-password");
+    const input = selector ? document.querySelector(selector) : null;
+    if (!input) return;
+
+    const eyeOn  = btn.querySelector(".toggle-eye-on");
+    const eyeOff = btn.querySelector(".toggle-eye-off");
+
+    btn.addEventListener("click", () => {
+      const isPassword = input.type === "password";
+      input.type = isPassword ? "text" : "password";
+
+      if (eyeOn)  eyeOn.classList.toggle("hidden", isPassword);
+      if (eyeOff) eyeOff.classList.toggle("hidden", !isPassword);
+    });
+  });
+}
 
 // ========= CONSUMO MENSUAL (BARRAS) =========
 const labelsConsumo = <?php echo json_encode(array_column($consumoData, 'name')); ?>;
@@ -508,6 +803,111 @@ const categoriaChart = new Chart(categoriaCtx, {
     }
     }
 });
+
+// ✅ MISMA LÓGICA QUE TENÍAS, pero como función (más estable)
+function forcePasswordFlow() {
+  const modal = document.getElementById("modalForcePassword");
+  const form  = document.getElementById("formForcePassword");
+
+  if (!modal || !form) return;
+
+  // Solo si está forzado por sesión
+  if (!window.FORCE_PASSWORD_CHANGE) return;
+
+  // Mostrar modal
+  modal.classList.add("active");
+  document.body.style.overflow = "hidden"; // ✅ evita que sigan navegando detrás
+
+  // Bloquear cierre por overlay click
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) e.stopPropagation();
+  }, true);
+
+  // Bloquear ESC
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" || e.key === "Esc" || e.keyCode === 27) {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+  }, true);
+
+  // Submit
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const actual = document.getElementById("fp_actual").value.trim();
+    const nueva  = document.getElementById("fp_nueva").value.trim();
+    const conf   = document.getElementById("fp_confirmar").value.trim();
+
+    if (!actual || !nueva || !conf) {
+      if (typeof toastWarning === "function") toastWarning("Complete todos los campos.");
+      else if (typeof toastError === "function") toastError("Complete todos los campos.");
+      return;
+    }
+
+    // ✅ Reglas: mínimo 8
+    if (nueva.length < 8) {
+      if (typeof toastWarning === "function") toastWarning("La nueva contraseña debe tener mínimo 8 caracteres.");
+      else if (typeof toastError === "function") toastError("La nueva contraseña debe tener mínimo 8 caracteres.");
+      return;
+    }
+
+    // ✅ Reglas: mayúscula + número + caracter especial
+    const hasUpper   = /[A-Z]/.test(nueva);
+    const hasNumber  = /[0-9]/.test(nueva);
+    const hasSpecial = /[^A-Za-z0-9]/.test(nueva);
+
+    if (!hasUpper || !hasNumber || !hasSpecial) {
+      if (typeof toastWarning === "function") {
+        toastWarning("La contraseña debe incluir al menos 1 mayúscula, 1 número y 1 carácter especial.");
+      } else if (typeof toastError === "function") {
+        toastError("La contraseña debe incluir al menos 1 mayúscula, 1 número y 1 carácter especial.");
+      }
+      return;
+    }
+
+    if (nueva !== conf) {
+      if (typeof toastWarning === "function") toastWarning("La confirmación no coincide.");
+      else if (typeof toastError === "function") toastError("La confirmación no coincide.");
+      return;
+    }
+
+    try {
+      const fd = new FormData();
+      fd.append("password_actual", actual);
+      fd.append("password_nueva", nueva);
+      fd.append("password_confirmar", conf);
+
+      const res = await fetch("src/controllers/usuario_controller.php?accion=cambiar_password", {
+        method: "POST",
+        body: fd
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        if (typeof toastError === "function") toastError(data.error);
+        return;
+      }
+
+      if (typeof toastSuccess === "function") toastSuccess("Contraseña actualizada correctamente.");
+
+      // Cerrar modal
+      modal.classList.remove("active");
+      document.body.style.overflow = ""; // ✅ restaura scroll
+
+      // Limpia el query param force_pass (si existe)
+      const url = new URL(window.location.href);
+      url.searchParams.delete("force_pass");
+      window.location.replace(url.toString());
+
+    } catch (err) {
+      console.error(err);
+      if (typeof toastError === "function") toastError("Error de red al cambiar la contraseña.");
+    }
+  });
+}
 </script>
 </body>
 </html>

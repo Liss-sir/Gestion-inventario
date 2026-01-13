@@ -9,9 +9,9 @@ class MaterialFormacionModel {
         $this->db = $conn;
     }
 
-    
-    //   GET ALL MATERIALS
-       
+    /* 
+       GET ALL MATERIALS
+        */
     public function getAll()
     {
         $sql = "SELECT * FROM material_formacion ORDER BY nombre ASC";
@@ -21,9 +21,9 @@ class MaterialFormacionModel {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    
-    //   GET MATERIAL BY ID
-       
+    /* 
+       GET MATERIAL BY ID
+        */
     public function getById($id_material)
     {
         $sql = "SELECT * FROM material_formacion WHERE id_material = ?";
@@ -33,24 +33,25 @@ class MaterialFormacionModel {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    
-    //  CREATE MATERIAL
-       
+    /* 
+       CREATE MATERIAL
+        */
     public function create($data)
     {
-        // Safe read: use NULL if key does not exist or is empty
+        // Safe read: inventory code
         $codigo = (isset($data['codigo_inventario']) && $data['codigo_inventario'] !== "")
             ? $data['codigo_inventario']
             : null;
 
-        // If material is Inventariado → must have code
+        // If Inventariado → must have inventory code
         if ($data['clasificacion'] === "Inventariado" && $codigo === null) {
-            return false; // Controller will return error JSON
+            return false;
         }
 
         $sql = "INSERT INTO material_formacion 
-                (nombre, descripcion, unidad_medida, clasificacion, codigo_inventario)
-                VALUES (?, ?, ?, ?, ?)";
+                (nombre, descripcion, unidad_medida, clasificacion, 
+                 codigo_inventario, precio, foto)
+                VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $this->db->prepare($sql);
 
@@ -59,90 +60,90 @@ class MaterialFormacionModel {
             $data['descripcion'] ?? null,
             $data['unidad_medida'],
             $data['clasificacion'],
-            $codigo
+            $codigo,
+            $data['precio'],              // required
+            $data['foto'] ?? null          // optional
         ]);
     }
 
-
-    
-    //   UPDATE MATERIAL
-       
+    /* 
+       UPDATE MATERIAL
+        */
     public function update($id_material, $data)
     {
-        // Convert empty string to NULL
-        $codigo = ($data['codigo_inventario'] === "" ? null : $data['codigo_inventario']);
+        $codigo = (isset($data['codigo_inventario']) && $data['codigo_inventario'] !== "")
+            ? $data['codigo_inventario']
+            : null;
 
-        // If Inventariado → inventory code required
         if ($data['clasificacion'] === "Inventariado" && $codigo === null) {
             return false;
         }
 
         $sql = "UPDATE material_formacion
                 SET nombre = ?, descripcion = ?, unidad_medida = ?, 
-                    clasificacion = ?, codigo_inventario = ?, estado = ?
+                    clasificacion = ?, codigo_inventario = ?, 
+                    precio = ?, foto = ?, estado = ?
                 WHERE id_material = ?";
 
         $stmt = $this->db->prepare($sql);
 
         return $stmt->execute([
             $data['nombre'],
-            $data['descripcion'],
+            $data['descripcion'] ?? null,
             $data['unidad_medida'],
             $data['clasificacion'],
             $codigo,
+            $data['precio'],
+            $data['foto'] ?? null,
             $data['estado'],
             $id_material
         ]);
+        
     }
 
-    
-    //    DELETE MATERIAL (check all relations)
-       
-    public function delete($id_material)
-    {
-        // Tables that use id_material
-        $tables = [
-            "movimientos_material",
-            "devoluciones_material",
-            "stock_bodega",
-            "stock_subbodega",
-            "solicitudes_material"
-        ];
+    // /* 
+    //    DELETE MATERIAL (check relations)
+    //     */
+    // public function delete($id_material)
+    // {
+    //     $tables = [
+    //         "movimientos_material",
+    //         "devoluciones_material",
+    //         "stock_bodega",
+    //         "stock_subbodega",
+    //         "solicitudes_material"
+    //     ];
 
-        // Check relations one by one
-        foreach ($tables as $table) {
+    //     foreach ($tables as $table) {
 
-            $sql = "SELECT COUNT(*) AS total FROM $table WHERE id_material = ?";
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([$id_material]);
+    //         $sql = "SELECT COUNT(*) FROM $table WHERE id_material = ?";
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->execute([$id_material]);
 
-            $count = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    //         if ($stmt->fetchColumn() > 0) {
+    //             return false;
+    //         }
+    //     }
 
-            if ($count > 0) {
-                return false; // cannot delete, material in use
-            }
-        }
+    //     $sql = "DELETE FROM material_formacion WHERE id_material = ?";
+    //     $stmt = $this->db->prepare($sql);
 
-        // Delete material
-        $sql = "DELETE FROM material_formacion WHERE id_material = ?";
-        $stmt = $this->db->prepare($sql);
+    //     return $stmt->execute([$id_material]);
+    // }
 
-        return $stmt->execute([$id_material]);
-    }
-
-    
-    //   GET TOTAL STOCK (bodega + subbodega)
-       
+    /* 
+       GET TOTAL STOCK
+        */
     public function getStockTotal($id_material)
     {
         $sql = "
             SELECT 
-                (SELECT IFNULL(SUM(stock_actual),0) 
-                 FROM stock_bodega 
+                (SELECT IFNULL(SUM(stock_actual),0)
+                 FROM stock_bodega
                  WHERE id_material = ?) AS stock_bodega,
 
-                (SELECT IFNULL(SUM(stock_actual),0) 
-                 FROM stock_subbodega 
+                (SELECT IFNULL(SUM(stock_actual),0)
+                 FROM stock_subbodega
                  WHERE id_material = ?) AS stock_subbodega
         ";
 
@@ -152,9 +153,9 @@ class MaterialFormacionModel {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    
-    //   SEARCH MATERIAL BY NAME OR CODE
-       
+    /* 
+       SEARCH MATERIAL
+        */
     public function search($term)
     {
         $like = "%".$term."%";

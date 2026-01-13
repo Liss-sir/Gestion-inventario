@@ -6,40 +6,69 @@ class MovimientoModel {
         $this->conn = $db;
     }
 
-    /* CREATE MOVEMENT */
-    public function crearMovimiento($data) {
+    public function registrarEntrada($data)
+{
+    $this->conn->beginTransaction();
 
-        $sql = "INSERT INTO movimientos_material 
-        (tipo_movimiento, fecha_hora, id_usuario, id_material, id_bodega, id_subbodega,
-         cantidad, id_programa, id_ficha, id_rae, observaciones)
-        VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    try {
+
+        $codigoMovimiento = 'MOV-' . date('Y') . '-' . str_pad(
+            rand(1, 99999),
+            5,
+            '0',
+            STR_PAD_LEFT
+        );
+
+        $sql = "
+            INSERT INTO movimientos_material
+            (codigo_movimiento, tipo_movimiento, id_usuario, id_material,
+             id_bodega, id_subbodega, cantidad, observaciones)
+            VALUES (?, 'Entrada', ?, ?, ?, ?, ?, ?)
+        ";
 
         $stmt = $this->conn->prepare($sql);
 
-        // Convert empty values to real NULL
-        $id_subbodega = !empty($data['id_subbodega']) ? $data['id_subbodega'] : null;
-        $id_programa  = !empty($data['id_programa'])  ? $data['id_programa']  : null;
-        $id_ficha     = !empty($data['id_ficha'])     ? $data['id_ficha']     : null;
-        $id_rae       = !empty($data['id_rae'])       ? $data['id_rae']       : null;
-        $obs          = !empty($data['observaciones']) ? $data['observaciones'] : null;
+        foreach ($data['materiales'] as $mat) {
+            $stmt->execute([
+                $codigoMovimiento,
+                $data['id_usuario'],
+                $mat['id_material'],
+                $data['id_bodega'],
+                $data['id_subbodega'],
+                $mat['cantidad'],
+                $data['observaciones']
+            ]);
+        }
 
-        // s = string, i = integer
-        $stmt->bind_param(
-            "siiiiiiisss",
-            $data['tipo_movimiento'],
-            $data['id_usuario'],
-            $data['id_material'],
-            $data['id_bodega'],
-            $id_subbodega,
-            $data['cantidad'],
-            $id_programa,
-            $id_ficha,
-            $id_rae,
-            $obs
-        );
+        $this->conn->commit();
+        return $codigoMovimiento;
 
-        return $stmt->execute();
+    } catch (Exception $e) {
+        $this->conn->rollBack();
+        throw $e;
     }
+}
+
+
+    /* CREATE MOVEMENT */
+    public function crearMovimiento($data) {
+
+    $sql = "INSERT INTO movimientos_material
+        (tipo_movimiento, fecha_hora, id_usuario, id_bodega, id_subbodega, observaciones)
+        VALUES (:tipo, NOW(), :usuario, :bodega, :subbodega, :obs)";
+
+    $stmt = $this->conn->prepare($sql);
+
+    $stmt->execute([
+        ':tipo'       => $data['tipo_movimiento'],
+        ':usuario'    => $data['id_usuario'],
+        ':bodega'     => $data['id_bodega'],
+        ':subbodega'  => $data['id_subbodega'],
+        ':obs'        => $data['observaciones']
+    ]);
+
+    return $this->conn->lastInsertId();
+}
 
     /* LIST MOVEMENTS */
     public function listarMovimientos() {

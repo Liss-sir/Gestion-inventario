@@ -1,0 +1,584 @@
+/* ===========================
+   ANIMACIÓN – MODAL SLIDE DOWN
+   =========================== */
+@keyframes modal-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-modal-slide-down {
+  animation: modal-slide-down 0.28s ease-out forwards;
+}
+
+/* ===========================
+   MODALES – OVERLAY Y TRANSICIONES
+   =========================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(15 23 42 / 0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+/* Bordes redondeados para la tabla principal */
+#tableView > div {
+  border-radius: 12px;
+  overflow: visible;
+}
+
+#tableView table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+#tableView thead th:first-child {
+  border-top-left-radius: 12px;
+}
+
+#tableView thead th:last-child {
+  border-top-right-radius: 12px;
+}
+
+#tableView tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 12px;
+}
+
+#tableView tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 12px;
+}
+
+/* Estado inicial de los modales */
+#createModal > div,
+#editModal > div,
+#detailsModal > div {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+/* Activación con animación */
+#createModal.active > div,
+#editModal.active > div,
+#detailsModal.active > div {
+  animation: modal-slide-down 0.28s ease-out forwards;
+}
+
+/* ===========================
+   AJUSTE PARA QUE NO LO TAPE EL SIDEBAR
+   =========================== */
+@media (min-width: 1024px) {
+  /* ancho aprox del sidebar (w-64 = 256px) */
+  .page-with-sidebar {
+    margin-left: 256px;
+  }
+}
+
+/* ===========================
+   AJUSTES DROPDOWN – TABLAS
+   =========================== */
+
+/* Evitar cortes en dropdown dentro de tablas */
+table,
+thead,
+tbody,
+tr,
+td,
+th {
+  overflow: visible;
+}
+
+/* El main con sidebar no debe recortar nada */
+.page-with-sidebar {
+  overflow: visible;
+}
+
+/* Estilos tipo shadcn para menú contextual */
+.dropdown-menu {
+  position: absolute;
+  z-index: 50;
+  transform-origin: top right;
+  opacity: 0;
+  transform: scale(0.96);
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+
+.dropdown-menu.show {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ===========================
+   SELECTS – Flecha más pequeña
+   =========================== */
+select.input,
+#selectFiltroRol {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+
+  /* Flecha SVG personalizada (más pequeña con background-size) */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2364748b' stroke-width='1.6'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 8l4 4 4-4' /%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+
+  /* Flecha pequeña */
+  background-size: 15px;
+
+  background-position: right 0.85rem center;
+  padding-right: 2.5rem;
+}
+
+/* ======================================
+   SWITCH – estilo iOS con animación fluida
+   ====================================== */
+
+.switch-siga {
+  width: 38px;
+  height: 20px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  cursor: pointer;
+
+  /* Animación suave */
+  transition: background-color 0.28s ease, box-shadow 0.28s ease;
+
+  /* Evita saltos durante el click */
+  position: relative;
+}
+
+/* Bolita */
+.switch-siga .thumb {
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+
+  /* Animación suave de movimiento */
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Estado ON (verde) */
+.switch-siga.on {
+  background-color: #059669; /* verde tailwind emerald-600 */
+}
+
+/* Estado OFF */
+.switch-siga.off {
+  background-color: #d1d5db; /* bg-muted aprox */
+}
+
+/* ===========================
+   INPUT STYLES – Material Formacion module
+   =========================== */
+/* Agregados estilos de input del módulo de usuarios */
+.input {
+  background-color: #ffffff;
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  width: 100%;
+  color: var(--foreground);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+/* Inputs en modales */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+  background-color: #ffffff !important;
+}
+
+/* Select de filtro - fondo gris */
+#selectFiltroRol {
+  background-color: var(--background) !important;
+}
+
+/* Buscador – fondo gris como el filtro */
+#inputBuscar {
+  background-color: var(--background) !important;
+}
+
+/* ===========================
+   COMPACT MODALS
+   =========================== */
+/* Estilos de modales compactos */
+.modal-compact {
+  max-width: 420px;
+}
+
+/* ===========================
+   DISABLED ROWS
+   =========================== */
+/* Estilos para filas deshabilitadas */
+.disabled-row {
+  opacity: 0.5;
+  background-color: var(--muted);
+}
+
+/* ===========================
+   DROPDOWN MENU
+   =========================== */
+/* Estilos actualizados de dropdown con animación */
+.dropdown-menu {
+  position: absolute;
+  z-index: 50;
+  min-width: 12rem;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-menu button {
+  transition: all 0.2s ease;
+}
+
+.dropdown-menu button:hover {
+  background-color: var(--muted);
+  padding-left: 1.25rem;
+}
+
+.dropdown-menu button.toggle-status-btn {
+  color: #dc2626;
+}
+
+.dropdown-menu button.toggle-status-btn:hover {
+  background-color: rgba(248, 113, 113, 0.1);
+}
+
+/* ===========================
+   PAGINATION
+   =========================== */
+/* Estilos de paginación del módulo de usuarios */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  padding: 1.5rem 0;
+}
+
+.pagination button {
+  min-width: 2.5rem;
+  height: 2.5rem;
+  padding: 0 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background-color: var(--card);
+  color: var(--foreground);
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pagination button:hover:not(:disabled):not(.active) {
+  background-color: var(--muted);
+  border-color: var(--primary);
+}
+
+.pagination button.active {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+  font-weight: 600;
+}
+
+.pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Extra pagination button */
+.pagination-btn {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background-color: var(--muted);
+  border-color: var(--primary);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ===========================
+   VIEW TOGGLE BUTTONS
+   =========================== */
+/* Estilos de botones toggle de vista */
+.view-toggle-btn {
+  background-color: transparent;
+  color: var(--muted-foreground);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+}
+
+.view-toggle-btn:hover {
+  color: var(--foreground);
+  background-color: var(--muted);
+}
+
+.view-toggle-btn.active {
+  background-color: var(--muted);
+  color: var(--foreground);
+}
+
+/* ===========================
+   MATERIAL CARDS
+   =========================== */
+/* Estilos de tarjetas con hover animations */
+.material-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1.5px solid var(--border);
+}
+
+.material-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 8px 24px rgba(57, 169, 0, 0.12);
+  transform: translateY(-4px);
+}
+
+.material-card.disabled {
+  opacity: 0.65;
+  border-color: #f87171;
+}
+
+.material-card.disabled:hover {
+  border-color: #f87171;
+  box-shadow: 0 8px 24px rgba(248, 113, 113, 0.12);
+}
+
+/* Icons inside cards */
+.material-icon-bg {
+  transition: all 0.3s ease;
+}
+
+.material-card:hover .material-icon-bg {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(57, 169, 0, 0.2);
+}
+
+/* ===========================
+   CLASIFICACIÓN BADGES
+   =========================== */
+.badge-clasificacion-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0.125rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Inventariado – azul institucional */
+.badge-clasificacion-inventariado {
+  background-color: color-mix(in srgb, #00304D 29%, transparent);
+  color: #00304D;
+}
+
+/* Consumible – verde oscuro */
+.badge-clasificacion-consumible {
+  background-color: color-mix(in srgb, #007832 29%, transparent);
+  color: #007832;
+}
+
+/* ===========================
+   STATUS BADGES
+   =========================== */
+/* Estilos de badges de estado */
+.status-badge {
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.status-badge.active {
+  background-color: color-mix(in srgb, #39A900 29%, transparent);
+  color: #39A900;
+}
+
+.status-badge.inactive {
+  background-color: color-mix(in srgb, #64748b 18%, transparent);
+  color: #64748b;
+}
+
+/* ===========================
+   CARD MENU BUTTON
+   =========================== */
+/* Estilos del botón de menú en tarjetas */
+.card-menu-btn {
+  transition: all 0.2s ease;
+  border-radius: 0.375rem;
+}
+
+.card-menu-btn:hover {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 2px 8px rgba(57, 169, 0, 0.2);
+}
+/* ======================
+   ESTILOS PERSONALIZADOS MATERIALES
+   ====================== */
+
+/* Removidos todos los estilos que aplicaban transparencia y efectos disabled */
+/* Ahora el estado agotado solo se refleja en el badge de estado */
+
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 9998;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-overlay.flex {
+  display: flex;
+}
+
+/* Pagination styles */
+.pagination {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.pagination-btn {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover {
+  background-color: hsl(var(--muted));
+}
+
+.pagination-btn.active {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary));
+}
+
+/* Switch personalizado */
+.switch-siga {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  background-color: #ccc;
+  border-radius: 24px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.switch-siga.on {
+  background-color: #39a900;
+}
+
+.slider-siga {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.3s;
+}
+
+.switch-siga.on .slider-siga {
+  transform: translateX(20px);
+}
+
+/* Animaciones */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out;
+}
+
+/* Dropdown menu positioning */
+.dropdown-menu {
+  min-width: 160px;
+}
+
+/* Input focus styles */
+.input-siga:focus {
+  outline: none;
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsla(var(--primary), 0.1);
+}

@@ -96,6 +96,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // ✅ CLAVE: guardar la foto en sesión para que persista tras volver a iniciar sesión
                     $_SESSION['usuario_foto']              = $user['foto_perfil'] ?? null;
 
+                    // =========================================================
+                    // ✅ DETECTAR "CAMBIO OBLIGATORIO" (FORCE_%)
+                    // Sin tocar DB:
+                    // - tipo = 'reset_password'
+                    // - token LIKE 'FORCE_%'
+                    // =========================================================
+                    try {
+                        $stmtForce = $conn->prepare("
+                            SELECT id_token
+                            FROM tokens_correo
+                            WHERE id_usuario = :uid
+                              AND tipo = 'reset_password'
+                              AND token LIKE 'FORCE_%'
+                              AND usado = 0
+                              AND fecha_expiracion >= NOW()
+                            ORDER BY id_token DESC
+                            LIMIT 1
+                        ");
+                        $stmtForce->execute([':uid' => (int)$user['id_usuario']]);
+                        $rowForce = $stmtForce->fetch(PDO::FETCH_ASSOC);
+
+                        $_SESSION['force_password_change'] = $rowForce ? 1 : 0;
+                    } catch (Exception $e) {
+                        // Si por algo falla, no rompemos el login
+                        $_SESSION['force_password_change'] = 0;
+                    }
+
                     header('Location: ' . BASE_URL . '../../../index.php?page=dashboard');
                     exit;
 

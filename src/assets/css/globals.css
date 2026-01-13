@@ -337,6 +337,15 @@ body {
   color: var(--secondary);
 }
 
+/* =========================================
+   AVATAR – VERDE PRIMARIO AL 39%
+   ========================================= */
+.bg-avatar-primary-39 {
+  /* círculo con verde primario al 39% */
+  background-color: color-mix(in srgb, var(--primary) 39%, transparent);
+  color: var(--primary);
+}
+
 /* ===========================
    SELECTS – Flecha personalizada global
    Aplica una flecha SVG pequeña a la derecha de los selects (no multiple)

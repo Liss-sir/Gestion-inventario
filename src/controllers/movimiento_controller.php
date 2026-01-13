@@ -47,24 +47,43 @@ class MovimientoController {
 
     /* Create new movement */
     public function crear() {
-        // Decode the JSON input from the request body
-        $input = json_decode(file_get_contents("php://input"), true);
 
-        // Validate that valid JSON was received
-        if (!$input) {
-            echo json_encode(["error" => "Datos inválidos"]);
-            return;
-        }
+    $data = json_decode(file_get_contents("php://input"), true);
 
-        // Create the movement in the database
-        $ok = $this->model->crearMovimiento($input);
-
-        // Return success or error response
+    // Validaciones básicas
+    if (
+        !$data ||
+        empty($data['id_usuario']) ||
+        empty($data['id_bodega']) ||
+        empty($data['id_subbodega']) ||
+        empty($data['materiales']) ||
+        !is_array($data['materiales'])
+    ) {
         echo json_encode([
-            "success" => $ok,
-            "message" => $ok ? "Movimiento creado correctamente" : "Error al crear movimiento"
+            "success" => false,
+            "message" => "Datos incompletos"
+        ]);
+        return;
+    }
+
+    try {
+        // 👉 Llamamos al nuevo método
+        $codigoMovimiento = $this->model->registrarEntrada($data);
+
+        echo json_encode([
+            "success" => true,
+            "codigo_movimiento" => $codigoMovimiento
+        ]);
+
+    } catch (Exception $e) {
+
+        echo json_encode([
+            "success" => false,
+            "message" => $e->getMessage()
         ]);
     }
+}
+
 
     /* Update existing movement */
     public function actualizar() {

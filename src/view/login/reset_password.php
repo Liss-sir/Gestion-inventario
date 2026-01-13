@@ -8,15 +8,25 @@ ini_set('display_errors', 1);
 // ===============================
 require_once __DIR__ . '/../../../Config/database.php';
 
+/* ================= BASE_URL AUTO ================= */
 if (!defined('BASE_URL')) {
+
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        ? 'https://' : 'http://';
+        ? 'https://'
+        : 'http://';
+
     $host = $_SERVER['HTTP_HOST'];
 
-    // AJUSTA SOLO SI CAMBIA LA RAÍZ
-    $project = '/gestion_inventario/Gestion-inventario/';
+    // Ruta del script actual (ej: /Gestion-inventario/src/controllers/usuario_controller.php)
+    $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
+
+    // Cortamos hasta la carpeta raíz del proyecto
+    // Quita /src/controllers, /src/views, etc
+    $project = preg_replace('#/src/.*$#', '/', $scriptDir);
+
     define('BASE_URL', $protocol . $host . $project);
 }
+
 
 // ===============================
 // VALIDAR TOKEN EN URL

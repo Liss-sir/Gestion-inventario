@@ -16,8 +16,8 @@
 }
 
 .sol-resumen-card {
-    background: #ffffff;
-    border: 1px solid #E5E7EB;
+    background: var(--card);
+    border: 1px solid var(--border);
     border-radius: 1rem;
     padding: 1.25rem 1.5rem;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -37,29 +37,29 @@
 }
 
 .sol-resumen-icono.pendientes {
-    background: #fde2e2;
-    color: #b91c1c;
+    background: color-mix(in srgb, var(--warning) 29%, transparent);
+    color: var(--warning);
 }
 
 .sol-resumen-icono.aprobadas {
-    background: #dcfce7;
-    color: #166534;
+    background: color-mix(in srgb, var(--success) 29%, transparent);
+    color: var(--success);
 }
 
 .sol-resumen-icono.rechazadas {
-    background: #fee2e2;
-    color: #991b1b;
+    background-color: #FDECEC;
+    color: #c24141;
 }
 
 .sol-resumen-numero {
     font-size: 1.4rem;
     font-weight: 700;
-    color: #111827;
+    color: var(--muted-foreground);
 }
 
 .sol-resumen-label {
     font-size: 0.9rem;
-    color: #374151;
+    color: var(--muted-foreground);
 }
 
 
@@ -68,7 +68,7 @@
    ============================================================ */
 
 .sol-filtros-wrapper {
-    background: #e5e5e5;
+    background: var(--muted);
     padding: 6px;
     border-radius: 12px;
     display: inline-flex;
@@ -81,15 +81,15 @@
     padding: 6px 14px;
     border-radius: 8px;
     font-size: 0.9rem;
-    color: #374151;
+    color: var(--muted-foreground);
     background: transparent;
     transition: all 0.25s ease;
 }
 
 .sol-filtro-btn-activo {
-    background: #ffffff;
-    color: #000;
-    box-shadow: 0 0 6px rgba(57,169,0,0.3);
+    background: var(--card);
+    color: var(--foreground);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--primary) 35%, transparent);
     transform: translateY(-2px);
 }
 
@@ -100,8 +100,9 @@
 
 .sol-cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
+    max-width: 1400px;
 }
 
 
@@ -157,20 +158,20 @@
 
 /* Pendiente */
 .sol-card-icon.pendiente {
-    background-color: #fde2e2;
-    color: #b91c1c;
+    background-color: color-mix(in srgb, var(--warning) 18%, transparent);
+    color: var(--warning);
 }
 
 /* Aprobada */
 .sol-card-icon.aprobada {
-    background-color: #dcfce7;
-    color: #166534;
+    background-color: color-mix(in srgb, var(--success) 18%, transparent);
+    color: var(--success);
 }
 
 /* Rechazada */
 .sol-card-icon.rechazada {
-    background-color: #fee2e2;
-    color: #991b1b;
+    background-color: #FDECEC;
+    color: #C24141;
 }
 
 
@@ -201,18 +202,19 @@
 }
 
 .sol-badge.pendiente {
-    background: #fde2e2;
-    color: #b91c1c;
+    background: color-mix(in srgb, var(--warning) 29%, transparent);
+    color: var(--warning);
 }
 
 .sol-badge.aprobada {
-    background: #dcfce7;
-    color: #166534;
+    background: color-mix(in srgb, var(--success) 29%, transparent);
+    color: var(--success);
 }
 
 .sol-badge.rechazada {
-    background: #fee2e2;
-    color: #991b1b;
+    background-color: #FDECEC;
+    color: #9b2c2c;
+
 }
 
 
@@ -238,11 +240,13 @@
 }
 
 .sol-chip {
-    margin-left: auto;
-    padding: 3px 8px;
+    margin-left: 12px; 
+    padding: 4px 10px;
     font-size: 12px;
-    background: #f3f4f6;
+    border: 1px solid black;
     border-radius: 999px;
+    white-space: nowrap; 
+    flex-shrink: 0;   
 }
 
 
@@ -281,7 +285,7 @@
     align-items: center;
     gap: 6px;
     padding: 6px 10px;
-    background: #f3f4f6;
+    background: var(--muted);
     border-radius: 999px;
     font-size: 13px;
 }
@@ -298,7 +302,7 @@
 
 .sol-observacion {
     font-size: 13px;
-    color: #374151;
+    color: var(--muted-foreground);
 }
 
 
@@ -318,8 +322,8 @@
     gap: 6px;
     padding: 6px 12px;
     font-size: 13px;
-    background: #15803d;
-    color: white;
+    background: var(--success);
+    color: var(--success-foreground);
     border-radius: 10px;
 }
 
@@ -329,8 +333,8 @@
     gap: 6px;
     padding: 6px 12px;
     font-size: 13px;
-    border: 1px solid #dc2626;
-    color: #dc2626;
+    border: 1px solid var(--error);
+    color: var(--error);
     border-radius: 10px;
 }
 
@@ -346,8 +350,8 @@
    ============================================================ */
 
 .sol-empty {
-    background: white;
-    border: 1px solid #E5E7EB;
+    background: var(--card);
+    border: 1px solid var(--border);
     padding: 4rem 1rem;
     border-radius: 1.25rem;
 
@@ -367,7 +371,7 @@
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background: #F3F4F6;
+    background: var(--muted);
 
     display: flex;
     align-items: center;
@@ -380,7 +384,7 @@
 .sol-empty-icon svg {
     width: 22px;
     height: 22px;
-    color: #6B7280;
+    color: var(--muted-foreground);
 }
 
 
@@ -388,14 +392,14 @@
 .sol-empty h3 {
     font-size: 1.25rem;
     font-weight: 600;
-    color: #111827;
+    color: var(--foreground);
     margin-bottom: 0.25rem;
 }
 
 /* Texto descriptivo */
 .sol-empty p {
     font-size: 0.95rem;
-    color: #6B7280;
+    color: var(--muted-foreground);
     max-width: 420px;
 }
 

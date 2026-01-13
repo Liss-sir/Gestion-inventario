@@ -115,7 +115,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
          El estado vacío DEBE vivir aquí dentro
     ============================================= -->
     <div id="sol-cards"
-         class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+         class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4">
 
         <!-- ============================
              ESTADO VACÍO (DENTRO DEL GRID)
@@ -142,6 +142,8 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         <!-- Cards generadas dinámicamente por JS -->
 
     </div>
+
+    <div id="sol-pagination" class="flex justify-center gap-2 mt-6"></div>
 
 </main>
 
