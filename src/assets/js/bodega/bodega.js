@@ -1215,7 +1215,8 @@ const fillDetalleSub = (data) => {
   selectEstado?.addEventListener("change", applyFilters);
 
   applyFilters();
-  // ============================
+
+// ============================
 // CIERRE ROBUSTO: MODAL EDITAR SUB-BODEGA
 // ============================
 const modalEditarSub = document.getElementById("modalEditarSubBodega");
@@ -1234,5 +1235,52 @@ document.addEventListener("click", (e) => {
   }
 });
 
+// ============================
+// GUARDAR EDITAR SUB-BODEGA (FIX)
+// ============================
+const btnGuardarEditarSub = document.getElementById("guardarEditarSubBodega");
+
+btnGuardarEditarSub?.addEventListener("click", async () => {
+  const id = (document.getElementById("editSubId")?.value || "").trim();
+  const codigo = (document.getElementById("editSubCodigo")?.value || "").trim();
+  const nombre = (document.getElementById("editSubNombre")?.value || "").trim();
+  const clasificacion = (document.getElementById("editSubClasificacion")?.value || "").trim();
+  const descripcion = (document.getElementById("editSubDescripcion")?.value || "").trim();
+
+  if (!id || !codigo || !nombre || !clasificacion) {
+    toastError("Completa todos los campos obligatorios.");
+    return;
+  }
+
+  try {
+    const res = await fetch(
+      `${API_SUBBODEGAS}?accion=actualizar&id=${encodeURIComponent(id)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          codigo_subbodega: codigo,
+          nombre_subbodega: nombre,
+          clasificacion_subbodegas: clasificacion,
+          descripcion,
+        }),
+      }
+    );
+
+    const parsed = await safeJson(res);
+
+    if (!parsed.ok || parsed.data?.error) {
+      console.error("[ACTUALIZAR SUB RAW]", parsed.raw);
+      throw new Error(parsed.data?.error || `HTTP ${res.status}`);
+    }
+
+    closeModal(document.getElementById("modalEditarSubBodega"));
+    toastSuccess(parsed.data?.message || "Sub-bodega actualizada correctamente.");
+    setTimeout(() => location.reload(), 650);
+  } catch (err) {
+    console.error(err);
+    toastError(err?.message || "No se pudo guardar los cambios.");
+  }
 });
 
+});
