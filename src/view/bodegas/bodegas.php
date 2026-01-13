@@ -2,19 +2,18 @@
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 
-$bodegas = [
-    [1, "Bodega Principal - Eléctrico", "Insumos", "Bloque A, Piso 1", "Bodega", "Activo", 1],
-    [2, "Bodega Construcción", "Equipos", "Bloque A, Piso 2", "Bodega", "Activo", 3],
-    [3, "Sub-bodega Sanitario", "Insumos", "Bloque B, Piso 1", "Sub-Bodega", "Activo", 4],
-    [4, "Bodega Herramientas", "Equipos", "Bloque C, Piso 1", "Bodega", "Activo", 2],
-    [5, "Ejemplo", "Insumos", "Bloque A, Piso 3", "Bodega", "Inactivo", 1],
-];
+include_once BASE_PATH . '/Config/database.php';
+include_once BASE_PATH . '/src/models/bodega.php';
+
+$model = new BodegaModel($conn);
+$bodegas = $model->listar();
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <title>Gestión Bodegas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -25,172 +24,259 @@ $bodegas = [
   <!-- CSS bodegas -->
   <link rel="stylesheet" href="src/assets/css/bodegas/bodegas.css" />
 
-  <!-- JS bodegas -->
-  <script src="src/assets/js/bodegas/bodegas.js" defer></script>
+  <!-- ✅ JS bodegas (tu ruta original) -->
+  <script src="src/assets/js/bodega/bodega.js" defer></script>
 </head>
 
-<body class="bg-gray-50 text-gray-900">
-<main class="p-6 transition-all duration-300"
-  style="margin-left: <?= isset($_GET['coll']) && $_GET['coll'] == "1" ? '70px' : '260px' ?>;"
+<body class="bg-background p-6 text-gray-900">
+<main
+  class="p-6 transition-all duration-300"
+  style="margin-left: <?= $sidebarWidth ?>;"
 >
+  <div class="space-y-6 animate-fade-in-up">
 
-<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <!-- ================================== -->
+    <!-- PAGE HEADER -->
+    <!-- ================================== -->
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight">Gestión Bodegas</h1>
+        <p class="text-muted-foreground">
+          Administra las bodegas y sub-bodegas del inventario
+        </p>
+      </div>
 
-  <!-- TÍTULO -->
-  <div>
-    <h1 class="text-3xl font-bold">Gestión Bodegas</h1>
-    <p class="text-sm text-gray-500">
-      Administra las bodegas y sub-bodegas del inventario
-    </p>
-  </div>
+      <div class="flex items-center gap-3">
+        <!-- Switch lista / grid -->
+        <div class="inline-flex rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+          <button
+            type="button"
+            id="btnVistaTabla"
+            class="px-3 py-2 text-xs sm:text-sm flex items-center gap-1 bg-muted text-foreground"
+          >
+            <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </button>
 
-  <!-- CONTROLES DERECHA -->
-<div class="flex items-center gap-2">
+          <button
+            type="button"
+            id="btnVistaTarjetas"
+            class="px-3 py-2 text-xs sm:text-sm flex items-center gap-1 text-muted-foreground"
+          >
+            <svg class="h-4 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <rect x="4" y="4" width="7" height="7" rx="1"></rect>
+              <rect x="13" y="4" width="7" height="7" rx="1"></rect>
+              <rect x="4" y="13" width="7" height="7" rx="1"></rect>
+              <rect x="13" y="13" width="7" height="7" rx="1"></rect>
+            </svg>
+          </button>
+        </div>
 
-  <!-- Grupo: Switch Lista / Grid -->
-  <div class="inline-flex rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
+        <!-- BOTÓN ÚNICO + MENÚ DESPLEGABLE -->
+        <div class="relative">
+          <button
+            id="btnCrearBodegaMenu"
+            class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2"
+            type="button"
+          >
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            Crear bodega
+            <i data-lucide="chevron-down" class="w-4 h-4 opacity-90"></i>
+          </button>
 
-    <!-- Lista -->
-    <button
-      type="button"
-      id="btnVistaTabla"
-      class="px-3 py-2 text-sm flex items-center gap-1 bg-muted text-foreground"
-    >
-      <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-           viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-        <path stroke-linecap="round" stroke-linejoin="round"
-              d="M4 6h16M4 12h16M4 18h16"/>
-      </svg>
-    </button>
+          <div
+            id="menuCrearBodega"
+            class="hidden absolute right-0 mt-2 w-64 rounded-xl border border-border bg-card shadow-lg overflow-hidden z-40"
+          >
+            <button
+              id="btnNuevaBodega"
+              type="button"
+              class="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition"
+            >
+              <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background">
+                <i data-lucide="warehouse" class="w-4 h-4 text-muted-foreground"></i>
+              </span>
+              <div class="flex flex-col items-start text-left">
+                <span class="font-medium">Crear Bodega</span>
+                <span class="text-xs text-muted-foreground">Registra una nueva bodega</span>
+              </div>
+            </button>
 
-    <!-- Grid -->
-    <button
-      type="button"
-      id="btnVistaTarjetas"
-      class="px-3 py-2 text-sm flex items-center gap-1 text-muted-foreground"
-    >
-      <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-           viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-        <rect x="4" y="4" width="7" height="7" rx="1"></rect>
-        <rect x="13" y="4" width="7" height="7" rx="1"></rect>
-        <rect x="4" y="13" width="7" height="7" rx="1"></rect>
-        <rect x="13" y="13" width="7" height="7" rx="1"></rect>
-      </svg>
-    </button>
+            <div class="border-t border-border"></div>
 
-  </div>
+            <button
+              id="btnNuevaSubBodega"
+              type="button"
+              class="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition"
+            >
+              <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background">
+                <i data-lucide="layers" class="w-4 h-4 text-muted-foreground"></i>
+              </span>
 
-  <!-- Botón Nueva Bodega (grupo independiente) -->
-  <button
-    id="btnNuevaBodega"
-    class="inline-flex items-center justify-center rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2"
-  >
-    <i data-lucide="plus" class="w-4 h-4"></i>
-    Nueva Bodega
-  </button>
+              <div class="flex flex-col items-start text-left w-full">
+                <span class="font-medium">Crear Sub-bodega</span>
+                <span class="text-xs text-muted-foreground text-left w-full">
+                  Asigna una sub-bodega a una bodega padre
+                </span>
+              </div>
+            </button>
+          </div>
+        </div>
 
-</div>
-
-</div>
-<!-- BUSCADOR + FILTRO -->
-<div class="flex items-center justify-between w-full gap-4 mb-4 -mt-4">
-
-  <!-- BUSCADOR (ESTILO ORIGINAL) -->
-  <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-4 py-2 shadow-sm w-full sm:w-[330px] bg-gray-100">
-    <i data-lucide="search" class="w-4 h-4 text-gray-500"></i>
-    <input
-      type="text"
-      placeholder="Buscar por nombre o ID"
-      class="w-full bg-transparent outline-none text-sm"
-    />
-  </div>
-
-  <!-- FILTRO -->
-  <div class="flex items-center gap-2">
-
-    <i data-lucide="filter" class="w-4 h-4 text-gray-600"></i>
-
-    <div class="relative bg-white border border-gray-200 rounded-lg px-4 py-1 shadow-sm min-w-[150px] bg-gray-100">
-      <select
-        id="bodegasFilter"
-        class="w-full appearance-none bg-transparent outline-none text-sm text-gray-700 pr-6"
-      >
-        <option value="Todos">Todos</option>
-        <option value="Activo">Activos</option>
-        <option value="Inactivo">Inactivos</option>
-      </select>
+      </div>
     </div>
-  </div>
 
-</div>
+    <!-- ================================== -->
+    <!-- TOP FILTERS (SEARCH + ESTADO FILTER) -->
+    <!-- ================================== -->
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between my-6">
 
-  <div class="w-full">
-    <!-- ========= VISTA LISTA ========= -->
-    <div id="view-list">
-      <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-        <table class="w-full text-sm">
-          <thead class="bg-gray-100 text-gray-600">
+      <!-- SEARCH -->
+      <div class="relative w-full sm:max-w-xs">
+        <svg
+          class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+
+        <input
+          id="inputBuscarBodega"
+          type="text"
+          placeholder="Buscar por nombre o ID..."
+          class="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm"
+        />
+      </div>
+
+      <!-- ESTADO FILTER -->
+      <div class="flex items-center gap-2">
+        <svg
+          class="h-4 w-4"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+        >
+          <path
+            d="M5 5h14a1 1 0 0 1 .8 1.6L15 12v4.5a1 1 0 0 1-.553.894l-3 1.5A1 1 0 0 1 10 18v-6L4.2 6.6A1 1 0 0 1 5 5z"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+
+        <select
+          id="bodegasFilter"
+          class="rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm"
+        >
+          <option value="Todos">Todos</option>
+          <option value="Activo">Activos</option>
+          <option value="Inactivo">Inactivos</option>
+        </select>
+      </div>
+
+    </div>
+
+    <!-- ================================== -->
+    <!-- TABLE VIEW CONTAINER -->
+    <!-- ================================== -->
+    <div
+      id="vistaTabla"
+      class="overflow-hidden rounded-xl border border-border bg-card relative"
+    >
+      <!-- EMPTY STATE -->
+      <div
+        id="emptyTabla"
+        class="<?= empty($bodegas) ? '' : 'hidden' ?>
+              w-full flex flex-col items-center justify-center text-center
+              px-6 py-10 sm:py-12
+              min-h-[220px] sm:min-h-[240px]"
+      >
+        <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-border">
+          <!-- ✅ WRAPPERS (IDs no se pierden con lucide.createIcons) -->
+          <span id="emptyIconNoDataListWrap" class="<?= empty($bodegas) ? '' : 'hidden' ?>">
+            <i data-lucide="file-text" class="h-6 w-6 text-foreground"></i>
+          </span>
+          <span id="emptyIconNoResultsListWrap" class="hidden">
+            <i data-lucide="search" class="h-6 w-6 text-foreground"></i>
+          </span>
+        </div>
+
+        <h3 id="emptyListTitle" class="text-lg sm:text-xl font-semibold text-foreground">
+          No hay bodegas registradas
+        </h3>
+
+        <p id="emptyListDesc" class="mx-auto mt-1.5 max-w-xl text-sm text-muted-foreground">
+          Una vez agregues bodegas desde el botón <strong>"Crear bodega"</strong>, aparecerán listadas en esta vista.
+        </p>
+      </div>
+
+      <!-- TABLA -->
+      <div id="tableWrapperList" class="<?= empty($bodegas) ? 'hidden' : '' ?>">
+        <table class="min-w-full divide-y divide-border text-sm">
+          <thead class="bg-gray-100">
             <tr>
-              <th class="px-4 py-3 text-left font-semibold">ID</th>
-              <th class="px-4 py-3 text-left font-semibold">Nombre</th>
-              <th class="px-4 py-3 text-left font-semibold">Clasificación</th>
-              <th class="px-4 py-3 text-left font-semibold">Ubicación</th>
-              <th class="px-4 py-3 text-left font-semibold">Tipo</th>
-              <th class="px-4 py-3 text-left font-semibold">Estado</th>
-              <th class="px-4 py-3 text-left font-semibold">Acciones</th>
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">ID</th>
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">Nombre</th>
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">Clasificación</th>
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">Ubicación</th>
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">Estado</th>
+              <th class="px-4 py-3 text-right font-medium text-xs text-muted-foreground">Acciones</th>
             </tr>
           </thead>
 
-          <tbody class="divide-y divide-gray-200">
+          <tbody id="tbodyBodegas" class="divide-y divide-border bg-card">
             <?php foreach ($bodegas as $b): ?>
-              <?php $activo = $b[5] === "Activo"; ?>
-              <tr class="hover:bg-gray-50">
-                <td class="px-4 py-3">#<?= $b[0] ?></td>
+              <?php $activo = $b['estado'] === "Activo"; ?>
+              <tr class="hover:bg-muted/30 bodegas-row">
+                <td class="px-4 py-3 bodegas-codigo">#<?= $b['codigo_bodega'] ?></td>
 
-                <td class="px-4 py-3">
+                <td class="px-4 py-3 bodegas-nombre">
                   <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
                       <i data-lucide="warehouse" class="w-4 h-4"></i>
                     </div>
-                    <span class="font-medium text-gray-900"><?= htmlspecialchars($b[1]) ?></span>
+                    <span class="font-medium text-foreground"><?= htmlspecialchars($b['nombre']) ?></span>
                   </div>
                 </td>
 
                 <td class="px-4 py-3">
-                  <span class="inline-flex items-center rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700">
-                    <?= htmlspecialchars($b[2]) ?>
-                  </span>
-
-                </td>
-
-                <td class="px-4 py-3 text-gray-700">
-                  <i data-lucide="map-pin" class="w-4 h-4 inline-block text-gray-500 mr-1"></i>
-                  <?= htmlspecialchars($b[3]) ?>
-                </td>
-
-                <td class="px-4 py-3">
-                  <span class="inline-flex items-center rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700">
-                    <?= htmlspecialchars($b[4]) ?>
+                  <span class="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-foreground">
+                    <?= htmlspecialchars($b['clasificacion_bodega']) ?>
                   </span>
                 </td>
-                
-                <td class="px-4 py-3">
+
+                <td class="px-4 py-3 text-muted-foreground">
+                  <i data-lucide="map-pin" class="w-4 h-4 inline-block text-muted-foreground mr-1"></i>
+                  <?= htmlspecialchars($b['ubicacion']) ?>
+                </td>
+
+                <td class="px-4 py-3 bodegas-estado">
                   <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium
                     <?= $activo ? 'badge-estado-activo' : 'badge-estado-inactivo' ?>">
-                    <?= htmlspecialchars($b[5]) ?>
+                    <?= htmlspecialchars($b['estado']) ?>
                   </span>
                 </td>
 
-
-                <td class="px-4 py-3">
+                <td class="px-4 py-3 text-right">
                   <button
-                    class="w-8 h-8 rounded-full flex items-center justify-center bodegas-btn-dots"
-                    data-id="<?= $b[0] ?>"
-                    data-nombre="<?= htmlspecialchars($b[1]) ?>"
-                    data-clasificacion="<?= htmlspecialchars($b[2]) ?>"
-                    data-ubicacion="<?= htmlspecialchars($b[3]) ?>"
-                    data-tipo="<?= htmlspecialchars($b[4]) ?>"
-                    data-estado="<?= htmlspecialchars($b[5]) ?>"
+                    type="button"
+                    class="w-8 h-8 rounded-full inline-flex items-center justify-center bodegas-btn-dots hover:bg-muted"
+                    data-id="<?= $b['id_bodega'] ?>"
+                    data-codigo="<?= htmlspecialchars($b['codigo_bodega']) ?>"
+                    data-nombre="<?= htmlspecialchars($b['nombre']) ?>"
+                    data-clasificacion="<?= htmlspecialchars($b['clasificacion_bodega']) ?>"
+                    data-ubicacion="<?= htmlspecialchars($b['ubicacion']) ?>"
+                    data-estado="<?= htmlspecialchars($b['estado']) ?>"
                   >
                     <i data-lucide="more-horizontal" class="w-4 h-4"></i>
                   </button>
@@ -198,718 +284,610 @@ $bodegas = [
               </tr>
             <?php endforeach; ?>
           </tbody>
+
         </table>
       </div>
     </div>
 
-  </div>
+    <!-- ================================== -->
+    <!-- CARDS VIEW CONTAINER -->
+    <!-- ================================== -->
+    <div id="vistaTarjetas" class="hidden">
+      <div id="gridBodegas" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
 
-  <!-- ========= VISTA GRID ========= -->
-  <div id="view-grid" class="hidden">
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-
-      <?php foreach ($bodegas as $b):
-        $estadoActivo = $b[5] === "Activo";
-      ?>
-        <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 flex flex-col gap-3 relative">
-
-          <!-- Header -->
-          <div class="flex items-start justify-between gap-4">
-            <div class="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-              <i data-lucide="warehouse" class="w-5 h-5"></i>
-            </div>
-            <div>
-              <h2 class="text-base font-semibold text-gray-900"><?= htmlspecialchars($b[1]) ?></h2>
-              <p class="text-xs text-gray-500">ID: <?= $b[0] ?></p>
-            </div>
-
-            <button
-              class="w-8 h-8 rounded-full flex items-center justify-center bodegas-btn-dots"
-              data-id="<?= $b[0] ?>"
-              data-nombre="<?= htmlspecialchars($b[1]) ?>"
-              data-clasificacion="<?= htmlspecialchars($b[2]) ?>"
-              data-ubicacion="<?= htmlspecialchars($b[3]) ?>"
-              data-tipo="<?= htmlspecialchars($b[4]) ?>"
-              data-estado="<?= htmlspecialchars($b[5]) ?>"
-            >
-              <i data-lucide="more-horizontal" class="w-4 h-4"></i>
-            </button>
-          </div>
-
-          <!-- Location -->
-          <div class="flex items-center gap-2 text-sm text-gray-700">
-            <i data-lucide="map-pin" class="w-4 h-4 text-gray-500"></i>
-            <span><?= htmlspecialchars($b[3]) ?></span>
-          </div>
-
-          <!-- Tags -->
-          <div class="flex flex-wrap gap-2">
-            <span class="inline-flex items-center rounded-full px-3 py-1 text-xs bg-blue-100 text-blue-700">
-              <?= htmlspecialchars($b[2]) ?>
+        <!-- EMPTY GRID -->
+        <div
+          id="emptyGrid"
+          class="<?= empty($bodegas) ? '' : 'hidden' ?>
+                col-span-full flex flex-col items-center justify-center text-center
+                px-6 py-10 sm:py-12
+                min-h-[220px] sm:min-h-[240px]
+                overflow-hidden rounded-xl border border-border bg-card"
+        >
+          <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-border bg-background">
+            <!-- ✅ WRAPPERS (IDs no se pierden con lucide.createIcons) -->
+            <span id="emptyIconNoDataGridWrap" class="<?= empty($bodegas) ? '' : 'hidden' ?>">
+              <i data-lucide="file-text" class="h-6 w-6 text-foreground"></i>
             </span>
-            <span class="inline-flex items-center rounded-full px-3 py-1 text-xs bg-gray-100 text-gray-700">
-              <?= htmlspecialchars($b[4]) ?>
+            <span id="emptyIconNoResultsGridWrap" class="hidden">
+              <i data-lucide="search" class="h-6 w-6 text-foreground"></i>
             </span>
           </div>
 
-          <hr class="border-gray-200">
+          <h3 id="emptyGridTitle" class="text-lg sm:text-xl font-semibold text-foreground">
+            No hay bodegas registradas
+          </h3>
 
-          <!-- Footer -->
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2 text-sm text-gray-700">
-              <i data-lucide="package" class="w-4 h-4 text-gray-500"></i>
-              <span><?= $b[6] ?> Materiales</span>
-            </div>
-
-            <div class="flex items-center gap-3">
-              <span
-                class="estado-text text-sm font-medium <?= $estadoActivo ? 'text-emerald-700' : 'text-red-700' ?>"
-              >
-                <?= $estadoActivo ? "Activa" : "Inactiva" ?>
-              </span>
-
-              <label class="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  class="sr-only peer estado-switch"
-                  data-id="<?= $b[0] ?>"
-                  data-estado="<?= $estadoActivo ? 'Activo' : 'Inactivo' ?>"
-                  <?= $estadoActivo ? "checked" : "" ?>
-                >
-
-                <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:bg-emerald-600 transition">
-                  <div class="w-4 h-4 bg-white rounded-full absolute top-0.5 left-0.5 peer-checked:translate-x-5 transition"></div>
-                </div>
-              </label>
-            </div>
-          </div>
-
+          <p id="emptyGridDesc" class="mx-auto mt-1.5 max-w-xl text-sm text-muted-foreground">
+            Una vez agregues bodegas desde el botón <strong>"Crear bodega"</strong>, aparecerán listadas en esta vista.
+          </p>
         </div>
-      <?php endforeach; ?>
 
+        <?php foreach ($bodegas as $b): $estadoActivo = $b['estado'] === "Activo"; ?>
+          <div class="bg-card border border-border rounded-xl shadow-sm p-5 flex flex-col gap-3 relative bodegas-card">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex items-start gap-3">
+                <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                  <i data-lucide="warehouse" class="w-4 h-4"></i>
+                </div>
+
+                <div>
+                  <h2 class="text-base font-semibold text-foreground bodegas-card-nombre"><?= htmlspecialchars($b['nombre']) ?></h2>
+                  <p class="text-xs text-muted-foreground bodegas-card-id">ID: <?= $b['codigo_bodega'] ?></p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="w-8 h-8 rounded-full inline-flex items-center justify-center bodegas-btn-dots hover:bg-muted"
+                data-id="<?= $b['id_bodega'] ?>"
+                data-codigo="<?= htmlspecialchars($b['codigo_bodega']) ?>"
+                data-nombre="<?= htmlspecialchars($b['nombre']) ?>"
+                data-clasificacion="<?= htmlspecialchars($b['clasificacion_bodega']) ?>"
+                data-ubicacion="<?= htmlspecialchars($b['ubicacion']) ?>"
+                data-estado="<?= htmlspecialchars($b['estado']) ?>"
+              >
+                <i data-lucide="more-horizontal" class="w-4 h-4"></i>
+              </button>
+            </div>
+
+            <div class="flex items-center gap-2 text-sm text-muted-foreground">
+              <i data-lucide="map-pin" class="w-4 h-4 text-muted-foreground"></i>
+              <span class="bodegas-card-ubicacion"><?= htmlspecialchars($b['ubicacion']) ?></span>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <span class="inline-flex items-center rounded-full px-3 py-1 text-xs bg-blue-100 text-blue-700">
+                <?= htmlspecialchars($b['clasificacion_bodega']) ?>
+              </span>
+            </div>
+
+            <hr class="border-border">
+
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                <i data-lucide="package" class="w-4 h-4 text-muted-foreground"></i>
+                <span><?= (int)($b['materiales'] ?? 0) ?> Materiales</span>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <span class="estado-text text-sm font-medium <?= $estadoActivo ? 'text-emerald-700' : 'text-red-700' ?>"></span>
+
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    class="sr-only peer estado-switch"
+                    data-id="<?= $b['id_bodega'] ?>"
+                    data-codigo="<?= htmlspecialchars($b['codigo_bodega']) ?>"
+                    data-estado="<?= $estadoActivo ? 'Activo' : 'Inactivo' ?>"
+                    <?= $estadoActivo ? "checked" : "" ?>
+                  >
+                  <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:bg-emerald-600 transition">
+                    <div class="w-4 h-4 bg-white rounded-full absolute top-0.5 left-0.5 peer-checked:translate-x-5 transition"></div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+        <?php endforeach; ?>
+
+      </div>
     </div>
+
   </div>
 
-<!-- ========= MENÚ CONTEXTUAL ========= -->
+  <!-- ========= MENÚ CONTEXTUAL ========= -->
+  <div
+    id="context-menu"
+    class="hidden absolute z-50 w-56 rounded-lg bg-card border border-border shadow-md"
+  >
+    <ul class="py-2 text-sm text-foreground">
+      <li>
+        <button type="button" class="w-full flex items-center gap-3 px-4 py-2 hover:bg-muted bodegas-ctx-btn" data-action="ver">
+          <i data-lucide="eye" class="w-5 h-5 text-muted-foreground"></i>
+          <span>Ver detalles</span>
+        </button>
+      </li>
+
+      <li>
+        <button type="button" class="w-full flex items-center gap-3 px-4 py-2 hover:bg-muted bodegas-ctx-btn" data-action="editar">
+          <i data-lucide="square-pen" class="w-5 h-5 text-muted-foreground"></i>
+          <span>Editar</span>
+        </button>
+      </li>
+
+      <li class="my-2 border-t border-border"></li>
+
+      <li>
+        <button type="button" class="w-full flex items-center gap-3 px-4 py-2 hover:bg-muted bodegas-ctx-btn" data-action="deshabilitar">
+          <i data-lucide="power" class="w-5 h-5 text-muted-foreground"></i>
+          <span>Desactivar</span>
+        </button>
+      </li>
+    </ul>
+  </div>
+
+  <!-- ========= MENÚ CONTEXTUAL SUB-BODEGA ========= -->
 <div
-  id="context-menu"
-  class="hidden absolute z-50 w-56 rounded-lg bg-white border border-gray-200 shadow-md"
+  id="context-menu-subbodega"
+  class="hidden fixed z-[9999] w-56 rounded-lg bg-card border border-border shadow-md"
 >
-  <ul class="py-2 text-sm text-gray-800">
-    
-    <!-- Ver detalles -->
+  <ul class="py-2 text-sm text-foreground">
     <li>
-      <button
-        class="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 bodegas-ctx-btn"
-        data-action="ver"
-      >
-        <i data-lucide="eye" class="w-5 h-5 text-gray-600"></i>
+      <button type="button" class="w-full flex items-center gap-3 px-4 py-2 hover:bg-muted ctx-sub-btn" data-action="ver">
+        <i data-lucide="eye" class="w-5 h-5 text-muted-foreground"></i>
         <span>Ver detalles</span>
       </button>
     </li>
 
-    <!-- Editar -->
     <li>
-      <button
-        class="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 bodegas-ctx-btn"
-        data-action="editar"
-      >
-        <i data-lucide="square-pen" class="w-5 h-5 text-gray-600"></i>
+      <button type="button" class="w-full flex items-center gap-3 px-4 py-2 hover:bg-muted ctx-sub-btn" data-action="editar">
+        <i data-lucide="square-pen" class="w-5 h-5 text-muted-foreground"></i>
         <span>Editar</span>
       </button>
     </li>
 
-    <!-- Separador -->
-    <li class="my-2 border-t border-gray-200"></li>
+    <li class="my-2 border-t border-border"></li>
 
-    <!-- Desactivar -->
     <li>
-      <button
-        class="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 bodegas-ctx-btn"
-        data-action="deshabilitar"
-      >
-        <i data-lucide="power" class="w-5 h-5 text-gray-600"></i>
+      <button type="button" class="w-full flex items-center gap-3 px-4 py-2 hover:bg-muted ctx-sub-btn" data-action="toggle">
+        <i data-lucide="power" class="w-5 h-5 text-muted-foreground"></i>
         <span>Desactivar</span>
       </button>
     </li>
-
   </ul>
 </div>
 
-  <!-- ========= MODAL CREAR (DISEÑO TIPO MOVIMIENTOS) ========= -->
-<div id="modalCrear" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
-  <!-- Fondo clicable para cerrar -->
-  <div class="absolute inset-0" id="backdropCrear"></div>
 
-  <!-- Contenido del modal -->
-  <div class="relative mx-4 w-full max-w-2xl rounded-2xl bg-white shadow-xl p-6 sm:p-8">
-    <!-- Header -->
-    <div class="flex items-start justify-between mb-4">
-      <div>
-        <h2 class="text-xl font-semibold text-gray-900">Crear Nueva Bodega</h2>
-        <p class="text-sm text-gray-500">Complete los datos para registrar una nueva bodega</p>
+  <!-- ========= MODAL CREAR ========= -->
+  <div id="modalCrear" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div class="absolute inset-0" id="backdropCrear"></div>
+
+    <div class="relative mx-4 w-full max-w-2xl rounded-2xl bg-white shadow-xl p-6 sm:p-8">
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <h2 class="text-xl font-semibold text-gray-900">Crear Nueva Bodega</h2>
+          <p class="text-sm text-gray-500">Complete los datos para registrar una nueva bodega</p>
+        </div>
+
+        <button type="button" id="cerrarModal" class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100">
+          <i data-lucide="x" class="h-4 h-4 w-4"></i>
+        </button>
       </div>
 
-      <button
-        type="button"
-        id="cerrarModal"
-        class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100">
-        <i data-lucide="x" class="h-4 w-4"></i>
-      </button>
+      <form id="formCrearBodega" class="space-y-4">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">ID *</label>
+            <input id="crearCodigo" type="text"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]"
+                   placeholder="C-1">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Clasificación *</label>
+            <select id="crearClasificacion"
+                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
+              <option value="Insumos">Insumos</option>
+              <option value="Equipos">Equipos</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Ubicación *</label>
+            <input id="crearUbicacion" type="text"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]"
+                   placeholder="Ej: Bloque A, Piso 1">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de Bodega *</label>
+          <input id="crearNombre" type="text"
+                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]"
+                 placeholder="Ej: Bodega Principal - Eléctrico">
+        </div>
+
+        <div class="mt-4 flex items-center justify-end gap-2">
+          <button type="button" id="cancelarModal"
+                  class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 border border-gray-200">
+            Cancelar
+          </button>
+
+          <button type="submit"
+                  class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-secondary hover:opacity-90">
+            Crear Bodega
+          </button>
+        </div>
+      </form>
     </div>
-
-    <!-- FORM -->
-    <form class="space-y-4">
-      <div class="grid gap-4 sm:grid-cols-2">
-
-        <!-- ID -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">ID *</label>
-          <input
-            type="text"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]"
-            placeholder="C-1">
-        </div>
-
-        <!-- Tipo -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Tipo *</label>
-          <select
-            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
-            <option>Bodega</option>
-            <option>Sub-Bodega</option>
-          </select>
-        </div>
-
-        <!-- Clasificación -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Clasificación *</label>
-          <select
-            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
-            <option>Insumos</option>
-            <option>Equipos</option>
-          </select>
-        </div>
-
-        <!-- Ubicación -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Ubicación *</label>
-          <input
-            type="text"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]"
-            placeholder="Ej: Bloque A, Piso 1">
-        </div>
-      </div>
-
-      <!-- Nombre -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de Bodega *</label>
-        <input
-          type="text"
-          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]"
-          placeholder="Ej: Bodega Principal - Eléctrico">
-      </div>
-
-      <!-- Footer botones -->
-      <div class="mt-4 flex items-center justify-end gap-2">
-        <button
-          type="button"
-          id="cancelarModal"
-          class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 border border-gray-200">
-          Cancelar
-        </button>
-
-        <button
-          type="button"
-          class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-secondary hover:opacity-90">
-          Crear Bodega
-        </button>
-      </div>
-    </form>
   </div>
-</div>
 
+  <!-- ========= MODAL CREAR SUB-BODEGA ========= -->
+  <div id="modalCrearSubBodega" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div class="absolute inset-0" id="backdropCrearSub"></div>
 
-  <!-- ========= MODAL EDITAR (DISEÑO TIPO MOVIMIENTOS) ========= -->
-<div id="modalEditar" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
-  <!-- Fondo clicable para cerrar -->
-  <div class="absolute inset-0" id="backdropEditar"></div>
+    <div class="relative mx-4 w-full max-w-2xl rounded-2xl bg-white shadow-xl p-6 sm:p-8">
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <h2 class="text-xl font-semibold text-gray-900">Crear Nueva Sub-bodega</h2>
+          <p class="text-sm text-gray-500">Complete los datos para registrar una sub-bodega</p>
+        </div>
 
-  <!-- Contenido del modal -->
-  <div class="relative mx-4 w-full max-w-2xl rounded-2xl bg-white shadow-xl p-6 sm:p-8">
-    <!-- Header -->
-    <div class="flex items-start justify-between mb-4">
-      <div>
-        <h2 class="text-xl font-semibold text-gray-900">Editar Bodega</h2>
-        <p class="text-sm text-gray-500">Modifica la información de la bodega</p>
+        <button type="button" id="cerrarModalSub"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100">
+          <i data-lucide="x" class="h-4 w-4"></i>
+        </button>
       </div>
 
-      <button
-        type="button"
-        id="cerrarEditar"
-        class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100">
-        <i data-lucide="x" class="h-4 w-4"></i>
-      </button>
+      <form id="formCrearSubBodega" class="space-y-4">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Bodega padre *</label>
+              <select id="id_bodega"
+                      class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm
+                            focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]"
+                      required>
+                <option value="">Seleccione una bodega</option>
+
+                <?php foreach ($bodegas as $b): ?>
+                  <option value="<?= (int)$b['id_bodega'] ?>">
+                    <?= htmlspecialchars($b['nombre']) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Código *</label>
+            <input id="subCodigo" type="text"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]"
+                   placeholder="SB-01" required>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Clasificación *</label>
+            <select id="subClasificacion"
+                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]"
+                    required>
+              <option value="Insumos">Insumos</option>
+              <option value="Equipos">Equipos</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de la Sub-bodega *</label>
+          <input id="subNombre" type="text"
+                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]"
+                 placeholder="Sub-bodega Eléctrica" required>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+          <textarea id="subDescripcion" rows="3"
+                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]"
+                    placeholder="Opcional"></textarea>
+        </div>
+
+        <div class="mt-4 flex items-center justify-end gap-2">
+          <button type="button" id="cancelarModalSub"
+                  class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 border border-gray-200">
+            Cancelar
+          </button>
+
+          <button type="submit"
+                  class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-secondary hover:opacity-90">
+            Crear Sub-bodega
+          </button>
+        </div>
+      </form>
     </div>
-
-    <!-- FORM -->
-    <form class="space-y-4">
-      <div class="grid gap-4 sm:grid-cols-2">
-        <!-- ID -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">ID *</label>
-          <input
-            id="editId"
-            type="text"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
-        </div>
-
-        <!-- Tipo -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Tipo *</label>
-          <select
-            id="editTipo"
-            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
-            <option>Bodega</option>
-            <option>Sub-Bodega</option>
-          </select>
-        </div>
-
-        <!-- Clasificación -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Clasificación *</label>
-          <select
-            id="editClasificacion"
-            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
-            <option>Eléctrico</option>
-            <option>Construcción</option>
-            <option>Sanitario</option>
-            <option>Herramientas</option>
-            <option>Ejemplo</option>
-          </select>
-        </div>
-
-        <!-- Ubicación -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Ubicación *</label>
-          <input
-            id="editUbicacion"
-            type="text"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
-        </div>
-      </div>
-
-      <!-- Nombre -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de Bodega *</label>
-        <input
-          id="editNombre"
-          type="text"
-          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
-      </div>
-
-      <!-- Footer botones -->
-      <div class="mt-4 flex items-center justify-end gap-2">
-        <button
-          type="button"
-          id="cancelarEditar"
-          class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 border border-gray-200">
-          Cancelar
-        </button>
-
-        <button
-          type="button"
-          id="guardarEditar"
-          class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-secondary hover:opacity-90">
-          Guardar cambios
-        </button>
-      </div>
-    </form>
   </div>
-</div>
 
+  <!-- ✅ ========= MODAL EDITAR ========= -->
+  <div id="modalEditar" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div class="absolute inset-0" id="backdropEditar"></div>
 
-<!-- ========= MODAL DETALLE ========= -->
-<div
-  id="modalDetalle"
-  class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center"
->
-  <div
-    class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col"
-  >
+    <div class="relative mx-4 w-full max-w-2xl rounded-2xl bg-white shadow-xl p-6 sm:p-8">
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <h2 class="text-xl font-semibold text-gray-900">Editar Bodega</h2>
+          <p class="text-sm text-gray-500">Modifica la información de la bodega</p>
+        </div>
 
-    <!-- HEADER -->
+        <button type="button" id="cerrarEditar"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100">
+          <i data-lucide="x" class="h-4 w-4"></i>
+        </button>
+      </div>
+
+      <form id="formEditarBodega" class="space-y-4">
+        <input type="hidden" id="editIdBodega">
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">ID *</label>
+            <input id="editCodigoBodega" type="text"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Clasificación *</label>
+            <select id="editClasificacion"
+                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
+              <option value="Insumos">Insumos</option>
+              <option value="Equipos">Equipos</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Ubicación *</label>
+            <input id="editUbicacion" type="text"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
+                          focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nombre de Bodega *</label>
+          <input id="editNombre" type="text"
+                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
+                        focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
+        </div>
+
+        <div class="mt-4 flex items-center justify-end gap-2">
+          <button type="button" id="cancelarEditar"
+                  class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 border border-gray-200">
+            Cancelar
+          </button>
+
+          <button type="button" id="guardarEditar"
+                  class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-secondary hover:opacity-90">
+            Guardar cambios
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ✅ ========= MODAL DETALLE (BODEGA) ========= -->
+<div id="modalDetalle" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+
     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900">
-        Detalles de la Bodega
-      </h2>
+      <h2 class="text-lg font-semibold text-gray-900">Detalles de la Bodega</h2>
 
-      <button
-        id="cerrarDetalle"
-        class="h-8 w-8 rounded-full hover:bg-gray-100 flex items-center justify-center"
-      >
+      <button id="cerrarDetalle" type="button" class="h-8 w-8 rounded-full hover:bg-gray-100 flex items-center justify-center">
         <i data-lucide="x" class="w-4 h-4 text-gray-600"></i>
       </button>
     </div>
 
-    <!-- CONTENIDO CON SCROLL -->
     <div class="overflow-y-auto px-6 py-5 space-y-6">
 
-      <!-- INFO PRINCIPAL -->
       <div class="flex items-start gap-4">
         <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
           <i data-lucide="warehouse" class="w-6 h-6"></i>
         </div>
 
         <div>
-          <h3 id="detalleNombre" class="text-base font-semibold text-gray-900">
-            Bodega Principal - Eléctrico
-          </h3>
+          <h3 id="detalleNombre" class="text-base font-semibold text-gray-900">-</h3>
           <p class="text-xs text-gray-500">
-            ID: <span id="detalleId">1</span>
+            ID: <span id="detalleId">-</span>
           </p>
         </div>
       </div>
 
-      <!-- DATOS BODEGA -->
       <div class="grid gap-4 text-sm">
-
-        <!-- FILA 1: CLASIFICACIÓN + TIPO -->
         <div class="grid grid-cols-2 gap-6 items-center">
           <div class="grid grid-cols-[120px_auto] gap-3 items-center">
             <span class="text-gray-600">Clasificación:</span>
-            <span id="detalleClasificacion" class="detalle-chip">Insumos</span>
-          </div>
-
-          <div class="grid grid-cols-[120px_auto] gap-3 items-center">
-            <span class="text-gray-600">Tipo:</span>
-            <span id="detalleTipo" class="detalle-chip">Bodega</span>
+            <span id="detalleClasificacion" class="detalle-chip">-</span>
           </div>
         </div>
 
-        <!-- FILA 2: UBICACIÓN + ESTADO -->
         <div class="grid grid-cols-2 gap-6 items-center">
           <div class="grid grid-cols-[120px_auto] gap-3 items-center">
             <span class="text-gray-600">Ubicación:</span>
-            <span
-              id="detalleUbicacion"
-              class="font-medium text-gray-800"
-            >
-              Bloque A, Piso 1
-            </span>
+            <span id="detalleUbicacion" class="font-medium text-gray-800">-</span>
           </div>
 
           <div class="grid grid-cols-[120px_auto] gap-3 items-center">
             <span class="text-gray-600">Estado:</span>
-            <span
-              id="detalleEstado"
-              class="badge-estado-activo"
-            >
-              Activo
-            </span>
+            <span id="detalleEstado" class="badge-estado-activo">-</span>
           </div>
         </div>
-
       </div>
 
-      <!-- SECCIÓN MATERIALES -->
       <div class="pt-5 border-t border-gray-200">
+        <div class="flex items-center gap-2 mb-2">
+          <i data-lucide="layers" class="w-4 h-4 text-gray-600"></i>
+          <h4 class="font-semibold text-gray-900">Sub-bodegas</h4>
+        </div>
 
+        <div id="subBodegasContainer" class="space-y-2">
+          <p class="text-sm text-gray-500">Seleccione una bodega</p>
+        </div>
+      </div>
+
+      <div class="pt-5 border-t border-gray-200">
         <div class="flex items-center gap-2 mb-2">
           <i data-lucide="box" class="w-4 h-4 text-gray-600"></i>
-          <h4 class="font-semibold text-gray-900">
-            Materiales en esta Bodega
-          </h4>
+          <h4 class="font-semibold text-gray-900">Materiales en esta Bodega</h4>
         </div>
 
         <p class="text-sm text-gray-500 mb-4">
           Total: <strong>3</strong> material(es)
         </p>
 
-        <!-- LISTA MATERIALES -->
         <div class="border border-gray-200 rounded-2xl p-4 bg-gray-50">
-
-          <div class="flex gap-4">
-
-            <!-- ICONO / IMAGEN DEL MATERIAL -->
-            <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
-              <i data-lucide="box" class="w-5 h-5"></i>
-              <!-- si luego usas imagen real: <img src="ruta-imagen.png" class="w-6 h-6" /> -->
-            </div>
-
-            <!-- CONTENIDO -->
-            <div class="flex-1">
-
-              <div class="flex justify-between items-start">
-              <div>
-                <h5 class="font-medium text-gray-900">Taladro Percutor</h5>
-                <p class="text-xs text-gray-500">HER-001 • Herramientas</p>
-              </div>
-              <span class="badge-material-disponible">Disponible</span>
-            </div>
-
-            <div class="mt-3 text-sm font-medium text-gray-900">
-              <strong>5</strong> unidad
-            </div>
-
-            <div class="mt-2">
-              <!-- BARRA -->
-              <div class="mt-2">
-                <div class="h-2 rounded-full bg-gray-200 overflow-hidden">
-                  <div class="h-full rounded-full bg-emerald-600 w-full"></div>
-                </div>
-                <p class="text-xs text-gray-500 mt-1">Min: 3</p>
-              </div>
-            </div>
-
-          </div>
-
+          <p class="text-sm text-gray-600">
+            (Placeholder del modal viejo. Luego lo conectamos a materiales reales.)
+          </p>
         </div>
       </div>
+
     </div>
   </div>
 </div>
 
+<!-- ✅ ========= MODAL DETALLE (SUB-BODEGA) ========= -->
+<div id="modalDetalleSubBodega" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+
+    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Detalles de la Sub-bodega</h2>
+
+      <button id="cerrarDetalleSub" type="button" class="h-8 w-8 rounded-full hover:bg-gray-100 flex items-center justify-center">
+        <i data-lucide="x" class="w-4 h-4 text-gray-600"></i>
+      </button>
+    </div>
+
+    <div class="overflow-y-auto px-6 py-5 space-y-6">
+
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+          <i data-lucide="layers" class="w-6 h-6"></i>
+        </div>
+
+        <div>
+          <h3 id="detalleSubNombre" class="text-base font-semibold text-gray-900">-</h3>
+          <p class="text-xs text-gray-500">
+            Código: <span id="detalleSubCodigo">-</span>
+          </p>
+        </div>
+      </div>
+
+<div class="grid gap-4 text-sm">
+
+          <!-- Fila 1: Clasificación + Estado -->
+          <div class="grid grid-cols-2 gap-6 items-center">
+            <div class="grid grid-cols-[120px_auto] gap-3 items-center">
+              <span class="text-gray-600">Clasificación:</span>
+              <span id="detalleSubClasificacion" class="detalle-chip">-</span>
+            </div>
+
+            <div class="grid grid-cols-[120px_auto] gap-3 items-center">
+              <span class="text-gray-600">Estado:</span>
+              <span id="detalleSubEstado" class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium w-fit badge-estado-activo text-emerald-700">-</span>
+            </div>
+          </div>
+
+          <!-- Fila 2: Descripción (full) -->
+          <div class="grid grid-cols-[120px_auto] gap-3 items-start">
+            <span class="text-gray-600">Descripción:</span>
+            <span id="detalleSubDescripcion" class="font-medium text-gray-800">-</span>
+          </div>
+
+        </div>
+
+
+      <!-- ✅ AQUÍ VA LA PARTE QUE TE FALTABA -->
+      <div class="pt-5 border-t border-gray-200">
+        <div class="flex items-center gap-2 mb-2">
+          <i data-lucide="box" class="w-4 h-4 text-gray-600"></i>
+          <h4 class="font-semibold text-gray-900">Materiales en esta Sub-bodega</h4>
+        </div>
+
+        <p class="text-sm text-gray-500 mb-4">
+          Total: <strong id="detalleSubTotalMateriales">0</strong> material(es)
+        </p>
+
+        <div class="border border-gray-200 rounded-2xl p-4 bg-gray-50">
+          <p class="text-sm text-gray-600" id="detalleSubMaterialesPlaceholder">
+            (Placeholder del modal viejo. Luego lo conectamos a materiales reales.)
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+  <!-- Modal Editar sub-bodega -->
+
+    <div id="modalEditarSubBodega" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div class="absolute inset-0" id="backdropEditarSub"></div>
+
+    <div class="relative mx-4 w-full max-w-2xl rounded-2xl bg-white shadow-xl p-6 sm:p-8">
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <h2 class="text-xl font-semibold text-gray-900">Editar Sub-bodega</h2>
+          <p class="text-sm text-gray-500">Modifica la información de la sub-bodega</p>
+        </div>
+
+        <button type="button" id="cerrarEditarSub" class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100">
+          <i data-lucide="x" class="h-4 w-4"></i>
+        </button>
+      </div>
+
+      <input type="hidden" id="editSubId" />
+
+      <div class="space-y-4">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Código *</label>
+            <input id="editSubCodigo" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Clasificación *</label>
+            <select id="editSubClasificacion" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
+              <option value="Insumos">Insumos</option>
+              <option value="Equipos">Equipos</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
+          <input id="editSubNombre" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+          <textarea id="editSubDescripcion" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
+        </div>
+
+        <div class="mt-4 flex items-center justify-end gap-2">
+          <button type="button" id="cancelarEditarSub"
+                  class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 border border-gray-200">
+            Cancelar
+          </button>
+
+          <button type="button" id="guardarEditarSubBodega"
+                  class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-secondary hover:opacity-90">
+            Guardar cambios
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div>
+
 </main>
-
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  // Lucide
-  if (window.lucide && typeof lucide.createIcons === "function") {
-    lucide.createIcons();
-  }
-
-  /* ============================================================
-     ========== CAMBIO LISTA / GRID (TARJETAS) ==========
-  ============================================================ */
-  const btnVistaTabla    = document.getElementById("btnVistaTabla");
-  const btnVistaTarjetas = document.getElementById("btnVistaTarjetas");
-  const viewList         = document.getElementById("view-list");
-  const viewGrid         = document.getElementById("view-grid");
-
-  const setActiveBtn = (active, inactive) => {
-    active.classList.add("bg-muted", "text-foreground");
-    active.classList.remove("text-muted-foreground");
-
-    inactive.classList.remove("bg-muted", "text-foreground");
-    inactive.classList.add("text-muted-foreground");
-  };
-
-  const showList = () => {
-    viewList?.classList.remove("hidden");
-    viewGrid?.classList.add("hidden");
-    if (btnVistaTabla && btnVistaTarjetas) setActiveBtn(btnVistaTabla, btnVistaTarjetas);
-  };
-
-  const showGrid = () => {
-    viewGrid?.classList.remove("hidden");
-    viewList?.classList.add("hidden");
-    if (btnVistaTabla && btnVistaTarjetas) setActiveBtn(btnVistaTarjetas, btnVistaTabla);
-
-    if (window.lucide && typeof lucide.createIcons === "function") {
-      lucide.createIcons();
-    }
-  };
-
-  if (btnVistaTabla && btnVistaTarjetas) {
-    btnVistaTabla.addEventListener("click", showList);
-    btnVistaTarjetas.addEventListener("click", showGrid);
-    showList(); // inicial
-  }
-
-  /* ============================================================
-     ========== MODAL CREAR (NUEVA BODEGA) ==========
-  ============================================================ */
-  const btnNuevaBodega = document.getElementById("btnNuevaBodega");
-  const modalCrear     = document.getElementById("modalCrear");
-  const cerrarModal    = document.getElementById("cerrarModal");
-  const cancelarModal  = document.getElementById("cancelarModal");
-
-  const openModal = (modal) => {
-    if (!modal) return;
-    modal.classList.remove("hidden");
-    modal.classList.add("flex");
-    document.body.classList.add("overflow-hidden");
-    if (window.lucide && typeof lucide.createIcons === "function") lucide.createIcons();
-  };
-
-  const closeModal = (modal) => {
-    if (!modal) return;
-    modal.classList.add("hidden");
-    modal.classList.remove("flex");
-    document.body.classList.remove("overflow-hidden");
-  };
-
-  btnNuevaBodega?.addEventListener("click", () => openModal(modalCrear));
-  cerrarModal?.addEventListener("click", () => closeModal(modalCrear));
-  cancelarModal?.addEventListener("click", () => closeModal(modalCrear));
-
-  // Cerrar modal crear clic fuera
-  modalCrear?.addEventListener("click", (e) => {
-    if (e.target === modalCrear) closeModal(modalCrear);
-  });
-
-  /* ============================================================
-     ========== MENÚ CONTEXTUAL (3 PUNTOS) ==========
-  ============================================================ */
-  const contextMenu  = document.getElementById("context-menu");
-  const modalDetalle = document.getElementById("modalDetalle");
-  const modalEditar  = document.getElementById("modalEditar");
-
-  let selectedData = null;
-
-  function openContextMenu(btn) {
-    if (!contextMenu) return;
-
-    selectedData = {
-      id: btn.dataset.id,
-      nombre: btn.dataset.nombre,
-      clasificacion: btn.dataset.clasificacion,
-      ubicacion: btn.dataset.ubicacion,
-      tipo: btn.dataset.tipo,
-      estado: btn.dataset.estado
-    };
-
-    const r = btn.getBoundingClientRect();
-    const menuWidth = 208; // w-52
-    const x = r.right + window.scrollX - menuWidth;
-    const y = r.bottom + window.scrollY + 8;
-
-    contextMenu.style.left = `${Math.max(8, x)}px`;
-    contextMenu.style.top  = `${y}px`;
-    contextMenu.classList.remove("hidden");
-
-    if (window.lucide && typeof lucide.createIcons === "function") {
-      lucide.createIcons();
-    }
-  }
-
-  function closeContextMenu() {
-    contextMenu?.classList.add("hidden");
-  }
-
-  // Delegación para lista y grid
-  document.addEventListener("click", (e) => {
-    const btnDots = e.target.closest(".bodegas-btn-dots");
-    if (btnDots) {
-      e.preventDefault();
-      e.stopPropagation();
-      openContextMenu(btnDots);
-      return;
-    }
-
-    if (contextMenu && !contextMenu.contains(e.target)) {
-      closeContextMenu();
-    }
-  });
-
-  /* ============================================================
-     ========== ACCIONES DEL MENÚ ==========
-  ============================================================ */
-  if (contextMenu) {
-    const btnVer  = contextMenu.querySelector("[data-action='ver']");
-    const btnEdit = contextMenu.querySelector("[data-action='editar']");
-    const btnOff  = contextMenu.querySelector("[data-action='deshabilitar']");
-
-    btnVer?.addEventListener("click", () => {
-      if (!selectedData || !modalDetalle) return;
-
-      document.getElementById("detalleId").textContent = selectedData.id;
-      document.getElementById("detalleNombre").textContent = selectedData.nombre;
-      document.getElementById("detalleClasificacion").textContent = selectedData.clasificacion;
-      document.getElementById("detalleTipo").textContent = selectedData.tipo;
-      document.getElementById("detalleUbicacion").textContent = selectedData.ubicacion;
-
-      const est = document.getElementById("detalleEstado");
-      est.textContent = selectedData.estado;
-      est.className =
-        "inline-flex items-center rounded-full px-3 py-1 text-xs " +
-        (selectedData.estado === "Activo"
-          ? "bg-emerald-100 text-emerald-700"
-          : "bg-red-100 text-red-700");
-
-      openModal(modalDetalle);
-      closeContextMenu();
-    });
-
-    btnEdit?.addEventListener("click", () => {
-      if (!selectedData || !modalEditar) return;
-
-      document.getElementById("editId").value = selectedData.id;
-      document.getElementById("editNombre").value = selectedData.nombre;
-      document.getElementById("editClasificacion").value = selectedData.clasificacion;
-      document.getElementById("editUbicacion").value = selectedData.ubicacion;
-      document.getElementById("editTipo").value = selectedData.tipo;
-
-      openModal(modalEditar);
-      closeContextMenu();
-    });
-
-    btnOff?.addEventListener("click", () => {
-      if (!selectedData) return;
-      alert(`Bodega #${selectedData.id} deshabilitada`);
-      closeContextMenu();
-    });
-  }
-
-  /* ============================================================
-     ========== CERRAR MODALES DETALLE / EDITAR ==========
-  ============================================================ */
-  document.getElementById("cerrarDetalle")?.addEventListener("click", () => closeModal(modalDetalle));
-  document.getElementById("cerrarEditar")?.addEventListener("click", () => closeModal(modalEditar));
-  document.getElementById("cancelarEditar")?.addEventListener("click", () => closeModal(modalEditar));
-
-  modalDetalle?.addEventListener("click", (e) => {
-    if (e.target === modalDetalle) closeModal(modalDetalle);
-  });
-  modalEditar?.addEventListener("click", (e) => {
-    if (e.target === modalEditar) closeModal(modalEditar);
-  });
-
-  /* ============================================================
-     ========== SWITCH ACTIVA / INACTIVA (GRID) ==========
-  ============================================================ */
-  document.addEventListener("change", (e) => {
-    const sw = e.target.closest(".estado-switch");
-    if (!sw) return;
-
-    const card = sw.closest(".bg-white.border.border-gray-200"); // la card actual
-    if (!card) return;
-
-    const estadoNuevo = sw.checked ? "Activo" : "Inactivo";
-    const textoNuevo  = sw.checked ? "Activa" : "Inactiva";
-
-    const estadoText = card.querySelector(".estado-text");
-    if (estadoText) {
-      estadoText.textContent = textoNuevo;
-      estadoText.classList.toggle("text-emerald-700", sw.checked);
-      estadoText.classList.toggle("text-red-700", !sw.checked);
-    }
-
-    // Guardar estado
-    sw.dataset.estado = estadoNuevo;
-
-    // Actualizar data-estado del botón de 3 puntos para que el modal salga bien
-    const dotsBtn = card.querySelector(".bodegas-btn-dots");
-    if (dotsBtn) {
-      dotsBtn.dataset.estado = estadoNuevo;
-    }
-  });
-
-  /* ============================================================
-     ========== ESC PARA CERRAR ==========
-  ============================================================ */
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      closeModal(modalCrear);
-      closeModal(modalDetalle);
-      closeModal(modalEditar);
-      closeContextMenu();
-    }
-  });
-});
-</script>
-
-
 </body>
 </html>
+

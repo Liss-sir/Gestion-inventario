@@ -26,7 +26,7 @@ function validarSoloNumeros(event) {
         return true;
     }
     
-    // Permitir Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+    // Permitir Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+Xx
     if (event.ctrlKey || event.metaKey) {
         return true;
     }

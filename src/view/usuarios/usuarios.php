@@ -191,37 +191,41 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       <!-- ================================== -->
       <!-- TABLE VIEW CONTAINER               -->
       <!-- ================================== -->
-      <!-- ✅ FIX TAILWIND: overflow-hidden para que SÍ se vea el rounded en las esquinas -->
+      <!-- ✅ FIX PRO: dropdown sin recorte + esquinas perfectas -->
       <div
         id="vistaTabla"
-        class="overflow-hidden rounded-xl border border-border bg-card relative"
+        class="relative rounded-xl border border-border bg-card p-[1px] overflow-visible"
       >
-        <table class="min-w-full divide-y divide-border text-sm">
-          <thead class="bg-gray-100">
+        <table class="min-w-full border-separate border-spacing-0 text-sm rounded-[11px] bg-card">
+          <thead>
             <tr>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100 first:rounded-tl-[11px]">
                 Usuario
               </th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">
                 Documento
               </th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">
                 Rol
               </th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">
                 Teléfono
               </th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">
                 Estado
               </th>
-              <th class="px-4 py-3 text-right font-medium text-xs text-muted-foreground">
+              <th class="px-4 py-3 text-right font-medium text-xs text-muted-foreground bg-gray-100 last:rounded-tr-[11px]">
                 Acciones
               </th>
             </tr>
           </thead>
+
           <tbody
             id="tbodyUsuarios"
-            class="divide-y divide-border bg-card"
+            class="divide-y divide-border bg-card
+                   [&>tr>td]:bg-card
+                   [&>tr:last-child>td:first-child]:rounded-bl-[11px]
+                   [&>tr:last-child>td:last-child]:rounded-br-[11px]"
           >
             <!-- Rows are rendered dynamically via JavaScript -->
           </tbody>

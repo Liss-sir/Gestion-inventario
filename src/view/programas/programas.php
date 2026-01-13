@@ -152,7 +152,17 @@ try {
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between my-6">
                 <!-- Search bar (left) -->
                 <div class="relative w-full sm:max-w-xs">
-                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"></i>
+                   <svg
+                        class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
                     <input 
                         type="text" 
                         placeholder="Buscar por nombre..." 
@@ -212,28 +222,34 @@ try {
             </div>
 
             <!-- TABLE VIEW -->
-            <div id="tableView" class="border border-border rounded-lg">
-                <table class="w-full border-collapse">
+            <!-- ✅ CORREGIDO: bordes y esquinas como "Usuarios" + dropdown sin recorte -->
+            <div id="tableView" class="relative rounded-xl border border-border bg-card p-[1px] overflow-visible">
+                <table class="min-w-full border-separate border-spacing-0 text-sm rounded-[11px] bg-card">
                     
                     <!-- Table headers -->
                     <thead>
-                        <tr class="border-b border-border bg-muted">
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Código</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Programas de Formación</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Nivel</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Duración</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Instructores</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Estado</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Acciones</th>
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted first:rounded-tl-[11px]">Código</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted">Programas de Formación</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted">Nivel</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted">Duración</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted">Instructores</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted">Estado</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted last:rounded-tr-[11px]">Acciones</th>
                         </tr>
                     </thead>
                     
                     <!-- Data rows -->
-                    <tbody>
+                    <tbody
+                        class="divide-y divide-border bg-card
+                               [&>tr>td]:bg-card
+                               [&>tr:last-child>td:first-child]:rounded-bl-[11px]
+                               [&>tr:last-child>td:last-child]:rounded-br-[11px]"
+                    >
                         <?php foreach ($programas as $index => $programa): ?>
                         <?php $isActive = (isset($programa['estado']) && (strtolower(trim((string)$programa['estado'])) === 'activo' || (string)$programa['estado'] === '1' || $programa['estado'] == 1)); ?>
                         <tr 
-                            class="border-b border-border hover:bg-muted transition-colors"
+                            class="hover:bg-muted transition-colors"
                             data-index="<?php echo $index; ?>"
                             data-id-programa="<?php echo htmlspecialchars($programa['id_programa']); ?>"
                             data-codigo="<?php echo htmlspecialchars($programa['codigo']); ?>"
@@ -301,7 +317,6 @@ try {
                                 </div>
                             </td>
 
-                            
                             <!-- Status badge (Active/Inactive) -->
                             <td class="py-4 px-4">
                                 <span class="js-estado">
@@ -332,7 +347,6 @@ try {
                                     </button>
                                     
                                     <div id="actionMenu<?php echo $index; ?>" class="hidden absolute right-0 mt-2 w-48 rounded-xl border border-border bg-popover shadow-md py-1 z-50">
-
                                         <button onclick="openViewModal(<?php echo $index; ?>)" class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted transition-colors">
                                             <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M1 12S4.5 5 12 5s11 7 11 7-3.5 7-11 7S1 12 1 12z"/>
@@ -411,7 +425,7 @@ try {
                         <button onclick="openEditModal(<?php echo $index; ?>)" 
                         class="text-muted-foreground hover:text-foreground transition flex-shrink-0 ml-2">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
                             </svg>
                         </button>
                     </div>
