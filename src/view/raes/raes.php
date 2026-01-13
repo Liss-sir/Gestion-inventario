@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 ?>

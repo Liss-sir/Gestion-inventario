@@ -1,10 +1,8 @@
-// Variables globales
+﻿// Variables globales
 let obras = [];
 let fichas = [];
 let raes = [];
 let instructores = [];
-let originalEditData = null; // Variable para almacenar datos originales en edición
-let obraOriginal = null; // Variable para mantener la obra original en edición
 
 // ==============================
 // CONFIGURACIÓN DE API - URL FIJA
@@ -223,101 +221,6 @@ function mostrarErrorSelects(mensaje) {
 }
 
 // ==============================
-// VALIDACIÓN DE FECHAS
-// ==============================
-
-/**
- * Valida las fechas de una obra
- * @param {string} fechaInicio - Fecha de inicio (YYYY-MM-DD)
- * @param {string} fechaFin - Fecha de fin (YYYY-MM-DD)
- * @param {boolean} isCreate - Si es creación (true) o edición (false)
- * @returns {boolean} - true si las fechas son válidas
- */
-function validarFechas(fechaInicio, fechaFin, isCreate = false) {
-    // Convertir a objetos Date
-    const inicio = new Date(fechaInicio);
-    const fin = new Date(fechaFin);
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0); // Establecer a inicio del día
-
-    // Validar formato de fechas
-    if (isNaN(inicio.getTime()) || isNaN(fin.getTime())) {
-        toastError("Formato de fecha inválido");
-        return false;
-    }
-
-    // 1. La fecha de inicio NO puede ser mayor a la fecha de fin
-    if (inicio > fin) {
-        toastError("La fecha de inicio no puede ser posterior a la fecha de fin");
-        return false;
-    }
-
-    // 2. Para CREACIÓN: la fecha de inicio debe ser hoy o posterior
-    if (isCreate) {
-        if (inicio < hoy) {
-            toastError("La fecha de inicio no puede ser anterior a hoy");
-            return false;
-        }
-        
-        // Para creación, la fecha de fin también debe ser hoy o posterior
-        if (fin < hoy) {
-            toastError("La fecha de fin no puede ser anterior a hoy");
-            return false;
-        }
-    } 
-    // Para EDICIÓN: validaciones específicas
-    else {
-        // Obtener fecha actual sin horas
-        const hoyMidnight = new Date();
-        hoyMidnight.setHours(0, 0, 0, 0);
-        
-        // Si la fecha de inicio es anterior a hoy, permitirla (ya que es edición)
-        // Pero mostrar advertencia si se intenta cambiar a una fecha anterior
-        if (inicio < hoyMidnight) {
-            // Si estamos cambiando la fecha y la nueva es anterior a hoy
-            const nuevaFecha = new Date(fechaInicio);
-            if (nuevaFecha < hoyMidnight) {
-                toastInfo("La fecha de inicio es anterior a hoy. Esto puede afectar el historial de la obra.");
-            }
-        } else {
-            // Si la nueva fecha de inicio es hoy o posterior, validar que no sea menor que hoy
-            if (inicio < hoyMidnight) {
-                toastError("No se puede asignar una fecha de inicio anterior a hoy");
-                return false;
-            }
-        }
-    }
-
-    // 3. Validar que la fecha de fin sea mayor o igual a la fecha de inicio
-    if (fin < inicio) {
-        toastError("La fecha de fin debe ser igual o posterior a la fecha de inicio");
-        return false;
-    }
-
-    // 4. Validar rango mínimo (al menos 1 día de diferencia)
-    const diferenciaDias = Math.floor((fin - inicio) / (1000 * 60 * 60 * 24));
-    if (diferenciaDias < 0) {
-        toastError("La obra debe tener al menos 1 día de duración");
-        return false;
-    }
-
-    return true;
-}
-
-/**
- * Valida la descripción (mínimo 10 caracteres)
- * @param {string} descripcion - Texto de la descripción
- * @returns {boolean} - true si es válida
- */
-function validarDescripcion(descripcion) {
-    if (!descripcion || descripcion.trim().length < 10) {
-        toastError("La descripción debe tener al menos 10 caracteres");
-        return false;
-    }
-    return true;
-}
-
-// ==============================
 // INICIALIZACIÓN
 // ==============================
 
@@ -326,21 +229,6 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Inicializando módulo de obras...');
     setupSidebarDetection();
     cargarObras();
-    
-    // Establecer fecha mínima como hoy para los inputs de fecha
-    const hoy = new Date().toISOString().split('T')[0];
-    
-    // Para creación
-    const fechaInicioCreate = document.getElementById('create_fecha_inicio');
-    const fechaFinCreate = document.getElementById('create_fecha_fin');
-    
-    if (fechaInicioCreate) {
-        fechaInicioCreate.min = hoy;
-    }
-    
-    if (fechaFinCreate) {
-        fechaFinCreate.min = hoy;
-    }
 });
 
 // ==============================
@@ -627,51 +515,6 @@ async function openCreateModal() {
     
     document.getElementById('modalCreate').classList.remove('hidden');
     document.getElementById('formCreate').reset();
-    
-    // Configurar validación en tiempo real para creación
-    const fechaInicioCreate = document.getElementById('create_fecha_inicio');
-    const fechaFinCreate = document.getElementById('create_fecha_fin');
-    const hoy = new Date().toISOString().split('T')[0];
-    
-    if (fechaInicioCreate) {
-        fechaInicioCreate.min = hoy;
-        
-        fechaInicioCreate.addEventListener('change', function() {
-            const nuevaFecha = new Date(this.value);
-            const hoyDate = new Date();
-            hoyDate.setHours(0, 0, 0, 0);
-            
-            if (nuevaFecha < hoyDate) {
-                toastError("No se puede asignar una fecha de inicio anterior a hoy");
-                this.value = hoy;
-                return;
-            }
-            
-            if (fechaFinCreate) {
-                fechaFinCreate.min = this.value;
-                
-                // Si la fecha de fin es anterior a la nueva fecha de inicio, ajustarla
-                const fechaFinActual = new Date(fechaFinCreate.value);
-                if (fechaFinActual < nuevaFecha) {
-                    fechaFinCreate.value = this.value;
-                }
-            }
-        });
-    }
-    
-    if (fechaFinCreate) {
-        fechaFinCreate.min = hoy;
-        
-        fechaFinCreate.addEventListener('change', function() {
-            const fechaInicio = new Date(fechaInicioCreate.value);
-            const fechaFin = new Date(this.value);
-            
-            if (fechaFin < fechaInicio) {
-                toastError("La fecha de fin no puede ser anterior a la fecha de inicio");
-                this.value = fechaInicioCreate.value || hoy;
-            }
-        });
-    }
 }
 
 function closeCreateModal() {
@@ -726,9 +569,9 @@ async function handleCreateObra(e) {
         return; // La función ya muestra el error
     }
 
-    // 4. Validar fechas (true para creación)
+    // 4. Validar fechas
     if (!validarFechas(obraData.fecha_inicio, obraData.fecha_fin, true)) {
-        return;
+        return; // La función ya muestra el error
     }
     
     // Si todas las validaciones pasan, proceder
@@ -769,6 +612,7 @@ async function handleCreateObra(e) {
         btnCreateLoading.classList.add('hidden');
     }
 }
+
 
 // Modal editar obra
 async function openEditModal(id) {
@@ -818,69 +662,6 @@ async function openEditModal(id) {
         document.getElementById('edit_tipo').value = obra.tipo_trabajo;
         document.getElementById('edit_fecha_inicio').value = obra.fecha_inicio;
         document.getElementById('edit_fecha_fin').value = obra.fecha_fin;
-
-        // ============================================
-        // CONFIGURAR VALIDACIÓN DE FECHAS PARA EDICIÓN
-        // ============================================
-        const fechaInicioEdit = document.getElementById('edit_fecha_inicio');
-        const fechaFinEdit = document.getElementById('edit_fecha_fin');
-        const hoy = new Date().toISOString().split('T')[0];
-
-        if (fechaInicioEdit) {
-            // Establecer fecha mínima como hoy para evitar fechas pasadas
-            fechaInicioEdit.min = hoy;
-            
-            // Si la fecha guardada es anterior a hoy, mostrarla pero no permitir seleccionar fechas pasadas
-            const fechaInicioObra = new Date(obra.fecha_inicio);
-            const hoyDate = new Date();
-            hoyDate.setHours(0, 0, 0, 0);
-            
-            if (fechaInicioObra < hoyDate) {
-                // Mostrar advertencia pero permitir la fecha guardada
-                toastInfo("La fecha de inicio actual es anterior a hoy. Puedes mantenerla o cambiarla a una fecha actual o futura.");
-                // No forzamos el valor a hoy, mostramos el valor original
-            }
-            
-            // Validar que al cambiar la fecha, no sea anterior a hoy
-            fechaInicioEdit.addEventListener('change', function() {
-                const nuevaFecha = new Date(this.value);
-                const hoyDate = new Date();
-                hoyDate.setHours(0, 0, 0, 0);
-                
-                if (nuevaFecha < hoyDate) {
-                    toastError("No se puede asignar una fecha de inicio anterior a hoy");
-                    this.value = obra.fecha_inicio; // Revertir al valor original
-                    return;
-                }
-                
-                // Actualizar fecha mínima de fin
-                if (fechaFinEdit) {
-                    fechaFinEdit.min = this.value;
-                    
-                    // Si la fecha de fin es anterior a la nueva fecha de inicio, ajustarla
-                    const fechaFinActual = new Date(fechaFinEdit.value);
-                    if (fechaFinActual < nuevaFecha) {
-                        fechaFinEdit.value = this.value;
-                    }
-                }
-            });
-        }
-
-        if (fechaFinEdit) {
-            // Establecer fecha mínima como la fecha de inicio
-            fechaFinEdit.min = obra.fecha_inicio || hoy;
-            
-            // Validar que la fecha de fin no sea anterior a la fecha de inicio
-            fechaFinEdit.addEventListener('change', function() {
-                const fechaInicio = new Date(fechaInicioEdit.value);
-                const fechaFin = new Date(this.value);
-                
-                if (fechaFin < fechaInicio) {
-                    toastError("La fecha de fin no puede ser anterior a la fecha de inicio");
-                    this.value = obra.fecha_fin || fechaInicioEdit.value; // Revertir al valor original
-                }
-            });
-        }
 
         // Mostrar el modal
         document.getElementById('modalEdit').classList.remove('hidden');
@@ -945,7 +726,7 @@ async function handleEditObra(e) {
         return; // La función ya muestra el error
     }
 
-    // 4. Validar fechas (false para edición)
+    // 4. Validar fechas
     if (!validarFechas(currentData.fecha_inicio, currentData.fecha_fin, false)) {
         return; // La función ya muestra el error
     }
@@ -1269,31 +1050,18 @@ function toastInfo(message) {
 // VALIDACIÓN DE CAMBIOS EN EDICIÓN
 // =========================
 
+let originalEditData = null; // Variable para almacenar datos originales
+
 /**
  * Check if there are any changes between original and current data
- * Mejorada para manejar diferentes tipos de datos
  */
 function hasChanges(originalData, currentData) {
-  // Convertir todo a string para comparación exacta
-  const normalize = (obj) => {
-    return {
-      id_ficha: parseInt(obj.id_ficha) || 0,
-      id_rae: parseInt(obj.id_rae) || 0,
-      id_instructor: parseInt(obj.id_instructor) || 0,
-      nombre_actividad: (obj.nombre_actividad || '').trim().toLowerCase(),
-      descripcion: (obj.descripcion || '').trim().toLowerCase(),
-      tipo_trabajo: (obj.tipo_trabajo || '').trim(),
-      fecha_inicio: obj.fecha_inicio || '',
-      fecha_fin: obj.fecha_fin || ''
-    };
-  };
-
-  const orig = normalize(originalData);
-  const curr = normalize(currentData);
-
-  return JSON.stringify(orig) !== JSON.stringify(curr);
+  return JSON.stringify(originalData) !== JSON.stringify(currentData);
 }
 
+/**
+ * Validates obra data before sending to server
+ */
 /**
  * Validates obra data before sending to server
  */
@@ -1335,4 +1103,103 @@ function validateObraData(data, isEdit = false) {
   }
 
   return true;
+}
+
+/**
+ * Check if there are any changes between original and current data
+ * Mejorada para manejar diferentes tipos de datos
+ */
+function hasChanges(originalData, currentData) {
+  // Convertir todo a string para comparación exacta
+  const normalize = (obj) => {
+    return {
+      id_ficha: parseInt(obj.id_ficha) || 0,
+      id_rae: parseInt(obj.id_rae) || 0,
+      id_instructor: parseInt(obj.id_instructor) || 0,
+      nombre_actividad: (obj.nombre_actividad || '').trim().toLowerCase(),
+      descripcion: (obj.descripcion || '').trim().toLowerCase(),
+      tipo_trabajo: (obj.tipo_trabajo || '').trim(),
+      fecha_inicio: obj.fecha_inicio || '',
+      fecha_fin: obj.fecha_fin || ''
+    };
+  };
+
+  const orig = normalize(originalData);
+  const curr = normalize(currentData);
+
+  return JSON.stringify(orig) !== JSON.stringify(curr);
+}
+
+// ==============================
+// VALIDACIONES DE FECHAS
+// ==============================
+
+// Función para validar que fecha de inicio no sea mayor que fecha de fin
+function validarFechas(fechaInicio, fechaFin, esCreacion = false) {
+    const inicio = new Date(fechaInicio);
+    const fin = new Date(fechaFin);
+    
+    // Validar que las fechas sean válidas
+    if (isNaN(inicio.getTime())) {
+        toastError("La fecha de inicio no es válida.");
+        return false;
+    }
+    
+    if (isNaN(fin.getTime())) {
+        toastError("La fecha de fin no es válida.");
+        return false;
+    }
+    
+    // Validar que fecha de inicio no sea mayor a fecha de fin
+    if (inicio > fin) {
+        toastError("La fecha de inicio no puede ser posterior a la fecha de fin.");
+        return false;
+    }
+    
+    // Validar que no sea una fecha futura para creación (opcional)
+    if (esCreacion) {
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0); // Eliminar la parte de tiempo para comparar solo fechas
+        
+        if (inicio > hoy) {
+            toastError("La fecha de inicio no puede ser una fecha futura.");
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+// Función para validar que fecha de inicio no sea mayor que fecha de fin
+function validarFechas(fechaInicio, fechaFin, esCreacion = false) {
+    const inicio = new Date(fechaInicio);
+    const fin = new Date(fechaFin);
+    
+    // Validar que las fechas sean válidas
+    if (isNaN(inicio.getTime())) {
+        toastError("La fecha de inicio no es válida.");
+        return false;
+    }
+    
+    if (isNaN(fin.getTime())) {
+        toastError("La fecha de fin no es válida.");
+        return false;
+    }
+    
+    // Validar que fecha de inicio no sea mayor a fecha de fin
+    if (inicio > fin) {
+        toastError("La fecha de inicio no puede ser posterior a la fecha de fin.");
+        return false;
+    }
+    
+    return true;
+}
+
+// Función para validar longitud mínima de descripción
+function validarDescripcion(descripcion) {
+    if (descripcion.trim().length < 10) {
+        toastError("La descripción debe tener al menos 10 caracteres.");
+        return false;
+    }
+    return true;
 }

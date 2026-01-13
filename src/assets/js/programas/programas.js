@@ -1,4 +1,4 @@
-// =========================
+﻿// =========================
 // FLOWBITE-STYLE ALERTS (WHITE BACKGROUND, WARNING, NO PROGRESS BAR)
 // =========================
 

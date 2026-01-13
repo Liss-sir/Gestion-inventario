@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '../../../../Config/database.php';
 
 // Final array that will be used by the HTML
