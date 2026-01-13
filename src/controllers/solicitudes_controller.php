@@ -1,14 +1,18 @@
 <?php
 require_once "../Gestion-inventario/Config/database.php";
 require_once "../models/solicitudes.php";
+require_once "../models/notificacion.php";
 
 class SolicitudMaterialController {
 
     private $model;
 
+    private $notificacionModel;
+
     public function __construct($conn)
     {
         $this->model = new SolicitudMaterialModel($conn);
+        $this->notificacionModel = new NotificacionModel($conn);
     }
 
     // Create request with details
@@ -22,6 +26,16 @@ class SolicitudMaterialController {
             ];
         }
 
+        $idSolicitud = $this->model->createSolicitudes($data);
+
+        $this->notificacionModel->crear([
+            "id_usuario" => $data['id_usuario'],
+            "tipo" => "solicitud",
+            "titulo" => "Nueva solicitud de material",
+            "mensaje" => "Se ha creado una nueva solicitud de material.",
+            "referencia_tipo" => "solicitud",
+            "referencia_id" => $data['id_solicitud']
+        ]);
         try {
             $this->model->begin();
 
@@ -50,6 +64,9 @@ class SolicitudMaterialController {
     // Approve or reject request
     public function responder($data)
     {
+        $idSolicitud = $data['id_solicitud'];
+        $estado = $data['estado'];
+        
         $ok = $this->model->responderSolicitud(
             $data['id_solicitud'],
             $data['estado'],
@@ -57,6 +74,25 @@ class SolicitudMaterialController {
             $data['observaciones'] ?? null
         );
     
+
+        if ($ok) {
+
+            $solicitud = $this->model->getById($idSolicitud);
+
+            $this->notificacionModel->crear([
+                'id_usuario' => $solicitud['id_usuario_solicitante'],
+                'tipo'       => $estado === 'Aprobada'
+                                ? 'SOLICITUD_APROBADA'
+                                : 'SOLICITUD_RECHAZADA',
+                'titulo'     => "Solicitud $estado",
+                'mensaje'    => "Tu solicitud #$idSolicitud fue $estado",
+                'url'        => "/solicitudes/ver?id=$idSolicitud"
+            ]);
+
+            return true;
+        }
+
+        
         if (!$ok) {
             return [
                 "status" => "error",
@@ -74,11 +110,32 @@ class SolicitudMaterialController {
     // Mark request as delivered
     public function entregar($data)
     {
+        $idSolicitud = $data['id_solicitud'];
+        $estado = $data['estado'];
+        
         $ok = $this->model->marcarEntregada(
             $data['id_solicitud'],
             $data['id_usuario']
         );
     
+
+        if ($ok) {
+
+            $solicitud = $this->model->getById($idSolicitud);
+
+            $this->notificacionModel->crear([
+                'id_usuario' => $solicitud['id_usuario_solicitante'],
+                'tipo'       => $estado === 'Aprobada'
+                                ? 'SOLICITUD_APROBADA'
+                                : 'SOLICITUD_RECHAZADA',
+                'titulo'     => "Solicitud $estado",
+                'mensaje'    => "Tu solicitud #$idSolicitud fue $estado",
+                'url'        => "/solicitudes/ver?id=$idSolicitud"
+            ]);
+
+            return true;
+        }
+
         if (!$ok) {
             return [
                 "status" => "error",
