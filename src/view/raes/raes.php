@@ -146,7 +146,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
             <!-- Aviso de sin RAEs en el sistema -->
             <div id="emptyStateRaes" class="hidden overflow-visible rounded-lg border border-border bg-card relative p-6 mb-6">
-                <div class="flex flex-col items-center justify-center py-12 px-4">
+                <div class="flex flex-col items-center justify-center py-8 px-4">
                     <div class="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
@@ -161,7 +161,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
             <!-- Aviso de búsqueda sin resultados (YA EXISTE - mantener) -->
             <div id="emptySearchRaes" class="hidden overflow-visible rounded-lg border border-border bg-card relative p-6 mb-6">
-                <div class="flex flex-col items-center justify-center py-12 px-4">
+                <div class="flex flex-col items-center justify-center py-8 px-4">
                     <div class="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                             <circle cx="11" cy="11" r="6" stroke-linecap="round" stroke-linejoin="round"></circle>

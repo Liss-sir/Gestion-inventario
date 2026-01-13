@@ -13,11 +13,12 @@ try {
                 p.descripcion_programa, 
                 p.duracion_horas, 
                 p.estado,
-                COUNT(DISTINCT u.id_usuario) as num_instructores
+                GROUP_CONCAT(DISTINCT u.nombre_completo SEPARATOR '; ') as instructores_nombres,
+                COUNT(DISTINCT u.id_usuario) as instructores
             FROM programas_formacion p
             LEFT JOIN usuarios u ON p.id_programa = u.id_programa 
                 AND u.cargo = 'Instructor'
-                AND u.estado = 1
+                AND u.estado = 'active'
             GROUP BY p.id_programa
             ORDER BY p.nombre_programa";
 
@@ -36,7 +37,8 @@ try {
             'descripcion' => $r['descripcion_programa'],
             'nivel'       => $r['nivel_programa'],
             'duracion'    => $r['duracion_horas'] . ' horas',
-            'instructores'=> (int)$r['num_instructores'],
+            'instructores_nombres' => $r['instructores_nombres'] ?: 'No hay instructores vinculados',
+            'instructores'=> (int)$r['instructores'],
             'estado'      => $r['estado']
         ];
     }
@@ -185,7 +187,7 @@ try {
 
             <!-- Empty State: No programas in system -->
             <div id="emptyStateProgramas" class="hidden overflow-visible rounded-lg border border-border bg-card relative p-6 mb-6">
-                <div class="flex flex-col items-center justify-center py-12 px-4">
+                <div class="flex flex-col items-center justify-center py-8 px-4">
                     <div class="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
                         <i class="fas fa-inbox text-2xl text-muted-foreground"></i>
                     </div>
@@ -198,7 +200,7 @@ try {
 
             <!-- Empty State: Search results empty -->
             <div id="emptySearchProgramas" class="hidden overflow-visible rounded-lg border border-border bg-card relative p-6 mb-6">
-                <div class="flex flex-col items-center justify-center py-12 px-4">
+                <div class="flex flex-col items-center justify-center py-8 px-4">
                     <div class="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
                         <i class="fas fa-search text-2xl text-muted-foreground"></i>
                     </div>
@@ -239,7 +241,8 @@ try {
                             data-descripcion="<?php echo htmlspecialchars($programa['descripcion']); ?>"
                             data-nivel="<?php echo htmlspecialchars($programa['nivel']); ?>"
                             data-duracion="<?php echo htmlspecialchars($programa['duracion']); ?>"
-                            data-instructores="<?php echo htmlspecialchars($programa['instructores']); ?>"
+                            data-instructores="<?php echo htmlspecialchars($programa['instructores_nombres']); ?>"
+                            data-num-instructores="<?php echo htmlspecialchars($programa['instructores']); ?>"
                             data-estado="<?php echo $isActive ? 1 : 0; ?>"
                         >
                             <!-- Program code -->
@@ -292,7 +295,9 @@ try {
                             <td class="py-4 px-4">
                                 <div class="flex items-center gap-2 text-sm text-muted-foreground opacity-75">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-icon lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>
-                                    <span class="js-instructores"><?php echo $programa['instructores']; ?></span>
+                                    <span class="js-instructores" title="<?php echo htmlspecialchars($programa['instructores_nombres']); ?>">
+                                        <?php echo $programa['instructores']; ?>
+                                    </span>
                                 </div>
                             </td>
 
@@ -377,7 +382,8 @@ try {
                     data-descripcion="<?php echo htmlspecialchars($programa['descripcion']); ?>"
                     data-nivel="<?php echo htmlspecialchars($programa['nivel']); ?>"
                     data-duracion="<?php echo htmlspecialchars($programa['duracion']); ?>"
-                    data-instructores="<?php echo htmlspecialchars($programa['instructores']); ?>"
+                    data-instructores="<?php echo htmlspecialchars($programa['instructores_nombres']); ?>"
+                    data-num-instructores="<?php echo htmlspecialchars($programa['instructores']); ?>"
                     data-estado="<?php echo $isActive ? 1 : 0; ?>">
                     
                     <!-- ICONO + TÍTULO + EDIT -->
@@ -452,7 +458,7 @@ try {
                     <div class="flex items-center justify-between mt-auto flex-shrink-0">
                         <div class="flex items-center gap-2 text-sm text-muted-foreground opacity-75">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-icon lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>
-                            <span class="js-instructores truncate max-w-[80px]">
+                            <span class="js-instructores truncate max-w-[80px]" title="<?php echo htmlspecialchars($programa['instructores_nombres']); ?>">
                                 <?php echo $programa['instructores']; ?>
                             </span>
                         </div>
@@ -555,7 +561,7 @@ try {
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-xs text-muted-foreground">Instructor:</span>
-                        <span id="view_instructor" class="text-sm font-medium text-foreground">Juan Guillermo Crespo</span>
+                        <span id="view_instructor" class="text-sm font-medium text-foreground"></span>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-xs text-muted-foreground">Estado:</span>
