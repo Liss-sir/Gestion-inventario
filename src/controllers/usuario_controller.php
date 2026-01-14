@@ -57,6 +57,60 @@ function colapsarEspacios($s) {
     return trim(preg_replace('/\s{2,}/u', ' ', (string)$s));
 }
 
+/**
+ * ✅ Helper: evaluar si estado es "activo" sin asumir tipo (string/int/bool)
+ */
+function estadoEsActivo($rawEstado): bool {
+    $val = strtolower(trim((string)$rawEstado));
+    return ($val === 'activo' || $val === '1' || $val === 'true');
+}
+
+/**
+ * ✅ Helper: revocar sesiones activas en BD para un usuario (sin tocar DB)
+ */
+function revocarSesionesUsuario(PDO $conn, int $idUsuario): void {
+    try {
+        $stmtOff = $conn->prepare("
+            UPDATE sesiones_usuarios
+            SET activa = 0
+            WHERE id_usuario = :id
+              AND activa = 1
+        ");
+        $stmtOff->execute([':id' => $idUsuario]);
+    } catch (Exception $e) {
+        // no rompemos el flujo si falla, pero idealmente loguear
+    }
+}
+
+/**
+ * ✅ Helper: validar sesión actual contra BD (token_sesion activo)
+ * - Útil para endpoints por fetch (actualizar_perfil, cambiar_password, etc)
+ */
+function validarSesionActivaEnBD(PDO $conn): bool {
+    $uid   = isset($_SESSION['usuario_id']) ? (int)$_SESSION['usuario_id'] : 0;
+    $token = isset($_SESSION['token_sesion']) ? (string)$_SESSION['token_sesion'] : '';
+
+    if ($uid <= 0 || $token === '') return false;
+
+    try {
+        $stmt = $conn->prepare("
+            SELECT 1
+            FROM sesiones_usuarios
+            WHERE id_usuario = :id
+              AND token_sesion = :t
+              AND activa = 1
+            LIMIT 1
+        ");
+        $stmt->execute([
+            ':id' => $uid,
+            ':t'  => $token
+        ]);
+        return (bool)$stmt->fetchColumn();
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
 $usuario = new Usuario($conn);
 
 $accion = $_GET['accion'] ?? null;
@@ -211,6 +265,10 @@ switch ($accion) {
                 WHERE id_token = :id
                 LIMIT 1
             ")->execute([':id' => $idToken]);
+
+            // ✅ Opcional recomendado: si cambió password por reset, revocar sesiones activas
+            // (evita que alguien quede logueado con password antiguo)
+            revocarSesionesUsuario($conn, $idUsuario);
 
             // Redirigir al login con éxito
             header("Location: " . BASE_URL . "src/view/login/login.php?reset=ok");
@@ -501,11 +559,6 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
 
     // =====================================================
     // ✅ ACTIVAR CUENTA POR TOKEN (SIN AUTO-LOGIN)
-    // Flujo correcto:
-    // 1) Activa cuenta
-    // 2) Crea token FORCE_ (sin tocar DB)
-    // 3) REDIRIGE AL LOGIN para que el usuario ingrese credenciales
-    // 4) En el login se detecta FORCE_ y se activa el modal en dashboard
     // =====================================================
     case 'activar':
         $token = $_GET['token'] ?? null;
@@ -570,20 +623,17 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 ':exp' => $forceExp
             ]);
 
-            // ✅ CORRECCIÓN: cortar cualquier sesión previa (admin u otro usuario)
-            // para que login.php NO redirija directo al dashboard.
+            // ✅ CORRECCIÓN: cortar cualquier sesión previa
             if (session_status() === PHP_SESSION_ACTIVE) {
                 session_unset();
                 session_destroy();
             }
 
-            // Se redirige al login para que el usuario ingrese credenciales
             header("Location: " . BASE_URL . "src/view/login/login.php?activacion=ok&force=1");
             exit;
 
         } catch (Exception $e) {
 
-            // ✅ CORRECCIÓN: cortar sesión previa también aquí
             if (session_status() === PHP_SESSION_ACTIVE) {
                 session_unset();
                 session_destroy();
@@ -680,6 +730,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
 
     // =====================================================
     // ✅ CAMBIAR ESTADO
+    // ✅ IMPLEMENTADO: si se desactiva => revoca sesiones en sesiones_usuarios
     // =====================================================
     case 'cambiar_estado':
         header('Content-Type: application/json; charset=utf-8');
@@ -699,13 +750,21 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             exit;
         }
 
-        if (!$usuario->obtenerPorId($id_usuario)) {
+        $uExist = $usuario->obtenerPorId($id_usuario);
+        if (!$uExist) {
             echo json_encode(['error' => 'Usuario no encontrado']);
             exit;
         }
 
+        $ok = $usuario->cambiarEstado($id_usuario, $estado);
+
+        // ✅ NUEVO: si se desactiva, tumbar sesiones activas
+        if ($ok && (int)$estado === 0) {
+            revocarSesionesUsuario($conn, (int)$id_usuario);
+        }
+
         echo json_encode(
-            $usuario->cambiarEstado($id_usuario, $estado)
+            $ok
                 ? ['success' => true, 'mensaje' => 'Estado actualizado']
                 : ['success' => false, 'error' => 'Error al actualizar estado']
         );
@@ -713,7 +772,79 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     break;
 
     // =====================================================
+    // ✅ CHECK SESSION (para avisar si lo deshabilitaron)
+    // GET: ?accion=check_session
+    // =====================================================
+    case 'check_session':
+        header('Content-Type: application/json; charset=utf-8');
+
+        if (!isset($_SESSION['usuario_id'])) {
+            echo json_encode([
+                'active' => 0,
+                'reason' => 'no_session',
+                'message' => 'No hay sesión activa.'
+            ]);
+            exit;
+        }
+
+        // 1) Valida que el token_sesion siga activo en BD
+        if (!validarSesionActivaEnBD($conn)) {
+            echo json_encode([
+                'active' => 0,
+                'reason' => 'revoked',
+                'message' => 'Tu sesión fue cerrada o revocada.'
+            ]);
+            exit;
+        }
+
+        // 2) Valida si el usuario sigue activo (si el admin lo deshabilitó)
+        try {
+            $stmt = $conn->prepare("
+                SELECT estado
+                FROM usuarios
+                WHERE id_usuario = :id
+                LIMIT 1
+            ");
+            $stmt->execute([':id' => (int)$_SESSION['usuario_id']]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row || !estadoEsActivo($row['estado'] ?? null)) {
+
+                // ✅ revoca sesión en BD para que no quede activa
+                revocarSesionesUsuario($conn, (int)$_SESSION['usuario_id']);
+
+                // ✅ mata sesión PHP
+                session_unset();
+                session_destroy();
+
+                echo json_encode([
+                    'active' => 0,
+                    'reason' => 'disabled',
+                    'message' => 'Tu cuenta ha sido deshabilitada por el administrador.'
+                ]);
+                exit;
+            }
+
+            echo json_encode([
+                'active' => 1,
+                'reason' => 'ok',
+                'message' => 'Sesión válida.'
+            ]);
+            exit;
+
+        } catch (Exception $e) {
+            echo json_encode([
+                'active' => 0,
+                'reason' => 'server',
+                'message' => 'Error validando estado de la cuenta.'
+            ]);
+            exit;
+        }
+    break;
+
+    // =====================================================
     // ✅ LOGIN (JSON) + DETECTA FORCE_ EN tokens_correo
+    // ✅ IMPLEMENTADO: BLOQUEO SI ESTÁ INACTIVO (sin tocar DB)
     // =====================================================
     case 'login':
         header('Content-Type: application/json; charset=utf-8');
@@ -732,6 +863,16 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
 
         if ($user) {
 
+            // ✅ NUEVO: bloquear si estado NO activo
+            $estadoOk = estadoEsActivo($user['estado'] ?? null);
+            if (!$estadoOk) {
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Cuenta inactiva. Contacta al administrador.'
+                ]);
+                exit;
+            }
+
             $_SESSION['usuario'] = [
                 'id'     => $user['id_usuario'],
                 'nombre' => $user['nombre_completo'],
@@ -744,7 +885,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             $_SESSION['usuario_correo'] = $user['correo'] ?? '';
             $_SESSION['usuario_cargo']  = $user['cargo'] ?? '';
 
-            // ✅ Detecta el "force" sin usar tipo = 'force_password' (porque tu DB no lo acepta)
+            // ✅ Detecta el "force" sin usar tipo = 'force_password'
             $stmt = $conn->prepare("
                 SELECT id_token
                 FROM tokens_correo
@@ -784,22 +925,54 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
 
     // =====================================================
     // ✅ LOGOUT (REDIRECCIÓN)
+    // ✅ IMPLEMENTADO: marca sesion en BD como inactiva si existe token_sesion
     // =====================================================
     case 'logout':
+
+        // ✅ NUEVO: apagar sesión activa en BD (si existe token)
+        try {
+            $uid   = isset($_SESSION['usuario_id']) ? (int)$_SESSION['usuario_id'] : 0;
+            $token = isset($_SESSION['token_sesion']) ? (string)$_SESSION['token_sesion'] : '';
+
+            if ($uid > 0 && $token !== '') {
+                $stmt = $conn->prepare("
+                    UPDATE sesiones_usuarios
+                    SET activa = 0
+                    WHERE id_usuario = :id
+                      AND token_sesion = :t
+                      AND activa = 1
+                ");
+                $stmt->execute([
+                    ':id' => $uid,
+                    ':t'  => $token
+                ]);
+            }
+        } catch (Exception $e) {
+            // no rompemos el logout
+        }
+
         session_unset();
         session_destroy();
+
         header("Location: " . BASE_URL . "src/view/login/login.php");
         exit;
     break;
 
     // =====================================================
     // ✅ ACTUALIZAR PERFIL (TELÉFONO, DIRECCIÓN Y FOTO)
+    // ✅ IMPLEMENTADO: valida token_sesion activo en BD (anti-revoked)
     // =====================================================
     case 'actualizar_perfil':
         header('Content-Type: application/json; charset=utf-8');
 
         if (!isset($_SESSION['usuario_id'])) {
             echo json_encode(['error' => 'No hay sesión activa. Inicia sesión nuevamente.']);
+            exit;
+        }
+
+        // ✅ NUEVO: si admin revocó sesión => bloquear
+        if (!validarSesionActivaEnBD($conn)) {
+            echo json_encode(['error' => 'Sesión expirada o revocada. Inicia sesión nuevamente.']);
             exit;
         }
 
@@ -897,12 +1070,19 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
 
     // =====================================================
     // ✅ CAMBIAR PASSWORD (DESDE PERFIL + CIERRA FORCE_PASSWORD)
+    // ✅ IMPLEMENTADO: valida token_sesion activo en BD (anti-revoked)
     // =====================================================
     case 'cambiar_password':
         header('Content-Type: application/json; charset=utf-8');
 
         if (!isset($_SESSION['usuario_id'])) {
             echo json_encode(['error' => 'No hay sesión activa. Inicia sesión nuevamente.']);
+            exit;
+        }
+
+        // ✅ NUEVO: si admin revocó sesión => bloquear
+        if (!validarSesionActivaEnBD($conn)) {
+            echo json_encode(['error' => 'Sesión expirada o revocada. Inicia sesión nuevamente.']);
             exit;
         }
 
@@ -965,6 +1145,10 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 ")->execute([':uid' => $id_usuario]);
 
                 unset($_SESSION['force_password_change']);
+
+                // ✅ Opcional recomendado: revocar sesiones activas (obliga re-login)
+                // Si NO quieres esto, lo comentas. (no toca DB)
+                // revocarSesionesUsuario($conn, $id_usuario);
 
                 echo json_encode(['success' => true, 'message' => 'Contraseña actualizada correctamente.']);
                 exit;

@@ -5,6 +5,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+require_once __DIR__ . '/../../includes/auth_guard.php';
+
+
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 // ===============================
@@ -482,7 +485,7 @@ $pieGradient = implode(", ", $gradientParts);
                  placeholder="Ingresa la nueva contraseña" />
           <button type="button"
                   data-toggle-password="#fp_nueva"
-                  class="absolute inset-y-0 right-0 inline-flex items-center justify-center px-3 text-slate-500 hover:text-slate-700"
+                  class="absolute inset-y-0 right-0 inline-flex items-center justify-content-center px-3 text-slate-500 hover:text-slate-700"
                   aria-label="Mostrar u ocultar nueva contraseña"
                   title="Mostrar/Ocultar">
             <i data-lucide="eye" class="h-4 w-4 toggle-eye-on"></i>
@@ -525,13 +528,134 @@ $pieGradient = implode(", ", $gradientParts);
   </div>
 </div>
 
+<!-- ===================================================== -->
+<!-- ✅ NUEVO MODAL CENTRADO (ADVERTENCIA) - SIN TOAST       -->
+<!-- ===================================================== -->
+<div id="modalSessionWarning" class="modal-overlay" style="z-index:10050;">
+  <div class="relative w-full max-w-md rounded-2xl border border-border bg-white p-6 shadow-xl">
+    <div class="flex items-start gap-3">
+      <div class="mt-0.5 rounded-xl p-2 bg-[#FDC3004A]">
+        <i data-lucide="alert-triangle" class="h-6 w-6 text-[#FDC300]"></i>
+      </div>
+
+      <div class="flex-1">
+        <h3 class="text-base font-semibold text-slate-900">Advertencia</h3>
+        <p id="modalSessionWarningMsg" class="mt-1 text-sm text-slate-600">
+          Tu cuenta ha sido deshabilitada por el administrador.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-5 flex justify-end">
+      <button
+        type="button"
+        id="btnSessionWarningOk"
+        class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:opacity-90"
+      >
+        Entendido
+      </button>
+    </div>
+  </div>
+</div>
+
 </main>
 
-<!-- ✅ Contenedor de toasts (AHORA EN ESQUINA SUPERIOR DERECHA) -->
+<!-- ✅ Contenedor de toasts (LO DEJAMOS POR TU CÓDIGO, PERO YA NO SE USA PARA DESHABILITADO) -->
 <div
   id="toastContainer"
   class="fixed top-6 right-6 z-[10000] flex flex-col gap-3 w-full max-w-md px-4 pointer-events-none"
 ></div>
+
+<!-- ✅ FIX IMPLEMENTADO (SIN TOCAR TU BASE):
+     - Usa auth_controller.php?accion=check (tu archivo 3)
+     - SI logout=true -> muestra MODAL CENTRADO de ADVERTENCIA
+     - Luego redirige al LOGIN REAL -->
+<script>
+(function initAutoLogoutIfDisabled(){
+  // ✅ Endpoint real (tu auth_controller.php)
+  const CHECK_URL = "src/controllers/auth_controller.php?accion=check";
+  const INTERVAL_MS = 7000; // 7 segundos
+  let alreadyRedirecting = false;
+
+  function getLoginUrl(reason){
+    const base = (typeof window.BASE_URL === "string" && window.BASE_URL.length)
+      ? window.BASE_URL
+      : "";
+    // ✅ login real
+    const url = base + "src/view/login/login.php";
+    return url + "?reason=" + encodeURIComponent(reason || "disabled");
+  }
+
+  function showCenteredWarning(message){
+    const modal = document.getElementById("modalSessionWarning");
+    const msgEl = document.getElementById("modalSessionWarningMsg");
+    const btnOk = document.getElementById("btnSessionWarningOk");
+
+    if (!modal) return;
+
+    if (msgEl) msgEl.textContent = message || "Tu sesión fue cerrada.";
+    modal.classList.add("active");
+    document.body.style.overflow = "hidden";
+
+    // Render icons
+    try{
+      if (window.lucide && typeof lucide.createIcons === "function") lucide.createIcons();
+    }catch(e){}
+
+    // Botón entendido: redirige
+    if (btnOk && !btnOk.dataset.bound) {
+      btnOk.dataset.bound = "1";
+      btnOk.addEventListener("click", () => {
+        window.location.href = getLoginUrl("disabled");
+      });
+    }
+  }
+
+  async function check(){
+    if (alreadyRedirecting) return;
+
+    try{
+      const res = await fetch(CHECK_URL, { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+
+      // Formato de tu auth_controller:
+      // { ok:false, logout:true, reason:"disabled"|"session_revoked"|"no_session" }
+      if (data && data.logout) {
+        alreadyRedirecting = true;
+
+        const reason = data.reason || "disabled";
+
+        // ✅ SIEMPRE ADVERTENCIA (NO error, NO toast)
+        if (reason === "disabled") {
+          showCenteredWarning("Tu cuenta ha sido deshabilitada por el administrador.");
+        } else if (reason === "session_revoked") {
+          showCenteredWarning("Tu sesión fue cerrada (sesión revocada).");
+        } else {
+          showCenteredWarning("Tu sesión expiró o fue cerrada.");
+        }
+
+        // ✅ dejar que se vea el modal y luego redirigir
+        setTimeout(() => {
+          window.location.href = getLoginUrl(reason);
+        }, 1200);
+
+        return;
+      }
+
+    } catch(e){
+      // Si falla red, no hagas logout (evita falsos positivos)
+    }
+  }
+
+  // ✅ Espera DOM para que existan modal + lucide
+  document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(() => {
+      check();
+      setInterval(check, INTERVAL_MS);
+    }, 250);
+  });
+})();
+</script>
 
 <!-- ===================================================== -->
 <!-- ✅ TAB LOCK (BLOQUEAR MISMA CUENTA EN OTRA PESTAÑA)    -->
@@ -650,7 +774,7 @@ document.addEventListener("DOMContentLoaded", function () {
         lucide.createIcons();
     }
 
-    // ✅ Toasts Flowbite (reemplaza alerts y unifica notificaciones) - AHORA TAMAÑO PEQUEÑO COMO USUARIOS
+    // ✅ Toasts Flowbite (siguen sirviendo para otras cosas tuyas)
     initFlowbiteToasts();
 
     // ✅ Ojitos (toggle show/hide password)
@@ -712,7 +836,6 @@ function showFlowbiteToast(type, message) {
     `;
   }
 
-  // ✅ En dashboard usamos "error" (en usuarios usan warning). Aquí lo dejamos rojo.
   if (type === "error") {
     borderColor = "border-red-500";
     textColor = "text-red-900";
@@ -751,20 +874,17 @@ function showFlowbiteToast(type, message) {
 
   container.appendChild(toast);
 
-  // Smooth fade-in
   requestAnimationFrame(() => {
     toast.classList.remove("opacity-0", "-translate-y-2");
     toast.classList.add("opacity-100", "translate-y-0");
   });
 
-  // Click para cerrar (opcional)
   toast.addEventListener("click", () => {
     toast.classList.add("opacity-0", "-translate-y-2");
     toast.classList.remove("opacity-100", "translate-y-0");
     setTimeout(() => toast.remove(), 250);
   });
 
-  // Auto-dismiss como en usuarios
   setTimeout(() => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -808,106 +928,6 @@ function initPasswordToggles() {
   });
 }
 
-// ========= CONSUMO MENSUAL (BARRAS) =========
-const labelsConsumo = <?php echo json_encode(array_column($consumoData, 'name')); ?>;
-const valoresConsumo = <?php echo json_encode(array_map('intval', array_column($consumoData, 'consumo'))); ?>;
-
-const totalMateriales = valoresConsumo.reduce((acc, val) => acc + val, 0);
-const maxY = totalMateriales > 0 ? totalMateriales : 10;
-
-const consumoCtx = document.getElementById('consumoChart').getContext('2d');
-
-const consumoChart = new Chart(consumoCtx, {
-    type: 'bar',
-    data: {
-    labels: labelsConsumo,
-    datasets: [{
-        label: 'Consumo de materiales',
-        data: valoresConsumo,
-        backgroundColor: 'rgba(148, 163, 184, 0.75)',
-        borderRadius: 8,
-        borderSkipped: false
-    }]
-    },
-    options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: { display: false },
-        tooltip: {
-        enabled: true,
-        callbacks: {
-            label: function(context) {
-            const valor = context.parsed.y || 0;
-            return valor + ' materiales';
-            }
-        }
-        }
-    },
-    scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-        y: {
-        beginAtZero: true,
-        suggestedMax: maxY,
-        ticks: {
-            stepSize: Math.max(1, Math.round(maxY / 5)),
-            font: { size: 10 }
-        },
-        grid: { color: 'rgba(229, 231, 235, 0.8)' }
-        }
-    }
-    }
-});
-
-// ========= DISTRIBUCIÓN POR CATEGORÍA (DOUGHNUT) =========
-const categoriaLabels = <?php echo json_encode(array_column($categoriaData, 'name')); ?>;
-const categoriaValoresRaw = <?php echo json_encode(array_map('intval', array_column($categoriaData, 'value'))); ?>;
-const categoriaColoresRaw = <?php echo json_encode(array_column($categoriaData, 'color')); ?>;
-
-const totalCategoriasValor = categoriaValoresRaw.reduce((acc, val) => acc + val, 0);
-
-let categoriaLabelsFinal = categoriaLabels;
-let categoriaValoresFinal = categoriaValoresRaw;
-let categoriaColoresFinal = categoriaColoresRaw;
-
-if (totalCategoriasValor === 0) {
-    categoriaLabelsFinal = ['Sin datos'];
-    categoriaValoresFinal = [1];
-    categoriaColoresFinal = ['rgba(148, 163, 184, 0.4)'];
-}
-
-const categoriaCtx = document.getElementById('categoriaChart').getContext('2d');
-
-const categoriaChart = new Chart(categoriaCtx, {
-    type: 'doughnut',
-    data: {
-    labels: categoriaLabelsFinal,
-    datasets: [{
-        data: categoriaValoresFinal,
-        backgroundColor: categoriaColoresFinal,
-        borderWidth: 0
-    }]
-    },
-    options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    cutout: '65%',
-    plugins: {
-        legend: { display: false },
-        tooltip: {
-        callbacks: {
-            label: function(context) {
-            if (totalCategoriasValor === 0) return 'Sin datos';
-            const value = context.parsed;
-            const percent = ((value / totalCategoriasValor) * 100).toFixed(1);
-            return `${context.label}: ${value}% (${percent}%)`;
-            }
-        }
-        }
-    }
-    }
-});
-
 // ✅ MISMA LÓGICA QUE TENÍAS, pero como función (más estable)
 function forcePasswordFlow() {
   const modal = document.getElementById("modalForcePassword");
@@ -950,14 +970,12 @@ function forcePasswordFlow() {
       return;
     }
 
-    // ✅ Reglas: mínimo 8
     if (nueva.length < 8) {
       if (typeof toastWarning === "function") toastWarning("La nueva contraseña debe tener mínimo 8 caracteres.");
       else if (typeof toastError === "function") toastError("La nueva contraseña debe tener mínimo 8 caracteres.");
       return;
     }
 
-    // ✅ Reglas: mayúscula + número + caracter especial
     const hasUpper   = /[A-Z]/.test(nueva);
     const hasNumber  = /[0-9]/.test(nueva);
     const hasSpecial = /[^A-Za-z0-9]/.test(nueva);
@@ -997,11 +1015,9 @@ function forcePasswordFlow() {
 
       if (typeof toastSuccess === "function") toastSuccess("Contraseña actualizada correctamente.");
 
-      // Cerrar modal
       modal.classList.remove("active");
-      document.body.style.overflow = ""; // ✅ restaura scroll
+      document.body.style.overflow = "";
 
-      // Limpia el query param force_pass (si existe)
       const url = new URL(window.location.href);
       url.searchParams.delete("force_pass");
       window.location.replace(url.toString());
@@ -1013,5 +1029,123 @@ function forcePasswordFlow() {
   });
 }
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  window.FORCE_PASSWORD_CHANGE = <?= !empty($_SESSION['force_password_change']) ? 'true' : 'false' ?>;
+  console.log("FORCE_PASSWORD_CHANGE:", window.FORCE_PASSWORD_CHANGE);
+</script>
+
+<script>
+  // ========= CONSUMO MENSUAL (BARRAS) =========
+  const labelsConsumo = <?php echo json_encode(array_column($consumoData, 'name')); ?>;
+  const valoresConsumo = <?php echo json_encode(array_map('intval', array_column($consumoData, 'consumo'))); ?>;
+
+  const totalMateriales = valoresConsumo.reduce((acc, val) => acc + val, 0);
+  const maxY = totalMateriales > 0 ? totalMateriales : 10;
+
+  const consumoCtx = document.getElementById('consumoChart').getContext('2d');
+
+  const consumoChart = new Chart(consumoCtx, {
+      type: 'bar',
+      data: {
+      labels: labelsConsumo,
+      datasets: [{
+          label: 'Consumo de materiales',
+          data: valoresConsumo,
+          backgroundColor: 'rgba(148, 163, 184, 0.75)',
+          borderRadius: 8,
+          borderSkipped: false
+      }]
+      },
+      options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+          legend: { display: false },
+          tooltip: {
+          enabled: true,
+          callbacks: {
+              label: function(context) {
+              const valor = context.parsed.y || 0;
+              return valor + ' materiales';
+              }
+          }
+          }
+      },
+      scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+          y: {
+          beginAtZero: true,
+          suggestedMax: maxY,
+          ticks: {
+              stepSize: Math.max(1, Math.round(maxY / 5)),
+              font: { size: 10 }
+          },
+          grid: { color: 'rgba(229, 231, 235, 0.8)' }
+          }
+      }
+      }
+  });
+
+  // ========= DISTRIBUCIÓN POR CATEGORÍA (DOUGHNUT) =========
+  const categoriaLabels = <?php echo json_encode(array_column($categoriaData, 'name')); ?>;
+  const categoriaValoresRaw = <?php echo json_encode(array_map('intval', array_column($categoriaData, 'value'))); ?>;
+  const categoriaColoresRaw = <?php echo json_encode(array_column($categoriaData, 'color')); ?>;
+
+  const totalCategoriasValor = categoriaValoresRaw.reduce((acc, val) => acc + val, 0);
+
+  let categoriaLabelsFinal = categoriaLabels;
+  let categoriaValoresFinal = categoriaValoresRaw;
+  let categoriaColoresFinal = categoriaColoresRaw;
+
+  if (totalCategoriasValor === 0) {
+      categoriaLabelsFinal = ['Sin datos'];
+      categoriaValoresFinal = [1];
+      categoriaColoresFinal = ['rgba(148, 163, 184, 0.4)'];
+  }
+
+  const categoriaCtx = document.getElementById('categoriaChart').getContext('2d');
+
+  const categoriaChart = new Chart(categoriaCtx, {
+      type: 'doughnut',
+      data: {
+      labels: categoriaLabelsFinal,
+      datasets: [{
+          data: categoriaValoresFinal,
+          backgroundColor: categoriaColoresFinal,
+          borderWidth: 0
+      }]
+      },
+      options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+          legend: { display: false },
+          tooltip: {
+          callbacks: {
+              label: function(context) {
+              if (totalCategoriasValor === 0) return 'Sin datos';
+              const value = context.parsed;
+              const percent = ((value / totalCategoriasValor) * 100).toFixed(1);
+              return `${context.label}: ${value}% (${percent}%)`;
+              }
+          }
+          }
+      }
+      }
+  });
+</script>
+
+<script>
+  // ✅ Re-inicializa lucide si algo nuevo aparece
+  document.addEventListener("DOMContentLoaded", function () {
+    if (window.lucide && typeof lucide.createIcons === "function") {
+      lucide.createIcons();
+    }
+  });
+</script>
+
 </body>
 </html>
