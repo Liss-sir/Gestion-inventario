@@ -1,116 +1,148 @@
 <?php
-require_once __DIR__ . "/../models/bodega.php";
+
 require_once __DIR__ . "/../../Config/database.php";
+require_once __DIR__ . "/../models/bodega.php";
 
 header("Content-Type: application/json; charset=utf-8");
 
+/* ===============================
+   VALIDAR CONEXIÓN PDO
+================================ */
+
+if (!isset($conn) || !($conn instanceof PDO)) {
+    http_response_code(500);
+    echo json_encode([
+        "success" => false,
+        "message" => "Conexión a base de datos no disponible"
+    ]);
+    exit;
+}
+
+/* ===============================
+   CONTROLLER
+================================ */
+
 class BodegaController {
 
-    private $model;
+    private BodegaModel $model;
 
     public function __construct(PDO $conn) {
         $this->model = new BodegaModel($conn);
     }
 
-    private function jsonResponse($data, int $code = 200) {
+    /* ===============================
+       RESPUESTA JSON
+    =============================== */
+    private function response($data, int $code = 200): void {
         http_response_code($code);
         echo json_encode($data, JSON_UNESCAPED_UNICODE);
-        exit; // ✅ importante: corta ejecución para evitar salidas extra
+        exit;
     }
 
-    private function getJson() {
-        $raw = file_get_contents("php://input");
-        if ($raw === false || trim($raw) === "") return null;
-
-        $data = json_decode($raw, true);
-
-        // ✅ si el JSON viene mal, devuelve null
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return null;
-        }
-
-        return $data;
+    /* ===============================
+       LISTAR
+    =============================== */
+    public function listar(): void {
+        $this->response([
+            "success" => true,
+            "data" => $this->model->listar()
+        ]);
     }
 
-    /* ============================================================
-       LISTAR BODEGAS
-    ============================================================ */
-    public function listar() {
-        $this->jsonResponse($this->model->listar());
-    }
-
-    /* ============================================================
-       OBTENER BODEGA POR CODIGO
-    ============================================================ */
-    public function obtener() {
+    /* ===============================
+       OBTENER POR CÓDIGO
+    =============================== */
+    public function obtener(): void {
         $codigo = $_GET["codigo_bodega"] ?? $_GET["codigo"] ?? null;
 
         if (!$codigo) {
-            $this->jsonResponse(["error" => "Código de bodega no proporcionado"], 400);
+            $this->response([
+                "success" => false,
+                "message" => "Código de bodega requerido"
+            ], 400);
         }
 
         $bodega = $this->model->obtenerPorCodigo($codigo);
 
-        $this->jsonResponse(
-            $bodega ?: ["error" => "Bodega no encontrada"],
-            $bodega ? 200 : 404
-        );
-    }
-
-    /* ============================================================
-       CREAR BODEGA
-    ============================================================ */
-    public function crear() {
-        $data = $this->getJson();
-
-        if (!$data) {
-            $this->jsonResponse(["error" => "JSON inválido"], 400);
+        if (!$bodega) {
+            $this->response([
+                "success" => false,
+                "message" => "Bodega no encontrada"
+            ], 404);
         }
 
-        $required = ['codigo_bodega', 'nombre', 'ubicacion', 'clasificacion_bodega'];
-        foreach ($required as $campo) {
-            if (empty($data[$campo])) {
-                $this->jsonResponse(["error" => "Falta el campo: $campo"], 400);
+        $this->response([
+            "success" => true,
+            "data" => $bodega
+        ]);
+    }
+
+    /* ===============================
+       CREAR
+    =============================== */
+    public function crear(): void {
+        $data = json_decode(file_get_contents("php://input"), true);
+
+        if (!$data) {
+            $this->response([
+                "success" => false,
+                "message" => "JSON inválido"
+            ], 400);
+        }
+
+        $required = ["codigo_bodega", "nombre", "ubicacion", "clasificacion_bodega"];
+        foreach ($required as $field) {
+            if (empty($data[$field])) {
+                $this->response([
+                    "success" => false,
+                    "message" => "Falta el campo: $field"
+                ], 400);
             }
         }
 
-        if (!in_array($data['clasificacion_bodega'], ['Insumos', 'Equipos'], true)) {
-            $this->jsonResponse(["error" => "Clasificación de bodega inválida"], 400);
+        if (!in_array($data["clasificacion_bodega"], ["Insumos", "Equipos"], true)) {
+            $this->response([
+                "success" => false,
+                "message" => "Clasificación inválida"
+            ], 400);
         }
 
         $ok = $this->model->crear(
-            $data['codigo_bodega'],
-            $data['nombre'],
-            $data['ubicacion'],
-            $data['clasificacion_bodega']
+            $data["codigo_bodega"],
+            $data["nombre"],
+            $data["ubicacion"],
+            $data["clasificacion_bodega"]
         );
 
-        $this->jsonResponse(
+        $this->response(
             $ok
-                ? ["mensaje" => "Bodega creada correctamente"]
-                : ["error" => "No se pudo crear la bodega"],
+                ? ["success" => true, "message" => "Bodega creada correctamente"]
+                : ["success" => false, "message" => "No se pudo crear la bodega"],
             $ok ? 200 : 500
         );
     }
 
-    /* ============================================================
-       ACTUALIZAR BODEGA
-    ============================================================ */
-    public function actualizar() {
-        $data = $this->getJson();
+    /* ===============================
+       ACTUALIZAR
+    =============================== */
+    public function actualizar(): void {
+        $data = json_decode(file_get_contents("php://input"), true);
 
-        if (
-            empty($data["id_bodega"]) ||
-            empty($data["codigo_bodega"]) ||
-            empty($data["nombre"]) ||
-            empty($data["ubicacion"]) ||
-            empty($data["clasificacion_bodega"])
-        ) {
-            $this->jsonResponse(["error" => "Datos incompletos"], 400);
+        $required = ["id_bodega", "codigo_bodega", "nombre", "ubicacion", "clasificacion_bodega"];
+        foreach ($required as $field) {
+            if (empty($data[$field])) {
+                $this->response([
+                    "success" => false,
+                    "message" => "Datos incompletos"
+                ], 400);
+            }
         }
 
-        if (!in_array($data["clasificacion_bodega"], ['Insumos', 'Equipos'], true)) {
-            $this->jsonResponse(["error" => "Clasificación inválida"], 400);
+        if (!in_array($data["clasificacion_bodega"], ["Insumos", "Equipos"], true)) {
+            $this->response([
+                "success" => false,
+                "message" => "Clasificación inválida"
+            ], 400);
         }
 
         $ok = $this->model->actualizar(
@@ -121,26 +153,32 @@ class BodegaController {
             $data["clasificacion_bodega"]
         );
 
-        $this->jsonResponse(
+        $this->response(
             $ok
-                ? ["mensaje" => "Bodega actualizada correctamente"]
-                : ["error" => "No se pudo actualizar la bodega"],
+                ? ["success" => true, "message" => "Bodega actualizada"]
+                : ["success" => false, "message" => "No se pudo actualizar"],
             $ok ? 200 : 500
         );
     }
 
-    /* ============================================================
+    /* ===============================
        CAMBIAR ESTADO
-    ============================================================ */
-    public function cambiar_estado() {
-        $data = $this->getJson();
+    =============================== */
+    public function cambiar_estado(): void {
+        $data = json_decode(file_get_contents("php://input"), true);
 
-        if (!isset($data["codigo_bodega"], $data["estado"])) {
-            $this->jsonResponse(["error" => "Datos incompletos"], 400);
+        if (empty($data["codigo_bodega"]) || empty($data["estado"])) {
+            $this->response([
+                "success" => false,
+                "message" => "Datos incompletos"
+            ], 400);
         }
 
-        if (!in_array($data["estado"], ['Activo', 'Inactivo'], true)) {
-            $this->jsonResponse(["error" => "Estado inválido"], 400);
+        if (!in_array($data["estado"], ["Activo", "Inactivo"], true)) {
+            $this->response([
+                "success" => false,
+                "message" => "Estado inválido"
+            ], 400);
         }
 
         $ok = $this->model->cambiarEstado(
@@ -148,78 +186,39 @@ class BodegaController {
             $data["estado"]
         );
 
-        $this->jsonResponse(
+        $this->response(
             $ok
-                ? ["mensaje" => "Estado actualizado correctamente"]
-                : ["error" => "No se pudo actualizar el estado"],
+                ? ["success" => true, "message" => "Estado actualizado"]
+                : ["success" => false, "message" => "No se pudo cambiar el estado"],
             $ok ? 200 : 500
         );
     }
 }
 
-/* ============================================================
-   ✅ CONEXIÓN (FIX: garantiza $conn antes de usarlo)
-============================================================ */
-try {
-    // Si database.php YA define $conn, lo respetamos.
-    if (!isset($conn) || !($conn instanceof PDO)) {
-
-        // Intento 1: clase Database con getConnection()
-        if (class_exists("Database")) {
-            $db = new Database();
-
-            if (method_exists($db, "getConnection")) {
-                $conn = $db->getConnection();
-            } elseif (method_exists($db, "connect")) {
-                $conn = $db->connect();
-            }
-        }
-    }
-
-    if (!isset($conn) || !($conn instanceof PDO)) {
-        http_response_code(500);
-        echo json_encode([
-            "error" => "No se pudo inicializar la conexión PDO ($conn). Revisa Config/database.php"
-        ], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-
-} catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode([
-        "error" => "Error creando conexión a BD",
-        "detalle" => $e->getMessage()
-    ], JSON_UNESCAPED_UNICODE);
-    exit;
-}
-
-/* ============================================================
+/* ===============================
    ROUTER
-============================================================ */
-try {
-    $accion = $_GET["accion"] ?? null;
+================================ */
 
-    if (!$accion) {
-        http_response_code(400);
-        echo json_encode(["error" => "Acción no especificada"], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
+$accion = $_GET["accion"] ?? null;
 
-    $controller = new BodegaController($conn);
-
-    if (!method_exists($controller, $accion)) {
-        http_response_code(400);
-        echo json_encode(["error" => "Acción inválida"], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-
-    $controller->$accion();
-
-} catch (Throwable $e) {
-    http_response_code(500);
+if (!$accion) {
+    http_response_code(400);
     echo json_encode([
-        "error" => "Error interno del servidor",
-        "detalle" => $e->getMessage()
-    ], JSON_UNESCAPED_UNICODE);
+        "success" => false,
+        "message" => "Acción requerida"
+    ]);
     exit;
 }
+
+$controller = new BodegaController($conn);
+
+if (!method_exists($controller, $accion)) {
+    http_response_code(400);
+    echo json_encode([
+        "success" => false,
+        "message" => "Acción inválida"
+    ]);
+    exit;
+}
+
+$controller->$accion();

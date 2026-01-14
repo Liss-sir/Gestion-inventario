@@ -1,97 +1,32 @@
 <?php
+
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 
-/* =====================
-    EXAMPLE DATA
-===================== */
-$materiales = [
-    ["id" => 1, "nombre" => "Cemento Gris", "unidad" => "Bulto"],
-    ["id" => 2, "nombre" => "Cable Eléctrico", "unidad" => "Metro"],
-    ["id" => 3, "nombre" => "Taladro", "unidad" => "Unidad"],
-];
+// Asegurar que BASE_URL esté definido (por si se accede directamente)
+if (!defined('BASE_URL')) {
+    $protocol   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+    $host       = $_SERVER['HTTP_HOST'];
+    $script_dir = '/Gestion-inventario/';  // Ajusta según tu ruta
+    define('BASE_URL', $protocol . $host . $script_dir);
+}
 
-$bodegas = [
-    ["id" => 1, "nombre" => "Bodega Construcción"],
-    ["id" => 2, "nombre" => "Bodega Principal"],
-];
+// Obtener ID del usuario de la sesión
+$idUsuario = $_SESSION['id_usuario'] ?? 1; // Por defecto 1 si no hay sesión
 
-$subbodegas = [
-    ["id" => 1, "id_bodega" => 1, "nombre" => "Subbodega Cemento"],
-    ["id" => 2, "id_bodega" => 1, "nombre" => "Subbodega Herramientas"],
-    ["id" => 3, "id_bodega" => 2, "nombre" => "Subbodega Eléctrico"],
-];
+$movimientos = [];
+$movimientosPage = [];
+$total = 0;
 
-$programas = [
-    ["id" => 1, "nombre" => "ADSO"],
-    ["id" => 2, "nombre" => "Producción Multimedia"],
-    ["id" => 3, "nombre" => "Construcción"],
-];
+// Initialize arrays for form dropdowns if not already set
+if (!isset($materiales)) $materiales = [];
+if (!isset($programas)) $programas = [];
+if (!isset($fichas)) $fichas = [];
+if (!isset($raes)) $raes = [];
+if (!isset($instructores)) $instructores = [];
+if (!isset($solicitudes)) $solicitudes = [];
 
-$fichas = [
-    ["id" => 2895664, "nombre" => "2895664"],
-    ["id" => 2895665, "nombre" => "2895665"],
-];
 
-$raes = [
-    ["id" => 1, "nombre" => "RAE 1"],
-    ["id" => 2, "nombre" => "RAE 2"],
-];
-
-$instructores = [
-    ["id" => 1, "nombre" => "Juan Pablo Hernandez"],
-    ["id" => 2, "nombre" => "Ana Gómez"],
-    ["id" => 3, "nombre" => "Carlos Ruiz"],
-];
-
-$solicitudes = [
-    ["id" => 101, "nombre" => "Solicitud #101"],
-    ["id" => 102, "nombre" => "Solicitud #102"],
-];
-
-/*
-  Example moves
-*/
-$movimientos = [
-    [
-        "id_movimiento" => 1,
-        "tipo_movimiento" => "salida",
-        "fecha_hora" => "2024-11-20 08:30:00",
-        "id_usuario" => 1,
-        "id_bodega" => 1,
-        "id_subbodega" => 2,
-        "cantidad" => 10,
-        "id_programa" => 1,
-        "id_ficha" => 2895664,
-        "id_rae" => 1,
-        "observaciones" => "Uso en taller",
-        "id_solicitud" => 101,
-        "id_instructor" => 1,
-        "materiales" => [
-            ["id_material" => 1, "nombre" => "Cemento Gris", "cantidad" => 5, "unidad" => "Bulto"],
-            ["id_material" => 3, "nombre" => "Taladro", "cantidad" => 1, "unidad" => "Unidad"],
-        ]
-    ],
-    [
-        "id_movimiento" => 2,
-        "tipo_movimiento" => "entrada",
-        "fecha_hora" => "2024-11-21 10:05:00",
-        "id_usuario" => 2,
-        "id_bodega" => 2,
-        "id_subbodega" => 3,
-        "cantidad" => 25,
-        "id_programa" => null,
-        "id_ficha" => null,
-        "id_rae" => null,
-        "observaciones" => "Ingreso por compra",
-        "id_solicitud" => null,
-        "id_instructor" => null,
-        "entrega" => "entrada_material",
-        "materiales" => [
-            ["id_material" => 2, "nombre" => "Cable Eléctrico", "cantidad" => 25, "unidad" => "Metro"],
-        ]
-    ],
-];
 
 function findNameById($arr, $id)
 {
@@ -311,102 +246,8 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                         </tr>
                     </thead>
 
-                    <tbody class="divide-y divide-border">
-                        <?php foreach ($movimientosPage as $m): ?>
-                            <?php
-                            [$labelTipo, $claseTipo, $iconTipo] = badgeTipo($m["tipo_movimiento"]);
-                            $fecha = date("Y-m-d", strtotime($m["fecha_hora"]));
-                            $hora  = date("H:i", strtotime($m["fecha_hora"]));
-                            $bodegaNombre = findNameById($bodegas, $m["id_bodega"]);
-                            $subbodegaNombre = findNameById(array_map(function ($s) {
-                                return ["id" => $s["id"], "nombre" => $s["nombre"]];
-                            }, $subbodegas), $m["id_subbodega"]);
-                            $programaNombre = $m["id_programa"] ? findNameById($programas, $m["id_programa"]) : "-";
-                            $fichaNombre = $m["id_ficha"] ? (string)$m["id_ficha"] : "-";
-                            $raeNombre = $m["id_rae"] ? findNameById($raes, $m["id_rae"]) : "-";
-                            $insNombre = isset($m["id_instructor"]) && $m["id_instructor"] ? findNameById($instructores, $m["id_instructor"]) : "-";
-                            $solNombre = $m["id_solicitud"] ? findNameById($solicitudes, $m["id_solicitud"]) : "-";
-                            $materialsJson = htmlspecialchars(json_encode($m["materiales"] ?? []), ENT_QUOTES, 'UTF-8');
-                            ?>
-                            <tr class="hover:bg-muted/60">
-                                <td class="px-4 py-3 align-top">
-                                    <div class="flex items-start gap-2">
-                                        <i data-lucide="calendar" class="h-4 w-4 mt-0.5 text-muted-foreground"></i>
-                                        <div class="flex flex-col">
-                                            <span class="text-sm font-medium text-foreground"><?= $fecha ?></span>
-                                            <span class="text-xs text-muted-foreground"><?= $hora ?></span>
-                                        </div>
-                                    </div>
-                                </td>
+                    <tbody id="tbodyMovimientos" class="divide-y divide-border">
 
-                                <td class="px-4 py-3 align-top">
-                                    <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium <?= $claseTipo ?>">
-                                        <i data-lucide="<?= $iconTipo ?>" class="h-3 w-3"></i>
-                                        <?= $labelTipo ?>
-                                    </span>
-                                </td>
-
-                                <td class="px-4 py-3 align-top">
-                                    <button type="button"
-                                        class="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 hover:bg-muted"
-                                        onclick="openMaterialesModal(this)"
-                                        data-materiales="<?= $materialsJson ?>">
-                                        <i data-lucide="eye" class="h-4 w-4"></i>
-                                        <span class="text-xs text-muted-foreground">Ver</span>
-                                    </button>
-                                </td>
-
-                                <td class="px-4 py-3 align-top">
-                                    <span class="text-sm font-medium text-foreground"><?= (int)$m["cantidad"] ?></span>
-                                </td>
-
-                                <td class="px-4 py-3 align-top"><span class="text-sm"><?= htmlspecialchars($bodegaNombre) ?></span></td>
-                                <td class="px-4 py-3 align-top"><span class="text-sm"><?= htmlspecialchars($subbodegaNombre) ?></span></td>
-                                <td class="px-4 py-3 align-top"><span class="text-sm"><?= htmlspecialchars($programaNombre) ?></span></td>
-
-                                <td class="px-4 py-3 align-top">
-                                    <span class="inline-flex items-center rounded-md border border-border px-2 py-1 text-xs font-medium">
-                                        <?= htmlspecialchars($fichaNombre) ?>
-                                    </span>
-                                </td>
-
-                                <td class="px-4 py-3 align-top"><span class="text-sm"><?= htmlspecialchars($raeNombre) ?></span></td>
-
-                                <td class="px-4 py-3 align-top">
-                                    <div class="flex items-start gap-2">
-                                        <i data-lucide="users" class="h-4 w-4 mt-0.5 text-muted-foreground"></i>
-                                        <span class="text-sm truncate max-w-[220px]"><?= htmlspecialchars($insNombre) ?></span>
-                                    </div>
-                                </td>
-
-                                <td class="px-4 py-3 align-top">
-                                    <span class="text-sm text-muted-foreground"><?= htmlspecialchars($m["observaciones"] ?? "-") ?></span>
-                                </td>
-
-                                <td class="px-4 py-3 align-top"><span class="text-sm"><?= htmlspecialchars($solNombre) ?></span></td>
-
-
-                                <td class="px-4 py-3 align-top text-right">
-                                    <button type="button"
-                                        class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted"
-                                        onclick="openActionsMenu(event, this)"
-                                        data-id="<?= (int)$m["id_movimiento"] ?>"
-                                        data-tipo="<?= htmlspecialchars($m["tipo_movimiento"] ?? "") ?>"
-                                        data-fecha="<?= htmlspecialchars($m["fecha_hora"] ?? "") ?>"
-                                        data-bodega="<?= htmlspecialchars($bodegaNombre) ?>"
-                                        data-subbodega="<?= htmlspecialchars($subbodegaNombre) ?>"
-                                        data-programa="<?= htmlspecialchars($programaNombre) ?>"
-                                        data-ficha="<?= htmlspecialchars($fichaNombre) ?>"
-                                        data-rae="<?= htmlspecialchars($raeNombre) ?>"
-                                        data-instructor="<?= htmlspecialchars($insNombre) ?>"
-                                        data-observaciones="<?= htmlspecialchars($m["observaciones"] ?? "-") ?>"
-                                        data-solicitud="<?= htmlspecialchars($solNombre) ?>"
-                                        data-materiales="<?= $materialsJson ?>">
-                                        <i data-lucide="more-horizontal" class="h-4 w-4"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
@@ -438,129 +279,9 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
         <!-- GRID VIEW  -->
         <!-- GRID VIEW COMPACT -->
-<div id="gridView" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-    <?php foreach ($movimientosPage as $m): ?>
-        <?php
-        [$labelTipo, $claseTipo, $iconTipo] = badgeTipo($m["tipo_movimiento"]);
-        $fecha = date("Y-m-d", strtotime($m["fecha_hora"]));
-        $hora  = date("H:i", strtotime($m["fecha_hora"]));
-        $bodegaNombre = findNameById($bodegas, $m["id_bodega"]);
-        $subbodegaNombre = findNameById(array_map(fn($s) => ["id"=>$s["id"],"nombre"=>$s["nombre"]], $subbodegas), $m["id_subbodega"]);
-        $programaNombre = $m["id_programa"] ? findNameById($programas, $m["id_programa"]) : "-";
-        $fichaNombre = $m["id_ficha"] ? (string)$m["id_ficha"] : "-";
-        $raeNombre = $m["id_rae"] ? findNameById($raes, $m["id_rae"]) : "-";
-        $insNombre = isset($m["id_instructor"]) && $m["id_instructor"] ? findNameById($instructores, $m["id_instructor"]) : "-";
-        $solNombre = $m["id_solicitud"] ? findNameById($solicitudes, $m["id_solicitud"]) : "-";
-        $materialsJson = htmlspecialchars(json_encode($m["materiales"] ?? []), ENT_QUOTES, 'UTF-8');
-        ?>
-
-        <div class="bg-card border border-border rounded-xl p-4 hover:shadow transition relative">
-
-            <!-- MENU -->
-            <div class="absolute top-2 right-2">
-                <button type="button"
-                    onclick="openActionsMenu(event, this)"
-                    class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted"
-                    data-id="<?= (int)$m["id_movimiento"] ?>"
-                    data-tipo="<?= htmlspecialchars($m["tipo_movimiento"] ?? "") ?>"
-                    data-fecha="<?= htmlspecialchars($m["fecha_hora"] ?? "") ?>"
-                    data-bodega="<?= htmlspecialchars($bodegaNombre) ?>"
-                    data-subbodega="<?= htmlspecialchars($subbodegaNombre) ?>"
-                    data-programa="<?= htmlspecialchars($programaNombre) ?>"
-                    data-ficha="<?= htmlspecialchars($fichaNombre) ?>"
-                    data-rae="<?= htmlspecialchars($raeNombre) ?>"
-                    data-instructor="<?= htmlspecialchars($insNombre) ?>"
-                    data-observaciones="<?= htmlspecialchars($m["observaciones"] ?? "-") ?>"
-                    data-solicitud="<?= htmlspecialchars($solNombre) ?>"
-                    data-materiales="<?= $materialsJson ?>">
-                    <i data-lucide="more-horizontal" class="h-4 w-4"></i>
-                </button>
-            </div>
-
-            <!-- HEADER -->
-            <div class="flex items-center gap-2 mb-3">
-                <div class="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
-                    <i data-lucide="<?= $iconTipo ?>" class="h-4 w-4 text-[#39A900]"></i>
-                </div>
-
-                <div class="flex-1">
-                    <p class="text-sm font-semibold">Mov #<?= (int)$m["id_movimiento"] ?></p>
-                    <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium <?= $claseTipo ?>">
-                        <i data-lucide="<?= $iconTipo ?>" class="h-3 w-3"></i>
-                        <?= $labelTipo ?>
-                    </span>
-                </div>
-            </div>
-
-            <!-- DATE -->
-            <p class="text-[11px] text-muted-foreground flex items-center gap-1 mb-3">
-                <i data-lucide="calendar" class="h-3 w-3"></i>
-                <?= $fecha ?> · <?= $hora ?>
-            </p>
-
-            <!-- INFO GRID -->
-            <div class="grid grid-cols-2 gap-2 text-[11px]">
-
-                <div class="rounded-lg border p-2">
-                    <p class="text-muted-foreground">Cantidad</p>
-                    <p class="font-semibold"><?= (int)$m["cantidad"] ?></p>
-                </div>
-
-                <div class="rounded-lg border p-2">
-                    <p class="text-muted-foreground">Ficha</p>
-                    <p class="font-medium truncate"><?= htmlspecialchars($fichaNombre) ?></p>
-                </div>
-
-                <div class="rounded-lg border p-2 col-span-2">
-                    <p class="text-muted-foreground">Bodega</p>
-                    <p class="font-medium truncate"><?= htmlspecialchars($bodegaNombre) ?></p>
-                    <p class="text-muted-foreground truncate"><?= htmlspecialchars($subbodegaNombre) ?></p>
-                </div>
-
-                <div class="rounded-lg border p-2">
-                    <p class="text-muted-foreground">Programa</p>
-                    <p class="truncate"><?= htmlspecialchars($programaNombre) ?></p>
-                </div>
-
-                <div class="rounded-lg border p-2">
-                    <p class="text-muted-foreground">Instructor</p>
-                    <p class="truncate"><?= htmlspecialchars($insNombre) ?></p>
-                </div>
-            </div>
-
-            <!-- ACTIONS -->
-            <div class="mt-3 flex justify-between gap-2">
-                <button type="button"
-                    onclick="openMaterialesModal(this)"
-                    data-materiales="<?= $materialsJson ?>"
-                    class="flex-1 inline-flex items-center justify-center gap-1 rounded-lg border px-2 py-1 text-[11px] hover:bg-muted">
-                    <i data-lucide="package" class="h-3 w-3"></i>
-                    Materiales
-                </button>
-
-                <button type="button"
-                    onclick="openDetalleFromDataset(this)"
-                    data-id="<?= (int)$m["id_movimiento"] ?>"
-                    data-tipo="<?= htmlspecialchars($m["tipo_movimiento"] ?? "") ?>"
-                    data-fecha="<?= htmlspecialchars($m["fecha_hora"] ?? "") ?>"
-                    data-bodega="<?= htmlspecialchars($bodegaNombre) ?>"
-                    data-subbodega="<?= htmlspecialchars($subbodegaNombre) ?>"
-                    data-programa="<?= htmlspecialchars($programaNombre) ?>"
-                    data-ficha="<?= htmlspecialchars($fichaNombre) ?>"
-                    data-rae="<?= htmlspecialchars($raeNombre) ?>"
-                    data-instructor="<?= htmlspecialchars($insNombre) ?>"
-                    data-observaciones="<?= htmlspecialchars($m["observaciones"] ?? "-") ?>"
-                    data-solicitud="<?= htmlspecialchars($solNombre) ?>"
-                    data-materiales="<?= $materialsJson ?>"
-                    class="flex-1 inline-flex items-center justify-center gap-1 rounded-lg bg-secondary text-white px-2 py-1 text-[11px] hover:opacity-90">
-                    <i data-lucide="eye" class="h-3 w-3"></i>
-                    Detalle
-                </button>
-            </div>
-
+        <div id="gridView" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+            
         </div>
-    <?php endforeach; ?>
-</div>
 
 
         <!-- MATERIALS VIEW MODAL -->
@@ -689,7 +410,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                     </button>
                 </div>
 
-                <!-- Tabs ( Only entry  / return ) -->
+                <!-- Tabs (✅ entrada / devolucion) -->
                 <div class="mb-6 flex justify-center">
                     <div id="tabsMovimiento"
                         class="flex w-full max-w-md items-center rounded-full bg-gray-100 p-1 text-sm font-medium shadow-inner">
@@ -707,7 +428,8 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                 </div>
 
                 <!-- FORM -->
-                <form id="formMovimiento" class="space-y-5">
+                <form id="formMovimiento" class="space-y-5" onsubmit="registrarEntrada(event)">
+
 
     <input type="hidden" id="tipoMovimiento" name="tipo_movimiento" value="entrada">
     <input type="hidden" name="materiales_json" id="materiales_json">
@@ -772,22 +494,16 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
             <label class="text-sm font-medium">Bodega</label>
             <select id="bodega" class="w-full border rounded-lg px-3 py-2">
                 <option value="">Seleccione</option>
-                <?php foreach ($bodegas as $b): ?>
-                    <option value="<?= $b["id"] ?>"><?= $b["nombre"] ?></option>
-                <?php endforeach; ?>
             </select>
+
         </div>
 
         <div>
             <label class="text-sm font-medium">Subbodega</label>
             <select id="subbodega" class="w-full border rounded-lg px-3 py-2">
-                <option value="">Seleccione</option>
-                <?php foreach ($subbodegas as $sb): ?>
-                    <option value="<?= $sb["id"] ?>" data-bodega="<?= $sb["id_bodega"] ?>">
-                        <?= $sb["nombre"] ?>
-                    </option>
-                <?php endforeach; ?>
+                <option value="">Seleccione bodega primero</option>
             </select>
+
         </div>
 
     </div>
@@ -943,184 +659,460 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
       </div>
 
       <!-- FORM -->
-      <form id="formMovimiento" class="space-y-4" novalidate>
+      <form id="formMovimiento" class="space-y-5" onsubmit="registrarEntrada(event)">
 
-        <div class="grid gap-4 sm:grid-cols-2">
 
-          <!-- Material (id_material) -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Material *</label>
-            <select id="material" name="id_material" required
-              class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
-              <option value="">Seleccione el material</option>
-              <?php foreach ($materiales as $mat): ?>
-                <option value="<?= $mat["id"] ?>"><?= htmlspecialchars($mat["nombre"]) ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
+    <input type="hidden" id="tipoMovimiento" name="tipo_movimiento" value="entrada">
+    <input type="hidden" name="materiales_json" id="materiales_json">
 
-          <!-- Cantidad -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Cantidad *</label>
-            <input id="cantidad" name="cantidad" type="number" min="1" step="1" value="1" required
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]"/>
-          </div>
+    <!-- =====================
+         DATOS DEL MATERIAL
+    ====================== -->
+    <div class="rounded-xl border border-border p-4 bg-gray-50">
+        <p class="text-xs font-semibold text-gray-500 uppercase mb-3">
+            Datos del material
+        </p>
 
-          <!-- Bodega -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Bodega *</label>
-            <select id="bodega" name="id_bodega" required
-              class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
-              <option value="">Seleccione la bodega</option>
-              <?php foreach ($bodegas as $b): ?>
-                <option value="<?= $b["id"] ?>"><?= htmlspecialchars($b["nombre"]) ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
 
-          <!-- ✅ Subbodega -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Subbodega *</label>
-            <select id="subbodega" name="id_subbodega" required
-              class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
-              <option value="">Seleccione la subbodega</option>
-              <?php foreach ($subbodegas as $sb): ?>
-                <option value="<?= $sb["id"] ?>" data-bodega="<?= $sb["id_bodega"] ?>">
-                  <?= htmlspecialchars($sb["nombre"]) ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-            <p class="text-xs text-gray-400 mt-1">* Se filtra automáticamente según la bodega</p>
-          </div>
+            <!-- MATERIAL -->
+            <div class="sm:col-span-2">
+                <label class="text-sm font-medium">Material</label>
+                <select id="material" class="w-full border rounded-lg px-3 py-2">
+                    <option value="">Seleccione</option>
+                    <?php foreach ($materiales as $m): ?>
+                        <option value="<?= $m["id"] ?>" data-unidad="<?= $m["unidad"] ?>">
+                            <?= $m["nombre"] ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
 
-          <!-- Entrega (solo entrada) -->
-          <div data-field="entrega">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Entrega *</label>
-            <select id="entrega" name="entrega"
-              class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
-              <option value="">Seleccione</option>
-              <option value="entrada_material">Entrada del material</option>
-              <option value="entrega_material">Entrega de material</option>
-            </select>
-          </div>
+            <!-- CANTIDAD -->
+            <div>
+                <label class="text-sm font-medium">Cantidad</label>
+                <input id="cantidad" type="number" min="1" value="1"
+                    class="w-full border rounded-lg px-3 py-2">
+            </div>
 
-          <!-- Programa (solo salida) -->
-          <div data-field="programa" class="hidden">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Programa de formación *</label>
-            <select id="programa" name="id_programa"
-              class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
-              <option value="">Seleccione el programa</option>
-              <?php foreach ($programas as $p): ?>
-                <option value="<?= $p["id"] ?>"><?= htmlspecialchars($p["nombre"]) ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
+            <!-- ESTADO -->
+            <div class="sm:col-span-3">
+                <label class="text-sm font-medium">Estado</label>
+                <select id="estado_material" class="w-full border rounded-lg px-3 py-2">
+                    <option value="">Seleccione</option>
+                    <option value="bueno">Bueno</option>
+                    <option value="regular">Regular</option>
+                    <option value="malo">Malo</option>
+                </select>
+            </div>
 
-          <!-- Ficha (salida y devolucion) -->
-          <div data-field="ficha" class="hidden">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Ficha *</label>
-            <select id="ficha" name="id_ficha"
-              class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
-              <option value="">Seleccione la ficha</option>
-              <?php foreach ($fichas as $f): ?>
-                <option value="<?= $f["id"] ?>"><?= htmlspecialchars($f["nombre"]) ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-
-          <!-- RAE (salida y devolucion) -->
-          <div data-field="rae" class="hidden">
-            <label class="block text-sm font-medium text-gray-700 mb-1">RAE *</label>
-            <select id="rae" name="id_rae"
-              class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
-              <option value="">Seleccione el RAE</option>
-              <?php foreach ($raes as $r): ?>
-                <option value="<?= $r["id"] ?>"><?= htmlspecialchars($r["nombre"]) ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-
-          <!-- Instructor (salida y devolucion) -->
-          <div data-field="instructor" class="hidden">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Instructor *</label>
-            <select id="instructor" name="id_usuario"
-              class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
-              <option value="">Seleccione el instructor</option>
-              <?php foreach ($instructores as $ins): ?>
-                <option value="<?= $ins["id"] ?>"><?= htmlspecialchars($ins["nombre"]) ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-
-          <!-- Solicitud (opcional, si la usas) -->
-          <div data-field="solicitud" class="hidden">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Solicitud (opcional)</label>
-            <select id="solicitud" name="id_solicitud"
-              class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
-              <option value="">Seleccione</option>
-              <?php foreach ($solicitudes as $s): ?>
-                <option value="<?= $s["id"] ?>"><?= htmlspecialchars($s["nombre"]) ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-
-          <!-- Estado del material (no está en tu tabla, pero lo dejaste en UI) -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Estado del material *</label>
-            <select id="estado_material" name="estado_material" required
-              class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]">
-              <option value="">Seleccione</option>
-              <option value="bueno">Bueno</option>
-              <option value="regular">Regular</option>
-              <option value="malo">Malo</option>
-            </select>
-          </div>
         </div>
 
-        <!-- Observaciones -->
+        <button type="button"
+            onclick="agregarMaterial()"
+            class="mt-3 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-muted">
+            <i data-lucide="plus" class="h-4 w-4"></i>
+            Agregar material
+        </button>
+    </div>
+
+    <!-- =====================
+         BODEGA
+    ====================== -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
-          <textarea id="observaciones" name="observaciones" rows="3"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]"
-            placeholder="Observaciones del movimiento"></textarea>
+            <label class="text-sm font-medium">Bodega</label>
+            <select id="bodega" class="w-full border rounded-lg px-3 py-2">
+                <option value="">Seleccione</option>
+            </select>
+
         </div>
 
-        <!-- Hidden tipo movimiento -->
-        <input type="hidden" name="tipo_movimiento" id="tipoMovimiento" value="entrada">
+        <div>
+            <label class="text-sm font-medium">Subbodega</label>
+            <select id="subbodega" class="w-full border rounded-lg px-3 py-2">
+                <option value="">Seleccione bodega primero</option>
+            </select>
 
-        <div class="mt-4 flex items-center justify-end gap-2">
-          <button type="button" onclick="closeMovimientoModal()"
-            class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 border border-border">
+        </div>
+
+    </div>
+
+    <!-- =====================
+         DEVOLUCIÓN (ULTRA COMPACTA)
+    ====================== -->
+    <!-- =====================
+     DEVOLUCIÓN (ULTRA COMPACTA)
+====================== -->
+<div data-field="programa"
+     class="hidden rounded-md border border-[#39A900] bg-[#39A90015] p-2">
+
+    <p class="text-[11px] font-semibold text-[#2e7d00] mb-1">
+        Devolución académica
+    </p>
+
+    <div class="grid grid-cols-2 gap-1">
+
+        <!-- PROGRAMA -->
+        <select id="programa"
+            class="col-span-2 border rounded px-2 py-1 text-xs">
+            <option value="">Programa</option>
+            <?php foreach ($programas as $p): ?>
+                <option value="<?= $p["id"] ?>"><?= $p["nombre"] ?></option>
+            <?php endforeach; ?>
+        </select>
+
+        <!-- FICHA -->
+        <select id="ficha"
+            class="border rounded px-2 py-1 text-xs">
+            <option value="">Ficha</option>
+            <?php foreach ($fichas as $f): ?>
+                <option value="<?= $f["id"] ?>"><?= $f["nombre"] ?></option>
+            <?php endforeach; ?>
+        </select>
+
+        <!-- RAE -->
+        <select id="rae"
+            class="border rounded px-2 py-1 text-xs">
+            <option value="">RAE</option>
+            <?php foreach ($raes as $r): ?>
+                <option value="<?= $r["id"] ?>"><?= $r["nombre"] ?></option>
+            <?php endforeach; ?>
+        </select>
+
+        <!-- INSTRUCTOR -->
+        <select id="instructor"
+            class="col-span-2 border rounded px-2 py-1 text-xs">
+            <option value="">Instructor</option>
+            <?php foreach ($instructores as $i): ?>
+                <option value="<?= $i["id"] ?>"><?= $i["nombre"] ?></option>
+            <?php endforeach; ?>
+        </select>
+
+        <!-- SOLICITUD -->
+        <select id="solicitud"
+            class="col-span-2 border rounded px-2 py-1 text-xs">
+            <option value="">Solicitud (opcional)</option>
+            <?php foreach ($solicitudes as $s): ?>
+                <option value="<?= $s["id"] ?>"><?= $s["nombre"] ?></option>
+            <?php endforeach; ?>
+        </select>
+
+    </div>
+    </div>
+
+    <!-- =====================
+         LISTA MATERIALES
+    ====================== -->
+    <div>
+        <p class="text-sm font-semibold mb-2">Materiales agregados</p>
+        <div id="listaMateriales" class="space-y-2 text-sm text-gray-600">
+            No hay materiales agregados
+        </div>
+    </div>
+
+    <!-- OBSERVACIONES -->
+    <textarea name="observaciones"
+        placeholder="Observaciones"
+        class="w-full border rounded-lg px-3 py-2"></textarea>
+
+    <!-- =====================
+         ACTIONS
+    ====================== -->
+    <div class="flex justify-end gap-2 pt-2 border-t">
+
+        <button type="button"
+            onclick="closeMovimientoModal()"
+            class="px-4 py-2 rounded-lg border text-sm hover:bg-muted">
             Cancelar
-          </button>
-          <button type="submit" id="btnRegistrarMovimiento"
-            class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-secondary">
+        </button>
+
+        <button
+            id="btnRegistrarMovimiento"
+            type="submit"
+            class="inline-flex items-center justify-center gap-2 rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 transition-all">
+            <i data-lucide="check-circle" class="h-4 w-4"></i>
             Registrar entrada
-          </button>
+        </button>
+
+    </div>
+
+</form>
+            </div>
         </div>
-      </form>
+
+    </main>
+
+    <!--  MENU GLOBAL -->
+    <div id="actionsMenu"
+        class="hidden fixed z-[9999] w-44 rounded-xl border border-gray-200 bg-white shadow-lg p-2">
+        <button type="button" onclick="actionVerDetalle()"
+            class="flex items-center gap-2 w-full text-left px-2 py-2 rounded-lg hover:bg-gray-100">
+            <i data-lucide="eye" class="h-4 w-4"></i><span>Ver detalle</span>
+        </button>
+    </div>
+  </div>
+
+  <!-- MODAL REGISTRAR MOVIMIENTO -->
+  <div id="movimientoModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div class="absolute inset-0" onclick="closeMovimientoModal()"></div>
+
+    <div class="relative mx-4 w-full max-w-2xl rounded-2xl bg-white shadow-xl p-6 sm:p-8">
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <h2 class="text-xl font-semibold text-gray-900">Registrar Movimiento</h2>
+          <p class="text-sm text-gray-500">Registre un nuevo movimiento de inventario</p>
+        </div>
+        <button type="button" onclick="closeMovimientoModal()"
+          class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100">
+          <i data-lucide="x" class="h-4 w-4"></i>
+        </button>
+      </div>
+
+      <!-- Tabs (✅ entrada / devolucion) -->
+      <div class="mb-6 flex justify-center">
+        <div id="tabsMovimiento"
+          class="flex w-full max-w-md items-center rounded-full bg-gray-100 p-1 text-sm font-medium shadow-inner">
+
+          <button type="button" data-tipo="entrada"
+            class="tab-mov flex-1 rounded-full py-2 text-center text-gray-600 hover:text-gray-900 transition-all">
+            Entrada
+          </button>
+
+
+          <button type="button" data-tipo="devolucion"
+            class="tab-mov flex-1 rounded-full py-2 text-center text-gray-600 hover:text-gray-900 transition-all">
+            Devolución
+          </button>
+
+        </div>
+      </div>
+
+      <!-- FORM -->
+      <form id="formMovimiento" class="space-y-5" onsubmit="registrarEntrada(event)">
+
+
+    <input type="hidden" id="tipoMovimiento" name="tipo_movimiento" value="entrada">
+    <input type="hidden" name="materiales_json" id="materiales_json">
+
+    <!-- =====================
+         DATOS DEL MATERIAL
+    ====================== -->
+    <div class="rounded-xl border border-border p-4 bg-gray-50">
+        <p class="text-xs font-semibold text-gray-500 uppercase mb-3">
+            Datos del material
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+            <!-- MATERIAL -->
+            <div class="sm:col-span-2">
+                <label class="text-sm font-medium">Material</label>
+                <select id="material" class="w-full border rounded-lg px-3 py-2">
+                    <option value="">Seleccione</option>
+                    <?php foreach ($materiales as $m): ?>
+                        <option value="<?= $m["id"] ?>" data-unidad="<?= $m["unidad"] ?>">
+                            <?= $m["nombre"] ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <!-- CANTIDAD -->
+            <div>
+                <label class="text-sm font-medium">Cantidad</label>
+                <input id="cantidad" type="number" min="1" value="1"
+                    class="w-full border rounded-lg px-3 py-2">
+            </div>
+
+            <!-- ESTADO -->
+            <div class="sm:col-span-3">
+                <label class="text-sm font-medium">Estado</label>
+                <select id="estado_material" class="w-full border rounded-lg px-3 py-2">
+                    <option value="">Seleccione</option>
+                    <option value="bueno">Bueno</option>
+                    <option value="regular">Regular</option>
+                    <option value="malo">Malo</option>
+                </select>
+            </div>
+
+        </div>
+
+        <button type="button"
+            onclick="agregarMaterial()"
+            class="mt-3 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-muted">
+            <i data-lucide="plus" class="h-4 w-4"></i>
+            Agregar material
+        </button>
+    </div>
+
+    <!-- =====================
+         BODEGA
+    ====================== -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+        <div>
+            <label class="text-sm font-medium">Bodega</label>
+            <select id="bodega" class="w-full border rounded-lg px-3 py-2">
+                <option value="">Seleccione</option>
+            </select>
+
+        </div>
+
+        <div>
+            <label class="text-sm font-medium">Subbodega</label>
+            <select id="subbodega" class="w-full border rounded-lg px-3 py-2">
+                <option value="">Seleccione bodega primero</option>
+            </select>
+
+        </div>
+
+    </div>
+
+    <!-- =====================
+         DEVOLUCIÓN (ULTRA COMPACTA)
+    ====================== -->
+    <!-- =====================
+     DEVOLUCIÓN (ULTRA COMPACTA)
+====================== -->
+<div data-field="programa"
+     class="hidden rounded-md border border-[#39A900] bg-[#39A90015] p-2">
+
+    <p class="text-[11px] font-semibold text-[#2e7d00] mb-1">
+        Devolución académica
+    </p>
+
+    <div class="grid grid-cols-2 gap-1">
+
+        <!-- PROGRAMA -->
+        <select id="programa"
+            class="col-span-2 border rounded px-2 py-1 text-xs">
+            <option value="">Programa</option>
+            <?php foreach ($programas as $p): ?>
+                <option value="<?= $p["id"] ?>"><?= $p["nombre"] ?></option>
+            <?php endforeach; ?>
+        </select>
+
+        <!-- FICHA -->
+        <select id="ficha"
+            class="border rounded px-2 py-1 text-xs">
+            <option value="">Ficha</option>
+            <?php foreach ($fichas as $f): ?>
+                <option value="<?= $f["id"] ?>"><?= $f["nombre"] ?></option>
+            <?php endforeach; ?>
+        </select>
+
+        <!-- RAE -->
+        <select id="rae"
+            class="border rounded px-2 py-1 text-xs">
+            <option value="">RAE</option>
+            <?php foreach ($raes as $r): ?>
+                <option value="<?= $r["id"] ?>"><?= $r["nombre"] ?></option>
+            <?php endforeach; ?>
+        </select>
+
+        <!-- INSTRUCTOR -->
+        <select id="instructor"
+            class="col-span-2 border rounded px-2 py-1 text-xs">
+            <option value="">Instructor</option>
+            <?php foreach ($instructores as $i): ?>
+                <option value="<?= $i["id"] ?>"><?= $i["nombre"] ?></option>
+            <?php endforeach; ?>
+        </select>
+
+        <!-- SOLICITUD -->
+        <select id="solicitud"
+            class="col-span-2 border rounded px-2 py-1 text-xs">
+            <option value="">Solicitud (opcional)</option>
+            <?php foreach ($solicitudes as $s): ?>
+                <option value="<?= $s["id"] ?>"><?= $s["nombre"] ?></option>
+            <?php endforeach; ?>
+        </select>
+
+    </div>
+    </div>
+
+    <!-- =====================
+         LISTA MATERIALES
+    ====================== -->
+    <div>
+        <p class="text-sm font-semibold mb-2">Materiales agregados</p>
+        <div id="listaMateriales" class="space-y-2 text-sm text-gray-600">
+            No hay materiales agregados
+        </div>
+    </div>
+
+    <!-- OBSERVACIONES -->
+    <textarea name="observaciones"
+        placeholder="Observaciones"
+        class="w-full border rounded-lg px-3 py-2"></textarea>
+
+    <!-- =====================
+         ACTIONS
+    ====================== -->
+    <div class="flex justify-end gap-2 pt-2 border-t">
+
+        <button type="button"
+            onclick="closeMovimientoModal()"
+            class="px-4 py-2 rounded-lg border text-sm hover:bg-muted">
+            Cancelar
+        </button>
+
+        <button
+            id="btnRegistrarMovimiento"
+            type="submit"
+            class="inline-flex items-center justify-center gap-2 rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 transition-all">
+            <i data-lucide="check-circle" class="h-4 w-4"></i>
+            Registrar entrada
+        </button>
+
+    </div>
+
+</form>
+            </div>
+        </div>
+
+    </main>
+
+    <!--  MENU GLOBAL -->
+    <div id="actionsMenu"
+        class="hidden fixed z-[9999] w-44 rounded-xl border border-gray-200 bg-white shadow-lg p-2">
+        <button type="button" onclick="actionVerDetalle()"
+            class="flex items-center gap-2 w-full text-left px-2 py-2 rounded-lg hover:bg-gray-100">
+            <i data-lucide="eye" class="h-4 w-4"></i><span>Ver detalle</span>
+        </button>
     </div>
   </div>
 
     <script>
-
+        // Función para escapar HTML
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return String(text).replace(/[&<>"']/g, m => map[m]);
+        }
 
         let materialesAgregados = [];
 
         function agregarMaterial() {
-
             const materialSel = document.getElementById("material");
             const cantidadEl = document.getElementById("cantidad");
             const estadoSel = document.getElementById("estado_material");
 
             const id = materialSel.value;
             const nombre = materialSel.options[materialSel.selectedIndex]?.text;
-            const unidad = materialSel.options[materialSel.selectedIndex]?.dataset.unidad;
+            const unidad = materialSel.options[materialSel.selectedIndex]?.dataset.unidad || '';
             const cantidad = parseInt(cantidadEl.value);
             const estado = estadoSel.value;
 
             if (!id || !cantidad || cantidad < 1 || !estado) {
-                alert("Complete material, cantidad y estado");
+                alert("Debe completar todos los campos del material (Material, Cantidad y Estado)");
                 return;
             }
 
@@ -1131,6 +1123,8 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                 unidad,
                 estado
             });
+            
+            console.log("Material agregado:", materialesAgregados);
 
             renderMateriales();
 
@@ -1175,16 +1169,10 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                 JSON.stringify(materialesAgregados);
         }
 
-        /* VALIDAR ENVÍO */
-        document.getElementById("formMovimiento")?.addEventListener("submit", function(e) {
-            if (materialesAgregados.length === 0) {
-                e.preventDefault();
-                alert("Debe agregar al menos un material.");
-            }
-        });
-
-
         document.addEventListener("DOMContentLoaded", function() {
+            // Cargar movimientos desde BD
+            cargarMovimientosDelServidor();
+            
             // LUCIDE
             if (window.lucide && typeof lucide.createIcons === "function") {
                 lucide.createIcons();
@@ -1222,24 +1210,6 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                 showTable();
             }
 
-            /* ===============================
-              filter sub-warehouse
-            =============================== */
-            const bodegaSel = document.getElementById("bodega");
-            const subbodegaSel = document.getElementById("subbodega");
-            const filterSubbodegas = () => {
-                if (!bodegaSel || !subbodegaSel) return;
-                const idB = bodegaSel.value;
-                [...subbodegaSel.options].forEach(opt => {
-                    if (!opt.value) return;
-                    const belongs = opt.getAttribute("data-bodega");
-                    opt.hidden = (idB && belongs !== idB);
-                });
-                const selOpt = subbodegaSel.selectedOptions[0];
-                if (selOpt && selOpt.value && selOpt.hidden) subbodegaSel.value = "";
-            };
-            if (bodegaSel) bodegaSel.addEventListener("change", filterSubbodegas);
-            filterSubbodegas();
 
             /* ===============================
               TABS movement (no exit)
@@ -1319,10 +1289,9 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
             window.initTabsMovimiento = initTabsMovimiento;
 
             /* ===============================
-              VALIDATIONS (NO EXIT)
+              Inicialización de tabs
             =============================== */
-            const form = document.getElementById("formMovimiento");
-            if (form) {
+            if (window.initTabsMovimiento) {
                 const materialesInput = document.getElementById("materiales_json");
                 let materiales = [];
 
@@ -1468,11 +1437,261 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
             modal.classList.remove('hidden');
             modal.classList.add('flex');
+
+            cargarBodegas();
+            cargarMateriales();
+
             document.body.classList.add('overflow-hidden');
 
+            const subSel = document.getElementById("subbodega");
+            if (subSel) subSel.innerHTML = `<option value="">Seleccione</option>`;
+
             if (window.initTabsMovimiento) window.initTabsMovimiento();
-            if (window.lucide && typeof lucide.createIcons === "function") lucide.createIcons();
+            if (window.lucide) lucide.createIcons();
+}
+
+
+// Función para cargar movimientos desde el servidor
+async function cargarMovimientosDelServidor() {
+    try {
+        const res = await fetch(`${API_BASE}movimiento_controller.php?accion=listar`, {
+            headers: { Accept: "application/json" }
+        });
+        
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        
+        console.log("Movimientos cargados:", json);
+        
+        if (!json.success || !Array.isArray(json.data)) {
+            console.log("No hay movimientos o error en respuesta");
+            return;
         }
+        
+        const tbody = document.getElementById("tbodyMovimientos");
+        const gridView = document.getElementById("gridView");
+        
+        if (!tbody) return;
+        
+        tbody.innerHTML = ""; // Limpiar tabla
+        if (gridView) gridView.innerHTML = ""; // Limpiar grid
+        
+        json.data.forEach(m => {
+            const tipo = (m.tipo_movimiento || "").toLowerCase();
+            let labelTipo = "Entrada";
+            let claseTipo = "bg-gray-100 text-gray-700";
+            let iconTipo = "arrow-down-up";
+            
+            if (tipo === "entrada") {
+                labelTipo = "Entrada";
+                claseTipo = "bg-[#39A90020] text-slate-700";
+                iconTipo = "arrow-up-from-line";
+            } else if (tipo === "salida") {
+                labelTipo = "Salida";
+                claseTipo = "bg-lime-100 text-lime-700";
+                iconTipo = "arrow-down-up";
+            } else if (tipo === "devolucion") {
+                labelTipo = "Devolución";
+                claseTipo = "bg-[#39A90020] text-slate-700";
+                iconTipo = "rotate-ccw";
+            }
+            
+            const fecha = m.fecha_hora ? new Date(m.fecha_hora) : null;
+            const fechaFormato = fecha ? fecha.toLocaleDateString('es-CO') : '-';
+            const horaFormato = fecha ? fecha.toLocaleTimeString('es-CO') : '';
+            
+            // Materiales con cantidad total
+            const cantidadTotal = Array.isArray(m.materiales) 
+                ? m.materiales.reduce((sum, mat) => sum + (parseInt(mat.cantidad) || 0), 0)
+                : 0;
+            const materialesJson = escapeHtml(JSON.stringify(m.materiales || []));
+            
+            // Agregar a tabla
+            tbody.insertAdjacentHTML("beforeend", `
+                <tr class="hover:bg-muted/60">
+                    <td class="px-4 py-3 align-top">
+                        <div class="flex items-start gap-2">
+                            <i data-lucide="calendar" class="h-4 w-4 mt-0.5 text-muted-foreground"></i>
+                            <div class="flex flex-col">
+                                <span class="text-sm font-medium text-foreground">${fechaFormato}</span>
+                                <span class="text-xs text-muted-foreground">${horaFormato}</span>
+                            </div>
+                        </div>
+                    </td>
+                    
+                    <td class="px-4 py-3 align-top">
+                        <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${claseTipo}">
+                            <i data-lucide="${iconTipo}" class="h-3 w-3"></i>
+                            ${labelTipo}
+                        </span>
+                    </td>
+                    
+                    <td class="px-4 py-3 align-top">
+                        <button type="button"
+                            class="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 hover:bg-muted"
+                            onclick="openMaterialesModal(this)"
+                            data-materiales='${materialesJson}'>
+                            <i data-lucide="eye" class="h-4 w-4"></i>
+                            <span class="text-xs text-muted-foreground">Ver</span>
+                        </button>
+                    </td>
+                    
+                    <td class="px-4 py-3 align-top">
+                        <span class="text-sm font-medium text-foreground">${cantidadTotal}</span>
+                    </td>
+                    
+                    <td class="px-4 py-3 align-top"><span class="text-sm">${escapeHtml(m.bodega || '-')}</span></td>
+                    <td class="px-4 py-3 align-top"><span class="text-sm">${escapeHtml(m.subbodega || '-')}</span></td>
+                    <td class="px-4 py-3 align-top"><span class="text-sm">${escapeHtml(m.id_programa ? String(m.id_programa) : '-')}</span></td>
+                    
+                    <td class="px-4 py-3 align-top">
+                        <span class="inline-flex items-center rounded-md border border-border px-2 py-1 text-xs font-medium">
+                            ${escapeHtml(m.id_ficha ? String(m.id_ficha) : '-')}
+                        </span>
+                    </td>
+                    
+                    <td class="px-4 py-3 align-top"><span class="text-sm">${escapeHtml(m.id_rae ? String(m.id_rae) : '-')}</span></td>
+                    
+                    <td class="px-4 py-3 align-top">
+                        <div class="flex items-start gap-2">
+                            <i data-lucide="users" class="h-4 w-4 mt-0.5 text-muted-foreground"></i>
+                            <span class="text-sm truncate max-w-[220px]">${escapeHtml(m.id_instructor ? String(m.id_instructor) : '-')}</span>
+                        </div>
+                    </td>
+                    
+                    <td class="px-4 py-3 align-top">
+                        <span class="text-sm text-muted-foreground">${escapeHtml(m.observaciones || '-')}</span>
+                    </td>
+                    
+                    <td class="px-4 py-3 align-top"><span class="text-sm">-</span></td>
+                    
+                    <td class="px-4 py-3 align-top text-right">
+                        <button type="button"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted"
+                            onclick="openActionsMenu(event, this)"
+                            data-id="${m.id_movimiento}"
+                            data-tipo="${escapeHtml(tipo)}"
+                            data-fecha="${m.fecha_hora || ''}"
+                            data-bodega="${escapeHtml(m.bodega || '-')}"
+                            data-subbodega="${escapeHtml(m.subbodega || '-')}"
+                            data-programa="${escapeHtml(m.programa || '-')}"
+                            data-ficha="${escapeHtml(m.id_ficha ? String(m.id_ficha) : '-')}"
+                            data-rae="${escapeHtml(m.rae || '-')}"
+                            data-instructor="${escapeHtml(m.instructor || '-')}"
+                            data-observaciones="${escapeHtml(m.observaciones || '-')}"
+                            data-solicitud="-"
+                            data-materiales='${materialesJson}'>
+                            <i data-lucide="more-horizontal" class="h-4 w-4"></i>
+                        </button>
+                    </td>
+                </tr>
+            `);
+        });
+        
+        // Recrear iconos de Lucide
+        if (window.lucide && typeof lucide.createIcons === "function") {
+            lucide.createIcons();
+        }
+        
+    } catch (err) {
+        console.error("Error cargando movimientos:", err);
+    }
+}
+const API_BASE = "<?= rtrim(BASE_URL, '/'); ?>/src/controllers/";
+const ID_USUARIO = <?= (int)$idUsuario; ?>;
+
+async function cargarBodegas() {
+    const sel = document.getElementById("bodega");
+    if (!sel) return;
+
+    sel.innerHTML = `<option value="">Cargando...</option>`;
+    try {
+        const res = await fetch(`${API_BASE}bodega_controller.php?accion=listar`, {
+            headers: { Accept: "application/json" }
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+
+        sel.innerHTML = `<option value="">Seleccione</option>`;
+        if (!json.success || !Array.isArray(json.data)) return;
+
+        json.data.forEach(b => {
+            sel.insertAdjacentHTML("beforeend",
+                `<option value="${b.id_bodega}">${b.nombre}</option>`);
+        });
+
+        sel.onchange = (e) => {
+            const id = e.target.value;
+            if (!id) {
+                const sub = document.getElementById("subbodega");
+                if (sub) sub.innerHTML = `<option value="">Seleccione bodega primero</option>`;
+                return;
+            }
+            cargarSubbodegas(id);
+        };
+    } catch (e) {
+        console.error("Error cargando bodegas:", e);
+        sel.innerHTML = `<option value="">Error al cargar</option>`;
+    }
+}
+
+async function cargarSubbodegas(idBodega) {
+    const sel = document.getElementById("subbodega");
+    if (!sel) return;
+    if (!idBodega) {
+        sel.innerHTML = `<option value="">Seleccione bodega primero</option>`;
+        return;
+    }
+
+    sel.innerHTML = `<option value="">Cargando...</option>`;
+    try {
+        const res = await fetch(
+            `${API_BASE}sub_bodega_controller.php?accion=por_bodega&id_bodega=${encodeURIComponent(idBodega)}`,
+            { headers: { Accept: "application/json" } }
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+
+        sel.innerHTML = `<option value="">Seleccione</option>`;
+        if (!json.success || !Array.isArray(json.data)) return;
+
+        json.data.forEach(sb => {
+            sel.insertAdjacentHTML("beforeend",
+                `<option value="${sb.id_subbodega}">${sb.nombre_subbodega}</option>`);
+        });
+    } catch (e) {
+        console.error("Error cargando subbodegas:", e);
+        sel.innerHTML = `<option value="">Error al cargar</option>`;
+    }
+}
+
+async function cargarMateriales() {
+    const sel = document.getElementById("material");
+    if (!sel) return;
+
+    sel.innerHTML = `<option value="">Cargando...</option>`;
+    try {
+        const res = await fetch(`${API_BASE}material_formacion_controller.php?accion=listar`, {
+            headers: { Accept: "application/json" }
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+
+        sel.innerHTML = `<option value="">Seleccione</option>`;
+        const items = Array.isArray(json) ? json : (json.data || []);
+        if (!Array.isArray(items)) return;
+
+        items.forEach(m => {
+            sel.insertAdjacentHTML(
+                "beforeend",
+                `<option value="${m.id_material}" data-unidad="${m.unidad ?? ''}">${m.nombre}</option>`
+            );
+        });
+    } catch (e) {
+        console.error("Error cargando materiales:", e);
+        sel.innerHTML = `<option value="">Error al cargar</option>`;
+    }
+}
         /* ===============================
           MODAL Materials
         =============================== */
@@ -1585,59 +1804,81 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                 label = "Devolución";
             }
 
-            badgeTipo.className = "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium " + cls;
-            detTipo.textContent = label;
-            detIconTipo.setAttribute("data-lucide", icon);
-
-            document.getElementById("detFecha").textContent = data.fecha || "-";
-
-            // Fields
-            document.getElementById("detBodega").textContent = data.bodega || "-";
-            document.getElementById("detSubbodega").textContent = data.subbodega || "-";
-            document.getElementById("detPrograma").textContent = data.programa || "-";
-            document.getElementById("detFicha").textContent = data.ficha || "-";
-            document.getElementById("detRae").textContent = data.rae || "-";
-            document.getElementById("detInstructor").textContent = data.instructor || "-";
-            document.getElementById("detSolicitud").textContent = data.solicitud || "-";
-            document.getElementById("detObs").textContent = data.observaciones || "-";
-
-            // Materials list
-            const wrap = document.getElementById("detMateriales");
-            wrap.innerHTML = "";
-            let items = [];
-            try {
-                items = JSON.parse(data.materiales || "[]");
-            } catch (e) {
-                items = [];
+            if (badgeTipo) {
+                badgeTipo.className = `inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${cls}`;
+                badgeTipo.innerHTML = `<i data-lucide="${icon}" class="h-3 w-3"></i>${label}`;
             }
 
-            if (!items.length) {
-                wrap.innerHTML = `<div class="rounded-xl border border-gray-200 p-4 text-sm text-gray-500">No hay materiales asociados.</div>`;
+            // Fecha
+            const fecha = data.fecha_hora ? new Date(data.fecha_hora) : null;
+            document.getElementById("detFecha").textContent = fecha ? fecha.toLocaleString() : "-";
+
+
+            // Campos normales
+            const fields = [
+                "bodega",
+                "subbodega",
+                "programa",
+                "ficha",
+                "rae",
+                "instructor",
+                "observaciones",
+                "solicitud"
+            ];
+
+            fields.forEach(f => {
+                const el = document.getElementById(
+                    `det${f.charAt(0).toUpperCase() + f.slice(1)}`
+                );
+
+                if (el) {
+                    el.textContent = data[f] || "-";
+                }
+            });
+
+            
+
+
+            // Materiales
+            const contMateriales = document.getElementById("detMateriales");
+            contMateriales.innerHTML = "";
+
+            let materiales = [];
+            try {
+                materiales = JSON.parse(data.materiales || "[]");
+            } catch (e) {
+                materiales = [];
+            }
+
+            if (materiales.length === 0) {
+                contMateriales.innerHTML = `
+        <div class="rounded-lg border border-border p-4 text-sm text-muted-foreground">
+          No hay materiales asociados a este movimiento.
+        </div>`;
             } else {
-                items.forEach((it, idx) => {
-                    wrap.insertAdjacentHTML("beforeend", `
-        <div class="rounded-xl border border-gray-200 p-4 flex items-start justify-between gap-4">
-          <div class="flex items-start gap-3">
-            <div class="h-10 w-10 rounded-xl bg-gray-100 flex items-center justify-center">
-              <i data-lucide="package" class="h-4 w-4 text-[#39A900]"></i>
+                materiales.forEach((m, idx) => {
+                    contMateriales.insertAdjacentHTML("beforeend", `
+          <div class="rounded-xl border border-border p-4 flex items-start justify-between gap-4">
+            <div class="flex items-start gap-3">
+              <div class="h-9 w-9 rounded-lg bg-gray-100 flex items-center justify-center">
+                <i data-lucide="package" class="h-4 w-4 text-[#39A900]"></i>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-foreground">${escapeHtml(m.nombre || ("Material #" + (m.id_material ?? (idx+1))))}</p>
+                <p class="text-xs text-muted-foreground">ID material: ${escapeHtml(String(m.id_material ?? "-"))}</p>
+              </div>
             </div>
-            <div>
-              <p class="text-sm font-semibold text-gray-900">${escapeHtml(it.nombre || ("Material #" + (it.id_material ?? (idx+1))))}</p>
-              <p class="text-xs text-gray-500">ID material: ${escapeHtml(String(it.id_material ?? "-"))}</p>
+            <div class="text-right">
+              <p class="text-sm font-medium">${escapeHtml(String(m.cantidad ?? "-"))} ${escapeHtml(m.unidad || "")}</p>
+              <p class="text-xs text-muted-foreground">Cantidad</p>
             </div>
           </div>
-          <div class="text-right">
-            <p class="text-sm font-semibold text-gray-900">${escapeHtml(String(it.cantidad ?? "-"))} ${escapeHtml(it.unidad || "")}</p>
-            <p class="text-xs text-gray-500">Cantidad</p>
-          </div>
-        </div>
-      `);
+        `);
                 });
             }
 
             modal.classList.remove("hidden");
             modal.classList.add("flex");
-            document.body.classList.add("overflow-hidden");
 
             if (window.lucide && typeof lucide.createIcons === "function") lucide.createIcons();
         }
@@ -1647,202 +1888,88 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
             if (!modal) return;
             modal.classList.add("hidden");
             modal.classList.remove("flex");
-            document.body.classList.remove("overflow-hidden");
         }
 
-        /* ===============================
-           ESC
-        =============================== */
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeMovimientoModal();
-                closeMaterialesModal();
-                closeActionsMenu();
-                closeDetalleModal();
-            }
-        });
-
-        /* ===============================
-           Utils
-        =============================== */
-        function escapeHtml(str) {
-            return (str ?? "").replace(/[&<>"']/g, function(m) {
-                return ({
-                    "&": "&amp;",
-                    "<": "&lt;",
-                    ">": "&gt;",
-                    '"': "&quot;",
-                    "'": "&#039;"
-                })[m];
-            });
-        }
-
-        /* ===============================
-           MENU GLOBAL
-        =============================== */
-        let currentActionData = null;
-
-        function openActionsMenu(ev, btn) {
+        function registrarEntrada(ev) {
             ev.preventDefault();
-            ev.stopPropagation();
+            
+            console.log("Registrando entrada, materiales agregados:", materialesAgregados);
 
-            const menu = document.getElementById("actionsMenu");
-            if (!menu) return;
-
-            currentActionData = {
-                id: btn.dataset.id,
-                tipo: btn.dataset.tipo,
-                fecha: btn.dataset.fecha,
-                bodega: btn.dataset.bodega,
-                subbodega: btn.dataset.subbodega,
-                programa: btn.dataset.programa,
-                ficha: btn.dataset.ficha,
-                rae: btn.dataset.rae,
-                instructor: btn.dataset.instructor,
-                observaciones: btn.dataset.observaciones,
-                solicitud: btn.dataset.solicitud,
-                materiales: btn.dataset.materiales
+            // Validación mínima (ya tienes más arriba)
+            if (!materialesAgregados.length) {
+                alert("Debe agregar al menos un material.");
+                return;
+            }
+            
+            // Obtener IDs (no solo nombres)
+            const tipoMovimiento = document.getElementById("tipoMovimiento")?.value || "entrada";
+            const idBodega = document.getElementById("bodega")?.value || "";
+            const idSubbodega = document.getElementById("subbodega")?.value || "";
+            const idPrograma = document.getElementById("programa")?.value || null;
+            const idFicha = document.getElementById("ficha")?.value || null;
+            const idRae = document.getElementById("rae")?.value || null;
+            const idInstructor = document.getElementById("instructor")?.value || null;
+            const idSolicitud = document.getElementById("solicitud")?.value || null;
+            const observaciones = document.querySelector("textarea[name='observaciones']")?.value || "";
+            
+            // Validar que tenga bodega y subbodega
+            if (!idBodega || !idSubbodega) {
+                alert("Debe seleccionar bodega y subbodega.");
+                return;
+            }
+            
+            // Preparar datos para enviar al servidor
+            const dataToSend = {
+                id_usuario: ID_USUARIO, // Obtener del usuario logueado
+                id_bodega: idBodega,
+                id_subbodega: idSubbodega,
+                id_programa: idPrograma || null,
+                id_ficha: idFicha || null,
+                id_rae: idRae || null,
+                id_instructor: idInstructor || null,
+                id_solicitud: idSolicitud || null,
+                observaciones: observaciones,
+                tipo_movimiento: tipoMovimiento,
+                materiales: materialesAgregados
             };
-
-            const r = btn.getBoundingClientRect();
-            const menuW = 176;
-            const menuH = 70;
-
-            let left = r.right - menuW;
-            let top = r.bottom + 8;
-
-            left = Math.max(8, Math.min(left, window.innerWidth - menuW - 8));
-            top = Math.max(8, Math.min(top, window.innerHeight - menuH - 8));
-
-            menu.style.left = left + "px";
-            menu.style.top = top + "px";
-
-            menu.classList.remove("hidden");
-
-            if (window.lucide && typeof lucide.createIcons === "function") lucide.createIcons();
-        }
-
-        function closeActionsMenu() {
-            const menu = document.getElementById("actionsMenu");
-            if (!menu) return;
-            menu.classList.add("hidden");
-        }
-
-        document.addEventListener("click", function() {
-            closeActionsMenu();
-        });
-
-        function actionVerDetalle() {
-            closeActionsMenu();
-            if (!currentActionData) return;
-            openDetalleModal(currentActionData);
-        }
-        /* ======================================
-           FUNCTIONAL FILTERS AND SEARCH
-           Ficha + Tipo + Programa
-        ====================================== */
-
-        const inputBuscar = document.querySelector('input[name="buscar_ficha"]');
-        const selectTipo = document.querySelector('select[name="filtro_tipo"]');
-        const selectPrograma = document.querySelector('select[name="filtro_programa"]');
-
-        const filasTabla = document.querySelectorAll('#tableView tbody tr');
-        const cardsGrid = document.querySelectorAll('#gridView > div');
-
-        function aplicarFiltros() {
-            const texto = inputBuscar.value.trim().toLowerCase();
-            const tipo = selectTipo.value.toLowerCase();
-            const programa = selectPrograma.value.toLowerCase();
-
-            /* ===== TABLA ===== */
-            filasTabla.forEach(fila => {
-                const ficha = fila.querySelector('td:nth-child(8)')?.innerText.toLowerCase() || '';
-                const tipoFila = fila.querySelector('td:nth-child(2) span')?.innerText.toLowerCase() || '';
-                const programaFila = fila.querySelector('td:nth-child(7)')?.innerText.toLowerCase() || '';
-
-                let mostrar = true;
-
-                if (texto && !ficha.includes(texto)) mostrar = false;
-                if (tipo && !tipoFila.includes(tipo)) mostrar = false;
-                if (programa && !programaFila.includes(programa)) mostrar = false;
-
-                fila.style.display = mostrar ? '' : 'none';
-            });
-
-            /* ===== GRID ===== */
-            cardsGrid.forEach(card => {
-                const textoCard = card.innerText.toLowerCase();
-
-                let mostrar = true;
-
-                if (texto && !textoCard.includes(texto)) mostrar = false;
-                if (tipo && !textoCard.includes(tipo)) mostrar = false;
-                if (programa && !textoCard.includes(programa)) mostrar = false;
-
-                card.style.display = mostrar ? '' : 'none';
+            
+            console.log("Enviando datos:", dataToSend);
+            
+            // Enviar al servidor
+            fetch(`${API_BASE}movimiento_controller.php?accion=crear`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(dataToSend)
+            })
+            .then(res => res.json())
+            .then(json => {
+                console.log("Respuesta del servidor:", json);
+                
+                if (json.success) {
+                    alert("Movimiento registrado exitosamente: " + json.codigo_movimiento);
+                    
+                    // Limpiar y cerrar modal
+                    materialesAgregados = [];
+                    renderMateriales();
+                    document.getElementById("formMovimiento")?.reset();
+                    closeMovimientoModal();
+                    
+                    // Recargar movimientos desde BD
+                    setTimeout(() => {
+                        cargarMovimientosDelServidor();
+                    }, 500);
+                } else {
+                    alert("Error: " + (json.message || "No se pudo registrar el movimiento"));
+                }
+            })
+            .catch(err => {
+                console.error("Error:", err);
+                alert("Error al registrar movimiento: " + err.message);
             });
         }
-
-        /* EVENTOS */
-        inputBuscar?.addEventListener('input', aplicarFiltros);
-        selectTipo?.addEventListener('change', aplicarFiltros);
-        selectPrograma?.addEventListener('change', aplicarFiltros);
-
-async function registrarEntrada(e) {
-    e.preventDefault();
-
-    if (materialesAgregados.length === 0) {
-        alert("Debe agregar al menos un material");
-        return;
-    }
-
-    const payload = {
-        tipo_movimiento: document.getElementById("tipoMovimiento").value,
-        id_usuario: 1, // luego lo sacas de sesión
-        id_bodega: document.getElementById("bodega").value,
-        id_subbodega: document.getElementById("subbodega").value,
-        observaciones: document.querySelector('[name="observaciones"]')?.value || null,
-        materiales: materialesAgregados
-    };
-    
-    if (!payload.id_subbodega) {
-    alert("Seleccione la subbodega");
-    return;
-}
-
-    console.log("📤 Payload enviado:", payload);
-
-    try {
-        const res = await fetch(
-    "http://localhost/Gestion-inventario/src/controllers/movimiento_controller.php?accion=crear",
-    {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-    }
-);
-
-        const text = await res.text();
-        console.log("📥 Respuesta RAW:", text);
-
-        const data = JSON.parse(text);
-
-        if (!data.success) {
-            alert(data.message || "Error al registrar");
-            return;
-        }
-
-        alert("✅ Entrada registrada correctamente");
-        closeMovimientoModal();
-        location.reload();
-
-    } catch (err) {
-        console.error("❌ Error:", err);
-        alert("Error de conexión con el servidor");
-    }
-}
-
-
     </script>
 </body>
+
 </html>

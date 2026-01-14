@@ -1,42 +1,63 @@
 <?php
 class MovimientoModel {
-    private $conn;
 
-    public function __construct($db) {
+    private PDO $conn;
+
+    public function __construct(PDO $db) {
         $this->conn = $db;
     }
 
-    public function registrarEntrada($data)
+    /* ===============================
+       REGISTRAR ENTRADA (MULTI MATERIAL)
+    =============================== */
+    public function registrarEntrada(array $data): string
 {
     $this->conn->beginTransaction();
 
     try {
-
         $codigoMovimiento = 'MOV-' . date('Y') . '-' . str_pad(
-            rand(1, 99999),
-            5,
-            '0',
-            STR_PAD_LEFT
+            random_int(1, 99999), 5, '0', STR_PAD_LEFT
         );
 
-        $sql = "
-            INSERT INTO movimientos_material
-            (codigo_movimiento, tipo_movimiento, id_usuario, id_material,
-             id_bodega, id_subbodega, cantidad, observaciones)
-            VALUES (?, 'Entrada', ?, ?, ?, ?, ?, ?)
-        ";
+        /* 1️⃣ Insert movimiento */
+        $stmtMov = $this->conn->prepare("
+            INSERT INTO movimientos (
+                codigo_movimiento, tipo_movimiento, id_usuario,
+                id_bodega, id_subbodega,
+                id_programa, id_ficha, id_rae, id_instructor,
+                observaciones
+            ) VALUES (
+                ?, 'entrada', ?, ?, ?, ?, ?, ?, ?, ?
+            )
+        ");
 
-        $stmt = $this->conn->prepare($sql);
+        $stmtMov->execute([
+            $codigoMovimiento,
+            $data['id_usuario'],
+            $data['id_bodega'],
+            $data['id_subbodega'],
+            $data['id_programa'] ?? null,
+            $data['id_ficha'] ?? null,
+            $data['id_rae'] ?? null,
+            $data['id_instructor'] ?? null,
+            $data['observaciones'] ?? null
+        ]);
+
+        $idMovimiento = $this->conn->lastInsertId();
+
+        /* 2️⃣ Insert materiales */
+        $stmtMat = $this->conn->prepare("
+            INSERT INTO movimiento_materiales
+            (id_movimiento, id_material, cantidad, estado)
+            VALUES (?, ?, ?, ?)
+        ");
 
         foreach ($data['materiales'] as $mat) {
-            $stmt->execute([
-                $codigoMovimiento,
-                $data['id_usuario'],
+            $stmtMat->execute([
+                $idMovimiento,
                 $mat['id_material'],
-                $data['id_bodega'],
-                $data['id_subbodega'],
                 $mat['cantidad'],
-                $data['observaciones']
+                $mat['estado']
             ]);
         }
 
@@ -45,101 +66,107 @@ class MovimientoModel {
 
     } catch (Exception $e) {
         $this->conn->rollBack();
-        throw $e;
+        throw new Exception("Error al registrar movimiento");
     }
 }
 
 
-    /* CREATE MOVEMENT */
-    public function crearMovimiento($data) {
-
-    $sql = "INSERT INTO movimientos_material
-        (tipo_movimiento, fecha_hora, id_usuario, id_bodega, id_subbodega, observaciones)
-        VALUES (:tipo, NOW(), :usuario, :bodega, :subbodega, :obs)";
+    /* ===============================
+       LISTAR MOVIMIENTOS
+    =============================== */
+    public function listarMovimientos()
+{
+    $sql = "
+        SELECT 
+            m.id_movimiento,
+            m.codigo_movimiento,
+            m.tipo_movimiento,
+            m.fecha_hora,
+            m.observaciones,
+            m.id_bodega,
+            b.nombre AS bodega,
+            m.id_subbodega,
+            sb.nombre_subbodega AS subbodega,
+            m.id_programa,
+            m.id_ficha,
+            m.id_rae,
+            m.id_instructor
+        FROM movimientos m
+        LEFT JOIN bodegas b ON b.id_bodega = m.id_bodega
+        LEFT JOIN subbodegas sb ON sb.id_subbodega = m.id_subbodega
+        ORDER BY m.fecha_hora DESC
+    ";
 
     $stmt = $this->conn->prepare($sql);
-
-    $stmt->execute([
-        ':tipo'       => $data['tipo_movimiento'],
-        ':usuario'    => $data['id_usuario'],
-        ':bodega'     => $data['id_bodega'],
-        ':subbodega'  => $data['id_subbodega'],
-        ':obs'        => $data['observaciones']
-    ]);
-
-    return $this->conn->lastInsertId();
+    $stmt->execute();
+    $movimientos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Agregar materiales a cada movimiento
+    foreach ($movimientos as &$mov) {
+        $sqlMat = "
+            SELECT mm.id_material, mf.nombre, mm.cantidad, mf.unidad_medida, mm.estado
+            FROM movimiento_materiales mm
+            INNER JOIN material_formacion mf ON mf.id_material = mm.id_material
+            WHERE mm.id_movimiento = ?
+        ";
+        $stmtMat = $this->conn->prepare($sqlMat);
+        $stmtMat->execute([$mov['id_movimiento']]);
+        $mov['materiales'] = $stmtMat->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+    return $movimientos;
 }
 
-    /* LIST MOVEMENTS */
-    public function listarMovimientos() {
 
-        $sql = "SELECT m.*, 
-                u.nombre_completo AS usuario,
-                mat.nombre AS material,
-                b.nombre AS bodega,
-                f.numero_ficha,
-                p.nombre_programa,
-                r.descripcion_rae
-                FROM movimientos_material m
-                INNER JOIN usuarios u ON m.id_usuario = u.id_usuario
-                INNER JOIN material_formacion mat ON m.id_material = mat.id_material
-                INNER JOIN bodegas b ON m.id_bodega = b.id_bodega
-                LEFT JOIN fichas f ON m.id_ficha = f.id_ficha
-                LEFT JOIN programas_formacion p ON m.id_programa = p.id_programa
-                LEFT JOIN raes r ON m.id_rae = r.id_rae
-                ORDER BY m.fecha_hora DESC";
 
-        return $this->conn->query($sql);
+    /* ===============================
+       OBTENER MOVIMIENTO + MATERIALES
+    =============================== */
+    public function obtenerMovimiento(int $id)
+    {
+        $sql = "SELECT * FROM movimientos WHERE id_movimiento = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([$id]);
+        $mov = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$mov) return null;
+
+        $sqlMat = "
+            SELECT mm.*, m.nombre
+            FROM movimiento_materiales mm
+            INNER JOIN materiales m ON m.id_material = mm.id_material
+            WHERE mm.id_movimiento = ?
+        ";
+
+        $stmtMat = $this->conn->prepare($sqlMat);
+        $stmtMat->execute([$id]);
+        $mov['materiales'] = $stmtMat->fetchAll(PDO::FETCH_ASSOC);
+
+        return $mov;
     }
 
-    /* GET ONE MOVEMENT*/
-    public function obtenerMovimiento($id) {
-        $sql = "SELECT * FROM movimientos_material WHERE id_movimiento = ?";
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        return $stmt->get_result()->fetch_assoc();
-    }
+    /* ===============================
+       ELIMINAR MOVIMIENTO
+    =============================== */
+    public function eliminarMovimiento(int $id): bool
+    {
+        $this->conn->beginTransaction();
 
-    /* UPDATE MOVEMENT */
-    public function actualizarMovimiento($id, $data) {
+        try {
+            $this->conn->prepare(
+                "DELETE FROM movimiento_materiales WHERE id_movimiento=?"
+            )->execute([$id]);
 
-        $sql = "UPDATE movimientos_material SET 
-                id_material=?, id_bodega=?, id_subbodega=?, cantidad=?, 
-                id_programa=?, id_ficha=?, id_rae=?, observaciones=?
-                WHERE id_movimiento=?";
+            $this->conn->prepare(
+                "DELETE FROM movimientos WHERE id_movimiento=?"
+            )->execute([$id]);
 
-        $stmt = $this->conn->prepare($sql);
+            $this->conn->commit();
+            return true;
 
-        // Handle NULL values
-        $id_subbodega = !empty($data['id_subbodega']) ? $data['id_subbodega'] : null;
-        $id_programa  = !empty($data['id_programa'])  ? $data['id_programa']  : null;
-        $id_ficha     = !empty($data['id_ficha'])     ? $data['id_ficha']     : null;
-        $id_rae       = !empty($data['id_rae'])       ? $data['id_rae']       : null;
-        $obs          = !empty($data['observaciones']) ? $data['observaciones'] : null;
-
-        // i = integer, s = string
-        $stmt->bind_param(
-            "iiiiiiisi",
-            $data['id_material'],
-            $data['id_bodega'],
-            $id_subbodega,
-            $data['cantidad'],
-            $id_programa,
-            $id_ficha,
-            $id_rae,
-            $obs,
-            $id
-        );
-
-        return $stmt->execute();
-    }
-
-    /* DELETE MOVEMENT */
-    public function eliminarMovimiento($id) {
-        $sql = "DELETE FROM movimientos_material WHERE id_movimiento=?";
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bind_param("i", $id);
-        return $stmt->execute();
+        } catch (Throwable $e) {
+            $this->conn->rollBack();
+            return false;
+        }
     }
 }
