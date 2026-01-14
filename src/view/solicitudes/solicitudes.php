@@ -235,6 +235,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 </div>
 
 <!-- JS -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="src/assets/js/solicitudes/solicitudes.js"></script>
 <script>
     lucide.createIcons();

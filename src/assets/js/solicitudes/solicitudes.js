@@ -62,28 +62,253 @@ const selectores = {
   resumenRechazadas: document.getElementById("resumen-rechazadas"),
 };
 
+// ============================================================
+//  FLOWBITE-STYLE TOASTS (igual al módulo Usuarios)
+// ============================================================
+function getOrCreateFlowbiteContainer() {
+  let container = document.getElementById("flowbite-alert-container");
+
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "flowbite-alert-container";
+    container.className =
+      "fixed top-6 right-6 z-[9999] flex flex-col gap-3 w-full max-w-md px-4 pointer-events-none";
+    document.body.appendChild(container);
+  }
+
+  return container;
+}
+
+function showFlowbiteAlert(type, message) {
+  const container = getOrCreateFlowbiteContainer();
+  const wrapper = document.createElement("div");
+
+  let borderColor = "border-amber-500";
+  let textColor = "text-amber-900";
+  let titleText = "Advertencia";
+
+  let iconSVG = `
+    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+      <path d="M8.257 3.099c.765-1.36 2.72-1.36 3.485 0l6.518 11.59A1.75 1.75 0 0 1 16.768 17H3.232a1.75 1.75 0 0 1-1.492-2.311L8.257 3.1z"/>
+      <path d="M11 13H9V9h2zm0 3H9v-2h2z" fill="#fff"/>
+    </svg>
+  `;
+
+  if (type === "success") {
+    borderColor = "border-emerald-500";
+    textColor = "text-emerald-900";
+    titleText = "Éxito";
+    iconSVG = `
+      <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm-1 15-4-4 1.414-1.414L9 12.172l4.586-4.586L15 9z"/>
+      </svg>
+    `;
+  }
+
+  if (type === "info") {
+    borderColor = "border-blue-500";
+    textColor = "text-blue-900";
+    titleText = "Información";
+    iconSVG = `
+      <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm1 15H9v-5h2Zm0-7H9V6h2Z"/>
+      </svg>
+    `;
+  }
+
+  wrapper.className = `
+    relative flex items-center w-full pointer-events-auto
+    rounded-2xl border-l-4 ${borderColor} bg-white shadow-md
+    px-4 py-3 text-sm ${textColor}
+    opacity-0 -translate-y-2 transition-all duration-300 ease-out
+  `;
+
+  wrapper.innerHTML = `
+    <div class="flex-shrink-0 mr-3 text-current">${iconSVG}</div>
+    <div class="flex-1 min-w-0">
+      <p class="font-semibold">${titleText}</p>
+      <p class="mt-0.5 text-sm">${message}</p>
+    </div>
+  `;
+
+  container.appendChild(wrapper);
+
+  requestAnimationFrame(() => {
+    wrapper.classList.remove("opacity-0", "-translate-y-2");
+    wrapper.classList.add("opacity-100", "translate-y-0");
+  });
+
+  setTimeout(() => {
+    wrapper.classList.add("opacity-0", "-translate-y-2");
+    wrapper.classList.remove("opacity-100", "translate-y-0");
+    setTimeout(() => wrapper.remove(), 250);
+  }, 4000);
+}
+
+function toastError(message) {
+  showFlowbiteAlert("warning", message);
+}
+function toastSuccess(message) {
+  showFlowbiteAlert("success", message);
+}
+function toastInfo(message) {
+  showFlowbiteAlert("info", message);
+}
+
+// ============================================================
+//  MODAL MOTIVO RECHAZO (SIGA) - sin prompt, sin confirm
+// ============================================================
+function ensureMotivoModalRoot() {
+  let root = document.getElementById("sol-motivo-modal-root");
+  if (!root) {
+    root = document.createElement("div");
+    root.id = "sol-motivo-modal-root";
+    root.className = "fixed inset-0 z-[9998] hidden items-center justify-center";
+    document.body.appendChild(root);
+  }
+  return root;
+}
+
+/**
+ * Modal para capturar motivo (obligatorio).
+ * Retorna: string motivo, o null si cancelan/cierra.
+ */
+function pedirMotivoRechazo() {
+  return new Promise((resolve) => {
+    const root = ensureMotivoModalRoot();
+
+    root.innerHTML = `
+      <!-- Backdrop -->
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-motivo-backdrop></div>
+
+      <!-- Dialog -->
+      <div class="relative mx-4 w-full max-w-2xl rounded-2xl bg-card text-foreground shadow-xl border border-border p-6 sm:p-8 animate-fade-in-up">
+        <div class="flex items-start justify-between mb-4">
+          <div>
+            <h2 class="text-xl font-semibold">Rechazar Solicitud</h2>
+            <p class="text-sm text-muted-foreground">Ingrese el motivo del rechazo (obligatorio)</p>
+          </div>
+
+          <button type="button" data-motivo-cancel
+            class="inline-flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted">
+            <i data-lucide="x" class="h-4 w-4"></i>
+          </button>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-sm font-medium">Motivo</label>
+          <textarea
+            id="sol-motivo-input"
+            class="input-siga w-full min-h-[130px] resize-none"
+            placeholder="Escriba el motivo..."
+          ></textarea>
+          <p class="text-xs text-muted-foreground">
+            Este motivo quedará registrado en la solicitud.
+          </p>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-2">
+          <button type="button" data-motivo-cancel
+            class="px-4 py-2 rounded-xl border border-border bg-card hover:bg-muted text-foreground">
+            Cancelar
+          </button>
+
+          <button type="button" data-motivo-ok
+            class="px-4 py-2 rounded-xl bg-error text-error-foreground hover:opacity-95">
+            Rechazar
+          </button>
+        </div>
+      </div>
+    `;
+
+    // mostrar
+    root.classList.remove("hidden");
+    root.classList.add("flex");
+
+    const input = root.querySelector("#sol-motivo-input");
+    const backdrop = root.querySelector("[data-motivo-backdrop]");
+
+    const cleanup = () => {
+      root.classList.add("hidden");
+      root.classList.remove("flex");
+      root.innerHTML = "";
+    };
+
+    const close = (val) => {
+      document.removeEventListener("keydown", onKey);
+      cleanup();
+      resolve(val);
+    };
+
+    // cancelar por botones
+    root.querySelectorAll("[data-motivo-cancel]").forEach((b) => {
+      b.addEventListener("click", () => close(null));
+    });
+
+    // click fuera
+    backdrop?.addEventListener("click", () => close(null));
+
+    // confirmar
+    root.querySelector("[data-motivo-ok]")?.addEventListener("click", () => {
+      const motivo = String(input?.value || "").trim();
+      if (!motivo) {
+        toastError("Debe ingresar un motivo.");
+        input?.focus();
+        return;
+      }
+      close(motivo);
+    });
+
+    // ESC
+    function onKey(e) {
+      if (e.key === "Escape" || e.key === "Esc" || e.keyCode === 27) {
+        close(null);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+
+    // focus
+    setTimeout(() => input?.focus(), 50);
+
+    // lucide
+    if (typeof lucide !== "undefined") lucide.createIcons();
+  });
+}
+
+
 const utilidades = {
   normalizarEstado(estadoBD) {
     if (!estadoBD) return "pendiente";
+
     const s = String(estadoBD).trim().toLowerCase();
-    if (s === "aprobado") return "aprobada";
-    if (s === "rechazado") return "rechazada";
-    if (s === "entregado") return "entregada";
-    return s;
+    const clean = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    if (clean === "aprobado" || clean === "aprobada") return "aprobada";
+    if (clean === "rechazado" || clean === "rechazada") return "rechazada";
+    if (clean === "entregado" || clean === "entregada") return "entregada";
+    return clean;
   },
+
   formatearFecha(fechaString) {
     if (!fechaString) return "";
     try {
       const normalized = String(fechaString).includes(" ")
         ? String(fechaString).replace(" ", "T")
         : fechaString;
+
       const d = new Date(normalized);
       if (isNaN(d.getTime())) return String(fechaString);
-      return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+      return d.toLocaleDateString("es-ES", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
     } catch {
       return String(fechaString);
     }
   },
+
   extraerDatosSolicitud(s) {
     return {
       id: s.id_solicitud ?? s.id ?? "N/A",
@@ -96,14 +321,22 @@ const utilidades = {
       fecha_respuesta: this.formatearFecha(s.fecha_respuesta),
     };
   },
+
   mostrarError(msg) {
     console.error("❌", msg);
-    alert(`Error: ${msg}`);
+    toastError(msg);
   },
+
   mostrarExito(msg) {
     console.log("✅", msg);
-    alert(msg);
+    toastSuccess(msg);
   },
+
+  mostrarInfo(msg) {
+    console.log("ℹ️", msg);
+    toastInfo(msg);
+  },
+
 };
 
 const api = {
@@ -555,10 +788,9 @@ const materiales = {
   },
 
   eliminarMaterial(index) {
-    if (confirm("¿Eliminar este material?")) {
-      estadoApp.materialesSeleccionados.splice(index, 1);
-      render.renderizarMateriales();
-    }
+    estadoApp.materialesSeleccionados.splice(index, 1);
+    render.renderizarMateriales();
+    toastInfo("Material eliminado.");
   },
 
   limpiarMateriales() {
@@ -593,12 +825,10 @@ function agregarEventosBotonesAccion() {
       e.preventDefault();
       e.stopPropagation();
       const idSolicitud = btn.dataset.id;
-
-      if (confirm('¿Aceptar esta solicitud?\n\nSe cambiará a "Aprobada"')) {
-        await cambiarEstadoSolicitud(idSolicitud, "aprobada");
-      }
+      await cambiarEstadoSolicitud(idSolicitud, "aprobada");
     });
   });
+
 
   // Rechazar
   document.querySelectorAll(".sol-btn-rechazar").forEach((btn) => {
@@ -607,26 +837,21 @@ function agregarEventosBotonesAccion() {
       e.stopPropagation();
       const idSolicitud = btn.dataset.id;
 
-      const motivo = prompt("Motivo del rechazo (requerido):");
-      if (motivo === null) return;
-      if (!motivo.trim()) return alert("Debe ingresar un motivo.");
+      const motivo = await pedirMotivoRechazo();
+      if (motivo === null) return; // canceló
 
-      if (confirm('¿Rechazar esta solicitud?\n\nSe cambiará a "Rechazada"')) {
-        await cambiarEstadoSolicitud(idSolicitud, "rechazada", motivo.trim());
-      }
+      await cambiarEstadoSolicitud(idSolicitud, "rechazada", motivo);
     });
   });
 
-  // ✅ NUEVO: Entregar (solo aprobadas muestran el botón)
+
+  // Entregar
   document.querySelectorAll(".sol-btn-entregar").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       e.preventDefault();
       e.stopPropagation();
       const idSolicitud = btn.dataset.id;
-
-      if (confirm('¿Marcar esta solicitud como "Entregada"?')) {
-        await marcarEntregada(idSolicitud);
-      }
+      await marcarEntregada(idSolicitud);
     });
   });
 }
@@ -776,7 +1001,6 @@ const modal = {
       selectores.selectMaterial.focus();
       return;
     }
-    if (!confirm("¿Crear esta solicitud?")) return;
 
     try {
       selectores.btnGuardar.disabled = true;
