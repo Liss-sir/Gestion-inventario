@@ -271,14 +271,14 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // =====================================================
-  // ✅ NUEVO: MODAL DATOS SENSIBLES (INFO i + checklist + inputs)
-  // (NO borra nada de tu base, solo agrega funcionalidad)
+  // ✅ MODAL DATOS SENSIBLES - MEJORADO CON FUNCIONALIDAD COMPLETA
   // =====================================================
   const btnInfoDatosSensibles       = document.getElementById("btnInfoDatosSensibles");
   const modalDatosSensibles         = document.getElementById("modalDatosSensibles");
   const btnCerrarDatosSensibles     = document.getElementById("btnCerrarDatosSensibles");
   const btnCancelarDatosSensibles   = document.getElementById("btnCancelarDatosSensibles");
   const formDatosSensibles          = document.getElementById("formDatosSensibles");
+  const btnEnviarDatosSensibles     = document.getElementById("btnEnviarDatosSensibles");
 
   const openDatosSensibles = () => {
     if (!modalDatosSensibles) return;
@@ -288,12 +288,58 @@ document.addEventListener("DOMContentLoaded", function () {
     if (window.lucide && typeof lucide.createIcons === "function") {
       lucide.createIcons();
     }
+
+    // Inicializar valores actuales en los inputs
+    inicializarValoresActuales();
   };
 
   const closeDatosSensibles = () => {
     if (!modalDatosSensibles) return;
+    
+    // Resetear formulario antes de cerrar
+    if (formDatosSensibles) {
+      formDatosSensibles.reset();
+      
+      // Ocultar todos los campos
+      document.querySelectorAll('[id^="field_"]').forEach(field => {
+        field.classList.add('hidden');
+      });
+    }
+    
     closeModal(modalDatosSensibles);
   };
+
+  // Inicializar valores actuales en los inputs del modal
+  function inicializarValoresActuales() {
+    // Obtener datos actuales del perfil desde el formulario de edición
+    const formEditar = document.getElementById('formEditarPerfil');
+    const datosActuales = {};
+    
+    if (formEditar) {
+      const fd = new FormData(formEditar);
+      for (const [key, value] of fd.entries()) {
+        if (value instanceof File) continue;
+        datosActuales[key] = String(value ?? "").trim();
+      }
+    }
+    
+    // También intentar obtener de elementos en el DOM que muestran los datos actuales
+    const elementosDatos = {
+      'nombre_completo': document.querySelector('[data-campo="nombre_completo"]'),
+      'tipo_documento': document.querySelector('[data-campo="tipo_documento"]'),
+      'numero_documento': document.querySelector('[data-campo="numero_documento"]'),
+      'correo': document.querySelector('[data-campo="correo"]')
+    };
+    
+    // Establecer placeholders con valores actuales
+    for (const [campo, valor] of Object.entries(datosActuales)) {
+      const input = document.getElementById(`input_${campo}`);
+      if (input) {
+        input.setAttribute('placeholder', `Actual: ${valor}`);
+        input.setAttribute('data-valor-actual', valor);
+      }
+    }
+  }
 
   if (btnInfoDatosSensibles) {
     btnInfoDatosSensibles.addEventListener("click", (e) => {
@@ -334,146 +380,54 @@ document.addEventListener("DOMContentLoaded", function () {
     else el.classList.add("hidden");
   };
 
+  // Inicializar: ocultar todos los campos primero
+  document.querySelectorAll('[id^="field_"]').forEach(field => {
+    field.classList.add('hidden');
+  });
+
   if (sensibleChecks && sensibleChecks.length > 0) {
     sensibleChecks.forEach((chk) => {
       chk.addEventListener("change", () => {
         const key = chk.getAttribute("data-sensible");
         setFieldVisible(key, chk.checked);
+        
+        // Si se desmarca, limpiar el input correspondiente
+        if (!chk.checked) {
+          const fieldWrap = document.getElementById("field_" + key);
+          if (fieldWrap) {
+            const input = fieldWrap.querySelector("input, select, textarea");
+            if (input) input.value = '';
+          }
+        }
       });
     });
   }
 
-if (formDatosSensibles) {
-  formDatosSensibles.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const selected = Array.from(sensibleChecks || []).filter((c) => c.checked);
-
-    if (selected.length === 0) {
-      toastError("Selecciona al menos un dato sensible para continuar.");
-      return;
-    }
-
-    // Recopilar datos actuales del formulario de edición
-    const datosActuales = {};
-    const formEditar = document.getElementById('formEditarPerfil');
-    if (formEditar) {
-      const fd = new FormData(formEditar);
-      for (const [key, value] of fd.entries()) {
-        if (value instanceof File) continue;
-        datosActuales[key] = String(value ?? "").trim();
-      }
-    }
-
-    // Recopilar datos sensibles seleccionados
-    const datosSolicitados = {};
-    for (const chk of selected) {
-      const key = chk.getAttribute("data-sensible");
-      const fieldWrap = document.getElementById("field_" + key);
-      if (!fieldWrap) continue;
-
-      const input = fieldWrap.querySelector("input, select, textarea");
-      if (!input) continue;
-
-      const value = String(input.value ?? "").trim();
-      if (!value) {
-        toastError("Completa todos los campos seleccionados antes de continuar.");
-        return;
-      }
+  // Envío del formulario de datos sensibles
+  if (formDatosSensibles) {
+    formDatosSensibles.addEventListener("submit", async (e) => {
+      e.preventDefault();
       
-      // Obtener valor actual (de los datos del formulario o de la sesión)
-      const valorActual = datosActuales[key] || obtenerValorActual(key);
-      
-      datosSolicitados[key] = {
-        anterior: valorActual,
-        nuevo: value
-      };
-    }
+      const datosSolicitados = {};
+      const selected = Array.from(sensibleChecks || []).filter((c) => c.checked);
 
-    // Función auxiliar para obtener valores actuales
-    function obtenerValorActual(campo) {
-      const camposSesion = {
-        'nombre_completo': '<?php echo $profileData["nombre_completo"]; ?>',
-        'tipo_documento': '<?php echo $profileData["tipo_documento"]; ?>',
-        'numero_documento': '<?php echo $profileData["numero_documento"]; ?>',
-        'correo': '<?php echo $profileData["correo"]; ?>'
-      };
-      return camposSesion[campo] || '';
-    }
-
-    try {
-      const formData = new FormData();
-      formData.append("accion", "solicitar_cambio_datos_sensibles");
-      formData.append("datos_cambiados", JSON.stringify(datosSolicitados));
-
-      const resp = await fetch("src/controllers/usuario_controller.php?accion=solicitar_cambio_datos_sensibles", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await resp.json();
-
-      if (data.error) {
-        toastError(data.error);
+      if (selected.length === 0) {
+        toastError("Selecciona al menos un dato sensible para continuar.");
         return;
       }
 
-      toastSuccess(data.message || "Solicitud registrada. Un administrador será notificado.");
-      closeDatosSensibles();
-      
-      // Actualizar contador de notificaciones en el header
-      actualizarContadorNotificaciones();
-      
-    } catch (error) {
-      console.error("Error enviando solicitud:", error);
-      toastError("Ocurrió un error al enviar la solicitud.");
-    }
-  });
-}
+      // Recopilar datos actuales del formulario de edición
+      const datosActuales = {};
+      const formEditar = document.getElementById('formEditarPerfil');
+      if (formEditar) {
+        const fd = new FormData(formEditar);
+        for (const [key, value] of fd.entries()) {
+          if (value instanceof File) continue;
+          datosActuales[key] = String(value ?? "").trim();
+        }
+      }
 
-// Función para actualizar el contador de notificaciones
-async function actualizarContadorNotificaciones() {
-  try {
-    const resp = await fetch('src/utils/notificaciones_sesion.php?accion=contar');
-    const data = await resp.json();
-    
-    const badge = document.querySelector('.badge-notificaciones');
-    if (badge && data.no_leidas > 0) {
-      badge.textContent = data.no_leidas > 9 ? '9+' : data.no_leidas;
-      badge.style.display = 'inline-block';
-    }
-  } catch (error) {
-    console.error('Error actualizando contador:', error);
-  }
-}
-
-// Función para marcar notificación como leída
-async function marcarNotificacionLeida(notificacionId) {
-  try {
-    const formData = new FormData();
-    formData.append('notificacion_id', notificacionId);
-    
-    await fetch('src/utils/notificaciones_sesion.php?accion=marcar_leido', {
-      method: 'POST',
-      body: formData
-    });
-    
-    // Remover indicador visual
-    const notifElement = document.querySelector(`[data-notif-id="${notificacionId}"]`);
-    if (notifElement) {
-      notifElement.classList.remove('no-leida');
-      notifElement.classList.add('leida');
-      
-      // Actualizar contador
-      actualizarContadorNotificaciones();
-    }
-    
-  } catch (error) {
-    console.error('Error marcando notificación:', error);
-  }
-}
-
-      // Validación básica: si selecciona un campo, que no quede vacío
+      // Verificar y recopilar datos sensibles seleccionados
       for (const chk of selected) {
         const key = chk.getAttribute("data-sensible");
         const fieldWrap = document.getElementById("field_" + key);
@@ -482,19 +436,119 @@ async function marcarNotificacionLeida(notificacionId) {
         const input = fieldWrap.querySelector("input, select, textarea");
         if (!input) continue;
 
-        const value = String(input.value ?? "").trim();
-        if (!value) {
+        const nuevoValor = String(input.value ?? "").trim();
+        if (!nuevoValor) {
           toastError("Completa todos los campos seleccionados antes de continuar.");
           return;
         }
+        
+        // Obtener valor actual
+        const valorActual = datosActuales[key] || input.getAttribute('data-valor-actual') || '';
+        
+        // Verificar si el valor realmente cambió
+        if (nuevoValor === valorActual) {
+          toastError(`El valor para "${key.replace('_', ' ')}" es igual al actual. No se necesita cambio.`);
+          return;
+        }
+        
+        // Validaciones específicas por campo
+        if (key === 'correo' && !validarEmail(nuevoValor)) {
+          toastError("El correo electrónico no es válido.");
+          return;
+        }
+        
+        if (key === 'numero_documento' && !validarDocumento(nuevoValor)) {
+          toastError("El número de documento no es válido.");
+          return;
+        }
+        
+        datosSolicitados[key] = {
+          anterior: valorActual,
+          nuevo: nuevoValor,
+          campo_nombre: obtenerNombreCampo(key)
+        };
       }
 
-      // Por ahora: solo cerrar modal (sin tocar tu base/backend)
-      toastSuccess("Datos sensibles listos para enviar.");
-      closeDatosSensibles();
-    });
-  
+      try {
+        // Mostrar confirmación antes de enviar
+        const confirmar = confirm("¿Estás seguro de enviar esta solicitud de cambio? Un administrador revisará tu petición.");
+        if (!confirmar) return;
 
+        const formData = new FormData();
+        formData.append("datos_cambiados", JSON.stringify(datosSolicitados));
+        formData.append("usuario_id", obtenerUsuarioId()); // Asegúrate de tener esta función
+
+        const resp = await fetch("src/controllers/usuario_controller.php?accion=solicitar_cambio_datos_sensibles", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await resp.json();
+
+        if (data.error) {
+          toastError(data.error);
+          return;
+        }
+
+        toastSuccess(data.message || "✅ Solicitud registrada correctamente. Un administrador será notificado.");
+        
+        // Cerrar modal y limpiar formulario
+        closeDatosSensibles();
+        
+        // Actualizar contador de notificaciones si existe
+        if (typeof actualizarContadorNotificaciones === 'function') {
+          actualizarContadorNotificaciones();
+        }
+        
+      } catch (error) {
+        console.error("Error enviando solicitud:", error);
+        toastError("❌ Ocurrió un error al enviar la solicitud. Intenta nuevamente.");
+      }
+    });
+  }
+
+  // Si existe un botón específico para enviar, también lo configuramos
+  if (btnEnviarDatosSensibles && formDatosSensibles) {
+    btnEnviarDatosSensibles.addEventListener("click", (e) => {
+      e.preventDefault();
+      formDatosSensibles.dispatchEvent(new Event('submit'));
+    });
+  }
+
+  // Funciones auxiliares
+  function obtenerNombreCampo(key) {
+    const nombres = {
+      'nombre_completo': 'Nombre completo',
+      'tipo_documento': 'Tipo de documento',
+      'numero_documento': 'Número de documento',
+      'correo': 'Correo electrónico',
+      'telefono': 'Teléfono',
+      'direccion': 'Dirección'
+    };
+    return nombres[key] || key.replace('_', ' ');
+  }
+
+  function validarEmail(email) {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  }
+
+  function validarDocumento(doc) {
+    // Validación básica: solo números y letras, mínimo 4 caracteres
+    const re = /^[a-zA-Z0-9]{4,20}$/;
+    return re.test(doc);
+  }
+
+  function obtenerUsuarioId() {
+    // Obtener ID de usuario del DOM o de una variable global
+    return document.querySelector('[data-usuario-id]')?.getAttribute('data-usuario-id') || 
+           window.usuarioId || 
+           '<?php echo $_SESSION["usuario_id"] ?? ""; ?>';
+  }
+
+  // =====================================================
+  // MANEJO DE TECLA ESCAPE
+  // =====================================================
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       // ✅ primero cierra dropdown si está abierto
@@ -503,7 +557,7 @@ async function marcarNotificacionLeida(notificacionId) {
         return;
       }
 
-      // ✅ NUEVO: si modal datos sensibles está abierto, ciérralo primero
+      // ✅ Si modal datos sensibles está abierto, ciérralo primero
       if (modalDatosSensibles && !modalDatosSensibles.classList.contains("hidden")) {
         closeDatosSensibles();
         return;
@@ -520,19 +574,33 @@ async function marcarNotificacionLeida(notificacionId) {
   });
 
   const dispararSelectorFotoEditar = (e) => {
-  e.preventDefault();
-  e.stopPropagation(); // ✅ evita que el click del lápiz llegue al avatar y se dispare 2 veces
+    e.preventDefault();
+    e.stopPropagation(); // ✅ evita que el click del lápiz llegue al avatar y se dispare 2 veces
     if (inputFotoPerfilEditar) inputFotoPerfilEditar.click();
   };
 
   if (avatarPerfilEditar) avatarPerfilEditar.addEventListener("click", dispararSelectorFotoEditar);
   if (btnCambiarFotoEditar) btnCambiarFotoEditar.addEventListener("click", dispararSelectorFotoEditar);
 
-
   if (inputFotoPerfilEditar && avatarPerfilEditar) {
     inputFotoPerfilEditar.addEventListener("change", (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
+
+      // Validar tipo de archivo
+      const tiposPermitidos = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!tiposPermitidos.includes(file.type)) {
+        toastError("Solo se permiten imágenes JPG, PNG, GIF o WebP.");
+        inputFotoPerfilEditar.value = '';
+        return;
+      }
+
+      // Validar tamaño (máximo 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        toastError("La imagen no debe superar los 2MB.");
+        inputFotoPerfilEditar.value = '';
+        return;
+      }
 
       const reader = new FileReader();
       reader.onload = (ev) => {
@@ -547,7 +615,7 @@ async function marcarNotificacionLeida(notificacionId) {
         let img = avatarInner.querySelector("img");
         if (!img) {
           img = document.createElement("img");
-          img.className = "h-full w-full object-cover";
+          img.className = "h-full w-full object-cover rounded-full";
           avatarInner.appendChild(img);
         }
         img.src = ev.target.result;
@@ -608,13 +676,13 @@ async function marcarNotificacionLeida(notificacionId) {
           return;
         }
 
-        toastSuccess("Perfil actualizado correctamente.");
+        toastSuccess("✅ Perfil actualizado correctamente.");
         closeModal(modalPerfilEditar);
 
         setTimeout(() => window.location.reload(), 700);
       } catch (error) {
         console.error("Error actualizando perfil:", error);
-        toastError("Ocurrió un error al actualizar el perfil. Inténtelo nuevamente.");
+        toastError("❌ Ocurrió un error al actualizar el perfil. Inténtelo nuevamente.");
       }
     });
   }
@@ -648,7 +716,7 @@ async function marcarNotificacionLeida(notificacionId) {
         return;
       }
 
-      // ✅ NUEVO: debe tener número y carácter especial
+      // ✅ Debe tener número y carácter especial
       const tieneNumero = /[0-9]/.test(nueva);
       const tieneEspecial = /[!@#$%^&*()_\-+=\[\]{};:'",.<>\/?\\|`~]/.test(nueva);
 
@@ -686,13 +754,13 @@ async function marcarNotificacionLeida(notificacionId) {
           return;
         }
 
-        toastSuccess(data.message || "Contraseña actualizada correctamente.");
+        toastSuccess(data.message || "✅ Contraseña actualizada correctamente.");
         resetPasswordForm();
         closeModal(modalPassword);
 
       } catch (error) {
         console.error("Error cambiando contraseña:", error);
-        toastError("Ocurrió un error al cambiar la contraseña. Inténtelo nuevamente.");
+        toastError("❌ Ocurrió un error al cambiar la contraseña. Inténtelo nuevamente.");
       }
     });
   }
@@ -709,70 +777,60 @@ async function marcarNotificacionLeida(notificacionId) {
     });
   }
 
-document.addEventListener('DOMContentLoaded', () => {
+  // =========================
+  // TOGGLE "OJITOS" PASSWORD (mostrar/ocultar)
+  // =========================
+  document.addEventListener("DOMContentLoaded", () => {
+    // Render icons (por si tu archivo no lo hace)
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      window.lucide.createIcons();
+    }
 
-  const btn = document.getElementById('btnEnviarDatosSensibles');
-  const form = document.getElementById('formDatosSensibles');
+    document.querySelectorAll('button[data-toggle-password="true"]').forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const wrapper = btn.closest(".relative");
+        if (!wrapper) return;
 
-  if (!btn || !form) return;
+        const input = wrapper.querySelector('input[type="password"], input[type="text"]');
+        if (!input) return;
 
-  btn.addEventListener('click', () => {
+        const iconEye = btn.querySelector('[data-lucide="eye"]');
+        const iconEyeOff = btn.querySelector('[data-lucide="eye-off"]');
 
-    const formData = new FormData(form);
+        const isPassword = input.type === "password";
+        input.type = isPassword ? "text" : "password";
 
-    fetch("src/controllers/usuario_controller.php?accion=solicitar_cambio_datos_sensibles", {
-      method: 'POST',
-      body: formData
-    })
-    .then(r => r.json())
-    .then(data => {
-      if (data.error) {
-        alert(data.error);
-        return;
-      }
-
-      // Éxito
-      alert('Solicitud enviada correctamente');
-      // cerrar modal aquí
-    })
-    .catch(err => console.error(err));
-  });
-});
-
-// =========================
-// TOGGLE "OJITOS" PASSWORD (mostrar/ocultar)
-// =========================
-document.addEventListener("DOMContentLoaded", () => {
-  // Render icons (por si tu archivo no lo hace)
-  if (window.lucide && typeof window.lucide.createIcons === "function") {
-    window.lucide.createIcons();
-  }
-
-  document.querySelectorAll('button[data-toggle-password="true"]').forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const wrapper = btn.closest(".relative");
-      if (!wrapper) return;
-
-      const input = wrapper.querySelector('input[type="password"], input[type="text"]');
-      if (!input) return;
-
-      const iconEye = btn.querySelector('[data-lucide="eye"]');
-      const iconEyeOff = btn.querySelector('[data-lucide="eye-off"]');
-
-      const isPassword = input.type === "password";
-      input.type = isPassword ? "text" : "password";
-
-      // Cambiar iconos
-      if (iconEye && iconEyeOff) {
-        if (isPassword) {
-          iconEye.classList.add("hidden");
-          iconEyeOff.classList.remove("hidden");
-        } else {
-          iconEye.classList.remove("hidden");
-          iconEyeOff.classList.add("hidden");
+        // Cambiar iconos
+        if (iconEye && iconEyeOff) {
+          if (isPassword) {
+            iconEye.classList.add("hidden");
+            iconEyeOff.classList.remove("hidden");
+          } else {
+            iconEye.classList.remove("hidden");
+            iconEyeOff.classList.add("hidden");
+          }
         }
-      }
+      });
     });
   });
-});
 
+  // =====================================================
+  // FUNCIÓN AUXILIAR: Actualizar contador de notificaciones
+  // =====================================================
+  async function actualizarContadorNotificaciones() {
+    try {
+      const resp = await fetch('src/utils/notificaciones_sesion.php?accion=contar');
+      const data = await resp.json();
+      
+      const badge = document.querySelector('.badge-notificaciones');
+      if (badge && data.no_leidas > 0) {
+        badge.textContent = data.no_leidas > 9 ? '9+' : data.no_leidas;
+        badge.style.display = 'inline-block';
+      } else if (badge) {
+        badge.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Error actualizando contador:', error);
+    }
+  }
+});

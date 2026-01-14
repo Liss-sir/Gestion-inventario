@@ -1,5 +1,4 @@
 <?php
-header('Content-Type: application/json; charset=utf-8');
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -44,12 +43,14 @@ if (!defined('BASE_URL')) {
 }
 
 if (!isset($conn)) {
+    header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['error' => 'No se pudo establecer conexión con la base de datos']);
     exit;
 }
 
+// ================= HELPERS =================
 function validarSoloTexto($s) {
-    return preg_match('/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]+$/u', $s) === 1;
+    return preg_match('/^[A-Za-zÁÉÍÓÚÜáéíóúüñ\s]+$/u', (string)$s) === 1;
 }
 
 function colapsarEspacios($s) {
@@ -60,7 +61,8 @@ $usuario = new Usuario($conn);
 
 $accion = $_GET['accion'] ?? null;
 if (!$accion) {
-    echo json_encode(['error' => 'Debe especificar la acción en la URL']);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['error' => 'Debe especificar la acción']);
     exit;
 }
 
@@ -121,11 +123,12 @@ function enviarCorreoResetPassword($toEmail, $toName, $resetLink) {
 
 switch ($accion) {
 
-    // =============================
-    // CRUD NORMAL
-    // =============================
-
+    // =====================================================
+    // ✅ LISTAR USUARIOS
+    // GET: ?accion=listar
+    // =====================================================
     case 'listar':
+        header('Content-Type: application/json; charset=utf-8');
         echo json_encode($usuario->listar());
     break;
 
@@ -291,51 +294,77 @@ switch ($accion) {
     // GET: ?accion=obtener&id_usuario=1
     // =====================================================
     case 'obtener':
+        header('Content-Type: application/json; charset=utf-8');
+
         $id_usuario = $_GET['id_usuario'] ?? null;
+
         if (!$id_usuario) {
-            echo json_encode(['error' => 'Debe enviar id_usuario']);
+            echo json_encode(['error' => 'Debe enviar el parámetro id_usuario']);
             exit;
         }
-        echo json_encode($usuario->obtenerPorId($id_usuario) ?: ['error' => 'Usuario no encontrado']);
+
+        $res = $usuario->obtenerPorId($id_usuario);
+        echo json_encode($res ? $res : ['error' => 'Usuario no encontrado']);
     break;
 
+    // =====================================================
+    // ✅ CREAR USUARIO + TOKEN + CORREO ACTIVACIÓN + CREDENCIALES
+    // POST JSON: ?accion=crear
+    // =====================================================
     case 'crear':
+        header('Content-Type: application/json; charset=utf-8');
+
         $data = json_decode(file_get_contents("php://input"), true);
 
-        $u = [
-            'nombre_completo'  => $data['nombre_completo']  ?? $_POST['nombre_completo']  ?? null,
-            'tipo_documento'   => $data['tipo_documento']   ?? $_POST['tipo_documento']   ?? null,
-            'numero_documento' => $data['numero_documento'] ?? $_POST['numero_documento'] ?? null,
-            'telefono'        => $data['telefono'] ?? $_POST['telefono'] ?? null,
-            'cargo'           => $data['cargo'] ?? $_POST['cargo'] ?? null,
-            'correo'          => $data['correo'] ?? $_POST['correo'] ?? null,
-            'direccion'       => $data['direccion'] ?? $_POST['direccion'] ?? null,
-            'password'        => $data['password'] ?? $_POST['password'] ?? null,
-        ];
+        $nombre           = $data['nombre_completo']   ?? null;
+        $tipo_documento   = $data['tipo_documento']    ?? null;
+        $numero_documento = $data['numero_documento']  ?? null;
+        $telefono         = $data['telefono']          ?? null;
+        $cargo            = $data['cargo']             ?? null;
+        $correo           = $data['correo']            ?? null;
+        $direccion        = $data['direccion']         ?? null;
+        $password         = $data['password']          ?? null;
+        $id_programa      = $data['id_programa']       ?? null;
 
-        $id_programa = $data['id_programa'] ?? $_POST['id_programa'] ?? null;
-
-        if (in_array(null, $u, true)) {
-            echo json_encode(['error' => 'Debe enviar todos los campos obligatorios']);
+        if (!$nombre || !$correo || !$password) {
+            echo json_encode(['error' => 'Datos incompletos']);
             exit;
         }
 
-        $u['nombre_completo'] = colapsarEspacios($u['nombre_completo']);
-        if (!validarSoloTexto($u['nombre_completo'])) {
+        // Validación nombre
+        $nombre = colapsarEspacios($nombre);
+        if ($nombre === '' || !validarSoloTexto($nombre)) {
             echo json_encode(['error' => 'El nombre solo puede contener letras y espacios']);
             exit;
         }
 
-        $cargosValidos = ['Coordinador','subcoordinador','Instructor','Pasante','Aprendiz'];
-        if (!in_array($u['cargo'], $cargosValidos, true)) {
+        // Validar cargo
+        $cargosValidos = ['Coordinador','Subcoordinador','Instructor','Pasante','Aprendiz'];
+        if ($cargo && !in_array($cargo, $cargosValidos, true)) {
             echo json_encode(['error' => 'Cargo no válido']);
             exit;
         }
 
-        if ($usuario->obtenerPorCorreo($u['correo'])) {
-            echo json_encode(['error' => 'El correo ya está registrado']);
-            exit;
+        // Regla: solo Instructor puede llevar id_programa
+        if ($cargo !== 'Instructor') {
+            $id_programa = null;
+        } else {
+            if ($id_programa === null || $id_programa === '' || (int)$id_programa <= 0) {
+                echo json_encode(['error' => 'Debe seleccionar un programa para el Instructor.']);
+                exit;
+            }
         }
+
+        try {
+            // Duplicados
+            if ($numero_documento && $usuario->obtenerPorDocumento($numero_documento)) {
+                echo json_encode(['error' => 'El número de documento ya está registrado']);
+                exit;
+            }
+            if ($usuario->obtenerPorCorreo($correo)) {
+                echo json_encode(['error' => 'El correo ya está registrado']);
+                exit;
+            }
 
             $token = bin2hex(random_bytes(32));
 
@@ -569,8 +598,11 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     // ✅ ACTUALIZAR USUARIO (EDITAR)
     // =====================================================
     case 'actualizar':
+        header('Content-Type: application/json; charset=utf-8');
+
         $data = json_decode(file_get_contents("php://input"), true);
         $id_usuario = $data['id_usuario'] ?? $_POST['id_usuario'] ?? $_GET['id_usuario'] ?? null;
+
         if (!$id_usuario) {
             echo json_encode(['error' => 'Debe enviar id_usuario']);
             exit;
@@ -582,14 +614,23 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             exit;
         }
 
-        $nombre = colapsarEspacios($data['nombre_completo'] ?? $usuarioActual['nombre_completo']);
-        if (!validarSoloTexto($nombre)) {
+        $nombre      = $data['nombre_completo']  ?? $usuarioActual['nombre_completo'];
+        $tipo_doc    = $data['tipo_documento']   ?? $usuarioActual['tipo_documento'];
+        $num_doc     = $data['numero_documento'] ?? $usuarioActual['numero_documento'];
+        $telefono    = $data['telefono']         ?? $usuarioActual['telefono'];
+        $cargo       = $data['cargo']            ?? $usuarioActual['cargo'];
+        $correo      = $data['correo']           ?? $usuarioActual['correo'];
+        $direccion   = $data['direccion']        ?? $usuarioActual['direccion'];
+        $password    = $data['password']         ?? null;
+        $id_programa = $data['id_programa']      ?? ($usuarioActual['id_programa'] ?? null);
+
+        $nombre = colapsarEspacios($nombre);
+        if ($nombre === '' || !validarSoloTexto($nombre)) {
             echo json_encode(['error' => 'El nombre solo puede contener letras y espacios']);
             exit;
         }
 
-        $cargo = $data['cargo'] ?? $usuarioActual['cargo'];
-        $cargosValidos = ['Coordinador','subcoordinador','Instructor','Pasante','Aprendiz'];
+        $cargosValidos = ['Coordinador','Subcoordinador','Instructor','Pasante','Aprendiz'];
         if (!in_array($cargo, $cargosValidos, true)) {
             echo json_encode(['error' => 'Cargo no válido']);
             exit;
@@ -641,19 +682,32 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     // ✅ CAMBIAR ESTADO
     // =====================================================
     case 'cambiar_estado':
+        header('Content-Type: application/json; charset=utf-8');
+
         $data = json_decode(file_get_contents("php://input"), true);
-        $id_usuario = $data['id_usuario'] ?? $_GET['id_usuario'] ?? null;
-        $estado = $data['estado'] ?? $_GET['estado'] ?? null;
+
+        $id_usuario = $data['id_usuario'] ?? $_POST['id_usuario'] ?? $_GET['id_usuario'] ?? null;
+        $estado     = $data['estado']     ?? $_POST['estado']     ?? $_GET['estado']     ?? null;
 
         if ($id_usuario === null || $estado === null) {
-            echo json_encode(['error' => 'Debe enviar id_usuario y estado']);
+            echo json_encode(['error' => 'Debe enviar id_usuario y estado (1 o 0)']);
+            exit;
+        }
+
+        if ((int)$estado !== 1 && (int)$estado !== 0) {
+            echo json_encode(['error' => 'El estado debe ser 1 o 0']);
+            exit;
+        }
+
+        if (!$usuario->obtenerPorId($id_usuario)) {
+            echo json_encode(['error' => 'Usuario no encontrado']);
             exit;
         }
 
         echo json_encode(
             $usuario->cambiarEstado($id_usuario, $estado)
-                ? ['mensaje' => 'Estado actualizado correctamente']
-                : ['error' => 'No se pudo actualizar el estado']
+                ? ['success' => true, 'mensaje' => 'Estado actualizado']
+                : ['success' => false, 'error' => 'Error al actualizar estado']
         );
         exit;
     break;
@@ -926,6 +980,76 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     break;
 
     // =====================================================
+    // ✅ SOLICITAR CAMBIO DE DATOS SENSIBLES
+    // POST: ?accion=solicitar_cambio_datos_sensibles
+    // =====================================================
+    case 'solicitar_cambio_datos_sensibles':
+        header('Content-Type: application/json; charset=utf-8');
+
+        if (!isset($_SESSION['usuario_id'])) {
+            echo json_encode(['error' => 'No hay sesión activa']);
+            exit;
+        }
+
+        $id_usuario = (int)$_SESSION['usuario_id'];
+        $datosCambiados = $_POST['datos_cambiados'] ?? '{}';
+
+        // Decodificar los datos
+        $datosCambiados = json_decode($datosCambiados, true);
+
+        if (!is_array($datosCambiados) || empty($datosCambiados)) {
+            echo json_encode(['error' => 'No se enviaron datos para cambiar']);
+            exit;
+        }
+
+        try {
+            // Obtener información del usuario
+            $stmt = $conn->prepare("SELECT nombre_completo, correo FROM usuarios WHERE id_usuario = :id LIMIT 1");
+            $stmt->execute([':id' => $id_usuario]);
+            $userData = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$userData) {
+                echo json_encode(['error' => 'Usuario no encontrado']);
+                exit;
+            }
+
+            // Crear notificación para administradores (usando la utilidad de notificaciones)
+            require_once __DIR__ . '/../utils/notificaciones_sin_db.php';
+
+            // Construir mensaje descriptivo
+            $camposActualizados = [];
+            foreach ($datosCambiados as $campo => $info) {
+                if (is_array($info)) {
+                    $camposActualizados[] = "{$info['campo_nombre']}: {$info['anterior']} → {$info['nuevo']}";
+                }
+            }
+
+            $descripcion = "El usuario {$userData['nombre_completo']} ({$userData['correo']}) solicita cambiar:\n" .
+                          implode("\n", $camposActualizados);
+
+            // Agregar notificación
+            NotificacionSesion::agregarCambioDatosSensibles(
+                $id_usuario,
+                $id_usuario,
+                $datosCambiados,
+                $userData['nombre_completo']
+            );
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Solicitud de cambio registrada correctamente. Un administrador revisará tu petición.'
+            ]);
+            exit;
+
+        } catch (Exception $e) {
+            echo json_encode([
+                'error' => 'Error al procesar la solicitud: ' . $e->getMessage()
+            ]);
+            exit;
+        }
+    break;
+
+    // =====================================================
     // ✅ DEFAULT
     // =====================================================
     default:
@@ -934,3 +1058,4 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         exit;
     break;
 }
+
