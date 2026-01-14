@@ -9,7 +9,7 @@ class FichaModel {
         $this->conn = $db;
     }
 
-    // List fichas
+    /*List all FICHAS*/
     public function listar() {
         try {
             $sql = "SELECT * FROM " . $this->table;
@@ -23,8 +23,7 @@ class FichaModel {
         }
     }
 
-
-    // Get ficha by ID
+    /*Get FICHA for ID*/
     public function obtener($id) {
         try {
             $sql = "SELECT * FROM " . $this->table . " WHERE id_ficha = ?";
@@ -38,8 +37,7 @@ class FichaModel {
         }
     }
 
-
-    // Create ficha
+    /*Create FICHA*/
     public function crear($data) {
         try {
             $sql = "INSERT INTO " . $this->table . "
@@ -48,7 +46,7 @@ class FichaModel {
 
             $stmt = $this->conn->prepare($sql);
 
-            return $stmt->execute([
+            $result = $stmt->execute([
                 $data['numero_ficha'],
                 $data['id_programa'],
                 $data['jornada'],
@@ -58,13 +56,18 @@ class FichaModel {
                 isset($data['estado']) ? $data['estado'] : "Activa"
             ]);
 
+            if ($result) {
+                return (int)$this->conn->lastInsertId();
+            }
+            
+            return false;
+
         } catch (Exception $e) {
             return false;
         }
     }
 
-
-    // Update ficha
+    /*Update FICHA*/
     public function actualizar($data) {
         try {
             $sql = "UPDATE " . $this->table . "
@@ -95,28 +98,75 @@ class FichaModel {
         }
     }
 
-
-    // Activate ficha
-    public function activar($id) {
+    public function cambiarEstado($id, $estado) {
         try {
-            $sql = "UPDATE " . $this->table . " SET estado = 'Activa' WHERE id_ficha = ?";
+            $sql = "UPDATE " . $this->table . " SET estado = ? WHERE id_ficha = ?";
             $stmt = $this->conn->prepare($sql);
-            return $stmt->execute([$id]);
+            return $stmt->execute([$estado, $id]);
 
         } catch (Exception $e) {
             return false;
         }
     }
 
-    // Deactivate ficha
-    public function inactivar($id) {
+    /*Get APRENDICES (students)*/
+    public function obtenerAprendices() {
         try {
-            $sql = "UPDATE " . $this->table . " SET estado = 'Inactiva' WHERE id_ficha = ?";
+            $sql = "SELECT id_usuario, nombre_completo, numero_documento, correo 
+                    FROM usuarios 
+                    WHERE cargo = 'Aprendiz' AND estado = 'activo' 
+                    ORDER BY nombre_completo";
             $stmt = $this->conn->prepare($sql);
-            return $stmt->execute([$id]);
+            $stmt->execute();
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    /*Add STUDENTS to FICHA*/
+    public function agregarEstudiantes($id_ficha, $estudiantes) {
+        try {
+            if (empty($estudiantes) || !is_array($estudiantes)) {
+                return true; // No hay estudiantes que agregar
+            }
+
+            $sqlDelete = "DELETE FROM fichas_estudiantes WHERE id_ficha = ?";
+            $stmtDelete = $this->conn->prepare($sqlDelete);
+            $stmtDelete->execute([$id_ficha]);
+
+            $sql = "INSERT INTO fichas_estudiantes (id_ficha, id_estudiante) VALUES (?, ?)";
+            $stmt = $this->conn->prepare($sql);
+
+            foreach ($estudiantes as $id_estudiante) {
+                $stmt->execute([$id_ficha, $id_estudiante]);
+            }
+
+            return true;
 
         } catch (Exception $e) {
             return false;
         }
     }
+
+    /*Get STUDENTS of a FICHA*/
+    public function obtenerEstudiantesDeFicha($id_ficha) {
+        try {
+            $sql = "SELECT u.id_usuario, u.nombre_completo, u.numero_documento, u.correo
+                    FROM fichas_estudiantes fe
+                    INNER JOIN usuarios u ON fe.id_estudiante = u.id_usuario
+                    WHERE fe.id_ficha = ?
+                    ORDER BY u.nombre_completo";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([$id_ficha]);
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
 }
