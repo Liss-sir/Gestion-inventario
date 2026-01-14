@@ -22,11 +22,62 @@ const mockEvidences = [
    Inicialización
    ========================= */
 document.addEventListener("DOMContentLoaded", () => {
-  evidencesData = [...mockEvidences]
-  renderEvidenceCards()
+  // Cargar evidencias desde backend y renderizar
+  fetchAndRenderEvidences()
   setupUploadArea()
   setupButtonListeners()
 })
+
+/* =========================
+   API & Helpers
+   ========================= */
+// BASE_URL para JS: usa window.BASE_URL si está definida, si no, asume /Gestion-inventario
+const EVIDENCIAS_BASE_URL = (function () {
+  if (window.BASE_URL) return window.BASE_URL.endsWith("/") ? window.BASE_URL : window.BASE_URL + "/"
+  const origin = window.location.origin
+  // Ajusta a tu carpeta del proyecto (según test.http)
+  return origin + "/Gestion-inventario/"
+})()
+
+const EVIDENCIAS_API_URL = EVIDENCIAS_BASE_URL + "src/controllers/evidencia_controller.php"
+
+function getEvidenceImageUrl(foto) {
+  if (!foto) return ""
+  const f = foto.toString()
+  if (f.startsWith("http") || f.startsWith("data:")) return f
+  // Si es un nombre/relativo, asumimos carpeta de uploads de evidencias
+  return EVIDENCIAS_BASE_URL + "src/uploads/evidencias/" + f.replace(/^\/+/, "")
+}
+
+async function fetchAndRenderEvidences() {
+  try {
+    const res = await fetch(EVIDENCIAS_API_URL, { method: "GET" })
+    if (!res.ok) throw new Error("Error al cargar evidencias")
+    const data = await res.json()
+
+    evidencesData = (Array.isArray(data) ? data : []).map((row) => ({
+      id: Number.parseInt(row.id_evidencia ?? row.id ?? Math.floor(Math.random() * 1e9)),
+      fecha: row.fecha ?? row.created_at ?? "-",
+      ficha: row.ficha ?? "-",
+      imagen: getEvidenceImageUrl(row.foto ?? row.imagen ?? ""),
+      titulo: row.titulo ?? "Evidencia",
+      descripcion: row.descripcion_obra ?? row.descripcion ?? "",
+      materiales: [],
+    }))
+
+    // Si backend no tiene datos aún, usar mock como fallback visual
+    if (!evidencesData.length) {
+      evidencesData = [...mockEvidences]
+    }
+
+    renderEvidenceCards()
+  } catch (err) {
+    console.warn("[Evidencias] No se pudo cargar desde backend:", err)
+    // Fallback a mock para no romper la UI
+    evidencesData = [...mockEvidences]
+    renderEvidenceCards()
+  }
+}
 
 /* =========================
    Iconos SVG
