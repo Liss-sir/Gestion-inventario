@@ -76,7 +76,7 @@ $bodegas = $model->listar();
           </button>
         </div>
 
-        <!-- BOTÓN ÚNICO + MENÚ DESPLEGABLE -->
+        <!-- ✅ BOTÓN ÚNICO + MENÚ DESPLEGABLE -->
         <div class="relative">
           <button
             id="btnCrearBodegaMenu"
@@ -427,38 +427,6 @@ $bodegas = $model->listar();
     </ul>
   </div>
 
-  <!-- ========= MENÚ CONTEXTUAL SUB-BODEGA ========= -->
-<div
-  id="context-menu-subbodega"
-  class="hidden fixed z-[9999] w-56 rounded-lg bg-card border border-border shadow-md"
->
-  <ul class="py-2 text-sm text-foreground">
-    <li>
-      <button type="button" class="w-full flex items-center gap-3 px-4 py-2 hover:bg-muted ctx-sub-btn" data-action="ver">
-        <i data-lucide="eye" class="w-5 h-5 text-muted-foreground"></i>
-        <span>Ver detalles</span>
-      </button>
-    </li>
-
-    <li>
-      <button type="button" class="w-full flex items-center gap-3 px-4 py-2 hover:bg-muted ctx-sub-btn" data-action="editar">
-        <i data-lucide="square-pen" class="w-5 h-5 text-muted-foreground"></i>
-        <span>Editar</span>
-      </button>
-    </li>
-
-    <li class="my-2 border-t border-border"></li>
-
-    <li>
-      <button type="button" class="w-full flex items-center gap-3 px-4 py-2 hover:bg-muted ctx-sub-btn" data-action="toggle">
-        <i data-lucide="power" class="w-5 h-5 text-muted-foreground"></i>
-        <span>Desactivar</span>
-      </button>
-    </li>
-  </ul>
-</div>
-
-
   <!-- ========= MODAL CREAR ========= -->
   <div id="modalCrear" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
     <div class="absolute inset-0" id="backdropCrear"></div>
@@ -544,18 +512,15 @@ $bodegas = $model->listar();
         <div class="grid gap-4 sm:grid-cols-2">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Bodega padre *</label>
-              <select id="id_bodega"
-                      class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm
-                            focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]"
-                      required>
-                <option value="">Seleccione una bodega</option>
-
-                <?php foreach ($bodegas as $b): ?>
-                  <option value="<?= (int)$b['id_bodega'] ?>">
-                    <?= htmlspecialchars($b['nombre']) ?>
-                  </option>
-                <?php endforeach; ?>
-              </select>
+            <select id="subIdBodega"
+                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#39A90040] focus:border-[#39A900]"
+                    required>
+              <?php foreach ($bodegas as $b): ?>
+                <option value="<?= htmlspecialchars($b['codigo_bodega']) ?>">
+                  <?= htmlspecialchars($b['nombre']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
           </div>
 
           <div>
@@ -672,222 +637,75 @@ $bodegas = $model->listar();
     </div>
   </div>
 
-  <!-- ✅ ========= MODAL DETALLE (BODEGA) ========= -->
-<div id="modalDetalle" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
-  <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+  <!-- ✅ ========= MODAL DETALLE ========= -->
+  <div id="modalDetalle" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
 
-    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900">Detalles de la Bodega</h2>
+      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <h2 class="text-lg font-semibold text-gray-900">Detalles de la Bodega</h2>
 
-      <button id="cerrarDetalle" type="button" class="h-8 w-8 rounded-full hover:bg-gray-100 flex items-center justify-center">
-        <i data-lucide="x" class="w-4 h-4 text-gray-600"></i>
-      </button>
-    </div>
-
-    <div class="overflow-y-auto px-6 py-5 space-y-6">
-
-      <div class="flex items-start gap-4">
-        <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-          <i data-lucide="warehouse" class="w-6 h-6"></i>
-        </div>
-
-        <div>
-          <h3 id="detalleNombre" class="text-base font-semibold text-gray-900">-</h3>
-          <p class="text-xs text-gray-500">
-            ID: <span id="detalleId">-</span>
-          </p>
-        </div>
+        <button id="cerrarDetalle" type="button" class="h-8 w-8 rounded-full hover:bg-gray-100 flex items-center justify-center">
+          <i data-lucide="x" class="w-4 h-4 text-gray-600"></i>
+        </button>
       </div>
 
-      <div class="grid gap-4 text-sm">
-        <div class="grid grid-cols-2 gap-6 items-center">
-          <div class="grid grid-cols-[120px_auto] gap-3 items-center">
-            <span class="text-gray-600">Clasificación:</span>
-            <span id="detalleClasificacion" class="detalle-chip">-</span>
+      <div class="overflow-y-auto px-6 py-5 space-y-6">
+
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+            <i data-lucide="warehouse" class="w-6 h-6"></i>
+          </div>
+
+          <div>
+            <h3 id="detalleNombre" class="text-base font-semibold text-gray-900">-</h3>
+            <p class="text-xs text-gray-500">
+              ID: <span id="detalleId">-</span>
+            </p>
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-6 items-center">
-          <div class="grid grid-cols-[120px_auto] gap-3 items-center">
-            <span class="text-gray-600">Ubicación:</span>
-            <span id="detalleUbicacion" class="font-medium text-gray-800">-</span>
-          </div>
-
-          <div class="grid grid-cols-[120px_auto] gap-3 items-center">
-            <span class="text-gray-600">Estado:</span>
-            <span id="detalleEstado" class="badge-estado-activo">-</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="pt-5 border-t border-gray-200">
-        <div class="flex items-center gap-2 mb-2">
-          <i data-lucide="layers" class="w-4 h-4 text-gray-600"></i>
-          <h4 class="font-semibold text-gray-900">Sub-bodegas</h4>
-        </div>
-
-        <div id="subBodegasContainer" class="space-y-2">
-          <p class="text-sm text-gray-500">Seleccione una bodega</p>
-        </div>
-      </div>
-
-      <div class="pt-5 border-t border-gray-200">
-        <div class="flex items-center gap-2 mb-2">
-          <i data-lucide="box" class="w-4 h-4 text-gray-600"></i>
-          <h4 class="font-semibold text-gray-900">Materiales en esta Bodega</h4>
-        </div>
-
-        <p class="text-sm text-gray-500 mb-4">
-          Total: <strong>3</strong> material(es)
-        </p>
-
-        <div class="border border-gray-200 rounded-2xl p-4 bg-gray-50">
-          <p class="text-sm text-gray-600">
-            (Placeholder del modal viejo. Luego lo conectamos a materiales reales.)
-          </p>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<!-- ✅ ========= MODAL DETALLE (SUB-BODEGA) ========= -->
-<div id="modalDetalleSubBodega" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
-  <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
-
-    <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900">Detalles de la Sub-bodega</h2>
-
-      <button id="cerrarDetalleSub" type="button" class="h-8 w-8 rounded-full hover:bg-gray-100 flex items-center justify-center">
-        <i data-lucide="x" class="w-4 h-4 text-gray-600"></i>
-      </button>
-    </div>
-
-    <div class="overflow-y-auto px-6 py-5 space-y-6">
-
-      <div class="flex items-start gap-4">
-        <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-          <i data-lucide="layers" class="w-6 h-6"></i>
-        </div>
-
-        <div>
-          <h3 id="detalleSubNombre" class="text-base font-semibold text-gray-900">-</h3>
-          <p class="text-xs text-gray-500">
-            Código: <span id="detalleSubCodigo">-</span>
-          </p>
-        </div>
-      </div>
-
-<div class="grid gap-4 text-sm">
-
-          <!-- Fila 1: Clasificación + Estado -->
+        <div class="grid gap-4 text-sm">
           <div class="grid grid-cols-2 gap-6 items-center">
             <div class="grid grid-cols-[120px_auto] gap-3 items-center">
               <span class="text-gray-600">Clasificación:</span>
-              <span id="detalleSubClasificacion" class="detalle-chip">-</span>
+              <span id="detalleClasificacion" class="detalle-chip">-</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-6 items-center">
+            <div class="grid grid-cols-[120px_auto] gap-3 items-center">
+              <span class="text-gray-600">Ubicación:</span>
+              <span id="detalleUbicacion" class="font-medium text-gray-800">-</span>
             </div>
 
             <div class="grid grid-cols-[120px_auto] gap-3 items-center">
               <span class="text-gray-600">Estado:</span>
-              <span id="detalleSubEstado" class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium w-fit badge-estado-activo text-emerald-700">-</span>
+              <span id="detalleEstado" class="badge-estado-activo">-</span>
             </div>
           </div>
+        </div>
 
-          <!-- Fila 2: Descripción (full) -->
-          <div class="grid grid-cols-[120px_auto] gap-3 items-start">
-            <span class="text-gray-600">Descripción:</span>
-            <span id="detalleSubDescripcion" class="font-medium text-gray-800">-</span>
+        <div class="pt-5 border-t border-gray-200">
+          <div class="flex items-center gap-2 mb-2">
+            <i data-lucide="box" class="w-4 h-4 text-gray-600"></i>
+            <h4 class="font-semibold text-gray-900">Materiales en esta Bodega</h4>
           </div>
 
-        </div>
-
-
-      <!-- ✅ AQUÍ VA LA PARTE QUE TE FALTABA -->
-      <div class="pt-5 border-t border-gray-200">
-        <div class="flex items-center gap-2 mb-2">
-          <i data-lucide="box" class="w-4 h-4 text-gray-600"></i>
-          <h4 class="font-semibold text-gray-900">Materiales en esta Sub-bodega</h4>
-        </div>
-
-        <p class="text-sm text-gray-500 mb-4">
-          Total: <strong id="detalleSubTotalMateriales">0</strong> material(es)
-        </p>
-
-        <div class="border border-gray-200 rounded-2xl p-4 bg-gray-50">
-          <p class="text-sm text-gray-600" id="detalleSubMaterialesPlaceholder">
-            (Placeholder del modal viejo. Luego lo conectamos a materiales reales.)
+          <p class="text-sm text-gray-500 mb-4">
+            Total: <strong>3</strong> material(es)
           </p>
-        </div>
-      </div>
 
-    </div>
-  </div>
-</div>
-
-  <!-- Modal Editar sub-bodega -->
-
-    <div id="modalEditarSubBodega" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
-    <div class="absolute inset-0" id="backdropEditarSub"></div>
-
-    <div class="relative mx-4 w-full max-w-2xl rounded-2xl bg-white shadow-xl p-6 sm:p-8">
-      <div class="flex items-start justify-between mb-4">
-        <div>
-          <h2 class="text-xl font-semibold text-gray-900">Editar Sub-bodega</h2>
-          <p class="text-sm text-gray-500">Modifica la información de la sub-bodega</p>
-        </div>
-
-        <button type="button" id="cerrarEditarSub" class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100">
-          <i data-lucide="x" class="h-4 w-4"></i>
-        </button>
-      </div>
-
-      <input type="hidden" id="editSubId" />
-
-      <div class="space-y-4">
-        <div class="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Código *</label>
-            <input id="editSubCodigo" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Clasificación *</label>
-            <select id="editSubClasificacion" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
-              <option value="Insumos">Insumos</option>
-              <option value="Equipos">Equipos</option>
-            </select>
+          <div class="border border-gray-200 rounded-2xl p-4 bg-gray-50">
+            <p class="text-sm text-gray-600">
+              (Placeholder del modal viejo. Luego lo conectamos a materiales reales.)
+            </p>
           </div>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-          <input id="editSubNombre" type="text" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-          <textarea id="editSubDescripcion" rows="3" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"></textarea>
-        </div>
-
-        <div class="mt-4 flex items-center justify-end gap-2">
-          <button type="button" id="cancelarEditarSub"
-                  class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 border border-gray-200">
-            Cancelar
-          </button>
-
-          <button type="button" id="guardarEditarSubBodega"
-                  class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-secondary hover:opacity-90">
-            Guardar cambios
-          </button>
-        </div>
       </div>
     </div>
-  </div>
-
   </div>
 
 </main>
 </body>
 </html>
-
