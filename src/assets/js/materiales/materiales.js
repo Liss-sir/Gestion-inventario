@@ -398,49 +398,49 @@ function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
   const codeRegex = /^\d{3,30}$/
 
   if (!data.nombre) {
-    showAlert("El nombre es obligatorio", "error")
+    showAlert("El nombre es obligatorio", "warning")
     document.getElementById(isEdit ? "editNombre" : "nombre")?.focus()
     return false
   }
 
   if (!nameRegex.test(data.nombre)) {
-    showAlert("El nombre solo puede tener letras/números y 3-80 caracteres", "error")
+    showAlert("El nombre solo puede tener letras/números y 3-80 caracteres", "warning")
     document.getElementById(isEdit ? "editNombre" : "nombre")?.focus()
     return false
   }
 
   if (!data.descripcion || data.descripcion.length < 5) {
-    showAlert("La descripción debe tener al menos 5 caracteres", "error")
+    showAlert("La descripción debe tener al menos 5 caracteres", "warning")
     document.getElementById(isEdit ? "editDescripcion" : "descripcion")?.focus()
     return false
   }
 
   if (!data.clasificacion) {
-    showAlert("Seleccione la clasificación", "error")
+    showAlert("Seleccione la clasificación", "warning")
     document.getElementById(isEdit ? "editClasificacion" : "clasificacion")?.focus()
     return false
   }
 
   if (!data.unidad_medida) {
-    showAlert("Seleccione la unidad de medida", "error")
+    showAlert("Seleccione la unidad de medida", "warning")
     document.getElementById(isEdit ? "editUnidad" : "unidad")?.focus()
     return false
   }
 
   if (data.precio === "" || data.precio === null || data.precio === undefined || Number.isNaN(Number(data.precio))) {
-    showAlert("Ingrese un precio válido", "error")
+    showAlert("Ingrese un precio válido", "warning")
     document.getElementById(isEdit ? "editPrecio" : "precio")?.focus()
     return false
   }
 
   if (data.clasificacion === "Inventariado") {
     if (!data.codigo_inventario) {
-      showAlert("El código es obligatorio para inventariados", "error")
+      showAlert("El código es obligatorio para inventariados", "warning")
       document.getElementById(isEdit ? "editCodigo" : "codigo")?.focus()
       return false
     }
     if (!codeRegex.test(data.codigo_inventario)) {
-      showAlert("Código inválido: solo números (3-30 dígitos)", "error")
+      showAlert("Código inválido: solo números (3-30 dígitos)", "warning")
       document.getElementById(isEdit ? "editCodigo" : "codigo")?.focus()
       return false
     }
@@ -451,7 +451,7 @@ function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
   )
 
   if (nombreDuplicado) {
-    showAlert("Ya existe un material con ese nombre", "error")
+    showAlert("Ya existe un material con ese nombre", "warning")
     return false
   }
 
@@ -460,7 +460,7 @@ function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
       (m) => m.codigo && m.codigo.toLowerCase() === data.codigo_inventario.toLowerCase() && (!isEdit || m.id !== id),
     )
     if (codigoDuplicado) {
-      showAlert("Ya existe un material con ese código", "error")
+      showAlert("Ya existe un material con ese código", "warning")
       return false
     }
   }
@@ -644,9 +644,9 @@ function renderTable() {
 
   paginatedData.forEach((material) => {
     const statusText = material.enabled ? "Disponible" : "Agotado"
-    const codigoDisplay = material.codigo || "-"
+    const codigoDisplay = material.codigo || (material.clasificacion === "Consumible" ? "N/C" : "-")
 
-    const row = document.createElement("tr")
+    const row = document.createElement("tr")            
     row.className = "hover:bg-muted/40"
     row.dataset.materialId = material.id
 
@@ -769,7 +769,7 @@ function renderCards() {
 
   paginatedData.forEach((material) => {
     const statusText = material.enabled ? "Disponible" : "Agotado"
-    const codigoDisplay = material.codigo || "Sin código"
+    const codigoDisplay = material.codigo || (material.clasificacion === "Consumible" ? "N/C" : "Sin código")
 
     const card = document.createElement("div")
     card.className = "rounded-2xl border border-border bg-card p-2.5 shadow-sm flex flex-col gap-1.5"
@@ -1021,7 +1021,7 @@ function openDetailsModal(id) {
     <div class="grid gap-3 text-sm">
       <div class="grid grid-cols-3 gap-2">
         <span class="text-muted-foreground">Código:</span>
-        <span class="col-span-2 font-medium">${material.codigo || "Sin código"}</span>
+        <span class="col-span-2 font-medium">${material.codigo || (material.clasificacion === "Consumible" ? "N/C" : "Sin código")}</span>
       </div>
       <div class="grid grid-cols-3 gap-2">
         <span class="text-muted-foreground">Descripción:</span>

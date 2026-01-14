@@ -281,7 +281,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                   
                   <div id="codigoContainer" class="space-y-2" style="display: none;">
                     <label class="text-sm font-medium">Código *</label>
-                    <input id="codigo" type="text" placeholder="TEC-001" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <input id="codigo" type="text" placeholder="EJ: 1234" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                   </div>
                 </div>
                 
@@ -446,7 +446,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                   
                   <div id="editCodigoContainer" class="space-y-2">
                     <label class="text-sm font-medium">Código <span id="editCodigoRequired">*</span></label>
-                    <input id="editCodigo" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <input id="editCodigo" type="text" placeholder="EJ: 1234" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                   </div>
                 </div>
                 

@@ -253,4 +253,39 @@ class Usuario {
         return false;
     }
 }
+
+// Check if user already has an active session
+public function hasActiveSession($idUsuario)
+{
+    $sql = "SELECT 1
+            FROM sesiones_usuarios
+            WHERE id_usuario = ? AND activa = 1
+            LIMIT 1";
+
+    $stmt = $this->conn->prepare($sql);
+    $stmt->execute([$idUsuario]);
+
+    return $stmt->fetch() ? true : false;
+}
+
+// Create new session
+public function createSession($idUsuario, $token)
+{
+    $sql = "INSERT INTO sesiones_usuarios (id_usuario, token_sesion)
+            VALUES (?, ?)";
+
+    $stmt = $this->conn->prepare($sql);
+    return $stmt->execute([$idUsuario, $token]);
+}
+
+// Close session
+public function closeSession($token)
+{
+    $sql = "UPDATE sesiones_usuarios
+            SET activa = 0
+            WHERE token_sesion = ?";
+
+    $stmt = $this->conn->prepare($sql);
+    return $stmt->execute([$token]);
+}
 }
