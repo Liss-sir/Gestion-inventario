@@ -654,6 +654,10 @@ async function cambiarEstadoSolicitud(idSolicitud, nuevoEstado, motivo = null) {
     if (resp?.success) {
       utilidades.mostrarExito(resp.message || "Solicitud actualizada");
       await app.cargarSolicitudes();
+
+      // 🔔 Actualizar badge sidebar (pendientes)
+      window.dispatchEvent(new Event("solicitudes:updated"));
+    
       return;
     }
 
@@ -681,6 +685,10 @@ async function marcarEntregada(idSolicitud) {
     if (resp?.success) {
       utilidades.mostrarExito(resp.message || "Solicitud marcada como entregada");
       await app.cargarSolicitudes();
+
+      // 🔔 Actualizar badge sidebar (pendientes)
+      window.dispatchEvent(new Event("solicitudes:updated"));
+      
       return;
     }
 
