@@ -76,90 +76,103 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if ($passwordOk) {
 
-                  // VALIDAR SESIÓN ÚNICA (UNA SOLA SESIÓN)
-                  $stmtSesion = $conn->prepare("
-                      SELECT 1
-                      FROM sesiones_usuarios
-                      WHERE id_usuario = :id
-                        AND activa = 1
-                      LIMIT 1
-                  ");
-                  $stmtSesion->execute([
-                      ':id' => (int)$user['id_usuario']
-                  ]);
+                    // =========================================================
+                    // ✅ NUEVO: BLOQUEAR LOGIN SI EL USUARIO ESTÁ INACTIVO
+                    // (NO TOCA TU DB, solo valida el campo estado)
+                    // =========================================================
+                    $rawEstado = $user['estado'] ?? null;
+                    $valEstado = strtolower(trim((string)$rawEstado));
+                    $estadoActivo = ($valEstado === 'activo' || $valEstado === '1' || $valEstado === 'true');
 
-                  // ✅ FIX: NO usar return/exit aquí porque deja la pantalla en blanco.
-                  // Solo mostramos el mensaje y dejamos que cargue el HTML del login.
-                  if ($stmtSesion->fetch()) {
-                      $loginError = "Este usuario ya tiene una sesión activa en otro dispositivo.";
-                  } else {
+                    if (!$estadoActivo) {
+                        $loginError = "Tu cuenta está desactivada. Contacta al administrador.";
+                    } else {
 
-                      // CREAR SESIÓN ÚNICA EN BD
-                      $tokenSesion = bin2hex(random_bytes(32));
+                        // VALIDAR SESIÓN ÚNICA (UNA SOLA SESIÓN)
+                        $stmtSesion = $conn->prepare("
+                            SELECT 1
+                            FROM sesiones_usuarios
+                            WHERE id_usuario = :id
+                              AND activa = 1
+                            LIMIT 1
+                        ");
+                        $stmtSesion->execute([
+                            ':id' => (int)$user['id_usuario']
+                        ]);
 
-                      $stmtCreate = $conn->prepare("
-                          INSERT INTO sesiones_usuarios (id_usuario, token_sesion)
-                          VALUES (:id_usuario, :token)
-                      ");
-                      $stmtCreate->execute([
-                          ':id_usuario' => (int)$user['id_usuario'],
-                          ':token'      => $tokenSesion
-                      ]);
+                        // ✅ FIX: NO usar return/exit aquí porque deja la pantalla en blanco.
+                        // Solo mostramos el mensaje y dejamos que cargue el HTML del login.
+                        if ($stmtSesion->fetch()) {
+                            $loginError = "Este usuario ya tiene una sesión activa en otro dispositivo.";
+                        } else {
 
-                      $_SESSION['token_sesion'] = $tokenSesion;
+                            // CREAR SESIÓN ÚNICA EN BD
+                            $tokenSesion = bin2hex(random_bytes(32));
 
+                            $stmtCreate = $conn->prepare("
+                                INSERT INTO sesiones_usuarios (id_usuario, token_sesion)
+                                VALUES (:id_usuario, :token)
+                            ");
+                            $stmtCreate->execute([
+                                ':id_usuario' => (int)$user['id_usuario'],
+                                ':token'      => $tokenSesion
+                            ]);
 
-                      // ============================
-                      // 🔥 GUARDAR TODOS LOS DATOS EN SESIÓN
-                      // ============================
-                      $_SESSION['usuario_id']                = $user['id_usuario'];
-                      $_SESSION['usuario_nombre']            = $user['nombre_completo'];
-                      $_SESSION['usuario_cargo']             = $user['cargo'];
+                            $_SESSION['token_sesion'] = $tokenSesion;
 
-                      $_SESSION['usuario_tipo_documento']    = $user['tipo_documento'];
-                      $_SESSION['usuario_numero_documento']  = $user['numero_documento'];
-                      $_SESSION['usuario_telefono']          = $user['telefono'];
-                      $_SESSION['usuario_correo']            = $user['correo'];
-                      $_SESSION['usuario_estado']            = $user['estado'];
+                            // ============================
+                            // 🔥 GUARDAR TODOS LOS DATOS EN SESIÓN
+                            // ============================
+                            $_SESSION['usuario_id']                = $user['id_usuario'];
+                            $_SESSION['usuario_nombre']            = $user['nombre_completo'];
+                            $_SESSION['usuario_cargo']             = $user['cargo'];
 
-                      // 🔥 AGREGAMOS ESTOS DOS CAMPOS QUE FALTABAN
-                      $_SESSION['usuario_direccion']         = $user['direccion'];
-                      $_SESSION['usuario_fecha_creacion']    = $user['fecha_creacion'];
+                            $_SESSION['usuario_tipo_documento']    = $user['tipo_documento'];
+                            $_SESSION['usuario_numero_documento']  = $user['numero_documento'];
+                            $_SESSION['usuario_telefono']          = $user['telefono'];
+                            $_SESSION['usuario_correo']            = $user['correo'];
+                            $_SESSION['usuario_estado']            = $user['estado'];
 
-                      // ✅ CLAVE: guardar la foto en sesión para que persista tras volver a iniciar sesión
-                      $_SESSION['usuario_foto']              = $user['foto_perfil'] ?? null;
+                            // 🔥 AGREGAMOS ESTOS DOS CAMPOS QUE FALTABAN
+                            $_SESSION['usuario_direccion']         = $user['direccion'];
+                            $_SESSION['usuario_fecha_creacion']    = $user['fecha_creacion'];
 
-                      // =========================================================
-                      // ✅ DETECTAR "CAMBIO OBLIGATORIO" (FORCE_%)
-                      // Sin tocar DB:
-                      // - tipo = 'reset_password'
-                      // - token LIKE 'FORCE_%'
-                      // =========================================================
-                      try {
-                          $stmtForce = $conn->prepare("
-                              SELECT id_token
-                              FROM tokens_correo
-                              WHERE id_usuario = :uid
-                                AND tipo = 'reset_password'
-                                AND token LIKE 'FORCE_%'
-                                AND usado = 0
-                                AND fecha_expiracion >= NOW()
-                              ORDER BY id_token DESC
-                              LIMIT 1
-                          ");
-                          $stmtForce->execute([':uid' => (int)$user['id_usuario']]);
-                          $rowForce = $stmtForce->fetch(PDO::FETCH_ASSOC);
+                            // ✅ CLAVE: guardar la foto en sesión para que persista tras volver a iniciar sesión
+                            $_SESSION['usuario_foto']              = $user['foto_perfil'] ?? null;
 
-                          $_SESSION['force_password_change'] = $rowForce ? 1 : 0;
-                      } catch (Exception $e) {
-                          // Si por algo falla, no rompemos el login
-                          $_SESSION['force_password_change'] = 0;
-                      }
+                            // =========================================================
+                            // ✅ DETECTAR "CAMBIO OBLIGATORIO" (FORCE_%)
+                            // Sin tocar DB:
+                            // - tipo = 'reset_password'
+                            // - token LIKE 'FORCE_%'
+                            // =========================================================
+                            try {
+                                $stmtForce = $conn->prepare("
+                                    SELECT id_token
+                                    FROM tokens_correo
+                                    WHERE id_usuario = :uid
+                                      AND tipo = 'reset_password'
+                                      AND token LIKE 'FORCE_%'
+                                      AND usado = 0
+                                      AND fecha_expiracion >= NOW()
+                                    ORDER BY id_token DESC
+                                    LIMIT 1
+                                ");
+                                $stmtForce->execute([':uid' => (int)$user['id_usuario']]);
+                                $rowForce = $stmtForce->fetch(PDO::FETCH_ASSOC);
 
-                      header('Location: ' . BASE_URL . '../../../index.php?page=dashboard');
-                      exit;
+                                $_SESSION['force_password_change'] = $rowForce ? 1 : 0;
+                            } catch (Exception $e) {
+                                // Si por algo falla, no rompemos el login
+                                $_SESSION['force_password_change'] = 0;
+                            }
 
-                  } // ✅ fin else (no sesión activa)
+                            header('Location: ' . BASE_URL . '../../../index.php?page=dashboard');
+                            exit;
+
+                        } // ✅ fin else (no sesión activa)
+
+                    } // ✅ fin else (estado activo)
 
                 } else {
                     $loginError = "Credenciales incorrectas. Verifica tu correo y contraseña.";
