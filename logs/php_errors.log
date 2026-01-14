@@ -1,0 +1,17 @@
+[19-Dec-2025 17:14:31 Europe/Berlin] PHP Exception: Cannot access private property SolicitudMaterialModel::$db in C:\xampp\htdocs\Gestion-inventario\src\controllers\solicitudes_controller.php:64
+[19-Dec-2025 17:15:26 Europe/Berlin] PHP Exception: Cannot access private property SolicitudMaterialModel::$db in C:\xampp\htdocs\Gestion-inventario\src\controllers\solicitudes_controller.php:64
+[19-Dec-2025 17:27:06 Europe/Berlin] ✅ Actividad encontrada: 1
+[19-Dec-2025 17:27:06 Europe/Berlin] ✅ Actividad asignada/creada: 1
+[19-Dec-2025 17:29:00 Europe/Berlin] ✅ Actividad encontrada: 1
+[19-Dec-2025 17:29:00 Europe/Berlin] ✅ Actividad asignada/creada: 1
+[19-Dec-2025 17:47:15 Europe/Berlin] ✅ Actividad encontrada: 1
+[19-Dec-2025 17:47:15 Europe/Berlin] ✅ Actividad asignada/creada: 1
+[19-Dec-2025 18:47:33 Europe/Berlin] ✅ Solicitud 5 actualizada a Rechazada. Filas afectadas: 1
+[19-Dec-2025 18:47:46 Europe/Berlin] ✅ Solicitud 4 actualizada a Aprobada. Filas afectadas: 1
+[19-Dec-2025 18:47:53 Europe/Berlin] ✅ Solicitud 3 actualizada a Rechazada. Filas afectadas: 1
+[19-Dec-2025 18:49:38 Europe/Berlin] ✅ Actividad encontrada: 1
+[19-Dec-2025 18:49:38 Europe/Berlin] ✅ Actividad asignada/creada: 1
+[19-Dec-2025 18:49:44 Europe/Berlin] ✅ Solicitud 6 actualizada a Aprobada. Filas afectadas: 1
+[19-Dec-2025 18:50:06 Europe/Berlin] ✅ Actividad encontrada: 1
+[19-Dec-2025 18:50:06 Europe/Berlin] ✅ Actividad asignada/creada: 1
+[19-Dec-2025 18:50:13 Europe/Berlin] ✅ Solicitud 7 actualizada a Rechazada. Filas afectadas: 1
