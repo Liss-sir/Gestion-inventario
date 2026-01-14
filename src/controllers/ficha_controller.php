@@ -13,12 +13,12 @@ class FichaController {
         $this->model = new FichaModel($conn);
     }
 
-    /* Listar fichas */
+    /* List fichas */
     public function listar() {
         echo json_encode($this->model->listar());
     }
 
-    /* Obtener ficha por ID */
+    /* Get ficha by ID */
     public function obtener($id) {
         if (!$id) {
             echo json_encode(['error' => 'id_ficha requerido']);
@@ -29,7 +29,7 @@ class FichaController {
         echo json_encode($data ?: ['error' => 'Ficha no encontrada']);
     }
 
-    /* Crear ficha */
+    /* Create ficha */
     public function crear() {
         $input = json_decode(file_get_contents("php://input"), true);
 
@@ -38,15 +38,23 @@ class FichaController {
             return;
         }
 
-        $ok = $this->model->crear($input);
+        $id = $this->model->crear($input);
 
-        echo json_encode([
-            'success' => $ok,
-            'message' => $ok ? "Ficha creada correctamente" : "Error al crear ficha"
-        ]);
+        if ($id) {
+            echo json_encode([
+                'success' => true,
+                'message' => "Ficha creada correctamente",
+                'id_ficha' => $id
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => "Error al crear ficha"
+            ]);
+        }
     }
 
-    /* Actualizar ficha */
+    /* Update ficha */
     public function actualizar() {
         $input = json_decode(file_get_contents("php://input"), true);
 
@@ -63,35 +71,72 @@ class FichaController {
         ]);
     }
 
-    /* Activar ficha */
-    public function activar($id) {
+    /* Change ficha state */
+    public function cambiarEstado($id, $accion) {
         if (!$id) {
             echo json_encode(['error' => 'id_ficha requerido']);
             return;
         }
 
-        $ok = $this->model->activar($id);
+        // Convertir acción en estado válido
+        $map = [
+            "activar"    => "Activa",
+            "finalizar"  => "Finalizada",
+            "cancelar"   => "Cancelada"
+        ];
+
+        if (!isset($map[$accion])) {
+            echo json_encode(['error' => 'Acción inválida']);
+            return;
+        }
+
+        $estado = $map[$accion];
+        $ok = $this->model->cambiarEstado($id, $estado);
 
         echo json_encode([
             'success' => $ok,
-            'message' => $ok ? "Ficha activada" : "Error al activar ficha"
+            'message' => $ok ? "Ficha actualizada a estado: $estado" : "Error al cambiar estado"
         ]);
     }
 
-    /* Inactivar ficha */
-    public function inactivar($id) {
+    /* Get aprendices (students) */
+    public function obtenerAprendices() {
+        echo json_encode($this->model->obtenerAprendices());
+    }
+
+    /* Add students to ficha */
+    public function agregarEstudiantes() {
+        $input = json_decode(file_get_contents("php://input"), true);
+
+        if (!isset($input['id_ficha']) || !isset($input['estudiantes'])) {
+            echo json_encode([
+                'success' => false,
+                'error' => 'Datos incompletos'
+            ]);
+            return;
+        }
+
+        $ok = $this->model->agregarEstudiantes(
+            $input['id_ficha'],
+            $input['estudiantes']
+        );
+
+        echo json_encode([
+            'success' => $ok,
+            'message' => $ok ? 'Estudiantes agregados correctamente' : 'Error al agregar estudiantes'
+        ]);
+    }
+
+    /* Get students of a ficha */
+    public function obtenerEstudiantesFicha($id) {
         if (!$id) {
             echo json_encode(['error' => 'id_ficha requerido']);
             return;
         }
 
-        $ok = $this->model->inactivar($id);
-
-        echo json_encode([
-            'success' => $ok,
-            'message' => $ok ? "Ficha inactivada" : "Error al inactivar ficha"
-        ]);
+        echo json_encode($this->model->obtenerEstudiantesDeFicha($id));
     }
+
 }
 
 /* Router */
@@ -119,11 +164,27 @@ switch ($accion) {
         break;
 
     case "activar":
-        $controller->activar($id);
+        $controller->cambiarEstado($id, "activar");
         break;
 
-    case "inactivar":
-        $controller->inactivar($id);
+    case "finalizar":
+        $controller->cambiarEstado($id, "finalizar");
+        break;
+
+    case "cancelar":
+        $controller->cambiarEstado($id, "cancelar");
+        break;
+
+    case "aprendices":
+        $controller->obtenerAprendices();
+        break;
+
+    case "agregarEstudiantes":
+        $controller->agregarEstudiantes();
+        break;
+
+    case "estudiantesFicha":
+        $controller->obtenerEstudiantesFicha($id);
         break;
 
     default:

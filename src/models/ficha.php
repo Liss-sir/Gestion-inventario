@@ -9,9 +9,7 @@ class FichaModel {
         $this->conn = $db;
     }
 
-    /* ============================
-       LISTAR TODAS LAS FICHAS
-    ============================ */
+    // List fichas
     public function listar() {
         try {
             $sql = "SELECT * FROM " . $this->table;
@@ -25,9 +23,8 @@ class FichaModel {
         }
     }
 
-    /* ============================
-       OBTENER FICHA POR ID
-    ============================ */
+
+    // Get ficha by ID
     public function obtener($id) {
         try {
             $sql = "SELECT * FROM " . $this->table . " WHERE id_ficha = ?";
@@ -41,9 +38,8 @@ class FichaModel {
         }
     }
 
-    /* ============================
-       CREAR FICHA
-    ============================ */
+
+    // Create ficha
     public function crear($data) {
         try {
             $sql = "INSERT INTO " . $this->table . "
@@ -67,9 +63,8 @@ class FichaModel {
         }
     }
 
-    /* ============================
-       ACTUALIZAR FICHA
-    ============================ */
+
+    // Update ficha
     public function actualizar($data) {
         try {
             $sql = "UPDATE " . $this->table . "
@@ -100,9 +95,8 @@ class FichaModel {
         }
     }
 
-    /* ============================
-       ACTIVAR FICHA
-    ============================ */
+
+    // Activate ficha
     public function activar($id) {
         try {
             $sql = "UPDATE " . $this->table . " SET estado = 'Activa' WHERE id_ficha = ?";
@@ -114,9 +108,7 @@ class FichaModel {
         }
     }
 
-    /* ============================
-       INACTIVAR FICHA
-    ============================ */
+    // Deactivate ficha
     public function inactivar($id) {
         try {
             $sql = "UPDATE " . $this->table . " SET estado = 'Inactiva' WHERE id_ficha = ?";
