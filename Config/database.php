@@ -2,9 +2,10 @@
 $host = 'localhost';
 $dbname = 'gestion_inventario';
 $user = 'root';
-$pass = '123456'; 
+$pass = 'root'; 
 
 try {
+    
     $conn = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $user, $pass);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
@@ -26,4 +27,5 @@ try {
 
     exit;
 }
+
 ?>

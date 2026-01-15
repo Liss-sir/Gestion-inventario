@@ -21,6 +21,13 @@ if ($tokenSesion) {
 session_unset();
 session_destroy();
 
-// Redirigir a la landing
+// ✅ NUEVO: si el logout fue por inactividad, mandar a login
+$reason = $_GET['reason'] ?? '';
+if ($reason === 'idle_timeout') {
+    header("Location: index.php?page=login&reason=idle_timeout");
+    exit;
+}
+
+// Redirigir a la landing (logout normal)
 header("Location: index.php?page=landing");
 exit;
