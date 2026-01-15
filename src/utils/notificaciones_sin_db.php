@@ -1,5 +1,11 @@
 <?php
+// Al inicio del dashboard o en el layout
+echo '<script>';
+echo 'window.usuarioId = ' . ($_SESSION['usuario_id'] ?? 'null') . ';';
+echo 'window.cargoUsuario = "' . ($_SESSION['usuario_cargo'] ?? 'Usuario') . '";';
+echo 'window.esCoordinador = ' . (($_SESSION['usuario_cargo'] ?? '') === 'Coordinador' ? 'true' : 'false') . ';';
 
+echo '</script>';
 class NotificacionSesion {
     
     private static function inicializarSesion() {

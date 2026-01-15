@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . "/../models/bodega.php";
-require_once __DIR__ . "/../../Config/database.php";
+require_once __DIR__ . '/../../../Config/database.php';
 
 header("Content-Type: application/json; charset=utf-8");
 

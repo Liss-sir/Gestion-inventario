@@ -3,26 +3,26 @@ document.addEventListener("DOMContentLoaded", function () {
     lucide.createIcons();
   }
 
-  const modalPerfilVer          = document.getElementById("modalPerfilVer");
-  const modalPerfilEditar       = document.getElementById("modalPerfilEditar");
-  const modalPassword           = document.getElementById("modalPassword");
+  const modalPerfilVer = document.getElementById("modalPerfilVer");
+  const modalPerfilEditar = document.getElementById("modalPerfilEditar");
+  const modalPassword = document.getElementById("modalPassword");
 
-  const btnVerPerfil            = document.getElementById("btnVerPerfil");
-  const btnEditarPerfil         = document.getElementById("btnEditarPerfil");
+  const btnVerPerfil = document.getElementById("btnVerPerfil");
+  const btnEditarPerfil = document.getElementById("btnEditarPerfil");
 
-  const btnCerrarPerfilVer      = document.getElementById("btnCerrarModalPerfilVer");
-  const btnCerrarPerfilVerFooter= document.getElementById("btnCerrarPerfilVerFooter");
+  const btnCerrarPerfilVer = document.getElementById("btnCerrarModalPerfilVer");
+  const btnCerrarPerfilVerFooter = document.getElementById("btnCerrarPerfilVerFooter");
 
-  const btnCerrarPerfilEditar   = document.getElementById("btnCerrarModalPerfilEditar");
+  const btnCerrarPerfilEditar = document.getElementById("btnCerrarModalPerfilEditar");
   const btnCancelarPerfilEditar = document.getElementById("btnCancelarPerfilEditar");
 
-  const btnAbrirCambiarPass     = document.getElementById("btnAbrirCambiarPassword");
-  const btnCerrarPassword       = document.getElementById("btnCerrarPassword");
-  const btnCancelarPassword     = document.getElementById("btnCancelarPassword");
+  const btnAbrirCambiarPass = document.getElementById("btnAbrirCambiarPassword");
+  const btnCerrarPassword = document.getElementById("btnCerrarPassword");
+  const btnCancelarPassword = document.getElementById("btnCancelarPassword");
 
-  const avatarPerfilEditar      = document.getElementById("avatarPerfilEditar");
-  const btnCambiarFotoEditar    = document.getElementById("btnCambiarFotoEditar");
-  const inputFotoPerfilEditar   = document.getElementById("inputFotoPerfilEditar");
+  const avatarPerfilEditar = document.getElementById("avatarPerfilEditar");
+  const btnCambiarFotoEditar = document.getElementById("btnCambiarFotoEditar");
+  const inputFotoPerfilEditar = document.getElementById("inputFotoPerfilEditar");
 
   // =============================
   // 🔥 Snapshot para detectar cambios en el perfil
@@ -273,12 +273,12 @@ document.addEventListener("DOMContentLoaded", function () {
   // =====================================================
   // ✅ MODAL DATOS SENSIBLES - MEJORADO CON FUNCIONALIDAD COMPLETA
   // =====================================================
-  const btnInfoDatosSensibles       = document.getElementById("btnInfoDatosSensibles");
-  const modalDatosSensibles         = document.getElementById("modalDatosSensibles");
-  const btnCerrarDatosSensibles     = document.getElementById("btnCerrarDatosSensibles");
-  const btnCancelarDatosSensibles   = document.getElementById("btnCancelarDatosSensibles");
-  const formDatosSensibles          = document.getElementById("formDatosSensibles");
-  const btnEnviarDatosSensibles     = document.getElementById("btnEnviarDatosSensibles");
+  const btnInfoDatosSensibles = document.getElementById("btnInfoDatosSensibles");
+  const modalDatosSensibles = document.getElementById("modalDatosSensibles");
+  const btnCerrarDatosSensibles = document.getElementById("btnCerrarDatosSensibles");
+  const btnCancelarDatosSensibles = document.getElementById("btnCancelarDatosSensibles");
+  const formDatosSensibles = document.getElementById("formDatosSensibles");
+  const btnEnviarDatosSensibles = document.getElementById("btnEnviarDatosSensibles");
 
   const openDatosSensibles = () => {
     if (!modalDatosSensibles) return;
@@ -295,218 +295,191 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const closeDatosSensibles = () => {
     if (!modalDatosSensibles) return;
-    
+
     // Resetear formulario antes de cerrar
     if (formDatosSensibles) {
       formDatosSensibles.reset();
-      
+
       // Ocultar todos los campos
       document.querySelectorAll('[id^="field_"]').forEach(field => {
         field.classList.add('hidden');
       });
     }
-    
+
     closeModal(modalDatosSensibles);
   };
 
   // Inicializar valores actuales en los inputs del modal
-  function inicializarValoresActuales() {
-    // Obtener datos actuales del perfil desde el formulario de edición
-    const formEditar = document.getElementById('formEditarPerfil');
+// 1. Esta función captura lo que el aprendiz tiene actualmente en su perfil
+// 1. Esta función captura lo que el aprendiz tiene actualmente en su perfil
+function inicializarValoresActuales() {
     const datosActuales = {};
     
-    if (formEditar) {
-      const fd = new FormData(formEditar);
-      for (const [key, value] of fd.entries()) {
-        if (value instanceof File) continue;
-        datosActuales[key] = String(value ?? "").trim();
-      }
-    }
-    
-    // También intentar obtener de elementos en el DOM que muestran los datos actuales
-    const elementosDatos = {
-      'nombre_completo': document.querySelector('[data-campo="nombre_completo"]'),
-      'tipo_documento': document.querySelector('[data-campo="tipo_documento"]'),
-      'numero_documento': document.querySelector('[data-campo="numero_documento"]'),
-      'correo': document.querySelector('[data-campo="correo"]')
-    };
-    
-    // Establecer placeholders con valores actuales
-    for (const [campo, valor] of Object.entries(datosActuales)) {
-      const input = document.getElementById(`input_${campo}`);
-      if (input) {
-        input.setAttribute('placeholder', `Actual: ${valor}`);
-        input.setAttribute('data-valor-actual', valor);
-      }
-    }
-  }
+    // Capturamos el Nombre (está en el h2 del modal Ver Perfil)
+    const nombreVer = document.querySelector("#modalPerfilVer h2");
+    if (nombreVer) datosActuales['nombre'] = nombreVer.textContent.trim();
 
-  if (btnInfoDatosSensibles) {
-    btnInfoDatosSensibles.addEventListener("click", (e) => {
-      e.preventDefault();
-      openDatosSensibles();
-    });
-  }
-
-  if (btnCerrarDatosSensibles) {
-    btnCerrarDatosSensibles.addEventListener("click", (e) => {
-      e.preventDefault();
-      closeDatosSensibles();
-    });
-  }
-
-  if (btnCancelarDatosSensibles) {
-    btnCancelarDatosSensibles.addEventListener("click", (e) => {
-      e.preventDefault();
-      closeDatosSensibles();
-    });
-  }
-
-  if (modalDatosSensibles) {
-    modalDatosSensibles.addEventListener("click", (e) => {
-      if (e.target === modalDatosSensibles) closeDatosSensibles();
-    });
-  }
-
-  // Checklist -> mostrar/ocultar inputs
-  const sensibleChecks = modalDatosSensibles
-    ? modalDatosSensibles.querySelectorAll('input[type="checkbox"][data-sensible]')
-    : [];
-
-  const setFieldVisible = (key, show) => {
-    const el = document.getElementById("field_" + key);
-    if (!el) return;
-    if (show) el.classList.remove("hidden");
-    else el.classList.add("hidden");
-  };
-
-  // Inicializar: ocultar todos los campos primero
-  document.querySelectorAll('[id^="field_"]').forEach(field => {
-    field.classList.add('hidden');
-  });
-
-  if (sensibleChecks && sensibleChecks.length > 0) {
-    sensibleChecks.forEach((chk) => {
-      chk.addEventListener("change", () => {
-        const key = chk.getAttribute("data-sensible");
-        setFieldVisible(key, chk.checked);
+    // Capturamos los demás datos buscando por sus etiquetas en el modal de Ver Perfil
+    const etiquetas = document.querySelectorAll("#modalPerfilVer p.text-xs.font-medium.text-slate-400");
+    etiquetas.forEach(p => {
+        const textoEtiqueta = p.textContent.toLowerCase();
+        const valorActual = p.nextElementSibling ? p.nextElementSibling.textContent.trim() : "";
         
-        // Si se desmarca, limpiar el input correspondiente
-        if (!chk.checked) {
-          const fieldWrap = document.getElementById("field_" + key);
-          if (fieldWrap) {
-            const input = fieldWrap.querySelector("input, select, textarea");
-            if (input) input.value = '';
-          }
-        }
-      });
+        if (textoEtiqueta.includes("tipo de documento")) datosActuales['tipo_documento'] = valorActual;
+        if (textoEtiqueta.includes("número de documento")) datosActuales['numero_documento'] = valorActual;
+        if (textoEtiqueta.includes("correo")) datosActuales['correo'] = valorActual;
     });
-  }
+
+    // Guardamos esos valores en los "datos-valor-actual" de los inputs del modal de solicitud
+    for (const [campo, valor] of Object.entries(datosActuales)) {
+        const inputSolicitud = document.querySelector(`#field_${campo} input, #field_${campo} select`);
+        if (inputSolicitud) {
+            inputSolicitud.setAttribute('data-valor-actual', valor);
+            // Esto ayuda visualmente al usuario
+            inputSolicitud.placeholder = "Actual: " + valor; 
+        }
+    }
+}
+
+// 2. El evento de envío (Submit) corregido
+if (formDatosSensibles) {
+    formDatosSensibles.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        
+        const btnSubmit = formDatosSensibles.querySelector('button[type="submit"]');
+        const textoOriginal = btnSubmit ? btnSubmit.innerHTML : '';
+        
+        try {
+            const datosSolicitados = {};
+            const selected = Array.from(sensibleChecks || []).filter((c) => c.checked);
+
+            if (selected.length === 0) {
+                toastError("Selecciona al menos un dato para cambiar.");
+                return;
+            }
+
+            for (const chk of selected) {
+                const key = chk.getAttribute("data-sensible");
+                const fieldWrap = document.getElementById("field_" + key);
+                const inputNuevo = fieldWrap.querySelector("input, select");
+                
+                if (!inputNuevo || !inputNuevo.value.trim()) {
+                    toastError(`Ingresa el nuevo valor para ${obtenerNombreCampo(key)}`);
+                    return;
+                }
+
+                const nuevoValor = inputNuevo.value.trim();
+                // ✅ LEEMOS EL DATO QUE CAPTURAMOS AL ABRIR EL MODAL
+                const valorAnterior = inputNuevo.getAttribute('data-valor-actual') || "";
+
+                if (nuevoValor === valorAnterior && valorAnterior !== "") {
+                    toastError(`El valor de ${obtenerNombreCampo(key)} es igual al actual.`);
+                    return;
+                }
+
+                datosSolicitados[key] = {
+                    anterior: valorAnterior,
+                    nuevo: nuevoValor,
+                    campo_nombre: obtenerNombreCampo(key)
+                };
+            }
+
+            if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = 'Enviando...'; }
+
+            const formData = new FormData();
+            formData.append("datos_cambiados", JSON.stringify(datosSolicitados));
+
+            const resp = await fetch("src/controllers/usuario_controller.php?accion=solicitar_cambio_datos_sensibles", {
+                method: "POST",
+                body: formData
+            });
+
+            const data = await resp.json();
+            if (data.success) {
+                toastSuccess("✅ Solicitud enviada correctamente.");
+                closeDatosSensibles();
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                toastError(data.error);
+            }
+
+        } catch (error) {
+            toastError("Error al conectar con el servidor.");
+        } finally {
+            if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = textoOriginal; }
+        }
+    });
+}
 
   // Envío del formulario de datos sensibles
+  // Envío del formulario de datos sensibles - VERSIÓN MEJORADA
   if (formDatosSensibles) {
     formDatosSensibles.addEventListener("submit", async (e) => {
       e.preventDefault();
-      
-      const datosSolicitados = {};
-      const selected = Array.from(sensibleChecks || []).filter((c) => c.checked);
-
-      if (selected.length === 0) {
-        toastError("Selecciona al menos un dato sensible para continuar.");
-        return;
-      }
-
-      // Recopilar datos actuales del formulario de edición
-      const datosActuales = {};
-      const formEditar = document.getElementById('formEditarPerfil');
-      if (formEditar) {
-        const fd = new FormData(formEditar);
-        for (const [key, value] of fd.entries()) {
-          if (value instanceof File) continue;
-          datosActuales[key] = String(value ?? "").trim();
-        }
-      }
-
-      // Verificar y recopilar datos sensibles seleccionados
-      for (const chk of selected) {
-        const key = chk.getAttribute("data-sensible");
-        const fieldWrap = document.getElementById("field_" + key);
-        if (!fieldWrap) continue;
-
-        const input = fieldWrap.querySelector("input, select, textarea");
-        if (!input) continue;
-
-        const nuevoValor = String(input.value ?? "").trim();
-        if (!nuevoValor) {
-          toastError("Completa todos los campos seleccionados antes de continuar.");
-          return;
-        }
-        
-        // Obtener valor actual
-        const valorActual = datosActuales[key] || input.getAttribute('data-valor-actual') || '';
-        
-        // Verificar si el valor realmente cambió
-        if (nuevoValor === valorActual) {
-          toastError(`El valor para "${key.replace('_', ' ')}" es igual al actual. No se necesita cambio.`);
-          return;
-        }
-        
-        // Validaciones específicas por campo
-        if (key === 'correo' && !validarEmail(nuevoValor)) {
-          toastError("El correo electrónico no es válido.");
-          return;
-        }
-        
-        if (key === 'numero_documento' && !validarDocumento(nuevoValor)) {
-          toastError("El número de documento no es válido.");
-          return;
-        }
-        
-        datosSolicitados[key] = {
-          anterior: valorActual,
-          nuevo: nuevoValor,
-          campo_nombre: obtenerNombreCampo(key)
-        };
-      }
+      const btnSubmit = formDatosSensibles.querySelector('button[type="submit"]');
+      const textoOriginal = btnSubmit ? btnSubmit.innerHTML : '';
 
       try {
-        // Mostrar confirmación antes de enviar
-        const confirmar = confirm("¿Estás seguro de enviar esta solicitud de cambio? Un administrador revisará tu petición.");
-        if (!confirmar) return;
+        const datosSolicitados = {};
+        const selected = Array.from(sensibleChecks || []).filter((c) => c.checked);
+
+        if (selected.length === 0) {
+          toastError("Selecciona al menos un dato para cambiar.");
+          return;
+        }
+
+        for (const chk of selected) {
+          const key = chk.getAttribute("data-sensible");
+          const fieldWrap = document.getElementById("field_" + key);
+          const inputNuevo = fieldWrap.querySelector("input, select");
+
+          if (!inputNuevo || !inputNuevo.value.trim()) {
+            toastError(`Por favor ingresa el nuevo valor para ${obtenerNombreCampo(key)}`);
+            return;
+          }
+
+          const nuevoValor = inputNuevo.value.trim();
+          // ✅ AQUÍ ESTÁ LA MAGIA: Usamos el valor que guardamos al abrir el modal
+          const valorAnterior = inputNuevo.getAttribute('data-valor-actual') || "";
+
+          if (nuevoValor === valorAnterior) {
+            toastError(`El valor de ${obtenerNombreCampo(key)} es igual al que ya tienes.`);
+            return;
+          }
+
+          datosSolicitados[key] = {
+            anterior: valorAnterior,
+            nuevo: nuevoValor,
+            campo_nombre: obtenerNombreCampo(key)
+          };
+        }
+
+        if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = 'Enviando...'; }
 
         const formData = new FormData();
         formData.append("datos_cambiados", JSON.stringify(datosSolicitados));
-        formData.append("usuario_id", obtenerUsuarioId()); // Asegúrate de tener esta función
 
         const resp = await fetch("src/controllers/usuario_controller.php?accion=solicitar_cambio_datos_sensibles", {
           method: "POST",
-          body: formData,
+          body: formData
         });
 
         const data = await resp.json();
-
-        if (data.error) {
+        if (data.success) {
+          toastSuccess("✅ Solicitud enviada con éxito.");
+          closeDatosSensibles();
+          setTimeout(() => location.reload(), 1500);
+        } else {
           toastError(data.error);
-          return;
         }
 
-        toastSuccess(data.message || "✅ Solicitud registrada correctamente. Un administrador será notificado.");
-        
-        // Cerrar modal y limpiar formulario
-        closeDatosSensibles();
-        
-        // Actualizar contador de notificaciones si existe
-        if (typeof actualizarContadorNotificaciones === 'function') {
-          actualizarContadorNotificaciones();
-        }
-        
       } catch (error) {
-        console.error("Error enviando solicitud:", error);
-        toastError("❌ Ocurrió un error al enviar la solicitud. Intenta nuevamente.");
+        toastError("Error de conexión");
+      } finally {
+        if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = textoOriginal; }
       }
     });
   }
-
   // Si existe un botón específico para enviar, también lo configuramos
   if (btnEnviarDatosSensibles && formDatosSensibles) {
     btnEnviarDatosSensibles.addEventListener("click", (e) => {
@@ -540,12 +513,113 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function obtenerUsuarioId() {
-    // Obtener ID de usuario del DOM o de una variable global
-    return document.querySelector('[data-usuario-id]')?.getAttribute('data-usuario-id') || 
-           window.usuarioId || 
-           '<?php echo $_SESSION["usuario_id"] ?? ""; ?>';
+    console.log('🔍 Buscando ID de usuario en múltiples fuentes...');
+
+    // 1. Intentar desde sesión PHP (si está disponible en el DOM)
+    const elementosConId = [
+      // Buscar elementos con atributos data
+      document.querySelector('[data-usuario-id]'),
+      document.querySelector('[data-user-id]'),
+      document.querySelector('[data-id-usuario]'),
+      document.body,
+      document.getElementById('usuario_id'),
+      document.querySelector('input[name="usuario_id"], input[name="user_id"]')
+    ];
+
+    for (const el of elementosConId) {
+      if (el) {
+        const id = el.getAttribute?.('data-usuario-id') ||
+          el.getAttribute?.('data-user-id') ||
+          el.getAttribute?.('data-id-usuario') ||
+          el.value;
+        if (id) {
+          console.log('✅ ID encontrado en elemento:', id);
+          return id;
+        }
+      }
+    }
+
+    // 2. Intentar desde variable global
+    if (window.usuarioId) {
+      console.log('✅ ID encontrado en window.usuarioId:', window.usuarioId);
+      return window.usuarioId;
+    }
+
+    // 3. Intentar desde localStorage (último recurso)
+    try {
+      const usuarioData = localStorage.getItem('usuario_data');
+      if (usuarioData) {
+        const parsed = JSON.parse(usuarioData);
+        const id = parsed.id || parsed.usuario_id || parsed.user_id;
+        if (id) {
+          console.log('✅ ID encontrado en localStorage:', id);
+          return id;
+        }
+      }
+    } catch (e) {
+      console.warn('No se pudo leer localStorage:', e);
+    }
+
+    // 4. Enviar una petición al servidor para obtener el ID de la sesión
+    console.warn('⚠️ No se pudo obtener el ID de usuario automáticamente.');
+    console.warn('Intentando obtener del servidor...');
+
+    // Intentar obtener desde una API
+    fetch('src/controllers/usuario_controller.php?accion=obtener_id_usuario')
+      .then(resp => resp.json())
+      .then(data => {
+        if (data.id_usuario) {
+          window.usuarioId = data.id_usuario;
+          console.log('✅ ID obtenido del servidor:', window.usuarioId);
+          return window.usuarioId;
+        }
+      })
+      .catch(() => {
+        console.error('No se pudo obtener ID del servidor');
+      });
+
+    // Retornar vacío como fallback
+    console.error('❌ No se pudo obtener el ID de usuario');
+    return '';
   }
 
+  function obtenerUsuarioNombre() {
+    // Buscar en múltiples lugares
+    const elementos = [
+      document.querySelector('[data-usuario-nombre]'),
+      document.querySelector('[data-user-name]'),
+      document.querySelector('[data-nombre-usuario]'),
+      document.querySelector('.user-menu span.text-sm.font-medium')
+    ];
+
+    for (const el of elementos) {
+      if (el) {
+        const nombre = el.getAttribute?.('data-usuario-nombre') ||
+          el.getAttribute?.('data-user-name') ||
+          el.getAttribute?.('data-nombre-usuario') ||
+          el.textContent;
+        if (nombre && nombre.trim()) {
+          return nombre.trim();
+        }
+      }
+    }
+
+    // Buscar en variable global
+    if (window.usuarioNombre) return window.usuarioNombre;
+
+    // Último recurso: buscar en localStorage
+    try {
+      const usuarioData = localStorage.getItem('usuario_data');
+      if (usuarioData) {
+        const parsed = JSON.parse(usuarioData);
+        return parsed.nombre || parsed.nombre_completo || parsed.usuario_nombre || 'Usuario';
+      }
+    } catch (e) {
+      // Ignorar error
+    }
+
+    return 'Usuario';
+  }
   // =====================================================
   // MANEJO DE TECLA ESCAPE
   // =====================================================
@@ -817,20 +891,389 @@ document.addEventListener("DOMContentLoaded", function () {
   // =====================================================
   // FUNCIÓN AUXILIAR: Actualizar contador de notificaciones
   // =====================================================
+  // =====================================================
+  // FUNCIÓN AUXILIAR: Actualizar contador de notificaciones
+  // =====================================================
   async function actualizarContadorNotificaciones() {
     try {
-      const resp = await fetch('src/utils/notificaciones_sesion.php?accion=contar');
+      // Apuntamos directo al controlador de usuario que ya arreglamos
+      const resp = await fetch('src/controllers/usuario_controller.php?accion=contador');
       const data = await resp.json();
-      
+
       const badge = document.querySelector('.badge-notificaciones');
-      if (badge && data.no_leidas > 0) {
-        badge.textContent = data.no_leidas > 9 ? '9+' : data.no_leidas;
-        badge.style.display = 'inline-block';
-      } else if (badge) {
-        badge.style.display = 'none';
+      if (badge && data.success) {
+        if (data.no_leidas > 0) {
+          badge.textContent = data.no_leidas > 9 ? '9+' : data.no_leidas;
+          badge.style.display = 'inline-block';
+          badge.classList.remove('hidden');
+        } else {
+          badge.style.display = 'none';
+          badge.classList.add('hidden');
+        }
       }
     } catch (error) {
-      console.error('Error actualizando contador:', error);
+      console.log("Error silencioso en contador:", error);
+    }
+  }
+  // =====================================================
+  // FUNCIÓN DE FALBACK: Usar WebSocket o Polling simple
+  // =====================================================
+  async function actualizarContadorNotificacionesFallback() {
+    console.log('🔧 Usando método fallback para notificaciones');
+
+    try {
+      // Intentar obtener desde una variable global
+      if (window.notificacionesContador !== undefined) {
+        console.log('✅ Usando contador desde window.notificacionesContador:', window.notificacionesContador);
+        actualizarBadge(window.notificacionesContador);
+        return;
+      }
+
+      // Intentar desde localStorage (último valor guardado)
+      const lastCount = localStorage.getItem('notificaciones_contador');
+      if (lastCount) {
+        const count = parseInt(lastCount);
+        if (!isNaN(count)) {
+          console.log('✅ Usando contador desde localStorage:', count);
+          actualizarBadge(count);
+          return;
+        }
+      }
+
+      // Valor por defecto
+      console.log('⚠️ Usando valor por defecto: 0');
+      actualizarBadge(0);
+
+    } catch (error) {
+      console.error('Error en método fallback:', error);
+      actualizarBadge(0);
+    }
+  }
+
+  function actualizarBadge(count) {
+    const badge = document.querySelector('.badge-notificaciones');
+    if (!badge) return;
+
+    if (count > 0) {
+      badge.textContent = count > 9 ? '9+' : count.toString();
+      badge.style.display = 'inline-block';
+      badge.classList.remove('hidden');
+
+      // Guardar en localStorage para futuras referencias
+      localStorage.setItem('notificaciones_contador', count.toString());
+    } else {
+      badge.style.display = 'none';
+      badge.classList.add('hidden');
+      localStorage.removeItem('notificaciones_contador');
+    }
+  }
+
+  // =====================================================
+  // FUNCIÓN INTELIGENTE QUE PRUEBA AMBOS MÉTODOS
+  // =====================================================
+  async function actualizarContadorNotificacionesInteligente() {
+    console.log('🤖 Actualización inteligente de notificaciones');
+
+    // Primero intentar el método principal
+    const resultado = await actualizarContadorNotificaciones();
+
+    // Si el método principal falló completamente, usar fallback
+    if (resultado.error && resultado.error.includes('No se pudieron obtener')) {
+      console.log('🔧 Cambiando a método fallback');
+      await actualizarContadorNotificacionesFallback();
+    }
+  }
+
+  // =====================================================
+  // CONFIGURAR ACTUALIZACIÓN AUTOMÁTICA (MEJORADA)
+  // =====================================================
+  let intervaloContador = null;
+  let intentosFallidos = 0;
+  const MAX_INTENTOS_FALLIDOS = 3;
+
+  function iniciarActualizacionAutomatica() {
+    // Limpiar intervalo previo si existe
+    if (intervaloContador) {
+      clearInterval(intervaloContador);
+      intervaloContador = null;
+    }
+
+    // Actualizar inmediatamente
+    actualizarContadorNotificacionesInteligente().then(() => {
+      console.log('✅ Contador actualizado inicialmente');
+    }).catch(error => {
+      console.error('❌ Error en actualización inicial:', error);
+      intentosFallidos++;
+    });
+
+    // Configurar actualización periódica con backoff
+    const intervalo = intentosFallidos > 0 ? 60000 : 30000; // 60s si ha fallado, 30s normal
+    intervaloContador = setInterval(async () => {
+      try {
+        await actualizarContadorNotificacionesInteligente();
+        intentosFallidos = 0; // Resetear contador de fallos si funciona
+      } catch (error) {
+        console.error('❌ Error en actualización periódica:', error);
+        intentosFallidos++;
+
+        // Si falla muchas veces, aumentar intervalo
+        if (intentosFallidos >= MAX_INTENTOS_FALLIDOS) {
+          console.warn(`⚠️ Demasiados fallos (${intentosFallidos}), deteniendo actualización automática`);
+          detenerActualizacionAutomatica();
+        }
+      }
+    }, intervalo);
+  }
+
+  function detenerActualizacionAutomatica() {
+    if (intervaloContador) {
+      clearInterval(intervaloContador);
+      intervaloContador = null;
+    }
+    console.log('🛑 Actualización automática detenida');
+  }
+
+  // Iniciar cuando se carga la página
+  document.addEventListener('DOMContentLoaded', function () {
+    // Pequeño delay para asegurar que todo esté cargado
+    setTimeout(() => {
+      iniciarActualizacionAutomatica();
+    }, 1000);
+
+    // Actualizar después de ciertas acciones
+    document.addEventListener('notificacion-actualizada', () => {
+      setTimeout(actualizarContadorNotificacionesInteligente, 500);
+    });
+  });
+
+  // Detener al salir de la página
+  window.addEventListener('beforeunload', detenerActualizacionAutomatica);
+
+  // =====================================================
+  // FUNCIÓN DE DIAGNÓSTICO MEJORADA
+  // =====================================================
+  async function diagnosticarContadorCompleto() {
+    console.log('=== DIAGNÓSTICO COMPLETO DEL CONTADOR ===');
+
+    const endpoints = [
+      'src/controllers/usuario_controller.php?accion=contar_notificaciones',
+      'src/utils/notificaciones_sesion.php?accion=contar',
+      'src/controllers/usuario_controller.php?accion=contador'
+    ];
+
+    for (const endpoint of endpoints) {
+      console.log(`\n🔍 Analizando endpoint: ${endpoint}`);
+
+      try {
+        const resp = await fetch(endpoint);
+        console.log(`Status: ${resp.status} ${resp.statusText}`);
+        console.log(`Content-Type: ${resp.headers.get('content-type')}`);
+
+        const text = await resp.text();
+
+        if (text.length === 0) {
+          console.log('❌ RESPUESTA VACÍA');
+        } else if (text.length > 500) {
+          console.log(`📄 Primeros 500 chars:\n${text.substring(0, 500)}`);
+        } else {
+          console.log(`📄 Respuesta completa:\n${text}`);
+        }
+
+        // Detectar problemas comunes
+        if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+          console.log('⚠️ PROBLEMA: El endpoint devuelve HTML completo');
+
+          // Buscar mensajes de error específicos
+          if (text.includes('login') || text.includes('iniciar sesión')) {
+            console.log('⚠️ POSIBLE CAUSA: Redirección a página de login (sesión expirada)');
+          }
+        }
+
+        if (text.includes('Parse error') || text.includes('Fatal error')) {
+          console.log('❌ ERROR PHP ENCONTRADO');
+          const errorMatch = text.match(/<b>(.*?)<\/b>:(.*?)(?:<br|$)/);
+          if (errorMatch) {
+            console.log(`   Tipo: ${errorMatch[1]}`);
+            console.log(`   Mensaje: ${errorMatch[2].trim()}`);
+          }
+        }
+
+        // Intentar extraer JSON
+        try {
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const data = JSON.parse(jsonMatch[0]);
+            console.log('✅ JSON EXTRAÍDO EXITOSAMENTE:', data);
+          }
+        } catch (jsonError) {
+          console.log('❌ NO SE PUDO EXTRAER JSON:', jsonError.message);
+        }
+
+      } catch (error) {
+        console.log(`❌ ERROR DE CONEXIÓN: ${error.message}`);
+      }
+    }
+
+    console.log('\n=== FIN DEL DIAGNÓSTICO ===');
+
+    // Mostrar consejos
+    console.log('\n💡 CONSEJOS PARA SOLUCIONAR:');
+    console.log('1. Verifica que los archivos PHP existan');
+    console.log('2. Revisa los logs de errores de PHP');
+    console.log('3. Verifica que la sesión esté iniciada');
+    console.log('4. Asegúrate que los scripts no tengan salida antes del JSON');
+    console.log('5. Revisa si hay redirecciones automáticas');
+
+    // =====================================================
+    // CONFIGURAR ACTUALIZACIÓN AUTOMÁTICA DEL CONTADOR
+    // =====================================================
+
+    // Actualizar cada 30 segundos (ajustable)
+    let intervaloContador = null;
+
+    function iniciarActualizacionAutomatica() {
+      // Limpiar intervalo previo si existe
+      if (intervaloContador) {
+        clearInterval(intervaloContador);
+      }
+
+      // Actualizar inmediatamente
+      actualizarContadorNotificaciones();
+
+      // Configurar actualización periódica
+      intervaloContador = setInterval(actualizarContadorNotificaciones, 30000); // 30 segundos
+    }
+
+    // Detener la actualización automática
+    function detenerActualizacionAutomatica() {
+      if (intervaloContador) {
+        clearInterval(intervaloContador);
+        intervaloContador = null;
+      }
+    }
+
+    // Iniciar cuando se carga la página
+    document.addEventListener('DOMContentLoaded', function () {
+      iniciarActualizacionAutomatica();
+
+      // También actualizar después de ciertas acciones
+      document.addEventListener('notificacion-actualizada', actualizarContadorNotificaciones);
+    });
+
+    // Para páginas que no necesitan el contador
+    window.addEventListener('beforeunload', detenerActualizacionAutomatica);
+
+    // =====================================================
+    // FUNCIÓN AUXILIAR: Para disparar eventos personalizados
+    // =====================================================
+    function dispararEventoNotificacionActualizada() {
+      const event = new CustomEvent('notificacion-actualizada');
+      document.dispatchEvent(event);
+    }
+
+    // =====================================================
+    // VERSIÓN ALTERNATIVA SI EL ENDPOINT NO FUNCIONA
+    // =====================================================
+
+    async function actualizarContadorNotificacionesAlternativo() {
+      try {
+        // Intentar diferentes endpoints posibles
+        const endpoints = [
+          'src/utils/notificaciones_sesion.php?accion=contar',
+          'src/controllers/usuario_controller.php?accion=contador',
+          'src/controllers/usuario_controller.php?accion=contar_notificaciones'
+        ];
+
+        for (const endpoint of endpoints) {
+          try {
+            const resp = await fetch(endpoint);
+            if (resp.ok) {
+              const text = await resp.text();
+              if (text && text.trim() !== '') {
+                const data = JSON.parse(text);
+                const badge = document.querySelector('.badge-notificaciones');
+                if (badge) {
+                  const count = data.no_leidas || data.total || data.count || 0;
+                  if (count > 0) {
+                    badge.textContent = count > 9 ? '9+' : count;
+                    badge.style.display = 'inline-block';
+                  } else {
+                    badge.style.display = 'none';
+                  }
+                }
+                return; // Salir si encontró un endpoint que funciona
+              }
+            }
+          } catch (e) {
+            console.log(`Endpoint ${endpoint} no funciona:`, e.message);
+            continue; // Intentar el siguiente endpoint
+          }
+        }
+
+        // Si ningún endpoint funciona, ocultar el badge
+        const badge = document.querySelector('.badge-notificaciones');
+        if (badge) {
+          badge.style.display = 'none';
+        }
+
+      } catch (error) {
+        console.error('Error en contador alternativo:', error);
+      }
+    }
+
+    // =====================================================
+    // FUNCIÓN DE PRUEBA PARA DIAGNOSTICAR EL PROBLEMA
+    // =====================================================
+
+    async function diagnosticarContador() {
+      console.log('=== DIAGNÓSTICO DEL CONTADOR DE NOTIFICACIONES ===');
+
+      try {
+        const url = 'src/utils/notificaciones_sesion.php?accion=contar';
+        console.log('URL solicitada:', url);
+
+        const resp = await fetch(url);
+        console.log('Estado HTTP:', resp.status, resp.statusText);
+        console.log('Headers:', Object.fromEntries(resp.headers.entries()));
+
+        const text = await resp.text();
+        console.log('Longitud de respuesta:', text.length);
+        console.log('Primeros 500 caracteres:', text.substring(0, 500));
+
+        if (text.length === 0) {
+          console.error('ERROR: La respuesta está completamente vacía');
+          console.log('Posibles causas:');
+          console.log('1. El archivo PHP no existe');
+          console.log('2. Hay un error de sintaxis en el PHP');
+          console.log('3. La sesión no está iniciada');
+          console.log('4. El script PHP se detuvo antes de generar salida');
+        } else {
+          console.log('Intento de parsear JSON...');
+          try {
+            const data = JSON.parse(text);
+            console.log('JSON parseado exitosamente:', data);
+          } catch (jsonError) {
+            console.error('Error parseando JSON:', jsonError.message);
+
+            // Buscar errores PHP en la respuesta
+            if (text.includes('Parse error') || text.includes('Fatal error') || text.includes('Warning')) {
+              console.error('SE DETECTÓ UN ERROR DE PHP EN LA RESPUESTA');
+              const errorMatch = text.match(/<b>(.*?)<\/b>:(.*?)<br/);
+              if (errorMatch) {
+                console.error('Error PHP:', errorMatch[1], '-', errorMatch[2]);
+              }
+            }
+          }
+        }
+
+        console.log('=== FIN DEL DIAGNÓSTICO ===');
+      } catch (error) {
+        console.error('Error en diagnóstico:', error);
+      }
+
+
+      // Para ejecutar el diagnóstico, en la consola del navegador:
+      diagnosticarContador();
     }
   }
 });

@@ -1,11 +1,31 @@
 <?php
+// ================= DEBUG =================
+ini_set('display_errors', 0); // Cambia a 0 en producción
+error_reporting(0); // Cambia a 0 en producción
 
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+// Para debug temporal, cambia a:
+// ini_set('display_errors', 1);
+// error_reporting(E_ALL);
 
-// ⚠️ NO poner JSON global porque hay redirecciones (activar/logout)
-// header('Content-Type: application/json; charset=utf-8');
+// ================= SESSION =================
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// ================= HEADERS JSON =================
+function enviarJSON($data, $codigo = 200) {
+    http_response_code($codigo);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    exit();
+}
+
+// ================= INICIALIZACIÓN =================
+$accion = $_GET['accion'] ?? null;
+
+if (!$accion) {
+    enviarJSON(['error' => 'Debe especificar la acción'], 400);
+}
 
 // ================= PHPMailer =================
 use PHPMailer\PHPMailer\PHPMailer;
@@ -25,18 +45,16 @@ if (session_status() === PHP_SESSION_NONE) {
 
 /* ================= BASE_URL AUTO ================= */
 if (!defined('BASE_URL')) {
-
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         ? 'https://'
         : 'http://';
 
     $host = $_SERVER['HTTP_HOST'];
 
-    // Ruta del script actual (ej: /Gestion-inventario/src/controllers/usuario_controller.php)
+    // Ruta del script actual
     $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
 
     // Cortamos hasta la carpeta raíz del proyecto
-    // Quita /src/controllers, /src/views, etc
     $project = preg_replace('#/src/.*$#', '/', $scriptDir);
 
     define('BASE_URL', $protocol . $host . $project);
@@ -121,23 +139,115 @@ function enviarCorreoResetPassword($toEmail, $toName, $resetLink) {
     return true;
 }
 
-switch ($accion) {
+// ============================
+// ✅ FUNCIÓN AUXILIAR PARA MAPEAR CAMPOS
+// ============================
+function mapearCampo($campoFormulario) {
+    $mapeo = [
+        'nombre' => 'nombre_completo',
+        'correo' => 'correo',
+        'telefono' => 'telefono',
+        'direccion' => 'direccion',
+        'tipo_documento' => 'tipo_documento',
+        'numero_documento' => 'numero_documento'
+    ];
+    
+    return $mapeo[$campoFormulario] ?? null;
+}
 
+switch ($accion) {
     // =====================================================
     // ✅ LISTAR USUARIOS
     // GET: ?accion=listar
     // =====================================================
+    // Dentro del switch en usuario_controller.php
+case 'contador':
+case 'contar_notificaciones':
+    header('Content-Type: application/json; charset=utf-8');
+    if (!isset($_SESSION['usuario_id'])) {
+        echo json_encode(['success' => false, 'error' => 'No autorizado']);
+        exit;
+    }
+
+    $idUsuario = $_SESSION['usuario_id'];
+    $esCoordinador = ($_SESSION['usuario_cargo'] ?? '') === 'Coordinador';
+
+    try {
+        // Si es coordinador, contamos notificaciones globales de stock y cambios
+        if ($esCoordinador) {
+            $stmt = $conn->prepare("
+                SELECT 
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN leida = 0 THEN 1 ELSE 0 END) AS no_leidas
+                FROM notificaciones
+            ");
+            $stmt->execute();
+        } else {
+            // Usuario normal solo sus notificaciones
+            $stmt = $conn->prepare("
+                SELECT 
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN leida = 0 THEN 1 ELSE 0 END) AS no_leidas
+                FROM notificaciones
+                WHERE id_usuario = ?
+            ");
+            $stmt->execute([$idUsuario]);
+        }
+        
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'success'   => true,
+            'no_leidas' => (int)($row['no_leidas'] ?? 0),
+            'total'     => (int)($row['total'] ?? 0)
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+    break;
+
     case 'listar':
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode($usuario->listar());
-    break;
+        break;
+
+    // =====================================================
+    // ✅ ELIMINAR NOTIFICACIÓN
+    // =====================================================
+    case 'eliminar_notificacion':
+        header('Content-Type: application/json; charset=utf-8');
+
+        if (!isset($_POST['notificacion_id'])) {
+            echo json_encode([
+                'success' => false,
+                'error' => 'ID de notificación no recibido'
+            ]);
+            exit;
+        }
+
+        $id = intval($_POST['notificacion_id']);
+
+        require_once '../models/Notificacion.php';
+        $model = new NotificacionModel($conn);
+
+        $ok = $model->eliminarPorId($id);
+
+        if ($ok) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'error' => 'No se pudo eliminar la notificación'
+            ]);
+        }
+        exit;
 
     // =====================================================
     // ✅ RESET PASSWORD (VALIDA TOKEN + CAMBIA PASSWORD)
     // POST FORM: ?accion=reset_password
     // =====================================================
     case 'reset_password':
-
         $token = trim($_POST['token'] ?? '');
         $p1    = (string)($_POST['password'] ?? '');
         $p2    = (string)($_POST['password2'] ?? '');
@@ -220,15 +330,13 @@ switch ($accion) {
             header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=server");
             exit;
         }
-
-    break;
+        break;
 
     // =====================================================
     // ✅ SOLICITAR RESET PASSWORD (GUARDA TOKEN + ENVÍA CORREO)
     // POST FORM: ?accion=request_reset_password
     // =====================================================
     case 'request_reset_password':
-
         $correo = trim($_POST['correo'] ?? '');
 
         if ($correo === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
@@ -286,8 +394,7 @@ switch ($accion) {
             header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=send");
             exit;
         }
-
-    break;
+        break;
 
     // =====================================================
     // ✅ OBTENER USUARIO POR ID
@@ -305,7 +412,7 @@ switch ($accion) {
 
         $res = $usuario->obtenerPorId($id_usuario);
         echo json_encode($res ? $res : ['error' => 'Usuario no encontrado']);
-    break;
+        break;
 
     // =====================================================
     // ✅ CREAR USUARIO + TOKEN + CORREO ACTIVACIÓN + CREDENCIALES
@@ -497,15 +604,10 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             }
             exit;
         }
-    break;
+        break;
 
     // =====================================================
     // ✅ ACTIVAR CUENTA POR TOKEN (SIN AUTO-LOGIN)
-    // Flujo correcto:
-    // 1) Activa cuenta
-    // 2) Crea token FORCE_ (sin tocar DB)
-    // 3) REDIRIGE AL LOGIN para que el usuario ingrese credenciales
-    // 4) En el login se detecta FORCE_ y se activa el modal en dashboard
     // =====================================================
     case 'activar':
         $token = $_GET['token'] ?? null;
@@ -536,8 +638,6 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
 
             // Si por alguna razón no encuentra usuario, igual manda al login
             if (!$u) {
-
-                // ✅ CORRECCIÓN: cortar sesión previa para evitar salto a dashboard
                 if (session_status() === PHP_SESSION_ACTIVE) {
                     session_unset();
                     session_destroy();
@@ -570,8 +670,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 ':exp' => $forceExp
             ]);
 
-            // ✅ CORRECCIÓN: cortar cualquier sesión previa (admin u otro usuario)
-            // para que login.php NO redirija directo al dashboard.
+            // ✅ CORRECCIÓN: cortar cualquier sesión previa
             if (session_status() === PHP_SESSION_ACTIVE) {
                 session_unset();
                 session_destroy();
@@ -582,8 +681,6 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             exit;
 
         } catch (Exception $e) {
-
-            // ✅ CORRECCIÓN: cortar sesión previa también aquí
             if (session_status() === PHP_SESSION_ACTIVE) {
                 session_unset();
                 session_destroy();
@@ -592,7 +689,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             header("Location: " . BASE_URL . "src/view/login/login.php?activacion=ok");
             exit;
         }
-    break;
+        break;
 
     // =====================================================
     // ✅ ACTUALIZAR USUARIO (EDITAR)
@@ -676,7 +773,6 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 : ['success' => false, 'error' => 'No se pudo actualizar el usuario']
         );
         exit;
-    break;
 
     // =====================================================
     // ✅ CAMBIAR ESTADO
@@ -710,7 +806,6 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 : ['success' => false, 'error' => 'Error al actualizar estado']
         );
         exit;
-    break;
 
     // =====================================================
     // ✅ LOGIN (JSON) + DETECTA FORCE_ EN tokens_correo
@@ -731,7 +826,6 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         $user = $usuario->login($correo, $password);
 
         if ($user) {
-
             $_SESSION['usuario'] = [
                 'id'     => $user['id_usuario'],
                 'nombre' => $user['nombre_completo'],
@@ -744,7 +838,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             $_SESSION['usuario_correo'] = $user['correo'] ?? '';
             $_SESSION['usuario_cargo']  = $user['cargo'] ?? '';
 
-            // ✅ Detecta el "force" sin usar tipo = 'force_password' (porque tu DB no lo acepta)
+            // ✅ Detecta el "force" sin usar tipo = 'force_password'
             $stmt = $conn->prepare("
                 SELECT id_token
                 FROM tokens_correo
@@ -780,7 +874,6 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             ]);
             exit;
         }
-    break;
 
     // =====================================================
     // ✅ LOGOUT (REDIRECCIÓN)
@@ -790,7 +883,6 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         session_destroy();
         header("Location: " . BASE_URL . "src/view/login/login.php");
         exit;
-    break;
 
     // =====================================================
     // ✅ ACTUALIZAR PERFIL (TELÉFONO, DIRECCIÓN Y FOTO)
@@ -816,7 +908,6 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         $fotoPathDB = null;
 
         if (isset($_FILES['foto_perfil']) && $_FILES['foto_perfil']['error'] !== UPLOAD_ERR_NO_FILE) {
-
             if ($_FILES['foto_perfil']['error'] !== UPLOAD_ERR_OK) {
                 echo json_encode(['error' => 'Error subiendo la foto.']);
                 exit;
@@ -893,169 +984,389 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             echo json_encode(['error' => 'Error del servidor al actualizar perfil', 'detalle' => $e->getMessage()]);
             exit;
         }
-    break;
 
     // =====================================================
     // ✅ CAMBIAR PASSWORD (DESDE PERFIL + CIERRA FORCE_PASSWORD)
     // =====================================================
-    case 'cambiar_password':
-        header('Content-Type: application/json; charset=utf-8');
+    // --- DENTRO DEL SWITCH ($accion) ---
 
-        if (!isset($_SESSION['usuario_id'])) {
-            echo json_encode(['error' => 'No hay sesión activa. Inicia sesión nuevamente.']);
-            exit;
-        }
+case 'solicitar_cambio_datos_sensibles':
+    header('Content-Type: application/json');
+    $id_usuario_solicitante = $_SESSION['usuario_id'];
+    $datos_json = $_POST['datos_cambiados']; 
 
-        $id_usuario = (int)$_SESSION['usuario_id'];
+    try {
+        $stmtCoord = $conn->prepare("SELECT id_usuario FROM usuarios WHERE cargo = 'Coordinador' LIMIT 1");
+        $stmtCoord->execute();
+        $coord = $stmtCoord->fetch(PDO::FETCH_ASSOC);
+        $id_destinatario = $coord['id_usuario'] ?? 1;
 
-        $actual     = (string)($_POST['password_actual'] ?? '');
-        $nueva      = (string)($_POST['password_nueva'] ?? '');
-        $confirmar  = (string)($_POST['password_confirmar'] ?? '');
+        // GUARDAMOS SOLO EL JSON en el mensaje para que la interfaz lo procese limpio
+        $stmt = $conn->prepare("INSERT INTO notificaciones 
+            (id_usuario, tipo, titulo, mensaje, referencia_tipo, referencia_id, leida, fecha_creacion) 
+            VALUES (?, 'CAMBIO_DATOS', 'Solicitud de Cambio de Datos', ?, 'usuario', ?, 0, NOW())");
+        
+        $stmt->execute([$id_destinatario, $datos_json, $id_usuario_solicitante]);
 
-        if ($actual === '' || $nueva === '' || $confirmar === '') {
-            echo json_encode(['error' => 'Complete todos los campos.']);
-            exit;
-        }
+        echo json_encode(['success' => true, 'message' => 'Solicitud enviada al coordinador']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+break;
 
-        if (strlen($nueva) < 8) {
-            echo json_encode(['error' => 'La nueva contraseña debe tener mínimo 8 caracteres.']);
-            exit;
-        }
+case 'aprobar_cambio_datos':
+    header('Content-Type: application/json');
+    $notif_id = $_POST['notificacion_id'];
 
-        if ($nueva !== $confirmar) {
-            echo json_encode(['error' => 'La confirmación no coincide.']);
-            exit;
-        }
+    try {
+        // 1. Obtener quién pidió el cambio
+        $stmt = $conn->prepare("SELECT referencia_id FROM notificaciones WHERE id_notificacion = ?");
+        $stmt->execute([$notif_id]);
+        $notif = $stmt->fetch();
+        $id_aprendiz = $notif['referencia_id'];
 
-        try {
-            $stmt = $conn->prepare("SELECT password FROM usuarios WHERE id_usuario = :id LIMIT 1");
-            $stmt->execute([':id' => $id_usuario]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        // 2. Marcar notificación del coordinador como leída (finalizada)
+        $conn->prepare("UPDATE notificaciones SET leida = 1 WHERE id_notificacion = ?")->execute([$notif_id]);
 
-            if (!$row) {
-                echo json_encode(['error' => 'Usuario no encontrado.']);
-                exit;
-            }
+        // 3. NOTIFICAR AL APRENDIZ
+        $stmtMsg = $conn->prepare("INSERT INTO notificaciones (id_usuario, tipo, titulo, mensaje, leida, fecha_creacion) 
+            VALUES (?, 'MATERIAL_ENTREGADO', 'Cambio de Datos Aprobado', 'Tu solicitud de cambio de datos ha sido aprobada. El coordinador realizará los cambios manualmente.', 0, NOW())");
+        $stmtMsg->execute([$id_aprendiz]);
 
-            $hashActual = (string)$row['password'];
+        echo json_encode(['success' => true, 'message' => 'Solicitud aprobada. Se ha notificado al aprendiz.']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+break;
 
-            if (!password_verify($actual, $hashActual)) {
-                echo json_encode(['error' => 'La contraseña actual es incorrecta.']);
-                exit;
-            }
+case 'rechazar_cambio_datos':
+    header('Content-Type: application/json');
+    $notif_id = $_POST['notificacion_id'];
+    $motivo = $_POST['motivo'] ?? 'No especificado';
 
-            if (password_verify($nueva, $hashActual)) {
-                echo json_encode(['error' => 'La nueva contraseña no puede ser igual a la actual.']);
-                exit;
-            }
+    try {
+        $stmt = $conn->prepare("SELECT referencia_id FROM notificaciones WHERE id_notificacion = ?");
+        $stmt->execute([$notif_id]);
+        $notif = $stmt->fetch();
+        $id_aprendiz = $notif['referencia_id'];
 
-            $newHash = password_hash($nueva, PASSWORD_DEFAULT);
+        // Marcar como leída
+        $conn->prepare("UPDATE notificaciones SET leida = 1 WHERE id_notificacion = ?")->execute([$notif_id]);
 
-            $upd = $conn->prepare("UPDATE usuarios SET password = :ph WHERE id_usuario = :id LIMIT 1");
-            $ok  = $upd->execute([':ph' => $newHash, ':id' => $id_usuario]);
+        // NOTIFICAR AL APRENDIZ EL RECHAZO
+        $msg = "Tu solicitud de cambio de datos ha sido rechazada. Motivo: " . $motivo;
+        $stmtMsg = $conn->prepare("INSERT INTO notificaciones (id_usuario, tipo, titulo, mensaje, leida, fecha_creacion) 
+            VALUES (?, 'SOLICITUD_RECHAZADA', 'Solicitud Rechazada', ?, 0, NOW())");
+        $stmtMsg->execute([$id_aprendiz, $msg]);
 
-            if ($ok) {
-                // ✅ Cierra el "force" sin tocar DB (marca FORCE_% como usado)
-                $conn->prepare("
-                    UPDATE tokens_correo
-                    SET usado = 1
-                    WHERE id_usuario = :uid
-                      AND token LIKE 'FORCE_%'
-                      AND usado = 0
-                ")->execute([':uid' => $id_usuario]);
-
-                unset($_SESSION['force_password_change']);
-
-                echo json_encode(['success' => true, 'message' => 'Contraseña actualizada correctamente.']);
-                exit;
-            }
-
-            echo json_encode(['error' => 'No se pudo actualizar la contraseña.']);
-            exit;
-
-        } catch (Exception $e) {
-            echo json_encode(['error' => 'Error del servidor al cambiar contraseña', 'detalle' => $e->getMessage()]);
-            exit;
-        }
-    break;
-
+        echo json_encode(['success' => true, 'message' => 'Solicitud rechazada y aprendiz notificado.']);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+break;                                                                                                                          
     // =====================================================
-    // ✅ SOLICITAR CAMBIO DE DATOS SENSIBLES
-    // POST: ?accion=solicitar_cambio_datos_sensibles
+    //  APROBAR/RECHAZAR CAMBIO DE DATOS SENSIBLES
     // =====================================================
-    case 'solicitar_cambio_datos_sensibles':
+    case 'aprobar_cambio_datos':
+    case 'rechazar_cambio_datos':
         header('Content-Type: application/json; charset=utf-8');
-
-        if (!isset($_SESSION['usuario_id'])) {
-            echo json_encode(['error' => 'No hay sesión activa']);
+        
+        // Solo coordinadores pueden aprobar/rechazar
+        if (!isset($_SESSION['usuario_id']) || ($_SESSION['usuario_cargo'] ?? '') !== 'Coordinador') {
+            echo json_encode(['error' => 'No autorizado']);
             exit;
         }
-
-        $id_usuario = (int)$_SESSION['usuario_id'];
-        $datosCambiados = $_POST['datos_cambiados'] ?? '{}';
-
-        // Decodificar los datos
-        $datosCambiados = json_decode($datosCambiados, true);
-
-        if (!is_array($datosCambiados) || empty($datosCambiados)) {
-            echo json_encode(['error' => 'No se enviaron datos para cambiar']);
+        
+        $id_coordinador = (int)$_SESSION['usuario_id'];
+        $notificacion_id = $_POST['notificacion_id'] ?? null;
+        $motivo = $_POST['motivo'] ?? null;
+        
+        if (!$notificacion_id) {
+            echo json_encode(['error' => 'ID de notificación requerido']);
             exit;
         }
-
+        
         try {
-            // Obtener información del usuario
-            $stmt = $conn->prepare("SELECT nombre_completo, correo FROM usuarios WHERE id_usuario = :id LIMIT 1");
-            $stmt->execute([':id' => $id_usuario]);
-            $userData = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if (!$userData) {
-                echo json_encode(['error' => 'Usuario no encontrado']);
+            // Obtener la notificación original
+            require_once __DIR__ . '/../models/notificacion.php';
+            $notificacionModel = new NotificacionModel($conn);
+            
+            // Necesitarías un método para obtener notificación por ID
+            $stmt = $conn->prepare("
+                SELECT n.*, u.nombre_completo, u.correo 
+                FROM notificaciones n
+                JOIN usuarios u ON u.id_usuario = n.id_usuario
+                WHERE n.id_notificacion = ?
+                LIMIT 1
+            ");
+            $stmt->execute([$notificacion_id]);
+            $notificacion = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$notificacion) {
+                echo json_encode(['error' => 'Notificación no encontrada']);
                 exit;
             }
-
-            // Crear notificación para administradores (usando la utilidad de notificaciones)
-            require_once __DIR__ . '/../utils/notificaciones_sin_db.php';
-
-            // Construir mensaje descriptivo
-            $camposActualizados = [];
-            foreach ($datosCambiados as $campo => $info) {
-                if (is_array($info)) {
-                    $camposActualizados[] = "{$info['campo_nombre']}: {$info['anterior']} → {$info['nuevo']}";
+            
+            // Extraer datos de la solicitud
+            $datosAdicionales = json_decode($notificacion['datos_adicionales'] ?? '{}', true);
+            $nombre_completo = $datosAdicionales['nombre_completo'] ?? null;
+            $datosCambiados = $datosAdicionales['datos_cambiados'] ?? [];
+            
+            if ($accion === 'aprobar_cambio_datos') {
+                // Aplicar los cambios en la base de datos
+                foreach ($datosCambiados as $campo => $info) {
+                    $nuevoValor = $info['nuevo'] ?? '';
+                    $campoDB = mapearCampo($campo);
+                    
+                    if ($campoDB && $nuevoValor !== '') {
+                        $sql = "UPDATE usuarios SET {$campoDB} = ? WHERE id_usuario = ?";
+                        $stmtUpdate = $conn->prepare($sql);
+                        $stmtUpdate->execute([$nuevoValor, $nombre_completo]);
+                    }
+                }
+                
+                $estado = 'aprobado';
+                $mensajeCoordinador = "✅ Has aprobado los cambios solicitados.";
+                $mensajeUsuario = "✅ Tu solicitud de cambio de datos ha sido APROBADA por el coordinador.";
+            } else {
+                $estado = 'rechazado';
+                $mensajeCoordinador = "❌ Has rechazado los cambios solicitados.";
+                $mensajeUsuario = "❌ Tu solicitud de cambio de datos ha sido RECHAZADA por el coordinador.";
+                if ($motivo) {
+                    $mensajeUsuario .= "\n📝 Motivo: {$motivo}";
                 }
             }
-
-            $descripcion = "El usuario {$userData['nombre_completo']} ({$userData['correo']}) solicita cambiar:\n" .
-                          implode("\n", $camposActualizados);
-
-            // Agregar notificación
-            NotificacionSesion::agregarCambioDatosSensibles(
-                $id_usuario,
-                $id_usuario,
-                $datosCambiados,
-                $userData['nombre_completo']
+            
+            // Actualizar estado en la notificación original
+            $datosAdicionales['estado'] = $estado;
+            $datosAdicionales['fecha_respuesta'] = date('Y-m-d H:i:s');
+            $datosAdicionales['coordinador_responde'] = $_SESSION['usuario_nombre'] ?? '';
+            if ($motivo) $datosAdicionales['motivo'] = $motivo;
+            
+            $stmtUpdateNotif = $conn->prepare("
+                UPDATE notificaciones 
+                SET datos_adicionales = ? 
+                WHERE id_notificacion = ?
+            ");
+            $stmtUpdateNotif->execute([
+                json_encode($datosAdicionales, JSON_UNESCAPED_UNICODE),
+                $notificacion_id
+            ]);
+            
+            // Notificar al usuario sobre la decisión
+            $tituloUsuario = "Respuesta a tu solicitud de cambio";
+            $notificacionModel->crearConfirmacionUsuario(
+                $nombre_completo,
+                $tituloUsuario,
+                $mensajeUsuario
             );
-
+            
+            // Marcar notificación original como leída
+            $notificacionModel->marcarLeida($notificacion_id, $id_coordinador);
+            
             echo json_encode([
                 'success' => true,
-                'message' => 'Solicitud de cambio registrada correctamente. Un administrador revisará tu petición.'
+                'message' => $mensajeCoordinador,
+                'estado' => $estado
             ]);
             exit;
-
+            
         } catch (Exception $e) {
             echo json_encode([
                 'error' => 'Error al procesar la solicitud: ' . $e->getMessage()
             ]);
             exit;
         }
+            // =====================================================
+    // ✅ OBTENER NOTIFICACIONES
+    // GET: ?accion=obtener_notificaciones&solo_no_leidas=1
+    // =====================================================
+   case 'obtener_notificaciones':
+    header('Content-Type: application/json; charset=utf-8');
+    
+    // Iniciar sesión
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    // Verificar sesión
+    if (!isset($_SESSION['usuario_id'])) {
+        echo json_encode([
+            'error' => 'No hay sesión activa',
+            'notificaciones' => [],
+            'sin_leer' => 0,
+            'total' => 0
+        ]);
+        exit;
+    }
+    
+    $id_usuario = (int)$_SESSION['usuario_id'];
+    $cargo_usuario = $_SESSION['usuario_cargo'] ?? '';
+    $solo_no_leidas = isset($_GET['solo_no_leidas']) && $_GET['solo_no_leidas'] == '1';
+    
+    try {
+        require_once __DIR__ . '/../../Config/database.php';
+        
+        // 1. Determinar qué notificaciones puede ver este usuario
+        $where = "WHERE id_usuario = ?";
+        $params = [$id_usuario];
+        
+        // Si NO es coordinador, NO mostrar notificaciones de cambio de datos
+        if ($cargo_usuario !== 'Coordinador') {
+            $where .= " AND tipo != 'CAMBIO_DATOS'";
+        }
+        
+        // Si solo quiere no leídas
+        if ($solo_no_leidas) {
+            $where .= " AND leida = 0";
+        }
+        
+        // 2. Contar notificaciones sin leer
+        $sql_sin_leer = "SELECT COUNT(*) as total FROM notificaciones $where";
+        $stmt_sin_leer = $conn->prepare($sql_sin_leer);
+        $stmt_sin_leer->execute($params);
+        $result_sin_leer = $stmt_sin_leer->fetch(PDO::FETCH_ASSOC);
+        $sin_leer = $result_sin_leer ? (int)$result_sin_leer['total'] : 0;
+        
+        // 3. Contar total de notificaciones
+        $sql_total = "SELECT COUNT(*) as total FROM notificaciones WHERE id_usuario = ?";
+        $stmt_total = $conn->prepare($sql_total);
+        $stmt_total->execute([$id_usuario]);
+        $result_total = $stmt_total->fetch(PDO::FETCH_ASSOC);
+        $total = $result_total ? (int)$result_total['total'] : 0;
+        
+        // 4. Obtener notificaciones
+        $sql_notif = "SELECT * FROM notificaciones $where ORDER BY fecha_creacion DESC LIMIT 10";
+        $stmt_notif = $conn->prepare($sql_notif);
+        $stmt_notif->execute($params);
+        $notificaciones = $stmt_notif->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'success' => true,
+            'sin_leer' => $sin_leer,
+            'total' => $total,
+            'notificaciones' => $notificaciones,
+            'usuario_id' => $id_usuario,
+            'cargo' => $cargo_usuario,
+            'es_coordinador' => ($cargo_usuario === 'Coordinador')
+        ]);
+        
+    } catch (Exception $e) {
+        echo json_encode([
+            'error' => 'Error: ' . $e->getMessage(),
+            'notificaciones' => [],
+            'sin_leer' => 0,
+            'total' => 0
+        ]);
+    }
+    exit;
+    break;
+    // En el switch de acciones, añade:
+case 'contar_notificaciones':
+    require_once __DIR__ . '/../utils/notificaciones_sin_db.php';
+    
+    session_start();
+    
+    if (!isset($_SESSION['usuario_id'])) {
+        echo json_encode(['error' => 'No autorizado']);
+        break;
+    }
+    
+    $resumen = NotificacionSesion::obtenerResumen();
+    
+    echo json_encode([
+        'success' => true,
+        'total' => $resumen['total'] ?? 0,
+        'no_leidas' => $resumen['no_leidas'] ?? 0,
+        'criticas' => $resumen['por_color']['danger'] ?? 0,
+        'stock_bajo' => $resumen['por_color']['warning'] ?? 0,
+        'cambios_datos' => $resumen['por_tipo']['solicitud_cambio_datos'] ?? 0,
+        'esCoordinador' => ($_SESSION['usuario_cargo'] ?? '') === 'Coordinador',
+        'rol' => $_SESSION['usuario_cargo'] ?? 'Usuario'
+    ]);
     break;
 
     // =====================================================
-    // ✅ DEFAULT
+    // ✅ MARCAR NOTIFICACIÓN COMO LEÍDA
+    // GET: ?accion=marcar_notificacion_leida&id=123
+    // =====================================================
+    case 'marcar_notificacion_leida':
+        header('Content-Type: application/json; charset=utf-8');
+        
+        if (!isset($_SESSION['usuario_id'])) {
+            echo json_encode(['success' => false, 'error' => 'No autorizado']);
+            exit;
+        }
+        
+        $id_usuario = (int)$_SESSION['usuario_id'];
+        $id_notificacion = (int)($_GET['id'] ?? 0);
+        
+        if ($id_notificacion <= 0) {
+            echo json_encode(['success' => false, 'error' => 'ID inválido']);
+            exit;
+        }
+        
+        try {
+            // Verificar que la notificación pertenezca al usuario
+            $stmt = $conn->prepare("SELECT id_notificacion FROM notificaciones WHERE id_notificacion = ? AND id_usuario = ?");
+            $stmt->execute([$id_notificacion, $id_usuario]);
+            
+            if (!$stmt->fetch()) {
+                echo json_encode(['success' => false, 'error' => 'Notificación no encontrada o no autorizada']);
+                exit;
+            }
+            
+            // Marcar como leída
+            $stmt = $conn->prepare("UPDATE notificaciones SET leida = 1 WHERE id_notificacion = ?");
+            $stmt->execute([$id_notificacion]);
+            
+            echo json_encode(['success' => true, 'message' => 'Notificación marcada como leída']);
+            
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'Error: ' . $e->getMessage()]);
+        }
+        exit;
+        break;
+
+    // =====================================================
+    // ✅ MARCAR TODAS COMO LEÍDAS
+    // GET: ?accion=marcar_todas_leidas
+    // =====================================================
+    case 'marcar_todas_leidas':
+        header('Content-Type: application/json; charset=utf-8');
+        
+        if (!isset($_SESSION['usuario_id'])) {
+            echo json_encode(['success' => false, 'error' => 'No autorizado']);
+            exit;
+        }
+        
+        $id_usuario = (int)$_SESSION['usuario_id'];
+        
+        try {
+            $stmt = $conn->prepare("UPDATE notificaciones SET leida = 1 WHERE id_usuario = ? AND leida = 0");
+            $stmt->execute([$id_usuario]);
+            
+            $afectadas = $stmt->rowCount();
+            
+            echo json_encode([
+                'success' => true,
+                'message' => "Se marcaron {$afectadas} notificaciones como leídas"
+            ]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => 'Error: ' . $e->getMessage()]);
+        }
+        exit;
+        break;
+
+    // =====================================================
+    //  DEFAULT
     // =====================================================
     default:
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['error' => 'Acción no válida']);
         exit;
-    break;
 }
-

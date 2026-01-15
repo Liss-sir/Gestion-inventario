@@ -146,7 +146,20 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
 
 
 <header class="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card px-6 transition-all duration-300 <?php echo $sidebarMarginClass; ?>">
+<!-- Datos del usuario para JavaScript -->
+<div id="usuario-data" 
+     data-usuario-id="<?php echo $_SESSION['usuario_id']; ?>"
+     data-usuario-nombre="<?php echo htmlspecialchars($currentUser["nombre_completo"], ENT_QUOTES, 'UTF-8'); ?>"
+     data-usuario-cargo="<?php echo $currentUser["cargo"]; ?>"
+     style="display: none;">
+</div>
 
+<script>
+// Variables globales para JavaScript
+window.usuarioId = <?php echo $_SESSION['usuario_id']; ?>;
+window.usuarioNombre = "<?php echo htmlspecialchars($currentUser["nombre_completo"], ENT_QUOTES, 'UTF-8'); ?>";
+window.esCoordinador = <?php echo ($currentUser["cargo"] === 'Coordinador' || $currentUser["cargo"] === 'coordinador') ? 'true' : 'false'; ?>;
+</script>
   <!-- Buscador estilo pill -->
   <div class="relative flex-1 max-w-xl">
     <div class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">

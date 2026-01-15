@@ -445,7 +445,160 @@ if (btnGuardar && modal) {
     modal.classList.remove("sol-modal-show");
   };
 }
+// ============================================
+// FUNCIÓN PARA ENVIAR NOTIFICACIÓN AL COORDINADOR
+// ============================================
+async function enviarNotificacionCoordinador(solicitudData) {
+    try {
+        const API_NOTIFICACION = "../../controllers/notificacion_controller.php";
+        
+        const datosNotificacion = {
+            ...solicitudData,
+            id_solicitud: Date.now(), // ID temporal, reemplazar con ID real de BD
+            fecha_solicitud: new Date().toISOString(),
+            descripcion: `Solicitud de materiales para ${solicitudData.programa || 'programa'} - Ficha ${solicitudData.ficha || ''}`,
+            materiales_count: solicitudData.materiales ? solicitudData.materiales.length : 0
+        };
 
+        const response = await fetch(`${API_NOTIFICACION}?accion=crear_desde_solicitud`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(datosNotificacion)
+        });
+
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            console.log('✅ Notificación enviada al coordinador');
+            mostrarNotificacionUsuario('success', 'Solicitud enviada al coordinador');
+        } else {
+            console.warn('⚠️ Notificación no enviada:', result.message);
+            // No detener el flujo si falla la notificación
+        }
+    } catch (error) {
+        console.error('❌ Error enviando notificación:', error);
+        // No mostrar error al usuario para no interrumpir la creación
+    }
+}
+
+// ============================================
+// FUNCIÓN PARA MOSTRAR NOTIFICACIÓN AL USUARIO
+// ============================================
+function mostrarNotificacionUsuario(tipo, mensaje) {
+    // Crear elemento de notificación
+    const notificacion = document.createElement('div');
+    notificacion.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${
+        tipo === 'success' 
+            ? 'bg-green-50 border border-green-200 text-green-800' 
+            : 'bg-red-50 border border-red-200 text-red-800'
+    }`;
+    
+    notificacion.innerHTML = `
+        <div class="flex items-center gap-2">
+            <i data-lucide="${tipo === 'success' ? 'check-circle' : 'alert-circle'}" 
+               class="w-5 h-5 ${tipo === 'success' ? 'text-green-600' : 'text-red-600'}"></i>
+            <span>${mensaje}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(notificacion);
+    lucide.createIcons();
+    
+    // Auto-eliminar después de 5 segundos
+    setTimeout(() => {
+        notificacion.remove();
+    }, 5000);
+}
+
+// ============================================
+// MODIFICAR LA FUNCIÓN DE GUARDAR SOLICITUD
+// ============================================
+// Busca en tu archivo la función que guarda la solicitud y modifícala:
+
+// EJEMPLO - Si tienes una función así:
+async function guardarSolicitud(datos) {
+    try {
+        // 1. Guardar en tu sistema de solicitudes
+        const respuesta = await fetch('tu_endpoint_de_solicitudes.php', {
+            method: 'POST',
+            body: datos
+        });
+        
+        const resultado = await respuesta.json();
+        
+        if (resultado.success) {
+            // 2. Enviar notificación al coordinador
+            await enviarNotificacionCoordinador({
+                ...datos,
+                id_solicitud: resultado.id_solicitud // Si tu BD devuelve un ID
+            });
+            
+            // 3. Mostrar éxito al usuario
+            mostrarNotificacionUsuario('success', 'Solicitud creada y notificada');
+            
+            return true;
+        } else {
+            mostrarNotificacionUsuario('error', resultado.message || 'Error al crear solicitud');
+            return false;
+        }
+    } catch (error) {
+        console.error('Error guardando solicitud:', error);
+        mostrarNotificacionUsuario('error', 'Error al procesar la solicitud');
+        return false;
+    }
+}
+
+// ============================================
+// MODIFICAR EL EVENTO DEL BOTÓN "CREAR SOLICITUD"
+// ============================================
+// Busca en tu archivo el evento del botón de crear:
+
+document.getElementById('sol-btn-guardar')?.addEventListener('click', async function() {
+    // 1. Obtener datos del formulario
+    const datosSolicitud = {
+        programa: document.querySelector('[name="programa"]')?.value,
+        ficha: document.querySelector('[name="ficha"]')?.value,
+        rae: document.querySelector('[name="rae"]')?.value,
+        observaciones: document.querySelector('[name="observaciones"]')?.value,
+        materiales: obtenerMaterialesSeleccionados() // Función que debes crear
+    };
+    
+    // 2. Validar datos
+    if (!datosSolicitud.programa || !datosSolicitud.ficha) {
+        mostrarNotificacionUsuario('error', 'Complete los campos obligatorios');
+        return;
+    }
+    
+    // 3. Guardar solicitud
+    const guardado = await guardarSolicitud(datosSolicitud);
+    
+    if (guardado) {
+        // 4. Cerrar modal y actualizar lista
+        cerrarModal();
+        cargarSolicitudes(); // Función que debes tener
+    }
+});
+
+// ============================================
+// FUNCIÓN AUXILIAR PARA OBTENER MATERIALES
+// ============================================
+function obtenerMaterialesSeleccionados() {
+    // Implementa según tu interfaz
+    // Ejemplo:
+    const materiales = [];
+    const items = document.querySelectorAll('.material-item'); // Ajusta el selector
+    
+    items.forEach(item => {
+        materiales.push({
+            nombre: item.querySelector('.material-nombre')?.textContent,
+            cantidad: item.querySelector('.material-cantidad')?.value
+        });
+    });
+    
+    return materiales;
+}
 
 // ============================================================
 //  INIT
