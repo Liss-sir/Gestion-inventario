@@ -7,9 +7,17 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+require_once __DIR__ . '/auth_guard.php';
+
+
 // Si no hay usuario logueado, redirige al login (ajusta la ruta según tu estructura)
 if (!isset($_SESSION['usuario_id'])) {
-    header('Location: src/view/login/login.php');
+    // ✅ FIX: usar BASE_URL si existe para evitar caer en el index de MAMP
+    if (defined("BASE_URL")) {
+        header('Location: ' . BASE_URL . 'src/view/login/login.php');
+    } else {
+        header('Location: src/view/login/login.php');
+    }
     exit;
 }
 
@@ -832,3 +840,142 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
 <!-- Lucide -->
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <script src="src/assets/js/perfil/perfil.js"></script>
+
+<script>
+/* ============================================================
+   AUTO LOGOUT BY INACTIVITY (15 minutes) — No page refresh needed
+   - Detects user activity (mouse, keyboard, scroll, touch)
+   - Shows warning 30 seconds before expiring
+   - Pings backend to keep LAST_ACTIVITY updated
+   - If time expires -> src/view/login/login.php?reason=idle_timeout
+============================================================ */
+
+(function () {
+  // ✅ FIX: asegurar BASE_URL sin redeclarar si ya existe
+  window.BASE_URL = window.BASE_URL || "<?= defined('BASE_URL') ? BASE_URL : '' ?>";
+  const BASE_URL_SAFE = window.BASE_URL || "";
+
+  const IDLE_LIMIT_MS = 15 * 60 * 1000;  // ✅ 15 minutes
+  const WARNING_MS    = 30 * 1000;       // ✅ warning at 30 seconds left
+
+  let idleTimer = null;
+  let warningTimer = null;
+  let lastPingAt = 0;
+
+  // Toast container (top-right like your alerts)
+  function ensureToastContainer() {
+    let container = document.getElementById("idleToastContainer");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "idleToastContainer";
+      container.className = "fixed top-4 right-4 z-[9999] flex flex-col gap-2";
+      document.body.appendChild(container);
+    }
+    return container;
+  }
+
+  function showToast(message) {
+    const container = ensureToastContainer();
+
+    const toast = document.createElement("div");
+    toast.className = `
+      w-[320px] rounded-xl border border-slate-200 bg-white shadow-lg
+      px-4 py-3 text-sm text-slate-700
+      animate-[fadeIn_.2s_ease-out]
+    `;
+
+    toast.innerHTML = `
+      <div class="flex items-start gap-3">
+        <div class="mt-0.5 h-2.5 w-2.5 rounded-full bg-yellow-500"></div>
+        <div class="flex-1">
+          <p class="font-semibold text-slate-900">Sesión por expirar</p>
+          <p class="text-xs text-slate-500 mt-0.5">${message}</p>
+        </div>
+        <button type="button" class="text-slate-400 hover:text-slate-600">
+          ✕
+        </button>
+      </div>
+    `;
+
+    const btnClose = toast.querySelector("button");
+    btnClose.addEventListener("click", () => toast.remove());
+
+    container.appendChild(toast);
+
+    // Auto-remove after 8s
+    setTimeout(() => {
+      if (toast && toast.parentNode) toast.remove();
+    }, 8000);
+  }
+
+  // Optional backend ping so LAST_ACTIVITY updates even without navigation
+  async function pingBackend() {
+    try {
+      const res = await fetch(`${BASE_URL_SAFE}src/includes/ping.php`, {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store"
+      });
+
+      if (!res.ok) return false;
+
+      const data = await res.json();
+      if (data && data.expired) return false;
+
+      return true;
+    } catch (e) {
+      return true; // do not kick user for network glitches
+    }
+  }
+
+  function clearTimers() {
+    if (idleTimer) clearTimeout(idleTimer);
+    if (warningTimer) clearTimeout(warningTimer);
+  }
+
+  function startTimers() {
+    clearTimers();
+
+    // ✅ Warning 30 seconds before logout
+    warningTimer = setTimeout(() => {
+      showToast("Si sigues inactivo, tu sesión se cerrará automáticamente en 30 segundos.");
+    }, IDLE_LIMIT_MS - WARNING_MS);
+
+    // ✅ Logout at 15 minutes
+    idleTimer = setTimeout(() => {
+      window.location.href = `${BASE_URL_SAFE}src/view/login/login.php?reason=idle_timeout`;
+    }, IDLE_LIMIT_MS);
+  }
+
+  // Reset timers on any activity
+  async function resetIdle() {
+    startTimers();
+
+    // Ping at most once every 30 seconds to avoid spam
+    const now = Date.now();
+    if (now - lastPingAt > 30000) {
+      lastPingAt = now;
+      const ok = await pingBackend();
+
+      if (!ok) {
+        window.location.href = `${BASE_URL_SAFE}src/view/login/login.php?reason=idle_timeout`;
+      }
+    }
+  }
+
+  const events = ["mousemove", "mousedown", "keydown", "scroll", "touchstart"];
+  events.forEach((evt) => window.addEventListener(evt, resetIdle, { passive: true }));
+
+  // Start on load
+  startTimers();
+})();
+</script>
+
+
+
+<style>
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>

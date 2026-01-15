@@ -4,7 +4,8 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 
-// ⚠️ NO poner JSON global porque hay redirecciones (activar/logout)
+// Do not set a global JSON response header here because this controller performs redirects
+// in certain flows (account activation, logout, password recovery).
 // header('Content-Type: application/json; charset=utf-8');
 
 // ================= PHPMailer =================
@@ -15,7 +16,7 @@ require_once __DIR__ . '/../../libs/PHPMailer/src/Exception.php';
 require_once __DIR__ . '/../../libs/PHPMailer/src/PHPMailer.php';
 require_once __DIR__ . '/../../libs/PHPMailer/src/SMTP.php';
 
-// ================= DB + MODEL =================
+// ================= Database Connection + Model =================
 require_once __DIR__ . '/../../Config/database.php';
 require_once __DIR__ . '/../models/usuario.php';
 
@@ -23,7 +24,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-/* ================= BASE_URL AUTO ================= */
+/* ================= Automatic BASE_URL Resolution ================= */
 if (!defined('BASE_URL')) {
 
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
@@ -32,11 +33,10 @@ if (!defined('BASE_URL')) {
 
     $host = $_SERVER['HTTP_HOST'];
 
-    // Ruta del script actual (ej: /Gestion-inventario/src/controllers/usuario_controller.php)
+    // Current script directory (example: /Gestion-inventario/src/controllers/usuario_controller.php)
     $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
 
-    // Cortamos hasta la carpeta raíz del proyecto
-    // Quita /src/controllers, /src/views, etc
+    // Reduce the path to the project root by removing /src/... from the current location
     $project = preg_replace('#/src/.*$#', '/', $scriptDir);
 
     define('BASE_URL', $protocol . $host . $project);
@@ -48,7 +48,7 @@ if (!isset($conn)) {
     exit;
 }
 
-// ================= HELPERS =================
+// ================= Utility Functions =================
 function validarSoloTexto($s) {
     return preg_match('/^[A-Za-zÁÉÍÓÚÜáéíóúüñ\s]+$/u', (string)$s) === 1;
 }
@@ -58,7 +58,8 @@ function colapsarEspacios($s) {
 }
 
 /**
- * ✅ Helper: evaluar si estado es "activo" sin asumir tipo (string/int/bool)
+ * Normalizes and evaluates whether the provided "estado" value represents an active user.
+ * This avoids relying on a specific data type coming from the database.
  */
 function estadoEsActivo($rawEstado): bool {
     $val = strtolower(trim((string)$rawEstado));
@@ -66,7 +67,8 @@ function estadoEsActivo($rawEstado): bool {
 }
 
 /**
- * ✅ Helper: revocar sesiones activas en BD para un usuario (sin tocar DB)
+ * Disables any active database sessions for the given user.
+ * Failures are intentionally ignored to avoid interrupting critical flows.
  */
 function revocarSesionesUsuario(PDO $conn, int $idUsuario): void {
     try {
@@ -78,13 +80,13 @@ function revocarSesionesUsuario(PDO $conn, int $idUsuario): void {
         ");
         $stmtOff->execute([':id' => $idUsuario]);
     } catch (Exception $e) {
-        // no rompemos el flujo si falla, pero idealmente loguear
+        // Best-effort operation. Consider logging this error if needed.
     }
 }
 
 /**
- * ✅ Helper: validar sesión actual contra BD (token_sesion activo)
- * - Útil para endpoints por fetch (actualizar_perfil, cambiar_password, etc)
+ * Validates the current PHP session against the database token record.
+ * This is intended for fetch-based actions such as profile updates and password changes.
  */
 function validarSesionActivaEnBD(PDO $conn): bool {
     $uid   = isset($_SESSION['usuario_id']) ? (int)$_SESSION['usuario_id'] : 0;
@@ -121,26 +123,26 @@ if (!$accion) {
 }
 
 // =====================================================
-// ✅ FIX SIN TOCAR DB:
-// Como tu columna tokens_correo.tipo NO acepta 'force_password',
-// reutilizamos tipo existente 'reset_password' y distinguimos
-// el token "forzado" con prefijo FORCE_
+// Compatibility workaround:
+// Since tokens_correo.tipo does not accept a dedicated "force_password" value,
+// the existing "reset_password" type is reused and forced tokens are identified
+// using the FORCE_ prefix.
 // =====================================================
 if (!defined('FORCE_TOKEN_PREFIX')) {
     define('FORCE_TOKEN_PREFIX', 'FORCE_');
 }
 
 // ============================
-// ✅ ENVIAR CORREO RESET (helper)
+// Password reset email helper
 // ============================
 function enviarCorreoResetPassword($toEmail, $toName, $resetLink) {
     $mail = new PHPMailer(true);
 
-    // 🔐 SOLUCIÓN DE ACENTOS
+    // Ensure proper encoding for non-ASCII characters
     $mail->CharSet  = 'UTF-8';
     $mail->Encoding = 'base64';
 
-    // SMTP
+    // SMTP configuration
     $mail->isSMTP();
     $mail->Host       = 'smtp.gmail.com';
     $mail->SMTPAuth   = true;
@@ -178,7 +180,7 @@ function enviarCorreoResetPassword($toEmail, $toName, $resetLink) {
 switch ($accion) {
 
     // =====================================================
-    // ✅ LISTAR USUARIOS
+    // List users
     // GET: ?accion=listar
     // =====================================================
     case 'listar':
@@ -187,7 +189,7 @@ switch ($accion) {
     break;
 
     // =====================================================
-    // ✅ RESET PASSWORD (VALIDA TOKEN + CAMBIA PASSWORD)
+    // Reset password (token validation + password update)
     // POST FORM: ?accion=reset_password
     // =====================================================
     case 'reset_password':
@@ -212,7 +214,7 @@ switch ($accion) {
         }
 
         try {
-            // Buscar token válido
+            // Retrieve a valid reset token record
             $q = $conn->prepare("
                 SELECT id_token, id_usuario, fecha_expiracion, usado
                 FROM tokens_correo
@@ -233,7 +235,7 @@ switch ($accion) {
             }
 
             if (strtotime($row['fecha_expiracion']) < time()) {
-                // Marcar token como usado
+                // Mark token as used when expired to prevent reuse
                 $conn->prepare("UPDATE tokens_correo SET usado = 1 WHERE id_token = :id")
                      ->execute([':id' => (int)$row['id_token']]);
 
@@ -244,10 +246,10 @@ switch ($accion) {
             $idUsuario = (int)$row['id_usuario'];
             $idToken   = (int)$row['id_token'];
 
-            // 🔐 Hashear nueva contraseña
+            // Hash the new password before saving
             $newHash = password_hash($p1, PASSWORD_DEFAULT);
 
-            // Actualizar contraseña
+            // Update user password
             $conn->prepare("
                 UPDATE usuarios
                 SET password = :ph
@@ -258,7 +260,7 @@ switch ($accion) {
                 ':uid' => $idUsuario
             ]);
 
-            // Marcar token como usado
+            // Mark reset token as used
             $conn->prepare("
                 UPDATE tokens_correo
                 SET usado = 1
@@ -266,11 +268,10 @@ switch ($accion) {
                 LIMIT 1
             ")->execute([':id' => $idToken]);
 
-            // ✅ Opcional recomendado: si cambió password por reset, revocar sesiones activas
-            // (evita que alguien quede logueado con password antiguo)
+            // Recommended: revoke active sessions after a successful password reset
             revocarSesionesUsuario($conn, $idUsuario);
 
-            // Redirigir al login con éxito
+            // Redirect to login with success status
             header("Location: " . BASE_URL . "src/view/login/login.php?reset=ok");
             exit;
 
@@ -282,7 +283,7 @@ switch ($accion) {
     break;
 
     // =====================================================
-    // ✅ SOLICITAR RESET PASSWORD (GUARDA TOKEN + ENVÍA CORREO)
+    // Request password reset (create token + send email)
     // POST FORM: ?accion=request_reset_password
     // =====================================================
     case 'request_reset_password':
@@ -295,12 +296,12 @@ switch ($accion) {
         }
 
         try {
-            // Buscar usuario por correo
+            // Lookup user by email address
             $stmt = $conn->prepare("SELECT id_usuario, nombre_completo, correo FROM usuarios WHERE correo = :c LIMIT 1");
             $stmt->execute([':c' => $correo]);
             $u = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // Siempre redirige con OK aunque no exista (no revelar)
+            // Always return success to avoid exposing whether an account exists
             if (!$u) {
                 header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?ok=1");
                 exit;
@@ -309,18 +310,18 @@ switch ($accion) {
             $idUsuario = (int)$u['id_usuario'];
             $nombre    = $u['nombre_completo'] ?? $correo;
 
-            // Invalidar tokens anteriores sin usar
+            // Invalidate any unused reset tokens previously issued
             $conn->prepare("
                 UPDATE tokens_correo
                 SET usado = 1
                 WHERE id_usuario = :uid AND tipo = 'reset_password' AND usado = 0
             ")->execute([':uid' => $idUsuario]);
 
-            // Token + expiración
+            // Create token and set expiration window
             $token = bin2hex(random_bytes(32));
             $fechaExp = (new DateTime('now'))->modify('+30 minutes')->format('Y-m-d H:i:s');
 
-            // Guardar token
+            // Persist token
             $ins = $conn->prepare("
                 INSERT INTO tokens_correo (id_usuario, token, tipo, fecha_expiracion, usado)
                 VALUES (:uid, :t, 'reset_password', :exp, 0)
@@ -331,10 +332,10 @@ switch ($accion) {
                 ':exp' => $fechaExp
             ]);
 
-            // Link
+            // Build password reset link
             $resetLink = BASE_URL . "src/view/login/reset_password.php?token=" . urlencode($token);
 
-            // Enviar correo real
+            // Send reset email
             enviarCorreoResetPassword($correo, $nombre, $resetLink);
 
             header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?ok=1");
@@ -348,7 +349,7 @@ switch ($accion) {
     break;
 
     // =====================================================
-    // ✅ OBTENER USUARIO POR ID
+    // Fetch user by ID
     // GET: ?accion=obtener&id_usuario=1
     // =====================================================
     case 'obtener':
@@ -366,7 +367,7 @@ switch ($accion) {
     break;
 
     // =====================================================
-    // ✅ CREAR USUARIO + TOKEN + CORREO ACTIVACIÓN + CREDENCIALES
+    // Create user + verification token + activation email
     // POST JSON: ?accion=crear
     // =====================================================
     case 'crear':
@@ -389,21 +390,21 @@ switch ($accion) {
             exit;
         }
 
-        // Validación nombre
+        // Normalize and validate full name content
         $nombre = colapsarEspacios($nombre);
         if ($nombre === '' || !validarSoloTexto($nombre)) {
             echo json_encode(['error' => 'El nombre solo puede contener letras y espacios']);
             exit;
         }
 
-        // Validar cargo
+        // Validate allowed role values
         $cargosValidos = ['Coordinador','Subcoordinador','Instructor','Pasante','Aprendiz'];
         if ($cargo && !in_array($cargo, $cargosValidos, true)) {
             echo json_encode(['error' => 'Cargo no válido']);
             exit;
         }
 
-        // Regla: solo Instructor puede llevar id_programa
+        // Business rule: only "Instructor" is allowed to have a training program assigned
         if ($cargo !== 'Instructor') {
             $id_programa = null;
         } else {
@@ -414,7 +415,7 @@ switch ($accion) {
         }
 
         try {
-            // Duplicados
+            // Check duplicates before inserting
             if ($numero_documento && $usuario->obtenerPorDocumento($numero_documento)) {
                 echo json_encode(['error' => 'El número de documento ya está registrado']);
                 exit;
@@ -426,7 +427,7 @@ switch ($accion) {
 
             $token = bin2hex(random_bytes(32));
 
-            // ✅ Crear usuario
+            // Create user record
             $lastId = $usuario->crear(
                 $nombre,
                 $tipo_documento,
@@ -445,7 +446,7 @@ switch ($accion) {
                 exit;
             }
 
-            // ✅ Guardar token
+            // Persist verification token
             try {
                 $usuario->crearTokenVerificacion($lastId, $token);
             } catch (Exception $e) {
@@ -458,11 +459,11 @@ switch ($accion) {
                 exit;
             }
 
-            // ✅ Enviar correo
+            // Send activation email with credentials and verification link
             try {
                 $mail = new PHPMailer(true);
 
-                // ✅ Acentos / encoding en este correo también
+                // Configure message encoding for special characters
                 $mail->CharSet  = 'UTF-8';
                 $mail->Encoding = 'base64';
 
@@ -558,7 +559,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     break;
 
     // =====================================================
-    // ✅ ACTIVAR CUENTA POR TOKEN (SIN AUTO-LOGIN)
+    // Account activation by token (no automatic login)
     // =====================================================
     case 'activar':
         $token = $_GET['token'] ?? null;
@@ -568,14 +569,14 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             exit;
         }
 
-        // 1) Activar cuenta
+        // Activate account using the verification token
         if (!$usuario->activarCuenta($token)) {
             echo "Token inválido o expirado. Contacta al administrador.";
             exit;
         }
 
         try {
-            // Traer usuario desde el token de verificación
+            // Retrieve user associated with the latest token record
             $q = $conn->prepare("
                 SELECT u.id_usuario, u.nombre_completo, u.correo, u.cargo
                 FROM tokens_correo t
@@ -587,10 +588,10 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             $q->execute([':t' => $token]);
             $u = $q->fetch(PDO::FETCH_ASSOC);
 
-            // Si por alguna razón no encuentra usuario, igual manda al login
+            // If no user is found, still redirect to login with activation flag
             if (!$u) {
 
-                // ✅ CORRECCIÓN: cortar sesión previa para evitar salto a dashboard
+                // Clear any existing PHP session to prevent unexpected redirects
                 if (session_status() === PHP_SESSION_ACTIVE) {
                     session_unset();
                     session_destroy();
@@ -600,7 +601,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 exit;
             }
 
-            // Invalida tokens FORCE_ anteriores sin usar
+            // Invalidate previous unused FORCE_ tokens for this user
             $conn->prepare("
                 UPDATE tokens_correo
                 SET usado = 1
@@ -609,11 +610,11 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                   AND usado = 0
             ")->execute([':uid' => (int)$u['id_usuario']]);
 
-            // Crea token FORCE_
+            // Create a new FORCE_ token and expiration window
             $forceToken = FORCE_TOKEN_PREFIX . bin2hex(random_bytes(32));
             $forceExp   = (new DateTime('now'))->modify('+1 day')->format('Y-m-d H:i:s');
 
-            // Inserta (sin truncar tipo)
+            // Insert using the supported "reset_password" type
             $conn->prepare("
                 INSERT INTO tokens_correo (id_usuario, token, tipo, fecha_expiracion, usado)
                 VALUES (:uid, :t, 'reset_password', :exp, 0)
@@ -623,7 +624,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 ':exp' => $forceExp
             ]);
 
-            // ✅ CORRECCIÓN: cortar cualquier sesión previa
+            // Clear session state to avoid user being treated as already logged in
             if (session_status() === PHP_SESSION_ACTIVE) {
                 session_unset();
                 session_destroy();
@@ -645,7 +646,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     break;
 
     // =====================================================
-    // ✅ ACTUALIZAR USUARIO (EDITAR)
+    // Update user data
     // =====================================================
     case 'actualizar':
         header('Content-Type: application/json; charset=utf-8');
@@ -729,8 +730,8 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     break;
 
     // =====================================================
-    // ✅ CAMBIAR ESTADO
-    // ✅ IMPLEMENTADO: si se desactiva => revoca sesiones en sesiones_usuarios
+    // Update user status
+    // If the user is disabled, active sessions are revoked in sesiones_usuarios.
     // =====================================================
     case 'cambiar_estado':
         header('Content-Type: application/json; charset=utf-8');
@@ -758,7 +759,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
 
         $ok = $usuario->cambiarEstado($id_usuario, $estado);
 
-        // ✅ NUEVO: si se desactiva, tumbar sesiones activas
+        // When disabling a user, revoke active sessions to enforce the new status immediately
         if ($ok && (int)$estado === 0) {
             revocarSesionesUsuario($conn, (int)$id_usuario);
         }
@@ -772,7 +773,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     break;
 
     // =====================================================
-    // ✅ CHECK SESSION (para avisar si lo deshabilitaron)
+    // Session validity endpoint
     // GET: ?accion=check_session
     // =====================================================
     case 'check_session':
@@ -787,7 +788,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             exit;
         }
 
-        // 1) Valida que el token_sesion siga activo en BD
+        // Validate active token_sesion entry in the database
         if (!validarSesionActivaEnBD($conn)) {
             echo json_encode([
                 'active' => 0,
@@ -797,7 +798,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             exit;
         }
 
-        // 2) Valida si el usuario sigue activo (si el admin lo deshabilitó)
+        // Validate that the user is still active in the system
         try {
             $stmt = $conn->prepare("
                 SELECT estado
@@ -810,10 +811,10 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
 
             if (!$row || !estadoEsActivo($row['estado'] ?? null)) {
 
-                // ✅ revoca sesión en BD para que no quede activa
+                // Ensure session is revoked in the database
                 revocarSesionesUsuario($conn, (int)$_SESSION['usuario_id']);
 
-                // ✅ mata sesión PHP
+                // Terminate PHP session
                 session_unset();
                 session_destroy();
 
@@ -843,8 +844,8 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     break;
 
     // =====================================================
-    // ✅ LOGIN (JSON) + DETECTA FORCE_ EN tokens_correo
-    // ✅ IMPLEMENTADO: BLOQUEO SI ESTÁ INACTIVO (sin tocar DB)
+    // Login endpoint (JSON), including FORCE_ token detection
+    // Blocks access for disabled accounts without altering database schema.
     // =====================================================
     case 'login':
         header('Content-Type: application/json; charset=utf-8');
@@ -863,7 +864,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
 
         if ($user) {
 
-            // ✅ NUEVO: bloquear si estado NO activo
+            // Reject login if the account is not active
             $estadoOk = estadoEsActivo($user['estado'] ?? null);
             if (!$estadoOk) {
                 echo json_encode([
@@ -885,7 +886,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             $_SESSION['usuario_correo'] = $user['correo'] ?? '';
             $_SESSION['usuario_cargo']  = $user['cargo'] ?? '';
 
-            // ✅ Detecta el "force" sin usar tipo = 'force_password'
+            // Detect forced password change requirement using the FORCE_ token prefix
             $stmt = $conn->prepare("
                 SELECT id_token
                 FROM tokens_correo
@@ -924,12 +925,12 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     break;
 
     // =====================================================
-    // ✅ LOGOUT (REDIRECCIÓN)
-    // ✅ IMPLEMENTADO: marca sesion en BD como inactiva si existe token_sesion
+    // Logout flow (redirect-based)
+    // If a session token exists, it is marked inactive in the database.
     // =====================================================
     case 'logout':
 
-        // ✅ NUEVO: apagar sesión activa en BD (si existe token)
+        // Mark current token session as inactive (best effort)
         try {
             $uid   = isset($_SESSION['usuario_id']) ? (int)$_SESSION['usuario_id'] : 0;
             $token = isset($_SESSION['token_sesion']) ? (string)$_SESSION['token_sesion'] : '';
@@ -948,7 +949,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 ]);
             }
         } catch (Exception $e) {
-            // no rompemos el logout
+            // Ignore failures to prevent breaking the logout action.
         }
 
         session_unset();
@@ -959,8 +960,8 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     break;
 
     // =====================================================
-    // ✅ ACTUALIZAR PERFIL (TELÉFONO, DIRECCIÓN Y FOTO)
-    // ✅ IMPLEMENTADO: valida token_sesion activo en BD (anti-revoked)
+    // Profile update (phone, address, and profile image)
+    // Validates the database session token to prevent updates from revoked sessions.
     // =====================================================
     case 'actualizar_perfil':
         header('Content-Type: application/json; charset=utf-8');
@@ -970,7 +971,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             exit;
         }
 
-        // ✅ NUEVO: si admin revocó sesión => bloquear
+        // Block updates if the session has been revoked by an administrator
         if (!validarSesionActivaEnBD($conn)) {
             echo json_encode(['error' => 'Sesión expirada o revocada. Inicia sesión nuevamente.']);
             exit;
@@ -1069,8 +1070,8 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     break;
 
     // =====================================================
-    // ✅ CAMBIAR PASSWORD (DESDE PERFIL + CIERRA FORCE_PASSWORD)
-    // ✅ IMPLEMENTADO: valida token_sesion activo en BD (anti-revoked)
+    // Password change from profile (includes closing FORCE_ requirement)
+    // Validates database session token to prevent updates from revoked sessions.
     // =====================================================
     case 'cambiar_password':
         header('Content-Type: application/json; charset=utf-8');
@@ -1080,7 +1081,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             exit;
         }
 
-        // ✅ NUEVO: si admin revocó sesión => bloquear
+        // Block changes if the session has been revoked by an administrator
         if (!validarSesionActivaEnBD($conn)) {
             echo json_encode(['error' => 'Sesión expirada o revocada. Inicia sesión nuevamente.']);
             exit;
@@ -1135,7 +1136,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             $ok  = $upd->execute([':ph' => $newHash, ':id' => $id_usuario]);
 
             if ($ok) {
-                // ✅ Cierra el "force" sin tocar DB (marca FORCE_% como usado)
+                // Close any outstanding FORCE_ tokens by marking them as used
                 $conn->prepare("
                     UPDATE tokens_correo
                     SET usado = 1
@@ -1146,8 +1147,8 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
 
                 unset($_SESSION['force_password_change']);
 
-                // ✅ Opcional recomendado: revocar sesiones activas (obliga re-login)
-                // Si NO quieres esto, lo comentas. (no toca DB)
+                // Optionally revoke active sessions to enforce a re-login after password change
+                // If you do not want this behavior, leave it commented.
                 // revocarSesionesUsuario($conn, $id_usuario);
 
                 echo json_encode(['success' => true, 'message' => 'Contraseña actualizada correctamente.']);
@@ -1164,7 +1165,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     break;
 
     // =====================================================
-    // ✅ DEFAULT
+    // Default handler for unsupported actions
     // =====================================================
     default:
         header('Content-Type: application/json; charset=utf-8');

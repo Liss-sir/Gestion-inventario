@@ -1,6 +1,7 @@
 <?php
 // src/includes/auth_guard.php
 // Cierra sesión si el usuario fue desactivado o si su token_sesion ya no está activo.
+// Agrega cierre automático por inactividad.
 
 if (session_status() === PHP_SESSION_NONE) {
   session_start();
@@ -26,9 +27,43 @@ function _destroySession() {
 }
 
 function _redirectLogin($reason = "disabled") {
-  // Como tú navegas con index.php?page=...
-  header("Location: index.php?page=login&reason=" . urlencode($reason));
+  // ✅ FIX: redirigir al login real (evita caer en el index de MAMP)
+  if (defined("BASE_URL")) {
+    header("Location: " . BASE_URL . "src/view/login/login.php?reason=" . urlencode($reason));
+  } else {
+    header("Location: src/view/login/login.php?reason=" . urlencode($reason));
+  }
   exit;
+}
+
+// ----------------------------
+// ✅ NUEVO: timeout por inactividad (15 minutos)
+// ----------------------------
+$INACTIVITY_LIMIT_SECONDS = 15 * 60; // 900s
+
+if (isset($_SESSION['LAST_ACTIVITY'])) {
+  $inactiveTime = time() - (int)$_SESSION['LAST_ACTIVITY'];
+
+  if ($inactiveTime > $INACTIVITY_LIMIT_SECONDS) {
+    // Marcar token como inactivo en BD si existe (para que no quede sesión "pegada")
+    try {
+      if (!empty($_SESSION['token_sesion'])) {
+        $stmtOff = $conn->prepare("
+          UPDATE sesiones_usuarios
+          SET activa = 0
+          WHERE token_sesion = :token
+        ");
+        $stmtOff->execute([
+          ':token' => $_SESSION['token_sesion']
+        ]);
+      }
+    } catch (Throwable $e) {
+      // No romper el flujo por error en BD
+    }
+
+    _destroySession();
+    _redirectLogin("idle_timeout");
+  }
 }
 
 // Si no hay sesión, mandar al login
@@ -54,6 +89,15 @@ try {
 
   if (!$u || !_estadoActivo($u['estado'])) {
     // usuario no existe o está inactivo
+    try {
+      $stmtOff2 = $conn->prepare("
+        UPDATE sesiones_usuarios
+        SET activa = 0
+        WHERE token_sesion = :token
+      ");
+      $stmtOff2->execute([':token' => $token]);
+    } catch (Throwable $e) {}
+
     _destroySession();
     _redirectLogin("disabled");
   }
@@ -77,6 +121,12 @@ try {
     _destroySession();
     _redirectLogin("session_revoked");
   }
+
+  // ----------------------------
+  // ✅ actualizar tiempo de actividad
+  // ----------------------------
+  $_SESSION['LAST_ACTIVITY'] = time();
+
 } catch (Throwable $e) {
   // Si falla BD, NO rompas el sistema; pero por seguridad puedes cerrar.
   // _destroySession();
