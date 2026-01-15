@@ -55,15 +55,20 @@ class SubBodegaModel {
         }
     }
 
-    /* UPDATE */
+   /* UPDATE (MODELO) */
     public function actualizar(int $id, array $data): bool {
         try {
-            $sql = "UPDATE subbodegas SET
-                    id_bodega = ?, codigo_subbodega = ?, nombre_subbodega = ?,
-                    descripcion = ?, estado = ?, clasificacion_subbodegas = ?
-                    WHERE id_subbodega = ?";
-
-            $stmt = $this->conn->prepare($sql);
+            $stmt = $this->conn->prepare("
+                UPDATE subbodegas
+                SET
+                    id_bodega = ?,
+                    codigo_subbodega = ?,
+                    nombre_subbodega = ?,
+                    descripcion = ?,
+                    estado = ?,
+                    clasificacion_subbodegas = ?
+                WHERE id_subbodega = ?
+            ");
 
             return $stmt->execute([
                 $data["id_bodega"],
@@ -79,7 +84,7 @@ class SubBodegaModel {
             return false;
         }
     }
-
+    
     /* CHANGE STATE */
     public function cambiarEstado(int $id, string $estado): bool {
         try {
@@ -91,4 +96,3 @@ class SubBodegaModel {
         }
     }
 }
-

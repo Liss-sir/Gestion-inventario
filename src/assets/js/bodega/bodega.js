@@ -584,30 +584,35 @@ const initSubBodegas = async () => {
 
 initSubBodegas();
 
- // ============================
-// MENÚ CONTEXTUAL SUB-BODEGAS (FIX DEFINITIVO)
+// ============================
+// MENÚ CONTEXTUAL SUB-BODEGAS (TOGGLE BLINDADO)
 // ============================
 let selectedSubBodega = null;
 
 const subMenu = document.getElementById("context-menu-subbodega");
 
+const isSubMenuOpen = () => subMenu && !subMenu.classList.contains("hidden");
+
 const closeSubMenu = () => {
   if (!subMenu) return;
   subMenu.classList.add("hidden");
+  delete subMenu.dataset.openFor; // 👈 clave para el toggle
 };
 
 const openSubMenu = (btn) => {
   if (!subMenu || !btn) return;
 
+  // Posición (fixed/absolute depende tu HTML, pero esto funciona con tu cálculo)
   const r = btn.getBoundingClientRect();
   subMenu.style.left = `${r.right + window.scrollX - 220}px`;
   subMenu.style.top = `${r.bottom + window.scrollY + 8}px`;
 
   subMenu.classList.remove("hidden");
+  subMenu.dataset.openFor = btn.dataset.id || ""; // 👈 guardamos para saber si es el mismo botón
   safeIcons();
 };
 
-// ABRIR menú desde el botón "..." de cada sub-bodega
+// ABRIR/CERRAR desde el botón ...
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".subbodega-actions-btn");
   if (!btn) return;
@@ -615,8 +620,20 @@ document.addEventListener("click", (e) => {
   e.preventDefault();
   e.stopPropagation();
 
+  // Si está abierto para el MISMO botón => toggle cerrar
+  const openFor = subMenu?.dataset?.openFor || "";
+  const thisId = btn.dataset.id || "";
+
+  if (isSubMenuOpen() && openFor === thisId) {
+    closeSubMenu();
+    return;
+  }
+
+  // Siempre cerramos antes (evita estados raros)
+  closeSubMenu();
+
   selectedSubBodega = {
-    id: btn.dataset.id,
+    id: thisId,
     id_bodega: btn.dataset.idbodega,
     codigo: btn.dataset.codigo,
     nombre: btn.dataset.nombre,
@@ -633,7 +650,7 @@ document.addEventListener("click", (e) => {
   openSubMenu(btn);
 });
 
-// CLICK en opciones del menú (CIERRA SIEMPRE AL INICIO)
+// Click en opciones del menú
 subMenu?.addEventListener("click", async (e) => {
   const btn = e.target.closest(".ctx-sub-btn");
   if (!btn || !selectedSubBodega) return;
@@ -643,9 +660,8 @@ subMenu?.addEventListener("click", async (e) => {
 
   const action = btn.dataset.action;
 
-  closeSubMenu(); // ✅ CLAVE: se oculta apenas presionas cualquier opción
+  closeSubMenu();
 
-  // 👁 VER
   if (action === "ver") {
     document.getElementById("detalleSubNombre").textContent = selectedSubBodega.nombre;
     document.getElementById("detalleSubCodigo").textContent = selectedSubBodega.codigo;
@@ -657,7 +673,6 @@ subMenu?.addEventListener("click", async (e) => {
     return;
   }
 
-  // ✏️ EDITAR
   if (action === "editar") {
     document.getElementById("editSubId").value = selectedSubBodega.id;
     document.getElementById("editSubCodigo").value = selectedSubBodega.codigo;
@@ -669,7 +684,6 @@ subMenu?.addEventListener("click", async (e) => {
     return;
   }
 
-  // 🔁 ACTIVAR / DESACTIVAR
   if (action === "toggle") {
     const next = selectedSubBodega.estado === "Activo" ? "Inactivo" : "Activo";
 
@@ -694,7 +708,7 @@ subMenu?.addEventListener("click", async (e) => {
 // Cerrar al hacer click afuera
 document.addEventListener("click", (e) => {
   if (!subMenu) return;
-  if (e.target.closest(".subbodega-actions-btn")) return; // si es el botón, no cierres
+  if (e.target.closest(".subbodega-actions-btn")) return;
   if (!subMenu.contains(e.target)) closeSubMenu();
 });
 
@@ -1215,7 +1229,8 @@ const fillDetalleSub = (data) => {
   selectEstado?.addEventListener("change", applyFilters);
 
   applyFilters();
-  // ============================
+
+// ============================
 // CIERRE ROBUSTO: MODAL EDITAR SUB-BODEGA
 // ============================
 const modalEditarSub = document.getElementById("modalEditarSubBodega");
@@ -1234,5 +1249,52 @@ document.addEventListener("click", (e) => {
   }
 });
 
+// ============================
+// GUARDAR EDITAR SUB-BODEGA (FIX)
+// ============================
+const btnGuardarEditarSub = document.getElementById("guardarEditarSubBodega");
+
+btnGuardarEditarSub?.addEventListener("click", async () => {
+  const id = (document.getElementById("editSubId")?.value || "").trim();
+  const codigo = (document.getElementById("editSubCodigo")?.value || "").trim();
+  const nombre = (document.getElementById("editSubNombre")?.value || "").trim();
+  const clasificacion = (document.getElementById("editSubClasificacion")?.value || "").trim();
+  const descripcion = (document.getElementById("editSubDescripcion")?.value || "").trim();
+
+  if (!id || !codigo || !nombre || !clasificacion) {
+    toastError("Completa todos los campos obligatorios.");
+    return;
+  }
+
+  try {
+    const res = await fetch(
+      `${API_SUBBODEGAS}?accion=actualizar&id=${encodeURIComponent(id)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          codigo_subbodega: codigo,
+          nombre_subbodega: nombre,
+          clasificacion_subbodegas: clasificacion,
+          descripcion,
+        }),
+      }
+    );
+
+    const parsed = await safeJson(res);
+
+    if (!parsed.ok || parsed.data?.error) {
+      console.error("[ACTUALIZAR SUB RAW]", parsed.raw);
+      throw new Error(parsed.data?.error || `HTTP ${res.status}`);
+    }
+
+    closeModal(document.getElementById("modalEditarSubBodega"));
+    toastSuccess(parsed.data?.message || "Sub-bodega actualizada correctamente.");
+    setTimeout(() => location.reload(), 650);
+  } catch (err) {
+    console.error(err);
+    toastError(err?.message || "No se pudo guardar los cambios.");
+  }
 });
 
+});
