@@ -26,6 +26,24 @@ if (isset($_SESSION['usuario_id'])) {
 
 $loginError = "";
 
+// ===============================
+// ✅ NUEVO: Mostrar mensaje si viene por reason (timeout, revoked, etc.)
+// (SIN alterar tu lógica base: solo pre-cargamos el mensaje)
+// ===============================
+$reason = $_GET['reason'] ?? '';
+
+if ($reason === 'idle_timeout') {
+    $loginError = "Tu sesión expiró por inactividad. Inicia sesión nuevamente.";
+} elseif ($reason === 'session_revoked') {
+    $loginError = "Tu sesión fue cerrada porque se inició sesión desde otro dispositivo.";
+} elseif ($reason === 'disabled') {
+    $loginError = "Tu cuenta está desactivada. Contacta al administrador.";
+} elseif ($reason === 'no_session') {
+    $loginError = "Debes iniciar sesión para continuar.";
+} elseif ($reason === 'no_token') {
+    $loginError = "Tu sesión no es válida. Inicia sesión nuevamente.";
+}
+
 // ------------------------
 // PROCESAR LOGIN (POST)
 // ------------------------
@@ -139,6 +157,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             // ✅ CLAVE: guardar la foto en sesión para que persista tras volver a iniciar sesión
                             $_SESSION['usuario_foto']              = $user['foto_perfil'] ?? null;
+
+                            // =========================================================
+                            // ✅ NUEVO: MARCAR ACTIVIDAD INICIAL PARA TIMEOUT (15 min)
+                            // =========================================================
+                            $_SESSION['LAST_ACTIVITY'] = time();
 
                             // =========================================================
                             // ✅ DETECTAR "CAMBIO OBLIGATORIO" (FORCE_%)

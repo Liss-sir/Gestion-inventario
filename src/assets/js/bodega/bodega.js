@@ -1,6 +1,11 @@
 document.addEventListener("DOMContentLoaded", () => {
   console.log("[BODEGAS.JS] cargado v2025-12-18_flowbite-alerts+toggle-no-reload+empty-icons-fixed");
 
+  const API_MATERIALES = new URL(
+  "src/controllers/material_formacion_controller.php",
+  document.baseURI
+).toString();
+
   const API_URL = new URL("src/controllers/bodega_controller.php", document.baseURI).toString();
   const API_SUBBODEGAS = new URL("src/controllers/sub_bodega_controller.php", document.baseURI).toString();
 
@@ -663,11 +668,14 @@ subMenu?.addEventListener("click", async (e) => {
   closeSubMenu();
 
   if (action === "ver") {
+    
     document.getElementById("detalleSubNombre").textContent = selectedSubBodega.nombre;
     document.getElementById("detalleSubCodigo").textContent = selectedSubBodega.codigo;
     document.getElementById("detalleSubClasificacion").textContent = selectedSubBodega.clasificacion;
     document.getElementById("detalleSubDescripcion").textContent = selectedSubBodega.descripcion || "-";
     document.getElementById("detalleSubEstado").textContent = selectedSubBodega.estado;
+
+    loadMaterialesSubBodega(selectedSubBodega.id); // 👈 CLAVE
 
     openModal(document.getElementById("modalDetalleSubBodega"));
     return;
@@ -999,11 +1007,15 @@ const fillDetalleSub = (data) => {
     if (!selectedData) return;
 
     if (action === "ver") {
-      fillDetalle(selectedData);
-      loadSubBodegas(selectedData.id);
-      openModal(modalDetalle);
-      return;
-    }
+    fillDetalle(selectedData);
+
+    loadSubBodegas(selectedData.id);
+    loadMaterialesBodega(selectedData.id); 
+
+    openModal(modalDetalle);
+    return;
+  }
+
 
     if (action === "editar") {
       fillEditar(selectedData);
@@ -1291,10 +1303,96 @@ btnGuardarEditarSub?.addEventListener("click", async () => {
     closeModal(document.getElementById("modalEditarSubBodega"));
     toastSuccess(parsed.data?.message || "Sub-bodega actualizada correctamente.");
     setTimeout(() => location.reload(), 650);
-  } catch (err) {
-    console.error(err);
-    toastError(err?.message || "No se pudo guardar los cambios.");
-  }
-});
+      } catch (err) {
+      console.error(err);
+      toastError(err.message || "No se pudo actualizar la sub-bodega.");
+    }
+  });
+
+  const renderMateriales = (materiales, {
+    containerId,
+    emptyId,
+    totalId
+  }) => {
+    const cont = document.getElementById(containerId);
+    const empty = document.getElementById(emptyId);
+    const total = document.getElementById(totalId);
+
+    if (!cont) return;
+
+    cont.innerHTML = "";
+
+    if (!Array.isArray(materiales) || materiales.length === 0) {
+      empty?.classList.remove("hidden");
+      if (total) total.textContent = "0";
+      return;
+    }
+
+    empty?.classList.add("hidden");
+    if (total) total.textContent = materiales.length;
+
+    cont.innerHTML = materiales.map(m => `
+      <div class="flex items-center justify-between p-3 rounded-lg border bg-white">
+        <div class="min-w-0">
+          <p class="font-medium text-gray-900 truncate">${m.nombre}</p>
+          <p class="text-xs text-gray-500">
+            ${m.unidad_medida} · ${m.clasificacion}
+            ${m.codigo_inventario ? " · " + m.codigo_inventario : ""}
+          </p>
+        </div>
+
+        <span class="text-sm font-semibold text-gray-700">
+          ${m.stock_actual}
+        </span>
+      </div>
+    `).join("");
+  };
+
+  const loadMaterialesBodega = async (idBodega) => {
+    try {
+      const res = await fetch(
+        `${API_MATERIALES}?accion=porBodega&id=${encodeURIComponent(idBodega)}`
+      );
+      const parsed = await safeJson(res);
+
+      if (!parsed.ok || !Array.isArray(parsed.data)) {
+        throw new Error("Respuesta inválida");
+      }
+
+      renderMateriales(parsed.data, {
+        containerId: "detalleBodegaMateriales",
+        emptyId: "detalleBodegaMaterialesVacio",
+        totalId: "totalMateriales"
+      });
+
+    } catch (err) {
+      console.error("Error cargando materiales bodega", err);
+      toastError("No se pudieron cargar los materiales de la bodega.");
+    }
+  };
+
+  const loadMaterialesSubBodega = async (idSubBodega) => {
+    try {
+      const res = await fetch(
+        `${API_MATERIALES}?accion=porSubBodega&id=${encodeURIComponent(idSubBodega)}`
+      );
+      const parsed = await safeJson(res);
+
+      if (!parsed.ok || !Array.isArray(parsed.data)) {
+        throw new Error("Respuesta inválida");
+      }
+
+      renderMateriales(parsed.data, {
+        containerId: "detalleSubBodegaMateriales",
+        emptyId: "detalleSubBodegaMaterialesVacio",
+        totalId: "totalSubMateriales"
+      });
+
+    } catch (err) {
+      console.error("Error cargando materiales sub-bodega", err);
+      toastError("No se pudieron cargar los materiales de la sub-bodega.");
+    }
+  };
+
 
 });

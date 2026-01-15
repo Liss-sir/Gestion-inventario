@@ -734,18 +734,29 @@ $bodegas = $model->listar();
       <div class="pt-5 border-t border-gray-200">
         <div class="flex items-center gap-2 mb-2">
           <i data-lucide="box" class="w-4 h-4 text-gray-600"></i>
-          <h4 class="font-semibold text-gray-900">Materiales en esta Bodega</h4>
+          <h4 class="font-semibold text-gray-900">
+            Materiales en esta Bodega
+          </h4>
         </div>
 
         <p class="text-sm text-gray-500 mb-4">
-          Total: <strong>3</strong> material(es)
+          Total: <strong id="totalMateriales">0</strong> material(es)
         </p>
 
-        <div class="border border-gray-200 rounded-2xl p-4 bg-gray-50">
-          <p class="text-sm text-gray-600">
-            (Placeholder del modal viejo. Luego lo conectamos a materiales reales.)
-          </p>
-        </div>
+        <!-- LISTA -->
+        <div
+          id="detalleBodegaMateriales"
+          class="space-y-2"
+        ></div>
+
+        <!-- EMPTY -->
+        <p
+          id="detalleBodegaMaterialesVacio"
+          class="text-sm text-gray-500 hidden"
+        >
+          Esta bodega no tiene materiales asignados.
+        </p>
+      </div>
       </div>
 
     </div>
@@ -806,19 +817,30 @@ $bodegas = $model->listar();
       <!-- ✅ AQUÍ VA LA PARTE QUE TE FALTABA -->
       <div class="pt-5 border-t border-gray-200">
         <div class="flex items-center gap-2 mb-2">
-          <i data-lucide="box" class="w-4 h-4 text-gray-600"></i>
-          <h4 class="font-semibold text-gray-900">Materiales en esta Sub-bodega</h4>
+          <i data-lucide="boxes" class="w-4 h-4 text-gray-600"></i>
+          <h4 class="font-semibold text-gray-900">
+            Materiales en esta Sub-bodega
+          </h4>
         </div>
 
         <p class="text-sm text-gray-500 mb-4">
-          Total: <strong id="detalleSubTotalMateriales">0</strong> material(es)
+          Total: <strong id="totalSubMateriales">0</strong> material(es)
         </p>
 
-        <div class="border border-gray-200 rounded-2xl p-4 bg-gray-50">
-          <p class="text-sm text-gray-600" id="detalleSubMaterialesPlaceholder">
-            (Placeholder del modal viejo. Luego lo conectamos a materiales reales.)
-          </p>
-        </div>
+        <!-- LISTA -->
+        <div
+          id="detalleSubBodegaMateriales"
+          class="space-y-2"
+        ></div>
+
+        <!-- EMPTY -->
+        <p
+          id="detalleSubBodegaMaterialesVacio"
+          class="text-sm text-gray-500 hidden"
+        >
+          Esta sub-bodega no tiene materiales asignados.
+        </p>
+      </div>
       </div>
 
     </div>
@@ -890,4 +912,3 @@ $bodegas = $model->listar();
 </main>
 </body>
 </html>
-
