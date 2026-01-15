@@ -284,7 +284,7 @@ try {
                                 </div>
                             </td>
 
-                            <!-- Level badge (Técnico/Tecnólogo) -->
+                            <!-- Level badge (Technical/Technologist) -->
                             <td class="py-4 px-4">
                                 <span class="js-nivel">
                                 <?php if (strtolower($programa['nivel']) === 'técnico'): ?>
@@ -400,7 +400,7 @@ try {
                     data-num-instructores="<?php echo htmlspecialchars($programa['instructores']); ?>"
                     data-estado="<?php echo $isActive ? 1 : 0; ?>">
                     
-                    <!-- ICONO + TÍTULO + EDIT -->
+                    <!-- ICON + TITLE + EDIT -->
                     <div class="flex justify-between items-start mb-3 flex-shrink-0">
                         <!-- Info + Icon -->
                         <div class="flex items-start gap-3 flex-1 min-w-0">
