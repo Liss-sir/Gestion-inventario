@@ -1,7 +1,7 @@
 <?php
 
-require_once _DIR_ . "/../models/sub_bodega.php";
-require_once _DIR_ . "/../../Config/database.php";
+require_once __DIR__ . "/../models/sub_bodega.php";
+require_once __DIR__ . "/../../Config/database.php";
 
 class SubBodegaController {
 
