@@ -547,7 +547,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
         window.API_BASE = "<?= rtrim(BASE_URL, '/'); ?>/src/controllers/";
         window.ID_USUARIO = <?= (int)$idUsuario; ?>;
     </script>
-    <script src="<?= BASE_URL ?>src/assets/js/movimientos/movimientos.js"></script>
+    <script src="<?= BASE_URL ?>src/assets/js/movimientos/movimientos.js?v=<?= time(); ?>"></script>
 </body>
 
 </html>

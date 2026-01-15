@@ -40,6 +40,20 @@ class SubBodegaController {
         $this->response($data);
     }
 
+    /* GET BY BODEGA */
+    public function porBodega() {
+        $idBodega = $_GET["id_bodega"] ?? null;
+
+        if (!$idBodega) {
+            $this->response(["success" => false, "error" => "ID de bodega requerido"], 400);
+        }
+
+        $idBodega = (int)$idBodega;
+        $subbodegas = $this->model->obtenerPorBodega($idBodega);
+
+        $this->response(["success" => true, "data" => $subbodegas]);
+    }
+
     /* CREATE */
     public function crear() {
         $input = json_decode(file_get_contents("php://input"), true);
@@ -146,6 +160,10 @@ switch ($accion) {
 
     case "obtener":
         $controller->obtener();
+        break;
+
+    case "por_bodega":
+        $controller->porBodega();
         break;
 
     case "crear":
