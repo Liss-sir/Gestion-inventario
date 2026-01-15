@@ -26,7 +26,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   <link rel="stylesheet" href="/Gestion-inventario/src/assets/css/bodega/bodega.css">
 </head>
 
-<body class="bg-background text-foreground">
+<body class="bg-background text-foreground sidebar-expanded">
 
   <main class="page-with-sidebar px-6 lg:px-10 py-6 fade-in">
 
@@ -51,7 +51,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           <input
             id="inputBuscarBodega"
             type="text"
-            class="input-siga w-full pl-9"
+            class="input-siga w-full"
             placeholder="Buscar por nombre o código..."
           />
         </div>

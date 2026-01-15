@@ -169,8 +169,35 @@ if (!defined('BASE_URL')) {
 <!-- 🔹 Inicializar los iconos Lucide -->
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    if (window.lucide && typeof lucide.createIcons === "function") {
-      lucide.createIcons();
+
+  /* ===== Inicializar Lucide ===== */
+  if (window.lucide && typeof lucide.createIcons === "function") {
+    lucide.createIcons();
+  }
+
+  /* ===== Sidebar / Layout Sync ===== */
+  const sidebar = document.querySelector("aside");
+  const page = document.querySelector(".page-with-sidebar");
+
+  if (!sidebar || !page) return;
+
+  function syncLayout() {
+    const isCollapsed = sidebar.classList.contains("w-[70px]");
+
+    if (isCollapsed) {
+      page.style.marginLeft = "70px";
+    } else {
+      page.style.marginLeft = "260px";
     }
-  });
+
+    page.style.transition = "margin-left 0.3s ease";
+  }
+
+  // Ejecutar al cargar
+  syncLayout();
+
+  // Por si el DOM cambia
+  window.addEventListener("resize", syncLayout);
+});
+
 </script>

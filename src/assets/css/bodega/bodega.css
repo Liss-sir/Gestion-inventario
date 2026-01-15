@@ -21,20 +21,73 @@
    =========================== */
 .modal-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  width: 100vw;
+  height: 100vh;
+
   background: rgb(15 23 42 / 0.6);
+
   display: none;
-  align-items: center;
+
+  /* modal centrado visualmente */
   justify-content: center;
-  z-index: 50;
+  align-items: flex-start;
+  padding-top: 12vh;
+
+  /* 🔑 MÁS ALTO QUE SIDEBAR Y HEADER */
+  z-index: 99999;
 }
 
 .modal-overlay.active {
   display: flex;
 }
 
+
+.modal-container {
+  background: #ffffff;
+  width: 100%;
+  max-width: 520px;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: modal-slide-down 0.28s ease-out forwards;
+}
+
+@keyframes modal-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.page-with-sidebar {
+  transition: margin-left 0.25s ease;
+}
+
+/* Sidebar expandido */
+.sidebar-expanded .page-with-sidebar {
+  margin-left: 256px; /* w-64 */
+}
+
+/* Sidebar colapsado */
+.sidebar-collapsed .page-with-sidebar {
+  margin-left: 64px; /* w-16 */
+}
+
 /* Estado inicial de los modales */
-#modalBodega > div,
+/* #modalBodega > div,
 #modalVerBodega > div {
   opacity: 0;
   transform: translateY(-20px);
@@ -43,16 +96,16 @@
 #modalBodega.active > div,
 #modalVerBodega.active > div {
   animation: modal-slide-down 0.28s ease-out forwards;
-}
+} */
 
 /* ===========================
    AJUSTE PARA QUE NO LO TAPE EL SIDEBAR
    =========================== */
-@media (min-width: 1024px) {
+ /* @media (min-width: 1024px) {
   .page-with-sidebar {
     margin-left: 256px; /* w-64 */
-  }
-}
+ /* }
+}  */
 
 /* ===========================
    DROPDOWNS / MENÚ CONTEXTUAL
@@ -88,6 +141,11 @@ th {
 /* ===========================
    SELECTS – Flecha pequeña
    =========================== */
+
+.input-siga {
+  padding-left: 2.75rem !important;
+  text-indent: 0 !important;
+}
 
 select.input-siga {
   -webkit-appearance: none;
