@@ -15,71 +15,74 @@ class MovimientoModel {
     $this->conn->beginTransaction();
 
     try {
-        $codigoMovimiento = 'MOV-' . date('Y') . '-' . str_pad(
-            random_int(1, 99999), 5, '0', STR_PAD_LEFT
-        );
-
-        /* 1️⃣ Insert movimiento */
+        // Insertar UNA SOLA fila en movimientos_material con el PRIMER material
+        if (empty($data['materiales'])) {
+            throw new Exception("Debe agregar al menos un material");
+        }
+        
+        $primerMaterial = $data['materiales'][0];
+        
         $stmtMov = $this->conn->prepare("
-            INSERT INTO movimientos (
-                codigo_movimiento, tipo_movimiento, id_usuario,
+            INSERT INTO movimientos_material (
+                tipo_movimiento, id_usuario,
                 id_bodega, id_subbodega,
-                id_programa, id_ficha, id_rae, id_instructor,
-                observaciones
+                id_programa, id_ficha, id_rae,
+                observaciones, id_solicitud, fecha_hora,
+                id_material, cantidad
             ) VALUES (
-                ?, 'entrada', ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?
             )
         ");
 
         $stmtMov->execute([
-            $codigoMovimiento,
+            $data['tipo_movimiento'] ?? 'entrada',
             $data['id_usuario'],
             $data['id_bodega'],
             $data['id_subbodega'],
             $data['id_programa'] ?? null,
             $data['id_ficha'] ?? null,
             $data['id_rae'] ?? null,
-            $data['id_instructor'] ?? null,
-            $data['observaciones'] ?? null
+            $data['observaciones'] ?? null,
+            $data['id_solicitud'] ?? null,
+            $primerMaterial['id_material'],
+            $primerMaterial['cantidad']
         ]);
 
         $idMovimiento = $this->conn->lastInsertId();
 
-        /* 2️⃣ Insert materiales */
-        $stmtMat = $this->conn->prepare("
-            INSERT INTO movimiento_materiales
-            (id_movimiento, id_material, cantidad, estado)
-            VALUES (?, ?, ?, ?)
-        ");
+        // Insertar los materiales restantes en movimientos_detalle
+        if (count($data['materiales']) > 1) {
+            $stmtMat = $this->conn->prepare("
+                INSERT INTO movimientos_detalle
+                (id_movimiento, id_material, cantidad)
+                VALUES (?, ?, ?)
+            ");
 
-        foreach ($data['materiales'] as $mat) {
-            $stmtMat->execute([
-                $idMovimiento,
-                $mat['id_material'],
-                $mat['cantidad'],
-                $mat['estado']
-            ]);
+            for ($i = 1; $i < count($data['materiales']); $i++) {
+                $mat = $data['materiales'][$i];
+                $stmtMat->execute([
+                    $idMovimiento,
+                    $mat['id_material'],
+                    $mat['cantidad']
+                ]);
+            }
         }
 
         $this->conn->commit();
-        return $codigoMovimiento;
+        return 'MOV-' . date('Y') . '-' . str_pad($idMovimiento, 5, '0', STR_PAD_LEFT);
 
     } catch (Exception $e) {
         $this->conn->rollBack();
-        throw new Exception("Error al registrar movimiento");
+        throw new Exception("Error al registrar movimiento: " . $e->getMessage());
     }
 }
 
 
-    /* ===============================
-       LISTAR MOVIMIENTOS
-    =============================== */
     public function listarMovimientos()
 {
     $sql = "
         SELECT 
             m.id_movimiento,
-            m.codigo_movimiento,
             m.tipo_movimiento,
             m.fecha_hora,
             m.observaciones,
@@ -90,8 +93,8 @@ class MovimientoModel {
             m.id_programa,
             m.id_ficha,
             m.id_rae,
-            m.id_instructor
-        FROM movimientos m
+            m.id_usuario
+        FROM movimientos_material m
         LEFT JOIN bodegas b ON b.id_bodega = m.id_bodega
         LEFT JOIN subbodegas sb ON sb.id_subbodega = m.id_subbodega
         ORDER BY m.fecha_hora DESC
@@ -101,17 +104,50 @@ class MovimientoModel {
     $stmt->execute();
     $movimientos = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Agregar materiales a cada movimiento
+    // Agregar materiales a cada movimiento (incluyendo el material principal)
     foreach ($movimientos as &$mov) {
+        $materiales = [];
+        
+        // El material principal está en movimientos_material
+        $sqlPrincipal = "
+            SELECT id_material, id_material as id_material, cantidad
+            FROM movimientos_material
+            WHERE id_movimiento = ?
+        ";
+        $stmtPrincipal = $this->conn->prepare($sqlPrincipal);
+        $stmtPrincipal->execute([$mov['id_movimiento']]);
+        $principal = $stmtPrincipal->fetch(PDO::FETCH_ASSOC);
+        
+        if ($principal) {
+            // Obtener info del material
+            $sqlMat = "SELECT nombre, unidad_medida FROM material_formacion WHERE id_material = ?";
+            $stmtMat = $this->conn->prepare($sqlMat);
+            $stmtMat->execute([$principal['id_material']]);
+            $matInfo = $stmtMat->fetch(PDO::FETCH_ASSOC);
+            
+            if ($matInfo) {
+                $materiales[] = [
+                    'id_material' => $principal['id_material'],
+                    'nombre' => $matInfo['nombre'],
+                    'cantidad' => $principal['cantidad'],
+                    'unidad_medida' => $matInfo['unidad_medida']
+                ];
+            }
+        }
+        
+        // Los materiales adicionales están en movimientos_detalle
         $sqlMat = "
-            SELECT mm.id_material, mf.nombre, mm.cantidad, mf.unidad_medida, mm.estado
-            FROM movimiento_materiales mm
-            INNER JOIN material_formacion mf ON mf.id_material = mm.id_material
-            WHERE mm.id_movimiento = ?
+            SELECT md.id_material, mf.nombre, md.cantidad, mf.unidad_medida
+            FROM movimientos_detalle md
+            INNER JOIN material_formacion mf ON mf.id_material = md.id_material
+            WHERE md.id_movimiento = ?
         ";
         $stmtMat = $this->conn->prepare($sqlMat);
         $stmtMat->execute([$mov['id_movimiento']]);
-        $mov['materiales'] = $stmtMat->fetchAll(PDO::FETCH_ASSOC);
+        $detalles = $stmtMat->fetchAll(PDO::FETCH_ASSOC);
+        
+        $materiales = array_merge($materiales, $detalles);
+        $mov['materiales'] = $materiales;
     }
     
     return $movimientos;
@@ -119,12 +155,9 @@ class MovimientoModel {
 
 
 
-    /* ===============================
-       OBTENER MOVIMIENTO + MATERIALES
-    =============================== */
     public function obtenerMovimiento(int $id)
     {
-        $sql = "SELECT * FROM movimientos WHERE id_movimiento = ?";
+        $sql = "SELECT * FROM movimientos_material WHERE id_movimiento = ? LIMIT 1";
         $stmt = $this->conn->prepare($sql);
         $stmt->execute([$id]);
         $mov = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -132,10 +165,10 @@ class MovimientoModel {
         if (!$mov) return null;
 
         $sqlMat = "
-            SELECT mm.*, m.nombre
-            FROM movimiento_materiales mm
-            INNER JOIN materiales m ON m.id_material = mm.id_material
-            WHERE mm.id_movimiento = ?
+            SELECT m.*, mf.nombre
+            FROM movimientos_material m
+            INNER JOIN material_formacion mf ON mf.id_material = m.id_material
+            WHERE m.id_movimiento = ?
         ";
 
         $stmtMat = $this->conn->prepare($sqlMat);
@@ -145,20 +178,14 @@ class MovimientoModel {
         return $mov;
     }
 
-    /* ===============================
-       ELIMINAR MOVIMIENTO
-    =============================== */
     public function eliminarMovimiento(int $id): bool
     {
         $this->conn->beginTransaction();
 
         try {
+            // Eliminar todos los registros del movimiento en movimientos_material
             $this->conn->prepare(
-                "DELETE FROM movimiento_materiales WHERE id_movimiento=?"
-            )->execute([$id]);
-
-            $this->conn->prepare(
-                "DELETE FROM movimientos WHERE id_movimiento=?"
+                "DELETE FROM movimientos_material WHERE id_movimiento=?"
             )->execute([$id]);
 
             $this->conn->commit();

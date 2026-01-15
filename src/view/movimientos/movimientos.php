@@ -135,7 +135,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                         <i data-lucide="arrow-up-from-line" class="h-6 w-6 text-[#39A900]"></i>
                     </div>
                     <div class="flex flex-col justify-center">
-                        <p class="text-2xl font-medium text-foreground"><?= (int)$contEntrada ?></p>
+                        <p id="contadorEntrada" class="text-2xl font-medium text-foreground"><?= (int)$contEntrada ?></p>
                         <span class="text-xs text-muted-foreground">Entrada</span>
                     </div>
                 </div>
@@ -148,7 +148,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                         <i data-lucide="arrow-down-up" class="h-6 w-6 text-[#39A900]"></i>
                     </div>
                     <div class="flex flex-col">
-                        <p class="text-2xl font-medium text-foreground"><?= (int)$contSalida ?></p>
+                        <p id="contadorSalida" class="text-2xl font-medium text-foreground"><?= (int)$contSalida ?></p>
                         <span class="text-xs text-muted-foreground">Salida</span>
                     </div>
                 </div>
@@ -161,7 +161,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                         <i data-lucide="rotate-ccw" class="h-6 w-6 text-[#39A900]"></i>
                     </div>
                     <div class="flex flex-col justify-center">
-                        <p class="text-2xl font-medium text-foreground"><?= (int)$contDevolucion ?></p>
+                        <p id="contadorDevolucion" class="text-2xl font-medium text-foreground"><?= (int)$contDevolucion ?></p>
                         <span class="text-xs text-muted-foreground">Devolución</span>
                     </div>
                 </div>
@@ -178,6 +178,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
         </span>
 
         <input
+            id="buscarFicha"
             type="text"
             name="buscar_ficha"
             placeholder="Buscar por ficha..."
@@ -191,7 +192,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
         <div class="flex items-center gap-2">
             <i data-lucide="filter" class="h-4 w-4 text-muted-foreground"></i>
             <div class="relative">
-                <select name="filtro_tipo"
+                <select id="filtroTipo" name="filtro_tipo"
                     class="appearance-none rounded-lg border border-border bg-background py-2 pl-3 pr-8 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
                     <option value="">Todos</option>
                     <option value="entrada">Entradas</option>
@@ -207,11 +208,12 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
         <!-- PROGRAMA -->
         <div class="relative w-full sm:w-56">
             <select
+                id="filtroPrograma"
                 name="filtro_programa"
                 class="w-full appearance-none rounded-lg border border-border bg-background py-2 pl-3 pr-9 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
                 <option value="">Todos los programas</option>
                 <?php foreach ($programas as $p): ?>
-                    <option value="<?= strtolower($p['nombre']) ?>">
+                    <option value="<?= $p['id'] ?>">
                         <?= htmlspecialchars($p['nombre']) ?>
                     </option>
                 <?php endforeach; ?>
@@ -248,6 +250,22 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
                     <tbody id="tbodyMovimientos" class="divide-y divide-border">
 
+                    </tbody>
+                    
+                    <tbody id="sinResultados" class="hidden">
+                        <tr>
+                            <td colspan="13" class="px-4 py-16 text-center">
+                                <div class="flex flex-col items-center gap-3">
+                                    <div class="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                                        <i data-lucide="search-x" class="h-6 w-6 text-gray-400"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">No se encontraron movimientos</p>
+                                        <p class="text-xs text-gray-500 mt-1">Intenta ajustar los filtros para ver más resultados</p>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -1292,6 +1310,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
               Inicialización de tabs
             =============================== */
             if (window.initTabsMovimiento) {
+                const form = document.getElementById("formMovimiento");
                 const materialesInput = document.getElementById("materiales_json");
                 let materiales = [];
 
@@ -1301,7 +1320,8 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                     materiales = [];
                 }
 
-                form.addEventListener("submit", function(e) {
+                if (form) {
+                    form.addEventListener("submit", function(e) {
                     if (materialesAgregados.length === 0) {
                         e.preventDefault();
                         alert("Debe agregar al menos un material.");
@@ -1401,6 +1421,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                         }
                     }
                 });
+                }
 
                 const cantidadEl = document.getElementById("cantidad");
                 if (cantidadEl) {
@@ -1411,6 +1432,84 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                     });
                 }
             }
+
+            /* ===============================
+              Funcionalidad de filtros
+            =============================== */
+            const filtroTipo = document.getElementById("filtroTipo");
+            const filtroPrograma = document.getElementById("filtroPrograma");
+            const buscarFicha = document.getElementById("buscarFicha");
+
+            function aplicarFiltros() {
+                const tbody = document.getElementById("tbodyMovimientos");
+                const sinResultados = document.getElementById("sinResultados");
+                
+                console.log("Aplicando filtros...");
+                console.log("tbody:", tbody);
+                console.log("sinResultados:", sinResultados);
+                
+                if (!tbody) return;
+
+                const filas = tbody.querySelectorAll("tr");
+                const valorTipo = filtroTipo?.value.toLowerCase().trim() || "";
+                const valorPrograma = filtroPrograma?.value.trim() || "";
+                const valorFicha = buscarFicha?.value.toLowerCase().trim() || "";
+                
+                console.log("Filtros activos:", { valorTipo, valorPrograma, valorFicha });
+                console.log("Total filas:", filas.length);
+
+                let filasVisibles = 0;
+
+                filas.forEach(fila => {
+                    const btnAcciones = fila.querySelector("button[data-tipo]");
+                    if (!btnAcciones) {
+                        fila.style.display = "";
+                        return;
+                    }
+
+                    const tipo = (btnAcciones.dataset.tipo || "").toLowerCase().trim();
+                    const programa = (btnAcciones.dataset.programa || "").trim();
+                    const ficha = (btnAcciones.dataset.ficha || "").toLowerCase().trim();
+
+                    // Filtro tipo: debe coincidir exactamente
+                    const cumpleTipo = !valorTipo || tipo === valorTipo;
+                    
+                    // Filtro programa: debe coincidir exactamente con el ID
+                    const cumplePrograma = !valorPrograma || programa === valorPrograma;
+                    
+                    // Filtro ficha: búsqueda parcial (contiene)
+                    const cumpleFicha = !valorFicha || ficha.includes(valorFicha);
+
+                    const mostrar = cumpleTipo && cumplePrograma && cumpleFicha;
+                    fila.style.display = mostrar ? "" : "none";
+                    if (mostrar) filasVisibles++;
+                });
+
+                console.log("Filas visibles:", filasVisibles);
+
+                // Mostrar/ocultar mensaje de sin resultados
+                if (sinResultados) {
+                    if (filasVisibles === 0) {
+                        console.log("Mostrando mensaje sin resultados");
+                        sinResultados.classList.remove("hidden");
+                        sinResultados.style.display = "table-row-group";
+                    } else {
+                        console.log("Ocultando mensaje sin resultados");
+                        sinResultados.classList.add("hidden");
+                        sinResultados.style.display = "none";
+                    }
+                    // Recrear iconos
+                    if (window.lucide && typeof lucide.createIcons === "function") {
+                        lucide.createIcons();
+                    }
+                } else {
+                    console.error("No se encontró el elemento sinResultados!");
+                }
+            }
+
+            if (filtroTipo) filtroTipo.addEventListener("change", aplicarFiltros);
+            if (filtroPrograma) filtroPrograma.addEventListener("change", aplicarFiltros);
+            if (buscarFicha) buscarFicha.addEventListener("input", aplicarFiltros);
         });
 
 
@@ -1570,12 +1669,12 @@ async function cargarMovimientosDelServidor() {
                             class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted"
                             onclick="openActionsMenu(event, this)"
                             data-id="${m.id_movimiento}"
-                            data-tipo="${escapeHtml(tipo)}"
+                            data-tipo="${tipo}"
                             data-fecha="${m.fecha_hora || ''}"
                             data-bodega="${escapeHtml(m.bodega || '-')}"
                             data-subbodega="${escapeHtml(m.subbodega || '-')}"
-                            data-programa="${escapeHtml(m.programa || '-')}"
-                            data-ficha="${escapeHtml(m.id_ficha ? String(m.id_ficha) : '-')}"
+                            data-programa="${m.id_programa || ''}"
+                            data-ficha="${m.id_ficha || ''}"
                             data-rae="${escapeHtml(m.rae || '-')}"
                             data-instructor="${escapeHtml(m.instructor || '-')}"
                             data-observaciones="${escapeHtml(m.observaciones || '-')}"
@@ -1593,10 +1692,36 @@ async function cargarMovimientosDelServidor() {
             lucide.createIcons();
         }
         
+        // Actualizar contadores
+        actualizarContadores(json.data);
+        
     } catch (err) {
         console.error("Error cargando movimientos:", err);
     }
 }
+
+// Función para actualizar contadores de entrada, salida, devolución
+function actualizarContadores(movimientos) {
+    let contEntrada = 0;
+    let contSalida = 0;
+    let contDevolucion = 0;
+    
+    movimientos.forEach(m => {
+        const tipo = (m.tipo_movimiento || "").toLowerCase();
+        if (tipo === "entrada") contEntrada++;
+        else if (tipo === "salida") contSalida++;
+        else if (tipo === "devolucion") contDevolucion++;
+    });
+    
+    const elEntrada = document.getElementById("contadorEntrada");
+    const elSalida = document.getElementById("contadorSalida");
+    const elDevolucion = document.getElementById("contadorDevolucion");
+    
+    if (elEntrada) elEntrada.textContent = contEntrada;
+    if (elSalida) elSalida.textContent = contSalida;
+    if (elDevolucion) elDevolucion.textContent = contDevolucion;
+}
+
 const API_BASE = "<?= rtrim(BASE_URL, '/'); ?>/src/controllers/";
 const ID_USUARIO = <?= (int)$idUsuario; ?>;
 

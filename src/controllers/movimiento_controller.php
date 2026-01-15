@@ -80,7 +80,7 @@ class MovimientoController {
         } catch (Throwable $e) {
             echo json_encode([
                 "success" => false,
-                "message" => "Error al registrar movimiento"
+                "message" => "Error al registrar movimiento: " . $e->getMessage()
             ]);
         }
     }
