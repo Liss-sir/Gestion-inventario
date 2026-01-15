@@ -504,13 +504,6 @@ function renderChecklistAprendices() {
   })
 
   const totalSeleccionados = estudiantesSeleccionados.length
-
-  // Verificar si todos los filtrados están seleccionados
-  const todosSeleccionados = aprendicesFiltrados.every(a => 
-    estudiantesSeleccionados.some(e => e.id_usuario == a.id_usuario)
-  )
-  const textoEnlace = todosSeleccionados ? 'Quitar selección de todos los visibles' : 'Seleccionar todos los visibles'
-
   html += `
       <div class="pt-2 border-t">
         <div class="flex justify-between font-medium text-gray-700 text-sm">
@@ -519,7 +512,7 @@ function renderChecklistAprendices() {
         </div>
         <div class="mt-2 text-center">
           <a href="#" onclick="seleccionarTodosVisibles(); return false;" class="text-blue-600 hover:text-blue-800 underline text-sm">
-            ${textoEnlace}
+            Seleccionar todos los visibles
           </a>
         </div>
       </div>

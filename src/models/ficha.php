@@ -133,11 +133,11 @@ class FichaModel {
                 return true; // No hay estudiantes que agregar
             }
 
-            $sqlDelete = "DELETE FROM fichas_estudiantes WHERE id_ficha = ?";
+            $sqlDelete = "DELETE FROM fichas_aprendices WHERE id_ficha = ?";
             $stmtDelete = $this->conn->prepare($sqlDelete);
             $stmtDelete->execute([$id_ficha]);
 
-            $sql = "INSERT INTO fichas_estudiantes (id_ficha, id_usuario) VALUES (?, ?)";
+            $sql = "INSERT INTO fichas_aprendices (id_ficha, id_usuario) VALUES (?, ?)";
             $stmt = $this->conn->prepare($sql);
 
             foreach ($estudiantes as $id_estudiante) {
@@ -155,8 +155,8 @@ class FichaModel {
     public function obtenerEstudiantesDeFicha($id_ficha) {
         try {
             $sql = "SELECT u.id_usuario, u.nombre_completo, u.numero_documento, u.correo
-                    FROM fichas_estudiantes fe
-                    INNER JOIN usuarios u ON fe.id_estudiante = u.id_usuario
+                    FROM fichas_aprendices fe
+                    INNER JOIN usuarios u ON fe.id_usuario = u.id_usuario
                     WHERE fe.id_ficha = ?
                     ORDER BY u.nombre_completo";
             $stmt = $this->conn->prepare($sql);
