@@ -12,6 +12,11 @@ class MovimientoModel {
     =============================== */
     public function registrarEntrada(array $data): string
 {
+    // LOG: Ver qué datos llegan
+    error_log("=== REGISTRAR ENTRADA ===");
+    error_log("Datos recibidos: " . json_encode($data));
+    error_log("Total materiales: " . count($data['materiales'] ?? []));
+    
     $this->conn->beginTransaction();
 
     try {
@@ -21,6 +26,7 @@ class MovimientoModel {
         }
         
         $primerMaterial = $data['materiales'][0];
+        error_log("Primer material: " . json_encode($primerMaterial));
         
         $stmtMov = $this->conn->prepare("
             INSERT INTO movimientos_material (
@@ -49,9 +55,11 @@ class MovimientoModel {
         ]);
 
         $idMovimiento = $this->conn->lastInsertId();
+        error_log("ID movimiento creado: " . $idMovimiento);
 
         // Insertar los materiales restantes en movimientos_detalle
         if (count($data['materiales']) > 1) {
+            error_log("Insertando " . (count($data['materiales']) - 1) . " materiales en movimientos_detalle");
             $stmtMat = $this->conn->prepare("
                 INSERT INTO movimientos_detalle
                 (id_movimiento, id_material, cantidad)
@@ -60,19 +68,27 @@ class MovimientoModel {
 
             for ($i = 1; $i < count($data['materiales']); $i++) {
                 $mat = $data['materiales'][$i];
+                error_log("  - Material #$i: ID={$mat['id_material']}, Cantidad={$mat['cantidad']}");
                 $stmtMat->execute([
                     $idMovimiento,
                     $mat['id_material'],
                     $mat['cantidad']
                 ]);
             }
+            error_log("✓ Materiales detalle insertados correctamente");
+        } else {
+            error_log("⚠ Solo 1 material, no se usa movimientos_detalle");
         }
 
         $this->conn->commit();
-        return 'MOV-' . date('Y') . '-' . str_pad($idMovimiento, 5, '0', STR_PAD_LEFT);
+        $codigo = 'MOV-' . date('Y') . '-' . str_pad($idMovimiento, 5, '0', STR_PAD_LEFT);
+        error_log("✓ Movimiento registrado exitosamente: " . $codigo);
+        error_log("======================\n");
+        return $codigo;
 
     } catch (Exception $e) {
         $this->conn->rollBack();
+        error_log("✗ ERROR al registrar: " . $e->getMessage());
         throw new Exception("Error al registrar movimiento: " . $e->getMessage());
     }
 }

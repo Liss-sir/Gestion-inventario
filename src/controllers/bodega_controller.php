@@ -193,6 +193,57 @@ class BodegaController {
             $ok ? 200 : 500
         );
     }
+
+    /* ===============================
+       OBTENER INVENTARIO DE BODEGA
+       GET ?accion=inventario_bodega&id_bodega=X
+    =============================== */
+    public function inventario_bodega(): void {
+        $idBodega = $_GET['id_bodega'] ?? null;
+
+        error_log("[inventario_bodega] ID recibido: " . var_export($idBodega, true));
+
+        if (!$idBodega) {
+            error_log("[inventario_bodega] ERROR: ID_BODEGA vacio");
+            $this->response([
+                "success" => false,
+                "message" => "ID de bodega requerido"
+            ], 400);
+            return;
+        }
+
+        $materiales = $this->model->obtenerInventarioPorBodega((int)$idBodega);
+        error_log("[inventario_bodega] Materiales encontrados: " . count($materiales));
+        error_log("[inventario_bodega] Datos: " . json_encode($materiales));
+
+        $this->response([
+            "success" => true,
+            "data" => $materiales
+        ], 200);
+    }
+
+    /* ===============================
+       OBTENER INVENTARIO DE SUBBODEGA
+       GET ?accion=inventario_subbodega&id_subbodega=X
+    =============================== */
+    public function inventario_subbodega(): void {
+        $idSubbodega = $_GET['id_subbodega'] ?? null;
+
+        if (!$idSubbodega) {
+            $this->response([
+                "success" => false,
+                "message" => "ID de subbodega requerido"
+            ], 400);
+            return;
+        }
+
+        $materiales = $this->model->obtenerInventarioPorSubbodega((int)$idSubbodega);
+
+        $this->response([
+            "success" => true,
+            "data" => $materiales
+        ], 200);
+    }
 }
 
 /* ===============================

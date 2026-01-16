@@ -541,6 +541,26 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                         </div>
                     </div>
 
+                    <!-- =====================
+                        INVENTARIO ACTUAL BODEGA
+                    ====================== -->
+                    <div id="inventarioBodegaContainer" class="hidden rounded-xl border border-green-200 bg-green-50 p-4">
+                        <p class="text-sm font-semibold mb-2 text-green-900">Inventario actual (Bodega)</p>
+                        <div id="inventarioBodega" class="space-y-2 text-sm">
+                            No hay materiales en esta bodega
+                        </div>
+                    </div>
+
+                    <!-- =====================
+                        INVENTARIO ACTUAL SUBBODEGA
+                    ====================== -->
+                    <div id="inventarioSubbodegaContainer" class="hidden rounded-xl border border-blue-200 bg-blue-50 p-4">
+                        <p class="text-sm font-semibold mb-2 text-blue-900">Inventario actual (Subbodega)</p>
+                        <div id="inventarioSubbodega" class="space-y-2 text-sm">
+                            No hay materiales en esta subbodega
+                        </div>
+                    </div>
+
                     <!-- OBSERVACIONES -->
                     <textarea name="observaciones"
                         placeholder="Observaciones"
