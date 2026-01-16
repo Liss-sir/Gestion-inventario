@@ -67,7 +67,7 @@ class NotificacionController {
 
     $idUsuario = $_SESSION['usuario_id'];
 
-    $stmt = $conexion->prepare("
+    $stmt = $this->conn->prepare("
         SELECT 
             COUNT(*) AS total,
             SUM(CASE WHEN leida = 0 THEN 1 ELSE 0 END) AS no_leidas,

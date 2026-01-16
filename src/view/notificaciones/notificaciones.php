@@ -262,7 +262,7 @@ for (const [campo, info] of Object.entries(datos)) {
             <div class="flex flex-col gap-2">
                 <div class="flex items-center gap-2">
                     <span class="text-[9px] bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">Actual</span>
-                    <span class="text-sm text-slate-400 line-through italic">${anterior}</span>
+                    <span class="text-sm text-slate-400 ">${anterior}</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <span class="text-[9px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded font-bold uppercase">Nuevo</span>
