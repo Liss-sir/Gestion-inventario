@@ -1,5 +1,13 @@
 <?php
 
+// ✅ SOLUCIÓN IMPLEMENTADA (SIN DAÑAR TU BASE):
+// - Output buffering para evitar que warnings/espacios dañen JSON
+// - Login ahora genera token_sesion en sesiones_usuarios
+// - Se revoca sesión anterior automáticamente
+// - Headers no-cache en respuestas JSON
+
+ob_start();
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -44,7 +52,10 @@ if (!defined('BASE_URL')) {
 
 if (!isset($conn)) {
     header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(['error' => 'No se pudo establecer conexión con la base de datos']);
+    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+    header("Pragma: no-cache");
+    if (ob_get_length()) ob_clean();
+    echo json_encode(['error' => 'No se pudo establecer conexión con la base de datos'], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -85,6 +96,32 @@ function revocarSesionesUsuario(PDO $conn, int $idUsuario): void {
 }
 
 /**
+ * Creates a new session token in sesiones_usuarios and returns it.
+ * This is best-effort and will not block login if the table is missing.
+ */
+function crearTokenSesionBD(PDO $conn, int $idUsuario): ?string {
+    try {
+        $token = bin2hex(random_bytes(32));
+
+        // ✅ NOTA: Esto asume que tu tabla sesiones_usuarios tiene:
+        // id_usuario, token_sesion, activa (1/0) y opcionalmente fecha_inicio
+        // Si tu tabla tiene columnas extras, esto NO rompe, solo ignora.
+        $stmt = $conn->prepare("
+            INSERT INTO sesiones_usuarios (id_usuario, token_sesion, activa)
+            VALUES (:id, :t, 1)
+        ");
+        $stmt->execute([
+            ':id' => $idUsuario,
+            ':t'  => $token
+        ]);
+
+        return $token;
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
+/**
  * Validates the current PHP session against the database token record.
  * This is intended for fetch-based actions such as profile updates and password changes.
  */
@@ -118,7 +155,10 @@ $usuario = new Usuario($conn);
 $accion = $_GET['accion'] ?? null;
 if (!$accion) {
     header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(['error' => 'Debe especificar la acción']);
+    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+    header("Pragma: no-cache");
+    if (ob_get_length()) ob_clean();
+    echo json_encode(['error' => 'Debe especificar la acción'], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -185,7 +225,10 @@ switch ($accion) {
     // =====================================================
     case 'listar':
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($usuario->listar());
+        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+        header("Pragma: no-cache");
+        if (ob_get_length()) ob_clean();
+        echo json_encode($usuario->listar(), JSON_UNESCAPED_UNICODE);
     break;
 
     // =====================================================
@@ -354,16 +397,19 @@ switch ($accion) {
     // =====================================================
     case 'obtener':
         header('Content-Type: application/json; charset=utf-8');
+        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+        header("Pragma: no-cache");
+        if (ob_get_length()) ob_clean();
 
         $id_usuario = $_GET['id_usuario'] ?? null;
 
         if (!$id_usuario) {
-            echo json_encode(['error' => 'Debe enviar el parámetro id_usuario']);
+            echo json_encode(['error' => 'Debe enviar el parámetro id_usuario'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
         $res = $usuario->obtenerPorId($id_usuario);
-        echo json_encode($res ? $res : ['error' => 'Usuario no encontrado']);
+        echo json_encode($res ? $res : ['error' => 'Usuario no encontrado'], JSON_UNESCAPED_UNICODE);
     break;
 
     // =====================================================
@@ -372,6 +418,9 @@ switch ($accion) {
     // =====================================================
     case 'crear':
         header('Content-Type: application/json; charset=utf-8');
+        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+        header("Pragma: no-cache");
+        if (ob_get_length()) ob_clean();
 
         $data = json_decode(file_get_contents("php://input"), true);
 
@@ -386,21 +435,21 @@ switch ($accion) {
         $id_programa      = $data['id_programa']       ?? null;
 
         if (!$nombre || !$correo || !$password) {
-            echo json_encode(['error' => 'Datos incompletos']);
+            echo json_encode(['error' => 'Datos incompletos'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
         // Normalize and validate full name content
         $nombre = colapsarEspacios($nombre);
         if ($nombre === '' || !validarSoloTexto($nombre)) {
-            echo json_encode(['error' => 'El nombre solo puede contener letras y espacios']);
+            echo json_encode(['error' => 'El nombre solo puede contener letras y espacios'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
         // Validate allowed role values
         $cargosValidos = ['Coordinador','Subcoordinador','Instructor','Pasante','Aprendiz'];
         if ($cargo && !in_array($cargo, $cargosValidos, true)) {
-            echo json_encode(['error' => 'Cargo no válido']);
+            echo json_encode(['error' => 'Cargo no válido'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -409,7 +458,7 @@ switch ($accion) {
             $id_programa = null;
         } else {
             if ($id_programa === null || $id_programa === '' || (int)$id_programa <= 0) {
-                echo json_encode(['error' => 'Debe seleccionar un programa para el Instructor.']);
+                echo json_encode(['error' => 'Debe seleccionar un programa para el Instructor.'], JSON_UNESCAPED_UNICODE);
                 exit;
             }
         }
@@ -417,11 +466,11 @@ switch ($accion) {
         try {
             // Check duplicates before inserting
             if ($numero_documento && $usuario->obtenerPorDocumento($numero_documento)) {
-                echo json_encode(['error' => 'El número de documento ya está registrado']);
+                echo json_encode(['error' => 'El número de documento ya está registrado'], JSON_UNESCAPED_UNICODE);
                 exit;
             }
             if ($usuario->obtenerPorCorreo($correo)) {
-                echo json_encode(['error' => 'El correo ya está registrado']);
+                echo json_encode(['error' => 'El correo ya está registrado'], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
@@ -442,7 +491,7 @@ switch ($accion) {
             );
 
             if (!$lastId) {
-                echo json_encode(['error' => 'Error al crear usuario']);
+                echo json_encode(['error' => 'Error al crear usuario'], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
@@ -455,7 +504,7 @@ switch ($accion) {
                     'error' => 'No se pudo guardar el token en tokens_correo',
                     'detalle' => $e->getMessage(),
                     'id_usuario' => $lastId
-                ]);
+                ], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
@@ -530,7 +579,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                     'success' => true,
                     'mensaje' => 'Usuario creado. Revisa tu correo para activar la cuenta',
                     'id_usuario' => $lastId
-                ]);
+                ], JSON_UNESCAPED_UNICODE);
                 exit;
 
             } catch (Exception $e) {
@@ -538,21 +587,21 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                     'success' => false,
                     'error' => 'Usuario creado pero error enviando correo',
                     'detalle' => $e->getMessage()
-                ]);
+                ], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
         } catch (PDOException $e) {
             if ((string)$e->getCode() === '23000') {
                 if (strpos($e->getMessage(), 'numero_documento') !== false) {
-                    echo json_encode(['error' => 'El número de documento ya está registrado']);
+                    echo json_encode(['error' => 'El número de documento ya está registrado'], JSON_UNESCAPED_UNICODE);
                 } elseif (strpos($e->getMessage(), 'correo') !== false) {
-                    echo json_encode(['error' => 'El correo ya está registrado']);
+                    echo json_encode(['error' => 'El correo ya está registrado'], JSON_UNESCAPED_UNICODE);
                 } else {
-                    echo json_encode(['error' => 'Error de duplicado en base de datos']);
+                    echo json_encode(['error' => 'Error de duplicado en base de datos'], JSON_UNESCAPED_UNICODE);
                 }
             } else {
-                echo json_encode(['error' => 'Error en base de datos: ' . $e->getMessage()]);
+                echo json_encode(['error' => 'Error en base de datos: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
             }
             exit;
         }
@@ -650,18 +699,21 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     // =====================================================
     case 'actualizar':
         header('Content-Type: application/json; charset=utf-8');
+        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+        header("Pragma: no-cache");
+        if (ob_get_length()) ob_clean();
 
         $data = json_decode(file_get_contents("php://input"), true);
         $id_usuario = $data['id_usuario'] ?? $_POST['id_usuario'] ?? $_GET['id_usuario'] ?? null;
 
         if (!$id_usuario) {
-            echo json_encode(['error' => 'Debe enviar id_usuario']);
+            echo json_encode(['error' => 'Debe enviar id_usuario'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
         $usuarioActual = $usuario->obtenerPorId($id_usuario);
         if (!$usuarioActual) {
-            echo json_encode(['error' => 'Usuario no encontrado']);
+            echo json_encode(['error' => 'Usuario no encontrado'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -677,13 +729,13 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
 
         $nombre = colapsarEspacios($nombre);
         if ($nombre === '' || !validarSoloTexto($nombre)) {
-            echo json_encode(['error' => 'El nombre solo puede contener letras y espacios']);
+            echo json_encode(['error' => 'El nombre solo puede contener letras y espacios'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
         $cargosValidos = ['Coordinador','Subcoordinador','Instructor','Pasante','Aprendiz'];
         if (!in_array($cargo, $cargosValidos, true)) {
-            echo json_encode(['error' => 'Cargo no válido']);
+            echo json_encode(['error' => 'Cargo no válido'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -691,7 +743,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             $id_programa = null;
         } else {
             if ($id_programa === null || $id_programa === '' || (int)$id_programa <= 0) {
-                echo json_encode(['error' => 'Debe seleccionar un programa para el Instructor.']);
+                echo json_encode(['error' => 'Debe seleccionar un programa para el Instructor.'], JSON_UNESCAPED_UNICODE);
                 exit;
             }
         }
@@ -699,13 +751,13 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         if ($num_doc !== $usuarioActual['numero_documento']) {
             $existeDoc = $usuario->obtenerPorDocumento($num_doc);
             if ($existeDoc && (int)$existeDoc['id_usuario'] !== (int)$id_usuario) {
-                echo json_encode(['error' => 'El número de documento ya está registrado']);
+                echo json_encode(['error' => 'El número de documento ya está registrado'], JSON_UNESCAPED_UNICODE);
                 exit;
             }
         }
 
         if ($correo !== $usuarioActual['correo'] && $usuario->obtenerPorCorreo($correo)) {
-            echo json_encode(['error' => 'El correo ya está registrado']);
+            echo json_encode(['error' => 'El correo ya está registrado'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -722,9 +774,33 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             $id_programa
         );
 
+        // ------------------------------------------------------------
+        // ✅ NUEVO (NO rompe nada): refrescar sesión si el usuario editado
+        // es el mismo que está logueado actualmente.
+        // ------------------------------------------------------------
+        if ($ok && isset($_SESSION['usuario_id']) && (int)$_SESSION['usuario_id'] === (int)$id_usuario) {
+
+            $_SESSION['usuario_nombre'] = $nombre;
+            $_SESSION['usuario_correo'] = $correo;
+            $_SESSION['usuario_cargo']  = $cargo;
+
+            $_SESSION['usuario_tipo_documento']   = $tipo_doc;
+            $_SESSION['usuario_numero_documento'] = $num_doc;
+            $_SESSION['usuario_telefono']         = $telefono;
+            $_SESSION['usuario_direccion']        = $direccion;
+
+            if (isset($_SESSION['usuario']) && is_array($_SESSION['usuario'])) {
+                $_SESSION['usuario']['id']     = (int)$id_usuario;
+                $_SESSION['usuario']['nombre'] = $nombre;
+                $_SESSION['usuario']['correo'] = $correo;
+                $_SESSION['usuario']['cargo']  = $cargo;
+            }
+        }
+
         echo json_encode(
             $ok ? ['success' => true, 'mensaje' => 'Usuario actualizado correctamente']
-                : ['success' => false, 'error' => 'No se pudo actualizar el usuario']
+                : ['success' => false, 'error' => 'No se pudo actualizar el usuario'],
+            JSON_UNESCAPED_UNICODE
         );
         exit;
     break;
@@ -735,6 +811,9 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     // =====================================================
     case 'cambiar_estado':
         header('Content-Type: application/json; charset=utf-8');
+        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+        header("Pragma: no-cache");
+        if (ob_get_length()) ob_clean();
 
         $data = json_decode(file_get_contents("php://input"), true);
 
@@ -742,18 +821,18 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         $estado     = $data['estado']     ?? $_POST['estado']     ?? $_GET['estado']     ?? null;
 
         if ($id_usuario === null || $estado === null) {
-            echo json_encode(['error' => 'Debe enviar id_usuario y estado (1 o 0)']);
+            echo json_encode(['error' => 'Debe enviar id_usuario y estado (1 o 0)'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
         if ((int)$estado !== 1 && (int)$estado !== 0) {
-            echo json_encode(['error' => 'El estado debe ser 1 o 0']);
+            echo json_encode(['error' => 'El estado debe ser 1 o 0'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
         $uExist = $usuario->obtenerPorId($id_usuario);
         if (!$uExist) {
-            echo json_encode(['error' => 'Usuario no encontrado']);
+            echo json_encode(['error' => 'Usuario no encontrado'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -767,7 +846,8 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         echo json_encode(
             $ok
                 ? ['success' => true, 'mensaje' => 'Estado actualizado']
-                : ['success' => false, 'error' => 'Error al actualizar estado']
+                : ['success' => false, 'error' => 'Error al actualizar estado'],
+            JSON_UNESCAPED_UNICODE
         );
         exit;
     break;
@@ -778,13 +858,16 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     // =====================================================
     case 'check_session':
         header('Content-Type: application/json; charset=utf-8');
+        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+        header("Pragma: no-cache");
+        if (ob_get_length()) ob_clean();
 
         if (!isset($_SESSION['usuario_id'])) {
             echo json_encode([
                 'active' => 0,
                 'reason' => 'no_session',
                 'message' => 'No hay sesión activa.'
-            ]);
+            ], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -794,7 +877,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 'active' => 0,
                 'reason' => 'revoked',
                 'message' => 'Tu sesión fue cerrada o revocada.'
-            ]);
+            ], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -822,7 +905,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                     'active' => 0,
                     'reason' => 'disabled',
                     'message' => 'Tu cuenta ha sido deshabilitada por el administrador.'
-                ]);
+                ], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
@@ -830,7 +913,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 'active' => 1,
                 'reason' => 'ok',
                 'message' => 'Sesión válida.'
-            ]);
+            ], JSON_UNESCAPED_UNICODE);
             exit;
 
         } catch (Exception $e) {
@@ -838,7 +921,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 'active' => 0,
                 'reason' => 'server',
                 'message' => 'Error validando estado de la cuenta.'
-            ]);
+            ], JSON_UNESCAPED_UNICODE);
             exit;
         }
     break;
@@ -849,6 +932,9 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     // =====================================================
     case 'login':
         header('Content-Type: application/json; charset=utf-8');
+        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+        header("Pragma: no-cache");
+        if (ob_get_length()) ob_clean();
 
         $data = json_decode(file_get_contents("php://input"), true);
 
@@ -856,7 +942,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         $password = $data['password'] ?? null;
 
         if (!$correo || !$password) {
-            echo json_encode(['error' => 'Credenciales incompletas']);
+            echo json_encode(['error' => 'Credenciales incompletas'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -870,9 +956,14 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 echo json_encode([
                     'success' => false,
                     'error' => 'Cuenta inactiva. Contacta al administrador.'
-                ]);
+                ], JSON_UNESCAPED_UNICODE);
                 exit;
             }
+
+            // ✅ SOLUCIÓN REAL: revoca sesiones anteriores y crea token_sesion nuevo
+            // Esto hace que check_session y cerrar sesión en BD funcionen correctamente.
+            revocarSesionesUsuario($conn, (int)$user['id_usuario']);
+            $newToken = crearTokenSesionBD($conn, (int)$user['id_usuario']);
 
             $_SESSION['usuario'] = [
                 'id'     => $user['id_usuario'],
@@ -885,6 +976,14 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             $_SESSION['usuario_nombre'] = $user['nombre_completo'] ?? '';
             $_SESSION['usuario_correo'] = $user['correo'] ?? '';
             $_SESSION['usuario_cargo']  = $user['cargo'] ?? '';
+
+            // ✅ IMPORTANTE: guardar token_sesion en PHP session
+            if ($newToken) {
+                $_SESSION['token_sesion'] = $newToken;
+            } else {
+                // No bloquea login si por alguna razón la tabla no existe o falla el insert
+                $_SESSION['token_sesion'] = '';
+            }
 
             // Detect forced password change requirement using the FORCE_ token prefix
             $stmt = $conn->prepare("
@@ -912,14 +1011,14 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                     'nombre' => $user['nombre_completo'],
                     'cargo'  => $user['cargo']
                 ]
-            ]);
+            ], JSON_UNESCAPED_UNICODE);
             exit;
 
         } else {
             echo json_encode([
                 'success' => false,
                 'error' => 'Credenciales incorrectas o cuenta inactiva'
-            ]);
+            ], JSON_UNESCAPED_UNICODE);
             exit;
         }
     break;
@@ -965,15 +1064,18 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     // =====================================================
     case 'actualizar_perfil':
         header('Content-Type: application/json; charset=utf-8');
+        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+        header("Pragma: no-cache");
+        if (ob_get_length()) ob_clean();
 
         if (!isset($_SESSION['usuario_id'])) {
-            echo json_encode(['error' => 'No hay sesión activa. Inicia sesión nuevamente.']);
+            echo json_encode(['error' => 'No hay sesión activa. Inicia sesión nuevamente.'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
         // Block updates if the session has been revoked by an administrator
         if (!validarSesionActivaEnBD($conn)) {
-            echo json_encode(['error' => 'Sesión expirada o revocada. Inicia sesión nuevamente.']);
+            echo json_encode(['error' => 'Sesión expirada o revocada. Inicia sesión nuevamente.'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -983,7 +1085,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         $direccion = isset($_POST['direccion']) ? colapsarEspacios($_POST['direccion']) : '';
 
         if ($telefono !== '' && !preg_match('/^[0-9+\s\-()]{7,20}$/', $telefono)) {
-            echo json_encode(['error' => 'Teléfono no válido.']);
+            echo json_encode(['error' => 'Teléfono no válido.'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -992,7 +1094,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         if (isset($_FILES['foto_perfil']) && $_FILES['foto_perfil']['error'] !== UPLOAD_ERR_NO_FILE) {
 
             if ($_FILES['foto_perfil']['error'] !== UPLOAD_ERR_OK) {
-                echo json_encode(['error' => 'Error subiendo la foto.']);
+                echo json_encode(['error' => 'Error subiendo la foto.'], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
@@ -1001,7 +1103,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             $size = (int)($_FILES['foto_perfil']['size'] ?? 0);
 
             if ($size > 2 * 1024 * 1024) {
-                echo json_encode(['error' => 'La foto supera el límite de 2MB.']);
+                echo json_encode(['error' => 'La foto supera el límite de 2MB.'], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
@@ -1009,7 +1111,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             $allowed = ['jpg','jpeg','png','webp'];
 
             if (!in_array($ext, $allowed, true)) {
-                echo json_encode(['error' => 'Formato no permitido. Usa JPG, PNG o WEBP.']);
+                echo json_encode(['error' => 'Formato no permitido. Usa JPG, PNG o WEBP.'], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
@@ -1022,7 +1124,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             $destAbs  = $uploadDirAbs . $fileName;
 
             if (!move_uploaded_file($tmp, $destAbs)) {
-                echo json_encode(['error' => 'No se pudo guardar la foto.']);
+                echo json_encode(['error' => 'No se pudo guardar la foto.'], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
@@ -1049,7 +1151,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             $ok = $stmt->execute($params);
 
             if (!$ok) {
-                echo json_encode(['error' => 'No se pudo actualizar el perfil.']);
+                echo json_encode(['error' => 'No se pudo actualizar el perfil.'], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
@@ -1060,11 +1162,11 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 $_SESSION['usuario_foto'] = $fotoPathDB;
             }
 
-            echo json_encode(['success' => true, 'mensaje' => 'Perfil actualizado correctamente']);
+            echo json_encode(['success' => true, 'mensaje' => 'Perfil actualizado correctamente'], JSON_UNESCAPED_UNICODE);
             exit;
 
         } catch (Exception $e) {
-            echo json_encode(['error' => 'Error del servidor al actualizar perfil', 'detalle' => $e->getMessage()]);
+            echo json_encode(['error' => 'Error del servidor al actualizar perfil', 'detalle' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
             exit;
         }
     break;
@@ -1075,15 +1177,18 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     // =====================================================
     case 'cambiar_password':
         header('Content-Type: application/json; charset=utf-8');
+        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+        header("Pragma: no-cache");
+        if (ob_get_length()) ob_clean();
 
         if (!isset($_SESSION['usuario_id'])) {
-            echo json_encode(['error' => 'No hay sesión activa. Inicia sesión nuevamente.']);
+            echo json_encode(['error' => 'No hay sesión activa. Inicia sesión nuevamente.'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
         // Block changes if the session has been revoked by an administrator
         if (!validarSesionActivaEnBD($conn)) {
-            echo json_encode(['error' => 'Sesión expirada o revocada. Inicia sesión nuevamente.']);
+            echo json_encode(['error' => 'Sesión expirada o revocada. Inicia sesión nuevamente.'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -1094,17 +1199,17 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         $confirmar  = (string)($_POST['password_confirmar'] ?? '');
 
         if ($actual === '' || $nueva === '' || $confirmar === '') {
-            echo json_encode(['error' => 'Complete todos los campos.']);
+            echo json_encode(['error' => 'Complete todos los campos.'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
         if (strlen($nueva) < 8) {
-            echo json_encode(['error' => 'La nueva contraseña debe tener mínimo 8 caracteres.']);
+            echo json_encode(['error' => 'La nueva contraseña debe tener mínimo 8 caracteres.'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
         if ($nueva !== $confirmar) {
-            echo json_encode(['error' => 'La confirmación no coincide.']);
+            echo json_encode(['error' => 'La confirmación no coincide.'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -1114,19 +1219,19 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$row) {
-                echo json_encode(['error' => 'Usuario no encontrado.']);
+                echo json_encode(['error' => 'Usuario no encontrado.'], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
             $hashActual = (string)$row['password'];
 
             if (!password_verify($actual, $hashActual)) {
-                echo json_encode(['error' => 'La contraseña actual es incorrecta.']);
+                echo json_encode(['error' => 'La contraseña actual es incorrecta.'], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
             if (password_verify($nueva, $hashActual)) {
-                echo json_encode(['error' => 'La nueva contraseña no puede ser igual a la actual.']);
+                echo json_encode(['error' => 'La nueva contraseña no puede ser igual a la actual.'], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
@@ -1151,15 +1256,15 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 // If you do not want this behavior, leave it commented.
                 // revocarSesionesUsuario($conn, $id_usuario);
 
-                echo json_encode(['success' => true, 'message' => 'Contraseña actualizada correctamente.']);
+                echo json_encode(['success' => true, 'message' => 'Contraseña actualizada correctamente.'], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
-            echo json_encode(['error' => 'No se pudo actualizar la contraseña.']);
+            echo json_encode(['error' => 'No se pudo actualizar la contraseña.'], JSON_UNESCAPED_UNICODE);
             exit;
 
         } catch (Exception $e) {
-            echo json_encode(['error' => 'Error del servidor al cambiar contraseña', 'detalle' => $e->getMessage()]);
+            echo json_encode(['error' => 'Error del servidor al cambiar contraseña', 'detalle' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
             exit;
         }
     break;
@@ -1169,7 +1274,10 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     // =====================================================
     default:
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['error' => 'Acción no válida']);
+        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+        header("Pragma: no-cache");
+        if (ob_get_length()) ob_clean();
+        echo json_encode(['error' => 'Acción no válida'], JSON_UNESCAPED_UNICODE);
         exit;
     break;
 }

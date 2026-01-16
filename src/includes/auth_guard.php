@@ -3,6 +3,8 @@
 // Cierra sesión si el usuario fue desactivado o si su token_sesion ya no está activo.
 // Agrega cierre automático por inactividad.
 
+// ✅ NUEVO: refresca datos de sesión desde BD para reflejar cambios sin re-login
+
 if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
@@ -120,6 +122,79 @@ try {
   if (!$s || (int)$s['activa'] !== 1) {
     _destroySession();
     _redirectLogin("session_revoked");
+  }
+
+  // -----------------------------------------------------------
+  // ✅ NUEVO: sincronizar datos del usuario logueado desde la BD
+  // Esto hace que cambios hechos por otro rol se vean sin re-login
+  // -----------------------------------------------------------
+  $SYNC_EVERY_SECONDS = 15; // puedes subirlo a 30 o 60 si quieres menos consultas
+  $lastSync = isset($_SESSION['__LAST_USER_SYNC__']) ? (int)$_SESSION['__LAST_USER_SYNC__'] : 0;
+
+  if ((time() - $lastSync) >= $SYNC_EVERY_SECONDS) {
+
+    $stmtSync = $conn->prepare("
+      SELECT
+        id_usuario,
+        nombre_completo,
+        tipo_documento,
+        numero_documento,
+        telefono,
+        cargo,
+        correo,
+        direccion,
+        foto_perfil,
+        estado
+      FROM usuarios
+      WHERE id_usuario = :id
+      LIMIT 1
+    ");
+    $stmtSync->execute([":id" => $uid]);
+    $fresh = $stmtSync->fetch(PDO::FETCH_ASSOC);
+
+    // Si el usuario desaparece o se desactiva, cerrar
+    if (!$fresh || !_estadoActivo($fresh['estado'] ?? null)) {
+
+      try {
+        $stmtOff3 = $conn->prepare("
+          UPDATE sesiones_usuarios
+          SET activa = 0
+          WHERE token_sesion = :token
+        ");
+        $stmtOff3->execute([':token' => $token]);
+      } catch (Throwable $e) {}
+
+      _destroySession();
+      _redirectLogin("disabled");
+    }
+
+    // ✅ Actualizar claves de sesión usadas en tu sistema
+    $_SESSION['usuario_id']               = (int)($fresh['id_usuario'] ?? $uid);
+    $_SESSION['usuario_nombre']           = $fresh['nombre_completo'] ?? ($_SESSION['usuario_nombre'] ?? '');
+    $_SESSION['usuario_correo']           = $fresh['correo'] ?? ($_SESSION['usuario_correo'] ?? '');
+    $_SESSION['usuario_cargo']            = $fresh['cargo'] ?? ($_SESSION['usuario_cargo'] ?? '');
+
+    // ✅ Datos extra usados en perfil / cabeceras
+    $_SESSION['usuario_tipo_documento']   = $fresh['tipo_documento'] ?? ($_SESSION['usuario_tipo_documento'] ?? '');
+    $_SESSION['usuario_numero_documento'] = $fresh['numero_documento'] ?? ($_SESSION['usuario_numero_documento'] ?? '');
+    $_SESSION['usuario_telefono']         = $fresh['telefono'] ?? ($_SESSION['usuario_telefono'] ?? '');
+    $_SESSION['usuario_direccion']        = $fresh['direccion'] ?? ($_SESSION['usuario_direccion'] ?? '');
+
+    // Foto perfil
+    $_SESSION['usuario_foto']             = $fresh['foto_perfil'] ?? ($_SESSION['usuario_foto'] ?? null);
+
+    // Si tú también usas $_SESSION['usuario'] (lo haces en login), lo sincronizamos
+    if (!isset($_SESSION['usuario']) || !is_array($_SESSION['usuario'])) {
+      $_SESSION['usuario'] = [];
+    }
+
+    $_SESSION['usuario']['id']     = (int)($fresh['id_usuario'] ?? $uid);
+    $_SESSION['usuario']['nombre'] = $fresh['nombre_completo'] ?? ($_SESSION['usuario']['nombre'] ?? '');
+    $_SESSION['usuario']['correo'] = $fresh['correo'] ?? ($_SESSION['usuario']['correo'] ?? '');
+    $_SESSION['usuario']['cargo']  = $fresh['cargo'] ?? ($_SESSION['usuario']['cargo'] ?? '');
+
+    // Marca de sincronización
+    $_SESSION['__LAST_USER_SYNC__'] = time();
   }
 
   // ----------------------------
