@@ -89,6 +89,10 @@ class FichaController {
             )
         ]);
     }
+
+    public function obtenerInstructoresFicha($id) {
+        echo json_encode($this->model->obtenerInstructoresDeFicha($id));
+    }
 }
 
 /* ================= ROUTER ================= */
@@ -146,6 +150,10 @@ switch ($accion) {
 
     case "asignarInstructores":
         $controller->asignarInstructores();
+        break;
+
+    case "instructoresFicha":
+        $controller->obtenerInstructoresFicha($id);
         break;
 
     default:

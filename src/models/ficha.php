@@ -174,7 +174,13 @@ class FichaModel {
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+            // Log para debugging
+            error_log("Instructores encontrados: " . count($result));
+        
+            return $result;
+
         } catch (Exception $e) {
+            error_log("Error en obtenerInstructores: " . $e->getMessage());
             return [];
         }
     }
@@ -187,13 +193,13 @@ class FichaModel {
             }
 
             $stmtDelete = $this->conn->prepare(
-                "DELETE FROM ficha_instructores WHERE id_ficha = ?"
+                "DELETE FROM fichas_instructores WHERE id_ficha = ?"
             );
             $stmtDelete->execute([$id_ficha]);
 
             $stmtInsert = $this->conn->prepare(
-                "INSERT INTO ficha_instructores (id_ficha, id_instructor)
-                 VALUES (?, ?)"
+                "INSERT INTO fichas_instructores (id_ficha, id_usuario, fecha_asignacion, estado)
+                 VALUES (?, ?, NOW(), 'activo')"
             );
 
             foreach ($instructores as $id_instructor) {
@@ -204,6 +210,24 @@ class FichaModel {
 
         } catch (Exception $e) {
             return false;
+        }
+    }
+
+    /* Get instructors of a FICHA */
+    public function obtenerInstructoresDeFicha($id_ficha) {
+        try {
+            $sql = "SELECT u.id_usuario, u.nombre_completo, u.numero_documento, u.correo, fi.fecha_asignacion, fi.estado
+                    FROM fichas_instructores fi
+                    INNER JOIN usuarios u ON fi.id_usuario = u.id_usuario
+                    WHERE fi.id_ficha = ? AND fi.estado = 'activo'
+                    ORDER BY u.nombre_completo";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([$id_ficha]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        } catch (Exception $e) {
+            return [];
         }
     }
 
