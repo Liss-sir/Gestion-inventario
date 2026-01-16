@@ -440,7 +440,7 @@ function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
       return false
     }
     if (!codeRegex.test(data.codigo_inventario)) {
-      showAlert("Código inválido: 3-30 caracteres alfanuméricos, guion o guion bajo", "error")
+      showAlert("Código inválido: solo números (3-30 dígitos)", "warning")
       document.getElementById(isEdit ? "editCodigo" : "codigo")?.focus()
       return false
     }

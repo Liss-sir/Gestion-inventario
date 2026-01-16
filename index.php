@@ -5,7 +5,7 @@ define('ACCESO_PERMITIDO', true);
 
 session_start();
 
-// Ruta base del proyecto
+// Ruta base del proyecto (DEBE ir antes de usar BASE_PATH)
 define('BASE_PATH', __DIR__);
 
 // Base URL dinámica
@@ -17,9 +17,8 @@ define('BASE_URL', $protocol . $host . $script_dir);
 // URL base para los assets
 define('ASSETS_URL', BASE_URL . "src/assets/");
 
-// 🔐 Nombre de la clave de sesión donde guardas el ID del usuario
-//   AJÚSTALO al nombre REAL que uses en login.php
-$SESSION_USER_KEY = 'usuario_id';  // si en tu login usaste 'id_usuario', cambia esto
+// Nombre de la clave de sesión donde guardas el ID del usuario
+$SESSION_USER_KEY = 'usuario_id';
 
 // =============================
 // LÓGICA DE PÁGINA ACTUAL
@@ -31,7 +30,7 @@ $page = basename($page); // sanitizar
 
 // 1) Si es la LANDING → mostrar solo landing.php sin header/sidebar/footer
 if ($page === 'landing') {
-    $landingFile = BASE_PATH . "/src/view/landing.php"; // ajusta ruta si tu vista está en otro lado
+    $landingFile = BASE_PATH . "/src/view/landing.php";
 
     if (file_exists($landingFile)) {
         include $landingFile;
@@ -40,26 +39,42 @@ if ($page === 'landing') {
                 No se encontró la vista <strong>landing.php</strong>.
             </p>";
     }
-    exit; // importante: no seguir renderizando el layout
+    exit;
 }
 
-// 2) A PARTIR DE AQUÍ, TODAS LAS PÁGINAS SON PROTEGIDAS
-//    Si NO hay sesión → mandar al login (tu login real)
+// 2) Si es LOGIN, dejarlo pasar sin auth_guard
+//    (para evitar redirect automático si no hay sesión)
+if ($page === 'login') {
+    $loginFile = BASE_PATH . "/src/view/login/login.php";
 
-if (!isset($_SESSION['usuario_id'])) {
-    // ✅ CORREGIDO: tu login real es src/view/login/login.php
-    header('Location: ' . BASE_URL . 'src/view/login/login.php');
+    if (file_exists($loginFile)) {
+        include $loginFile;
+    } else {
+        echo "<p style='color:red; text-align:center; padding:2rem;'>
+                No se encontró la vista <strong>login.php</strong>.
+            </p>";
+    }
+    exit;
+}
+
+// 3) A PARTIR DE AQUÍ, TODAS LAS PÁGINAS SON PROTEGIDAS
+// ✅ Ejecuta auth_guard completo (estado activo + sesión única + timeout 15 min)
+require_once BASE_PATH . '/src/includes/auth_guard.php';
+
+// Si NO hay sesión → mandar al login (extra protección)
+if (!isset($_SESSION[$SESSION_USER_KEY])) {
+    header('Location: ' . BASE_URL . 'index.php?page=login');
     exit;
 }
 ?>
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <title>Gestion Inventario</title>
     <link rel="icon" type="image/png" href="">
-    <!-- <link rel="stylesheet" href="./public/css/output.css"> -->
 </head>
+
 <body class="flex flex-col min-h-screen font-sans bg-white text-gray-900 transition-all duration-300">
     <header>
         <?php require_once BASE_PATH . '/src/includes/header.php'; ?>

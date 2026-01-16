@@ -31,6 +31,18 @@ class SubBodegaModel {
         }
     }
 
+    /* GET BY BODEGA */
+    public function obtenerPorBodega(int $idBodega): array {
+        try {
+            $stmt = $this->conn->prepare("SELECT * FROM subbodegas WHERE id_bodega = ? ORDER BY nombre_subbodega");
+            $stmt->execute([$idBodega]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("PDO get by bodega error: " . $e->getMessage());
+            return [];
+        }
+    }
+
     /* CREATE */
     public function crear(array $data): bool {
         try {
@@ -55,15 +67,20 @@ class SubBodegaModel {
         }
     }
 
-    /* UPDATE */
+   /* UPDATE (MODELO) */
     public function actualizar(int $id, array $data): bool {
         try {
-            $sql = "UPDATE subbodegas SET
-                    id_bodega = ?, codigo_subbodega = ?, nombre_subbodega = ?,
-                    descripcion = ?, estado = ?, clasificacion_subbodegas = ?
-                    WHERE id_subbodega = ?";
-
-            $stmt = $this->conn->prepare($sql);
+            $stmt = $this->conn->prepare("
+                UPDATE subbodegas
+                SET
+                    id_bodega = ?,
+                    codigo_subbodega = ?,
+                    nombre_subbodega = ?,
+                    descripcion = ?,
+                    estado = ?,
+                    clasificacion_subbodegas = ?
+                WHERE id_subbodega = ?
+            ");
 
             return $stmt->execute([
                 $data["id_bodega"],
@@ -79,7 +96,7 @@ class SubBodegaModel {
             return false;
         }
     }
-
+    
     /* CHANGE STATE */
     public function cambiarEstado(int $id, string $estado): bool {
         try {
@@ -91,4 +108,3 @@ class SubBodegaModel {
         }
     }
 }
-

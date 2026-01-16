@@ -1,13 +1,14 @@
 <?php
-// =====================================
-// USER MANAGEMENT – PHP VIEW
-// =====================================
+// =====================================================
+// USER MANAGEMENT — PHP VIEW
+// =====================================================
 
-// ✅ NECESARIO: para poder usar $_SESSION sin warnings
+// Session is required to access authenticated user data (e.g., $_SESSION variables)
 if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 
+// UI layout configuration based on the sidebar collapse state
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 ?>
@@ -28,7 +29,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   <!-- Custom styles for the Users management module -->
   <link rel="stylesheet" href="src/assets/css/usuarios/usuarios.css" />
 
-  <!-- Expose authenticated user ID to JavaScript logic -->
+  <!-- Provide the authenticated user ID to the client-side script -->
   <script>
     const AUTH_USER_ID = <?= (int)($_SESSION['usuario_id'] ?? 0); ?>;
   </script>
@@ -52,9 +53,9 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </p>
         </div>
 
-        <!-- Right-side controls: view switch and "New User" button -->
+        <!-- Right-side actions: view mode toggle and "New User" button -->
         <div class="flex items-center gap-3">
-          <!-- View switch: table / cards -->
+          <!-- View mode toggle: table / cards -->
           <div class="inline-flex rounded-lg border border-border bg-card shadow-sm overflow-hidden">
             <!-- Table view button -->
             <button
@@ -102,7 +103,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             </button>
           </div>
 
-          <!-- "New User" primary action -->
+          <!-- Primary action: open create-user modal -->
           <button
             id="btnNuevoUsuario"
             class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2"
@@ -133,9 +134,9 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       <!-- ================================== -->
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between my-6">
 
-        <!-- SEARCH -->
+        <!-- Search input -->
         <div class="relative w-full sm:max-w-xs">
-          <!-- Lupa dentro -->
+          <!-- Search icon inside the input -->
           <svg
             class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
             xmlns="http://www.w3.org/2000/svg"
@@ -156,7 +157,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           />
         </div>
 
-        <!-- ROLE FILTER -->
+        <!-- Role filter dropdown -->
         <div class="flex items-center gap-2">
           <svg
             class="h-4 w-4"
@@ -191,7 +192,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       <!-- ================================== -->
       <!-- TABLE VIEW CONTAINER               -->
       <!-- ================================== -->
-      <!-- ✅ FIX PRO: dropdown sin recorte + esquinas perfectas -->
+      <!-- Table wrapper configured to prevent dropdown clipping and preserve border radius -->
       <div
         id="vistaTabla"
         class="relative rounded-xl border border-border bg-card p-[1px] overflow-visible"
@@ -227,7 +228,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                    [&>tr:last-child>td:first-child]:rounded-bl-[11px]
                    [&>tr:last-child>td:last-child]:rounded-br-[11px]"
           >
-            <!-- Rows are rendered dynamically via JavaScript -->
+            <!-- Table rows are injected dynamically via JavaScript -->
           </tbody>
         </table>
       </div>
@@ -240,7 +241,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           id="cardsContainer"
           class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
         >
-          <!-- Cards are rendered dynamically via JavaScript -->
+          <!-- User cards are injected dynamically via JavaScript -->
         </div>
       </div>
     </div>
@@ -261,7 +262,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             Complete los datos para registrar un nuevo usuario
           </p>
         </div>
-        <!-- Close button -->
+        <!-- Close modal button -->
         <button
           type="button"
           id="btnCerrarModalUsuario"
@@ -287,7 +288,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
       <!-- Modal form body -->
       <form id="formUsuario" class="space-y-4" novalidate>
-        <!-- Hidden field used to distinguish between create and edit -->
+        <!-- Hidden field used to distinguish between create and edit mode -->
         <input type="hidden" id="hiddenUserId" value="">
 
         <div class="grid gap-4 sm:grid-cols-2">
@@ -319,7 +320,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               id="tipo_documento"
               class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input-siga"
             >
-              <!-- Document types must match database values -->
+              <!-- The values below must match the database enum values -->
               <option value="CC">CC</option>
               <option value="TI">TI</option>
               <option value="CE">CE</option>
@@ -370,7 +371,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               id="cargo"
               class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input-siga"
             >
-              <!-- Role values must be consistent with the database -->
+              <!-- Role values must be consistent with the database records -->
               <option value="Coordinador">Coordinador</option>
               <option value="Subcoordinador">Subcoordinador</option>
               <option value="Instructor">Instructor</option>
@@ -379,7 +380,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             </select>
           </div>
 
-          <!-- Training program (only visible for specific roles, e.g. Instructor) -->
+          <!-- Training program selector (visible only for specific roles, such as Instructor) -->
           <div class="space-y-2 sm:col-span-2 hidden" id="wrapper_programa">
             <label
               for="id_programa"
@@ -426,7 +427,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 placeholder="Ingrese una contraseña segura"
               />
 
-              <!-- Ojito -->
+              <!-- Password visibility toggle button -->
               <button
                 id="btnTogglePassword"
                 type="button"
@@ -504,7 +505,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       <!-- Modal header -->
       <div class="flex items-start justify-between gap-4 mb-4">
         <h2 class="text-lg font-semibold">Detalles del Usuario</h2>
-        <!-- Close button -->
+        <!-- Close modal button -->
         <button
           type="button"
           id="btnCerrarModalVerUsuario"
@@ -528,9 +529,9 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </button>
       </div>
 
-      <!-- User details content, populated dynamically via JavaScript -->
+      <!-- User details section populated dynamically via JavaScript -->
       <div id="detalleUsuarioContent" class="space-y-4">
-        <!-- Filled when a user is selected -->
+        <!-- Content is injected when a user is selected -->
       </div>
     </div>
   </div>

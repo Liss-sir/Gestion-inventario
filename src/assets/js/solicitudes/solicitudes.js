@@ -1,1272 +1,1118 @@
 // ============================================================
-//  MÓDULO SOLICITUDES – JS COMPLETO Y CORREGIDO
+//  MÓDULO SOLICITUDES – JS FUNCIONAL (BACKEND/BD INTACTOS)
+//  + NUEVO: marcar "Aprobada" como "Entregada" (accion=entregar)
 // ============================================================
 
-const API = "src/controllers/solicitudes_controller.php";
+const API = new URL("src/controllers/solicitudes_controller.php", document.baseURI).toString();
 
-// ============================================================
-//  CONFIGURACIÓN
-// ============================================================
 const CONFIG = {
-    COLUMNAS: {
-        ID: "id_solicitud",
-        FECHA: "fecha_solicitud",
-        ESTADO: "estado",
-        FICHA: "id_ficha",
-        PROGRAMA: "id_programa",
-        RAE: "id_rae",
-        ACTIVIDAD: "id_actividad",
-        SOLICITANTE: "id_usuario_solicitante",
-        APROBADOR: "id_usuario_aprobador",
-        OBSERVACIONES: "observaciones",
-        FECHA_RESPUESTA: "fecha_respuesta"
-    },
-    
-    LABELS: {
-        pendiente: "Pendiente",
-        aprobada: "Aprobada",
-        rechazada: "Rechazada",
-        entregada: "Entregada"
-    },
-    
-    ICONS: {
-        pendiente: "clock",
-        aprobada: "check-circle",
-        entregada: "package-check",
-        rechazada: "x-circle"
-    },
-    
-    PAGE_SIZE: 9
+  LABELS: {
+    pendiente: "Pendiente",
+    aprobada: "Aprobada",
+    rechazada: "Rechazada",
+    entregada: "Entregada",
+  },
+  ICONS: {
+    pendiente: "clock",
+    aprobada: "check-circle",
+    entregada: "package-check",
+    rechazada: "x-circle",
+  },
+  PAGE_SIZE: 9,
 };
 
-// ============================================================
-//  ESTADO GLOBAL
-// ============================================================
 let estadoApp = {
-    solicitudes: [],
-    filtroActivo: "todas",
-    paginaActual: 1,
-    materialesSeleccionados: [],
-    datosFormulario: {
-        programa: "",
-        rae: "",
-        ficha: "",
-        actividad: "",
-        observaciones: ""
-    }
+  solicitudes: [],
+  filtroActivo: "todas",
+  paginaActual: 1,
+  materialesSeleccionados: [],
+  datosFormulario: { programa: "", rae: "", ficha: "", observaciones: "" },
 };
 
-// ============================================================
-//  SELECTORES
-// ============================================================
 const selectores = {
-    // Botones principales
-    btnNueva: document.getElementById("sol-btn-nueva"),
-    modal: document.getElementById("sol-modal"),
-    btnCerrarModal: document.getElementById("sol-modal-cerrar"),
-    btnCancelar: document.getElementById("sol-btn-cancelar"),
-    
-    // Pasos del modal
-    paso1: document.getElementById("sol-paso-1"),
-    paso2: document.getElementById("sol-paso-2"),
-    btnPaso2: document.getElementById("sol-btn-ir-paso-2"),
-    btnVolver: document.getElementById("sol-btn-volver"),
-    btnGuardar: document.getElementById("sol-btn-guardar"),
-    
-    // Contenedores
-    contenedorCards: document.getElementById("sol-cards"),
-    paginacion: document.getElementById("sol-pagination"),
-    filtros: document.querySelectorAll(".sol-filtro-btn"),
-    
-    // Formulario
-    formNueva: document.getElementById("sol-form-nueva"),
-    selectPrograma: document.getElementById("programa"),
-    selectRae: document.getElementById("rae"),
-    selectFichas: document.getElementById("ficha"),
-    textareaObservaciones: document.getElementById("observaciones"),
-    
-    // Materiales
-    selectMaterial: document.getElementById("material-select"),
-    inputCantidad: document.getElementById("material-cantidad"),
-    btnAgregarMaterial: document.getElementById("btn-agregar-material"),
-    listaMateriales: document.getElementById("lista-materiales"),
-    
-    // Resumen
-    resumenPendientes: document.getElementById("resumen-pendientes"),
-    resumenAprobadas: document.getElementById("resumen-aprobadas"),
-    resumenEntregadas: document.getElementById("resumen-entregadas"),
-    resumenRechazadas: document.getElementById("resumen-rechazadas")
+  btnNueva: document.getElementById("sol-btn-nueva"),
+  modal: document.getElementById("sol-modal"),
+  btnCerrarModal: document.getElementById("sol-modal-cerrar"),
+  btnCancelar: document.getElementById("sol-btn-cancelar"),
+
+  paso1: document.getElementById("sol-paso-1"),
+  paso2: document.getElementById("sol-paso-2"),
+  btnPaso2: document.getElementById("sol-btn-ir-paso-2"),
+  btnVolver: document.getElementById("sol-btn-volver"),
+  btnGuardar: document.getElementById("sol-btn-guardar"),
+
+  contenedorCards: document.getElementById("sol-cards"),
+  paginacion: document.getElementById("sol-pagination"),
+  filtros: document.querySelectorAll(".sol-filtro-btn"),
+
+  formNueva: document.getElementById("sol-form-nueva"),
+  selectPrograma: document.getElementById("programa"),
+  selectRae: document.getElementById("rae"),
+  selectFichas: document.getElementById("ficha"),
+  textareaObservaciones: document.getElementById("observaciones"),
+
+  selectMaterial: document.getElementById("material-select"),
+  inputCantidad: document.getElementById("material-cantidad"),
+  btnAgregarMaterial: document.getElementById("btn-agregar-material"),
+  listaMateriales: document.getElementById("lista-materiales"),
+
+  resumenPendientes: document.getElementById("resumen-pendientes"),
+  resumenAprobadas: document.getElementById("resumen-aprobadas"),
+  resumenEntregadas: document.getElementById("resumen-entregadas"),
+  resumenRechazadas: document.getElementById("resumen-rechazadas"),
 };
 
 // ============================================================
-//  FUNCIONES DE UTILIDAD
+//  FLOWBITE-STYLE TOASTS (igual al módulo Usuarios)
 // ============================================================
+function getOrCreateFlowbiteContainer() {
+  let container = document.getElementById("flowbite-alert-container");
+
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "flowbite-alert-container";
+    container.className =
+      "fixed top-6 right-6 z-[9999] flex flex-col gap-3 w-full max-w-md px-4 pointer-events-none";
+    document.body.appendChild(container);
+  }
+
+  return container;
+}
+
+function showFlowbiteAlert(type, message) {
+  const container = getOrCreateFlowbiteContainer();
+  const wrapper = document.createElement("div");
+
+  let borderColor = "border-amber-500";
+  let textColor = "text-amber-900";
+  let titleText = "Advertencia";
+
+  let iconSVG = `
+    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+      <path d="M8.257 3.099c.765-1.36 2.72-1.36 3.485 0l6.518 11.59A1.75 1.75 0 0 1 16.768 17H3.232a1.75 1.75 0 0 1-1.492-2.311L8.257 3.1z"/>
+      <path d="M11 13H9V9h2zm0 3H9v-2h2z" fill="#fff"/>
+    </svg>
+  `;
+
+  if (type === "success") {
+    borderColor = "border-emerald-500";
+    textColor = "text-emerald-900";
+    titleText = "Éxito";
+    iconSVG = `
+      <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm-1 15-4-4 1.414-1.414L9 12.172l4.586-4.586L15 9z"/>
+      </svg>
+    `;
+  }
+
+  if (type === "info") {
+    borderColor = "border-blue-500";
+    textColor = "text-blue-900";
+    titleText = "Información";
+    iconSVG = `
+      <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm1 15H9v-5h2Zm0-7H9V6h2Z"/>
+      </svg>
+    `;
+  }
+
+  wrapper.className = `
+    relative flex items-center w-full pointer-events-auto
+    rounded-2xl border-l-4 ${borderColor} bg-white shadow-md
+    px-4 py-3 text-sm ${textColor}
+    opacity-0 -translate-y-2 transition-all duration-300 ease-out
+  `;
+
+  wrapper.innerHTML = `
+    <div class="flex-shrink-0 mr-3 text-current">${iconSVG}</div>
+    <div class="flex-1 min-w-0">
+      <p class="font-semibold">${titleText}</p>
+      <p class="mt-0.5 text-sm">${message}</p>
+    </div>
+  `;
+
+  container.appendChild(wrapper);
+
+  requestAnimationFrame(() => {
+    wrapper.classList.remove("opacity-0", "-translate-y-2");
+    wrapper.classList.add("opacity-100", "translate-y-0");
+  });
+
+  setTimeout(() => {
+    wrapper.classList.add("opacity-0", "-translate-y-2");
+    wrapper.classList.remove("opacity-100", "translate-y-0");
+    setTimeout(() => wrapper.remove(), 250);
+  }, 4000);
+}
+
+function toastError(message) {
+  showFlowbiteAlert("warning", message);
+}
+function toastSuccess(message) {
+  showFlowbiteAlert("success", message);
+}
+function toastInfo(message) {
+  showFlowbiteAlert("info", message);
+}
+
+// ============================================================
+//  MODAL MOTIVO RECHAZO (SIGA) - sin prompt, sin confirm
+// ============================================================
+function ensureMotivoModalRoot() {
+  let root = document.getElementById("sol-motivo-modal-root");
+  if (!root) {
+    root = document.createElement("div");
+    root.id = "sol-motivo-modal-root";
+    root.className = "fixed inset-0 z-[9998] hidden items-center justify-center";
+    document.body.appendChild(root);
+  }
+  return root;
+}
+
+/**
+ * Modal para capturar motivo (obligatorio).
+ * Retorna: string motivo, o null si cancelan/cierra.
+ */
+function pedirMotivoRechazo() {
+  return new Promise((resolve) => {
+    const root = ensureMotivoModalRoot();
+
+    root.innerHTML = `
+      <!-- Backdrop -->
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-motivo-backdrop></div>
+
+      <!-- Dialog -->
+      <div class="relative mx-4 w-full max-w-2xl rounded-2xl bg-card text-foreground shadow-xl border border-border p-6 sm:p-8 animate-fade-in-up">
+        <div class="flex items-start justify-between mb-4">
+          <div>
+            <h2 class="text-xl font-semibold">Rechazar Solicitud</h2>
+            <p class="text-sm text-muted-foreground">Ingrese el motivo del rechazo (obligatorio)</p>
+          </div>
+
+          <button type="button" data-motivo-cancel
+            class="inline-flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted">
+            <i data-lucide="x" class="h-4 w-4"></i>
+          </button>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-sm font-medium">Motivo</label>
+          <textarea
+            id="sol-motivo-input"
+            class="input-siga w-full min-h-[130px] resize-none"
+            placeholder="Escriba el motivo..."
+          ></textarea>
+          <p class="text-xs text-muted-foreground">
+            Este motivo quedará registrado en la solicitud.
+          </p>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-2">
+          <button type="button" data-motivo-cancel
+            class="px-4 py-2 rounded-xl border border-border bg-card hover:bg-muted text-foreground">
+            Cancelar
+          </button>
+
+          <button type="button" data-motivo-ok
+            class="px-4 py-2 rounded-xl bg-error text-error-foreground hover:opacity-95">
+            Rechazar
+          </button>
+        </div>
+      </div>
+    `;
+
+    // mostrar
+    root.classList.remove("hidden");
+    root.classList.add("flex");
+
+    const input = root.querySelector("#sol-motivo-input");
+    const backdrop = root.querySelector("[data-motivo-backdrop]");
+
+    const cleanup = () => {
+      root.classList.add("hidden");
+      root.classList.remove("flex");
+      root.innerHTML = "";
+    };
+
+    const close = (val) => {
+      document.removeEventListener("keydown", onKey);
+      cleanup();
+      resolve(val);
+    };
+
+    // cancelar por botones
+    root.querySelectorAll("[data-motivo-cancel]").forEach((b) => {
+      b.addEventListener("click", () => close(null));
+    });
+
+    // click fuera
+    backdrop?.addEventListener("click", () => close(null));
+
+    // confirmar
+    root.querySelector("[data-motivo-ok]")?.addEventListener("click", () => {
+      const motivo = String(input?.value || "").trim();
+      if (!motivo) {
+        toastError("Debe ingresar un motivo.");
+        input?.focus();
+        return;
+      }
+      close(motivo);
+    });
+
+    // ESC
+    function onKey(e) {
+      if (e.key === "Escape" || e.key === "Esc" || e.keyCode === 27) {
+        close(null);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+
+    // focus
+    setTimeout(() => input?.focus(), 50);
+
+    // lucide
+    if (typeof lucide !== "undefined") lucide.createIcons();
+  });
+}
+
+
 const utilidades = {
-    normalizarEstado(estadoBD) {
-        if (!estadoBD) return "pendiente";
-        const estado = String(estadoBD).toLowerCase().trim();
-        return estado;
-    },
+  normalizarEstado(estadoBD) {
+    if (!estadoBD) return "pendiente";
 
-    extraerDatosSolicitud(solicitudBD) {
-        console.log("🔍 Procesando solicitud de BD:", solicitudBD);
-        
-        return {
-            id: solicitudBD.id_solicitud || solicitudBD.id || "N/A",
-            fecha: this.formatearFecha(solicitudBD.fecha_solicitud),
-            ficha: solicitudBD.numero_ficha || solicitudBD.id_ficha || "N/A",
-            estado: this.normalizarEstado(solicitudBD.estado),
-            programa: solicitudBD.codigo_programa || solicitudBD.nombre_programa || solicitudBD.id_programa || "",
-            rae: solicitudBD.codigo_rae || solicitudBD.descripcion_rae || solicitudBD.id_rae || "",
-            actividad: solicitudBD.id_actividad || "",
-            solicitante: solicitudBD.id_usuario_solicitante || "",
-            aprobador: solicitudBD.id_usuario_aprobador || "",
-            observaciones: solicitudBD.observaciones || "",
-            fecha_respuesta: this.formatearFecha(solicitudBD.fecha_respuesta),
-            jornada: solicitudBD.jornada || "",
-            nombre_programa: solicitudBD.nombre_programa || "",
-            descripcion_rae: solicitudBD.descripcion_rae || ""
-        };
-    },
+    const s = String(estadoBD).trim().toLowerCase();
+    const clean = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-    formatearFecha(fechaString) {
-        if (!fechaString) return "";
-        try {
-            const fecha = new Date(fechaString);
-            return fecha.toLocaleDateString('es-ES', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-            });
-        } catch (e) {
-            return fechaString;
-        }
-    },
+    if (clean === "aprobado" || clean === "aprobada") return "aprobada";
+    if (clean === "rechazado" || clean === "rechazada") return "rechazada";
+    if (clean === "entregado" || clean === "entregada") return "entregada";
+    return clean;
+  },
 
-    mostrarError(mensaje) {
-        console.error("❌ Error:", mensaje);
-        alert(`Error: ${mensaje}`);
-    },
+  formatearFecha(fechaString) {
+    if (!fechaString) return "";
+    try {
+      const normalized = String(fechaString).includes(" ")
+        ? String(fechaString).replace(" ", "T")
+        : fechaString;
 
-    mostrarExito(mensaje) {
-        console.log("✅ Éxito:", mensaje);
-        alert(`Éxito: ${mensaje}`);
+      const d = new Date(normalized);
+      if (isNaN(d.getTime())) return String(fechaString);
+
+      return d.toLocaleDateString("es-ES", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    } catch {
+      return String(fechaString);
     }
+  },
+
+  extraerDatosSolicitud(s) {
+    return {
+      id: s.id_solicitud ?? s.id ?? "N/A",
+      fecha: this.formatearFecha(s.fecha_solicitud),
+      estado: this.normalizarEstado(s.estado),
+      ficha: s.numero_ficha ?? s.id_ficha ?? "N/A",
+      programa: s.codigo_programa ?? s.nombre_programa ?? s.id_programa ?? "",
+      rae: s.codigo_rae ?? s.descripcion_rae ?? s.id_rae ?? "",
+      observaciones: s.observaciones ?? "",
+      fecha_respuesta: this.formatearFecha(s.fecha_respuesta),
+    };
+  },
+
+  mostrarError(msg) {
+    console.error("❌", msg);
+    toastError(msg);
+  },
+
+  mostrarExito(msg) {
+    console.log("✅", msg);
+    toastSuccess(msg);
+  },
+
+  mostrarInfo(msg) {
+    console.log("ℹ️", msg);
+    toastInfo(msg);
+  },
+
 };
 
-// ============================================================
-//  FUNCIONES DE API
-// ============================================================
 const api = {
-    async listarSolicitudes() {
-        try {
-            console.log("🔍 Solicitando datos de la API:", `${API}?accion=listar`);
-            
-            const response = await fetch(`${API}?accion=listar`);
-            
-            console.log("📡 Respuesta HTTP:", {
-                status: response.status,
-                statusText: response.statusText,
-                ok: response.ok
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Error HTTP: ${response.status} ${response.statusText}`);
-            }
-            
-            const rawText = await response.text();
-            console.log("📦 Texto crudo recibido:", rawText.substring(0, 500));
-            
-            let data;
-            try {
-                data = JSON.parse(rawText);
-            } catch (e) {
-                console.error("❌ Error parseando JSON:", e);
-                console.error("Texto recibido:", rawText);
-                throw new Error('Respuesta del servidor no es JSON válido');
-            }
-            
-            console.log("📦 Datos parseados:", data);
-            
-            if (!Array.isArray(data)) {
-                console.error("❌ La respuesta no es un array:", data);
-                return [];
-            }
-            
-            const solicitudesProcesadas = data.map(s => 
-                utilidades.extraerDatosSolicitud(s)
-            );
-            
-            console.log(`✅ ${solicitudesProcesadas.length} solicitudes procesadas`);
-            return solicitudesProcesadas;
-            
-        } catch (error) {
-            console.error('❌ Error al cargar solicitudes:', error);
-            utilidades.mostrarError(`No se pudieron cargar las solicitudes: ${error.message}`);
-            return [];
-        }
-    },
+  async listarSolicitudes() {
+    try {
+      const res = await fetch(`${API}?accion=listar`);
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
 
-    async crearSolicitud(datos) {
-        try {
-            console.log("📤 Enviando solicitud:", datos);
-            
-            const datosParaEnviar = {
-                id_usuario: 1,
-                id_ficha: datos.ficha,
-                id_programa: datos.programa,
-                id_rae: datos.rae,
-                observaciones: datos.observaciones || '',
-                materiales: datos.materiales
-            };
+      const raw = await res.text();
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        throw new Error("El servidor no devolvió JSON válido en listar()");
+      }
 
-            console.log("📦 Datos completos a enviar:", datosParaEnviar);
+      if (!Array.isArray(data)) {
+        if (data && data.success === false) throw new Error(data.error || "Error en listar()");
+        return [];
+      }
 
-            const response = await fetch(`${API}?accion=crear`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(datosParaEnviar)
-            });
-
-            // Verificar respuesta cruda
-            const rawText = await response.text();
-            console.log("📥 Respuesta cruda del servidor:", rawText.substring(0, 500));
-            
-            let result;
-            try {
-                result = JSON.parse(rawText);
-            } catch (parseError) {
-                console.error("❌ Error parseando JSON:", parseError);
-                throw new Error(`El servidor devolvió un formato inválido: ${rawText.substring(0, 100)}`);
-            }
-
-            console.log("📦 Resultado parseado:", result);
-            
-            if (result.success) {
-                utilidades.mostrarExito('Solicitud creada correctamente');
-                return result;
-            } else {
-                throw new Error(result.error || result.message || 'Error al crear la solicitud');
-            }
-        } catch (error) {
-            console.error('❌ Error al crear solicitud:', error);
-            utilidades.mostrarError(error.message);
-            throw error;
-        }
-    },
-
-    // 🎯 FUNCIÓN PARA CAMBIAR ESTADO - CORREGIDA
-    async cambiarEstadoSolicitud(idSolicitud, nuevoEstado, motivo = '') {
-        try {
-            console.log(`📤 Enviando respuesta de solicitud:`, {
-                id_solicitud: idSolicitud,
-                estado: nuevoEstado,
-                observaciones: motivo
-            });
-
-            const response = await fetch(`${API}?accion=responder`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    id_solicitud: parseInt(idSolicitud),
-                    estado: nuevoEstado,
-                    id_usuario_aprobador: 1, // Cambia esto según tu sistema
-                    observaciones: motivo
-                })
-            });
-
-            const rawText = await response.text();
-            console.log("📥 Respuesta cruda:", rawText.substring(0, 500));
-            
-            let result;
-            try {
-                result = JSON.parse(rawText);
-            } catch (parseError) {
-                console.error("❌ Error parseando JSON:", parseError);
-                throw new Error(`El servidor devolvió un formato inválido: ${rawText.substring(0, 100)}`);
-            }
-
-            console.log('📦 Resultado del servidor:', result);
-            
-            return result;
-            
-        } catch (error) {
-            console.error('❌ Error en la API:', error);
-            throw error;
-        }
-    },
-
-    async cargarSelectores() {
-        try {
-            console.log("📚 Cargando datos para selectores...");
-            
-            // 1. CARGAR PROGRAMAS
-            console.log("🔗 Solicitando programas...");
-            const responseProgramas = await fetch(`${API}?accion=programas`);
-            console.log("📡 Estado programas:", responseProgramas.status, responseProgramas.ok);
-            
-            if (responseProgramas.ok) {
-                const programas = await responseProgramas.json();
-                console.log("📋 Programas cargados:", programas);
-                
-                selectores.selectPrograma.innerHTML = '<option value="">Seleccionar programa</option>';
-                if (Array.isArray(programas) && programas.length > 0) {
-                    programas.forEach(programa => {
-                        const option = document.createElement('option');
-                        option.value = programa.id_programa;
-                        option.textContent = `${programa.codigo_programa} - ${programa.nombre_programa}`;
-                        selectores.selectPrograma.appendChild(option);
-                    });
-                    console.log(`✅ ${programas.length} programas cargados`);
-                } else {
-                    console.warn("⚠️ No se encontraron programas o no es un array");
-                }
-            } else {
-                console.error("❌ Error cargando programas:", responseProgramas.status);
-            }
-
-            // 2. LISTENER PARA CAMBIO DE PROGRAMA
-            selectores.selectPrograma.addEventListener('change', async function() {
-                const programaId = this.value;
-                console.log("🔄 Programa seleccionado:", programaId);
-                
-                if (!programaId) {
-                    selectores.selectRae.innerHTML = '<option value="">Seleccionar RAE</option>';
-                    selectores.selectFichas.innerHTML = '<option value="">Seleccionar ficha</option>';
-                    return;
-                }
-                
-                try {
-                    const raesUrl = `${API}?accion=raes&programa=${programaId}`;
-                    const fichasUrl = `${API}?accion=fichas&programa=${programaId}`;
-                    
-                    console.log("🔗 URLs:", { raesUrl, fichasUrl });
-                    
-                    const [responseRaes, responseFichas] = await Promise.all([
-                        fetch(raesUrl),
-                        fetch(fichasUrl)
-                    ]);
-
-                    console.log("📡 Respuestas:", {
-                        raes: { status: responseRaes.status, ok: responseRaes.ok },
-                        fichas: { status: responseFichas.status, ok: responseFichas.ok }
-                    });
-
-                    // Cargar RAEs
-                    if (responseRaes.ok) {
-                        const raes = await responseRaes.json();
-                        console.log("🎯 RAEs cargados:", raes);
-                        selectores.selectRae.innerHTML = '<option value="">Seleccionar RAE</option>';
-                        if (Array.isArray(raes) && raes.length > 0) {
-                            raes.forEach(rae => {
-                                const option = document.createElement('option');
-                                option.value = rae.id_rae;
-                                option.textContent = `${rae.codigo_rae} - ${rae.descripcion_rae}`;
-                                selectores.selectRae.appendChild(option);
-                            });
-                            console.log(`✅ ${raes.length} RAEs cargados`);
-                        } else {
-                            console.warn("⚠️ No se encontraron RAEs para este programa");
-                            selectores.selectRae.innerHTML = '<option value="">No hay RAEs disponibles</option>';
-                        }
-                    }
-
-                    // Cargar Fichas
-                    if (responseFichas.ok) {
-                        const fichas = await responseFichas.json();
-                        console.log("📝 Fichas cargadas:", fichas);
-                        selectores.selectFichas.innerHTML = '<option value="">Seleccionar ficha</option>';
-                        if (Array.isArray(fichas) && fichas.length > 0) {
-                            fichas.forEach(ficha => {
-                                const option = document.createElement('option');
-                                option.value = ficha.id_ficha;
-                                option.textContent = `${ficha.numero_ficha} - ${ficha.jornada}`;
-                                selectores.selectFichas.appendChild(option);
-                            });
-                            console.log(`✅ ${fichas.length} fichas cargadas`);
-                        } else {
-                            console.warn("⚠️ No se encontraron fichas para este programa");
-                            selectores.selectFichas.innerHTML = '<option value="">No hay fichas disponibles</option>';
-                        }
-                    }
-                    
-                } catch (error) {
-                    console.error('❌ Error al cargar RAEs/Fichas:', error);
-                }
-            });
-
-            // 3. CARGAR MATERIALES
-            console.log("📦 Solicitando materiales...");
-            const responseMateriales = await fetch(`${API}?accion=materiales`);
-            console.log("📡 Estado materiales:", responseMateriales.status, responseMateriales.ok);
-            
-            if (responseMateriales.ok) {
-                const materiales = await responseMateriales.json();
-                console.log("📦 Respuesta materiales:", materiales);
-                
-                selectores.selectMaterial.innerHTML = '<option value="">Seleccionar material</option>';
-                
-                if (Array.isArray(materiales) && materiales.length > 0) {
-                    console.log(`✅ ${materiales.length} materiales encontrados`);
-                    
-                    materiales.forEach((material, index) => {
-                        console.log(`Material ${index + 1}:`, material);
-                        
-                        const option = document.createElement('option');
-                        option.value = material.id_material;
-                        option.textContent = `${material.nombre || 'Sin nombre'} (${material.codigo_inventario || 'Sin código'})`;
-                        option.dataset.stock = material.stock_actual || 0;
-                        option.dataset.unidad = material.unidad_medida || 'UND';
-                        option.dataset.nombre = material.nombre || '';
-                        selectores.selectMaterial.appendChild(option);
-                    });
-                } else {
-                    console.warn("⚠️ No se encontraron materiales o no es un array");
-                    selectores.selectMaterial.innerHTML = '<option value="">No hay materiales disponibles</option>';
-                }
-            } else {
-                console.error("❌ Error cargando materiales:", responseMateriales.status);
-                selectores.selectMaterial.innerHTML = '<option value="">Error cargando materiales</option>';
-            }
-
-            console.log("✅ Selectores cargados exitosamente");
-
-        } catch (error) {
-            console.error('❌ Error cargando selectores:', error);
-            utilidades.mostrarError('Error al cargar los datos. Consulte la consola.');
-        }
+      return data.map((x) => utilidades.extraerDatosSolicitud(x));
+    } catch (e) {
+      utilidades.mostrarError(`No se pudieron cargar las solicitudes: ${e.message}`);
+      return [];
     }
+  },
+
+  async crearSolicitud(payload) {
+    const res = await fetch(`${API}?accion=crear`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const raw = await res.text();
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      throw new Error(`El servidor no devolvió JSON válido en crear(): ${raw.substring(0, 120)}`);
+    }
+
+    if (data?.success) return data;
+    throw new Error(data?.error || data?.message || "Error al crear la solicitud");
+  },
+
+  async responderSolicitud(idSolicitud, estado, observaciones = null) {
+    const res = await fetch(`${API}?accion=responder`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id_solicitud: parseInt(idSolicitud, 10),
+        estado, // 'aprobada' | 'rechazada'
+        id_usuario_aprobador: 1,
+        observaciones,
+      }),
+    });
+
+    const raw = await res.text();
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      throw new Error(`El servidor no devolvió JSON válido en responder(): ${raw.substring(0, 120)}`);
+    }
+
+    return data;
+  },
+
+  // ✅ NUEVO: marcar entregada (accion=entregar)
+  async entregarSolicitud(idSolicitud) {
+    const res = await fetch(`${API}?accion=entregar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id_solicitud: parseInt(idSolicitud, 10),
+        id_usuario: 1, // quien marca entrega (según tu controller)
+      }),
+    });
+
+    const raw = await res.text();
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      throw new Error(`El servidor no devolvió JSON válido en entregar(): ${raw.substring(0, 120)}`);
+    }
+
+    return data;
+  },
+
+  async cargarSelectores() {
+    try {
+      const resProg = await fetch(`${API}?accion=programas`);
+      if (resProg.ok) {
+        const programas = await resProg.json();
+        selectores.selectPrograma.innerHTML = '<option value="">Seleccionar programa</option>';
+        if (Array.isArray(programas)) {
+          programas.forEach((p) => {
+            const opt = document.createElement("option");
+            opt.value = p.id_programa;
+            opt.textContent = `${p.codigo_programa} - ${p.nombre_programa}`;
+            selectores.selectPrograma.appendChild(opt);
+          });
+        }
+      }
+
+      selectores.selectPrograma.addEventListener("change", async function () {
+        const programaId = this.value;
+
+        selectores.selectRae.innerHTML = '<option value="">Seleccionar RAE</option>';
+        selectores.selectFichas.innerHTML = '<option value="">Seleccionar ficha</option>';
+
+        if (!programaId) return;
+
+        const [resRaes, resFichas] = await Promise.all([
+          fetch(`${API}?accion=raes&programa=${programaId}`),
+          fetch(`${API}?accion=fichas&programa=${programaId}`),
+        ]);
+
+        if (resRaes.ok) {
+          const raes = await resRaes.json();
+          selectores.selectRae.innerHTML = '<option value="">Seleccionar RAE</option>';
+          if (Array.isArray(raes) && raes.length) {
+            raes.forEach((r) => {
+              const opt = document.createElement("option");
+              opt.value = r.id_rae;
+              opt.textContent = `${r.codigo_rae} - ${r.descripcion_rae}`;
+              selectores.selectRae.appendChild(opt);
+            });
+          } else {
+            selectores.selectRae.innerHTML = '<option value="">No hay RAEs disponibles</option>';
+          }
+        }
+
+        if (resFichas.ok) {
+          const fichas = await resFichas.json();
+          selectores.selectFichas.innerHTML = '<option value="">Seleccionar ficha</option>';
+          if (Array.isArray(fichas) && fichas.length) {
+            fichas.forEach((f) => {
+              const opt = document.createElement("option");
+              opt.value = f.id_ficha;
+              opt.textContent = `${f.numero_ficha} - ${f.jornada}`;
+              selectores.selectFichas.appendChild(opt);
+            });
+          } else {
+            selectores.selectFichas.innerHTML = '<option value="">No hay fichas disponibles</option>';
+          }
+        }
+      });
+
+      const resMat = await fetch(`${API}?accion=materiales`);
+      if (resMat.ok) {
+        const mats = await resMat.json();
+        selectores.selectMaterial.innerHTML = '<option value="">Seleccionar material</option>';
+        if (Array.isArray(mats) && mats.length) {
+          mats.forEach((m) => {
+            const opt = document.createElement("option");
+            opt.value = m.id_material;
+            opt.textContent = `${m.nombre} (${m.codigo_inventario || "Sin código"})`;
+            opt.dataset.stock = m.stock_actual || 0;
+            opt.dataset.unidad = m.unidad_medida || "UND";
+            opt.dataset.nombre = m.nombre || "";
+            selectores.selectMaterial.appendChild(opt);
+          });
+        } else {
+          selectores.selectMaterial.innerHTML = '<option value="">No hay materiales disponibles</option>';
+        }
+      } else {
+        selectores.selectMaterial.innerHTML = '<option value="">Error cargando materiales</option>';
+      }
+    } catch (e) {
+      utilidades.mostrarError(`Error cargando selectores: ${e.message}`);
+    }
+  },
 };
 
-// ============================================================
-//  FUNCIONES DE RENDERIZADO
-// ============================================================
 const render = {
-    actualizarResumen() {
-        const contadores = {
-            pendiente: 0,
-            aprobada: 0,
-            entregada: 0,
-            rechazada: 0
-        };
+  actualizarResumen() {
+    const c = { pendiente: 0, aprobada: 0, entregada: 0, rechazada: 0 };
+    estadoApp.solicitudes.forEach((s) => {
+      const st = s.estado || "pendiente";
+      if (c.hasOwnProperty(st)) c[st]++;
+    });
+    selectores.resumenPendientes.textContent = c.pendiente;
+    selectores.resumenAprobadas.textContent = c.aprobada;
+    selectores.resumenEntregadas.textContent = c.entregada;
+    selectores.resumenRechazadas.textContent = c.rechazada;
+  },
 
-        estadoApp.solicitudes.forEach(s => {
-            const estado = s.estado || 'pendiente';
-            if (contadores.hasOwnProperty(estado)) {
-                contadores[estado]++;
-            }
-        });
+  actualizarFiltros() {
+    const c = { pendiente: 0, aprobada: 0, entregada: 0, rechazada: 0 };
+    estadoApp.solicitudes.forEach((s) => {
+      const st = s.estado || "pendiente";
+      if (c.hasOwnProperty(st)) c[st]++;
+    });
 
-        console.log("📊 Contadores:", contadores);
+    const total = estadoApp.solicitudes.length;
+    selectores.filtros.forEach((btn) => {
+      const f = btn.dataset.filtro;
+      if (f === "todas") btn.textContent = `Todas (${total})`;
+      else btn.textContent = `${CONFIG.LABELS[f]}s (${c[f] || 0})`;
+    });
+  },
 
-        if (selectores.resumenPendientes) selectores.resumenPendientes.textContent = contadores.pendiente;
-        if (selectores.resumenAprobadas) selectores.resumenAprobadas.textContent = contadores.aprobada;
-        if (selectores.resumenEntregadas) selectores.resumenEntregadas.textContent = contadores.entregada;
-        if (selectores.resumenRechazadas) selectores.resumenRechazadas.textContent = contadores.rechazada;
-    },
+  renderizarSolicitudes() {
+    const cont = selectores.contenedorCards;
+    if (!cont) return;
 
-    actualizarFiltros() {
-        const contadores = {
-            pendiente: 0,
-            aprobada: 0,
-            entregada: 0,
-            rechazada: 0
-        };
+    if (!estadoApp.solicitudes.length) {
+      cont.innerHTML = `
+        <div class="col-span-full py-12 text-center">
+          <i data-lucide="file-text" class="w-12 h-12 text-gray-300 mx-auto mb-4"></i>
+          <h3 class="text-lg font-medium text-gray-700 mb-2">No hay solicitudes registradas</h3>
+          <p class="text-gray-500">Cree una nueva solicitud para comenzar</p>
+        </div>`;
+      lucide.createIcons();
+      return;
+    }
 
-        estadoApp.solicitudes.forEach(s => {
-            const estado = s.estado || 'pendiente';
-            if (contadores.hasOwnProperty(estado)) {
-                contadores[estado]++;
-            }
-        });
+    const filtradas =
+      estadoApp.filtroActivo === "todas"
+        ? estadoApp.solicitudes
+        : estadoApp.solicitudes.filter((s) => (s.estado || "pendiente") === estadoApp.filtroActivo);
 
-        const totalSolicitudes = estadoApp.solicitudes.length;
-        
-        selectores.filtros.forEach(btn => {
-            const filtro = btn.dataset.filtro;
-            if (filtro === 'todas') {
-                btn.textContent = `Todas (${totalSolicitudes})`;
-            } else {
-                const count = contadores[filtro] || 0;
-                btn.textContent = `${CONFIG.LABELS[filtro]}s (${count})`;
-            }
-        });
-    },
+    if (!filtradas.length) {
+      cont.innerHTML = `
+        <div class="col-span-full py-12 text-center">
+          <i data-lucide="filter" class="w-12 h-12 text-gray-300 mx-auto mb-4"></i>
+          <h3 class="text-lg font-medium text-gray-700 mb-2">No hay solicitudes ${CONFIG.LABELS[estadoApp.filtroActivo]}s</h3>
+          <p class="text-gray-500">Intente con otro filtro</p>
+        </div>`;
+      lucide.createIcons();
+      return;
+    }
 
-    renderizarSolicitudes() {
-        console.log("🎨 Renderizando solicitudes:", {
-            total: estadoApp.solicitudes.length,
-            filtro: estadoApp.filtroActivo,
-            pagina: estadoApp.paginaActual
-        });
+    const ini = (estadoApp.paginaActual - 1) * CONFIG.PAGE_SIZE;
+    const fin = ini + CONFIG.PAGE_SIZE;
+    const pagina = filtradas.slice(ini, fin);
 
-        if (estadoApp.solicitudes.length === 0) {
-            selectores.contenedorCards.innerHTML = `
-                <div class="col-span-full py-12 text-center">
-                    <i data-lucide="file-text" class="w-12 h-12 text-gray-300 mx-auto mb-4"></i>
-                    <h3 class="text-lg font-medium text-gray-700 mb-2">No hay solicitudes registradas</h3>
-                    <p class="text-gray-500">Cree una nueva solicitud para comenzar</p>
-                </div>
-            `;
-            lucide.createIcons();
-            return;
-        }
+    cont.innerHTML = "";
 
-        let solicitudesFiltradas;
-        
-        if (estadoApp.filtroActivo === 'todas') {
-            solicitudesFiltradas = estadoApp.solicitudes;
-        } else {
-            solicitudesFiltradas = estadoApp.solicitudes.filter(
-                s => (s.estado || 'pendiente') === estadoApp.filtroActivo
-            );
-        }
+    pagina.forEach((s) => {
+      const st = s.estado || "pendiente";
+      const icon = CONFIG.ICONS[st] || "clock";
+      const label = CONFIG.LABELS[st] || st;
 
-        console.log("🔍 Solicitudes filtradas:", solicitudesFiltradas.length);
+      const mostrarAccionesPendiente = st === "pendiente";
+      const mostrarAccionEntregar = st === "aprobada";
 
-        if (solicitudesFiltradas.length === 0) {
-            selectores.contenedorCards.innerHTML = `
-                <div class="col-span-full py-12 text-center">
-                    <i data-lucide="filter" class="w-12 h-12 text-gray-300 mx-auto mb-4"></i>
-                    <h3 class="text-lg font-medium text-gray-700 mb-2">No hay solicitudes ${CONFIG.LABELS[estadoApp.filtroActivo]}s</h3>
-                    <p class="text-gray-500">Intente con otro filtro</p>
-                </div>
-            `;
-            lucide.createIcons();
-            return;
-        }
+      const card = document.createElement("div");
+      card.className = "sol-card";
+      card.dataset.id = s.id;
 
-        const inicio = (estadoApp.paginaActual - 1) * CONFIG.PAGE_SIZE;
-        const fin = inicio + CONFIG.PAGE_SIZE;
-        const paginaSolicitudes = solicitudesFiltradas.slice(inicio, fin);
-
-        selectores.contenedorCards.innerHTML = '';
-
-        paginaSolicitudes.forEach(solicitud => {
-            const estado = solicitud.estado || 'pendiente';
-            const icono = CONFIG.ICONS[estado] || 'clock';
-            const label = CONFIG.LABELS[estado] || estado.charAt(0).toUpperCase() + estado.slice(1);
-            
-            // 🔥 Determinar si mostrar botones de acción (solo para pendientes)
-            const mostrarAcciones = estado === 'pendiente';
-            
-            const card = document.createElement('div');
-            card.className = 'sol-card';
-            card.dataset.id = solicitud.id;
-
-            card.innerHTML = `
-                <div class="sol-card-header">
-                    <div class="sol-card-title-wrap">
-                        <div class="sol-card-icon ${estado}">
-                            <i data-lucide="${icono}"></i>
-                        </div>
-                        <div>
-                            <div class="sol-card-title">Solicitud #${solicitud.id}</div>
-                            <div class="sol-card-date">${solicitud.fecha || 'Sin fecha'}</div>
-                        </div>
-                    </div>
-
-                    <span class="sol-badge ${estado}">
-                        ${label}
-                    </span>
-                </div>
-
-                <div class="sol-card-body">
-                    <div class="sol-card-row">
-                        <i data-lucide="hash" class="sol-icon-muted"></i>
-                        <span>Ficha: ${solicitud.ficha}</span>
-                    </div>
-                    
-                    ${solicitud.programa ? `
-                    <div class="sol-card-row">
-                        <i data-lucide="book-open" class="sol-icon-muted"></i>
-                        <span>Programa: ${solicitud.programa}</span>
-                    </div>
-                    ` : ''}
-                    
-                    ${solicitud.rae ? `
-                    <div class="sol-card-row">
-                        <i data-lucide="target" class="sol-icon-muted"></i>
-                        <span>RAE: ${solicitud.rae}</span>
-                    </div>
-                    ` : ''}
-                    
-                    ${solicitud.observaciones ? `
-                    <div class="sol-card-row">
-                        <i data-lucide="message-square" class="sol-icon-muted"></i>
-                        <span class="truncate" title="${solicitud.observaciones}">
-                            ${solicitud.observaciones.substring(0, 60)}${solicitud.observaciones.length > 60 ? '...' : ''}
-                        </span>
-                    </div>
-                    ` : ''}
-                    
-                    ${solicitud.fecha_respuesta ? `
-                    <div class="sol-card-row">
-                        <i data-lucide="calendar-check" class="sol-icon-muted"></i>
-                        <span>Respuesta: ${solicitud.fecha_respuesta}</span>
-                    </div>
-                    ` : ''}
-                </div>
-
-                <!-- 🎯 BOTONES DE ACEPTAR/RECHAZAR (SOLO PARA PENDIENTES) -->
-                ${mostrarAcciones ? `
-                <div class="sol-card-footer mt-4 pt-4 border-t border-gray-200">
-                    <div class="flex gap-2">
-                        <button class="sol-btn-aceptar flex-1 py-2 px-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-                                data-id="${solicitud.id}">
-                            <i data-lucide="check-circle" class="w-4 h-4"></i>
-                            Aceptar
-                        </button>
-                        <button class="sol-btn-rechazar flex-1 py-2 px-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
-                                data-id="${solicitud.id}">
-                            <i data-lucide="x-circle" class="w-4 h-4"></i>
-                            Rechazar
-                        </button>
-                    </div>
-                </div>
-                ` : ''}
-            `;
-
-            selectores.contenedorCards.appendChild(card);
-        });
-
-        lucide.createIcons();
-
-        // 🎯 AGREGAR EVENTOS A LOS BOTONES DESPUÉS DE RENDERIZAR
-        setTimeout(() => {
-            agregarEventosBotonesAccion();
-        }, 100);
-
-        this.renderizarPaginacion(solicitudesFiltradas.length);
-    },
-
-    renderizarPaginacion(totalItems) {
-        const totalPaginas = Math.ceil(totalItems / CONFIG.PAGE_SIZE);
-        
-        if (totalPaginas <= 1) {
-            selectores.paginacion.innerHTML = '';
-            return;
-        }
-
-        let paginacionHTML = '';
-
-        paginacionHTML += `
-            <button class="sol-paginacion-btn ${estadoApp.paginaActual === 1 ? 'disabled' : ''}" 
-                    ${estadoApp.paginaActual === 1 ? 'disabled' : ''}
-                    onclick="paginacion.cambiarPagina(${estadoApp.paginaActual - 1})">
-                <i data-lucide="chevron-left" class="w-4 h-4"></i>
-            </button>
-        `;
-
-        for (let i = 1; i <= totalPaginas; i++) {
-            if (i === 1 || i === totalPaginas || 
-                (i >= estadoApp.paginaActual - 1 && i <= estadoApp.paginaActual + 1)) {
-                paginacionHTML += `
-                    <button class="sol-paginacion-btn ${estadoApp.paginaActual === i ? 'active' : ''}" 
-                            onclick="paginacion.cambiarPagina(${i})">
-                        ${i}
-                    </button>
-                `;
-            } else if (i === estadoApp.paginaActual - 2 || i === estadoApp.paginaActual + 2) {
-                paginacionHTML += '<span class="px-2 text-gray-400">...</span>';
-            }
-        }
-
-        paginacionHTML += `
-            <button class="sol-paginacion-btn ${estadoApp.paginaActual === totalPaginas ? 'disabled' : ''}" 
-                    ${estadoApp.paginaActual === totalPaginas ? 'disabled' : ''}
-                    onclick="paginacion.cambiarPagina(${estadoApp.paginaActual + 1})">
-                <i data-lucide="chevron-right" class="w-4 h-4"></i>
-            </button>
-        `;
-
-        selectores.paginacion.innerHTML = paginacionHTML;
-        lucide.createIcons();
-    },
-
-    renderizarMateriales() {
-        if (estadoApp.materialesSeleccionados.length === 0) {
-            selectores.listaMateriales.innerHTML = `
-                <div class="text-center text-muted-foreground py-8">
-                    <i data-lucide="package" class="w-8 h-8 mx-auto mb-2"></i>
-                    <p>No hay materiales agregados</p>
-                </div>
-            `;
-            return;
-        }
-
-        let html = `
-            <div class="space-y-2">
-                <div class="flex justify-between text-sm font-medium text-gray-500 pb-2 border-b">
-                    <span class="flex-1">Material</span>
-                    <span class="w-24 text-center">Cantidad</span>
-                    <span class="w-16 text-center">Acciones</span>
-                </div>
-        `;
-
-        estadoApp.materialesSeleccionados.forEach((material, index) => {
-            html += `
-                <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                    <div class="flex-1">
-                        <div class="font-medium">${material.nombre}</div>
-                        <div class="text-sm text-gray-500">${material.unidad} • Stock: ${material.stock}</div>
-                    </div>
-                    <div class="w-24 text-center">
-                        <span class="font-semibold">${material.cantidad}</span>
-                    </div>
-                    <div class="w-16 text-center">
-                        <button type="button" onclick="materiales.eliminarMaterial(${index})" 
-                                class="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-
-        const totalMateriales = estadoApp.materialesSeleccionados.reduce((sum, m) => sum + m.cantidad, 0);
-        html += `
-            <div class="pt-2 border-t">
-                <div class="flex justify-between font-medium text-gray-700">
-                    <span>Total materiales:</span>
-                    <span>${totalMateriales} unidades</span>
-                </div>
+      card.innerHTML = `
+        <div class="sol-card-header">
+          <div class="sol-card-title-wrap">
+            <div class="sol-card-icon ${st}"><i data-lucide="${icon}"></i></div>
+            <div>
+              <div class="sol-card-title">Solicitud #${s.id}</div>
+              <div class="sol-card-date">${s.fecha || "Sin fecha"}</div>
             </div>
+          </div>
+          <span class="sol-badge ${st}">${label}</span>
+        </div>
+
+        <div class="sol-card-body">
+          <div class="sol-card-row">
+            <i data-lucide="hash" class="sol-icon-muted"></i>
+            <span>Ficha: ${s.ficha}</span>
+          </div>
+
+          ${s.programa ? `
+          <div class="sol-card-row">
+            <i data-lucide="book-open" class="sol-icon-muted"></i>
+            <span>Programa: ${s.programa}</span>
+          </div>` : ""}
+
+          ${s.rae ? `
+          <div class="sol-card-row">
+            <i data-lucide="target" class="sol-icon-muted"></i>
+            <span>RAE: ${s.rae}</span>
+          </div>` : ""}
+
+          ${s.observaciones ? `
+          <div class="sol-card-row">
+            <i data-lucide="message-square" class="sol-icon-muted"></i>
+            <span class="truncate" title="${s.observaciones}">
+              ${s.observaciones.substring(0, 60)}${s.observaciones.length > 60 ? "..." : ""}
+            </span>
+          </div>` : ""}
+
+          ${s.fecha_respuesta ? `
+          <div class="sol-card-row">
+            <i data-lucide="calendar-check" class="sol-icon-muted"></i>
+            <span>Respuesta: ${s.fecha_respuesta}</span>
+          </div>` : ""}
+        </div>
+
+        ${mostrarAccionesPendiente ? `
+        <div class="sol-card-footer mt-4 pt-4 border-t border-gray-200">
+          <div class="flex gap-2">
+            <button class="sol-btn-aceptar flex-1 py-2 px-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                    data-id="${s.id}">
+              <i data-lucide="check-circle" class="w-4 h-4"></i>
+              Aceptar
+            </button>
+            <button class="sol-btn-rechazar flex-1 py-2 px-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                    data-id="${s.id}">
+              <i data-lucide="x-circle" class="w-4 h-4"></i>
+              Rechazar
+            </button>
+          </div>
+        </div>` : ""}
+
+        ${mostrarAccionEntregar ? `
+        <div class="sol-card-footer mt-4 pt-4 border-t border-gray-200">
+          <button class="sol-btn-entregar w-full py-2 px-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                  data-id="${s.id}">
+            <i data-lucide="package-check" class="w-4 h-4"></i>
+            Marcar como entregada
+          </button>
+        </div>` : ""}
+      `;
+
+      cont.appendChild(card);
+    });
+
+    lucide.createIcons();
+    setTimeout(agregarEventosBotonesAccion, 50);
+    this.renderizarPaginacion(filtradas.length);
+  },
+
+  renderizarPaginacion(totalItems) {
+    const totalPaginas = Math.ceil(totalItems / CONFIG.PAGE_SIZE);
+    if (totalPaginas <= 1) {
+      selectores.paginacion.innerHTML = "";
+      return;
+    }
+
+    let html = `
+      <button class="sol-paginacion-btn ${estadoApp.paginaActual === 1 ? "disabled" : ""}"
+              ${estadoApp.paginaActual === 1 ? "disabled" : ""}
+              onclick="paginacion.cambiarPagina(${estadoApp.paginaActual - 1})">
+        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+      </button>`;
+
+    for (let i = 1; i <= totalPaginas; i++) {
+      if (
+        i === 1 ||
+        i === totalPaginas ||
+        (i >= estadoApp.paginaActual - 1 && i <= estadoApp.paginaActual + 1)
+      ) {
+        html += `
+          <button class="sol-paginacion-btn ${estadoApp.paginaActual === i ? "active" : ""}"
+                  onclick="paginacion.cambiarPagina(${i})">${i}</button>`;
+      } else if (i === estadoApp.paginaActual - 2 || i === estadoApp.paginaActual + 2) {
+        html += `<span class="px-2 text-gray-400">...</span>`;
+      }
+    }
+
+    html += `
+      <button class="sol-paginacion-btn ${estadoApp.paginaActual === totalPaginas ? "disabled" : ""}"
+              ${estadoApp.paginaActual === totalPaginas ? "disabled" : ""}
+              onclick="paginacion.cambiarPagina(${estadoApp.paginaActual + 1})">
+        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      </button>`;
+
+    selectores.paginacion.innerHTML = html;
+    lucide.createIcons();
+  },
+
+  renderizarMateriales() {
+    if (!estadoApp.materialesSeleccionados.length) {
+      selectores.listaMateriales.innerHTML = `
+        <div class="text-center text-muted-foreground py-8">
+          <i data-lucide="package" class="w-8 h-8 mx-auto mb-2"></i>
+          <p>No hay materiales agregados</p>
+        </div>`;
+      lucide.createIcons();
+      return;
+    }
+
+    let html = `
+      <div class="space-y-2">
+        <div class="flex justify-between text-sm font-medium text-gray-500 pb-2 border-b">
+          <span class="flex-1">Material</span>
+          <span class="w-24 text-center">Cantidad</span>
+          <span class="w-16 text-center">Acciones</span>
         </div>`;
 
-        selectores.listaMateriales.innerHTML = html;
-        lucide.createIcons();
-    }
+    estadoApp.materialesSeleccionados.forEach((m, idx) => {
+      html += `
+        <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+          <div class="flex-1">
+            <div class="font-medium">${m.nombre}</div>
+            <div class="text-sm text-gray-500">${m.unidad} • Stock: ${m.stock}</div>
+          </div>
+          <div class="w-24 text-center"><span class="font-semibold">${m.cantidad}</span></div>
+          <div class="w-16 text-center">
+            <button type="button" onclick="materiales.eliminarMaterial(${idx})"
+                    class="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>`;
+    });
+
+    html += `</div>`;
+    selectores.listaMateriales.innerHTML = html;
+    lucide.createIcons();
+  },
 };
 
-// ============================================================
-//  GESTIÓN DE MATERIALES
-// ============================================================
 const materiales = {
-    agregarMaterial() {
-        const materialId = selectores.selectMaterial.value;
-        const cantidad = parseInt(selectores.inputCantidad.value);
-        
-        if (!materialId) {
-            utilidades.mostrarError('Seleccione un material');
-            return;
-        }
-        
-        if (!cantidad || cantidad < 1) {
-            utilidades.mostrarError('Ingrese una cantidad válida (mínimo 1)');
-            selectores.inputCantidad.focus();
-            return;
-        }
+  agregarMaterial() {
+    const id = selectores.selectMaterial.value;
+    const cantidad = parseInt(selectores.inputCantidad.value, 10);
 
-        const option = selectores.selectMaterial.selectedOptions[0];
-        const stock = parseInt(option.dataset.stock) || 0;
-        const unidad = option.dataset.unidad || 'UND';
-        
-        if (cantidad > stock) {
-            utilidades.mostrarError(`Stock insuficiente. Disponible: ${stock} ${unidad}`);
-            selectores.inputCantidad.value = stock;
-            selectores.inputCantidad.focus();
-            return;
-        }
+    if (!id) return utilidades.mostrarError("Seleccione un material");
+    if (!cantidad || cantidad < 1) return utilidades.mostrarError("Cantidad inválida");
 
-        const existe = estadoApp.materialesSeleccionados.find(m => m.id == materialId);
-        if (existe) {
-            if (confirm('Este material ya fue agregado. ¿Desea actualizar la cantidad?')) {
-                existe.cantidad = cantidad;
-                render.renderizarMateriales();
-            }
-            return;
-        }
+    const opt = selectores.selectMaterial.selectedOptions[0];
+    const stock = parseInt(opt.dataset.stock, 10) || 0;
+    const unidad = opt.dataset.unidad || "UND";
+    const nombre = opt.dataset.nombre || opt.textContent;
 
-        estadoApp.materialesSeleccionados.push({
-            id: materialId,
-            nombre: option.textContent,
-            cantidad: cantidad,
-            stock: stock,
-            unidad: unidad
-        });
-
-        selectores.selectMaterial.value = '';
-        selectores.inputCantidad.value = '1';
-        
-        render.renderizarMateriales();
-        utilidades.mostrarExito('Material agregado correctamente');
-    },
-
-    eliminarMaterial(index) {
-        if (confirm('¿Está seguro de eliminar este material?')) {
-            estadoApp.materialesSeleccionados.splice(index, 1);
-            render.renderizarMateriales();
-            utilidades.mostrarExito('Material eliminado');
-        }
-    },
-
-    limpiarMateriales() {
-        if (estadoApp.materialesSeleccionados.length > 0) {
-            if (!confirm('¿Está seguro de limpiar todos los materiales?')) {
-                return;
-            }
-        }
-        estadoApp.materialesSeleccionados = [];
-        render.renderizarMateriales();
+    if (cantidad > stock) {
+      utilidades.mostrarError(`Stock insuficiente. Disponible: ${stock} ${unidad}`);
+      selectores.inputCantidad.value = String(stock);
+      selectores.inputCantidad.focus();
+      return;
     }
+
+    const existe = estadoApp.materialesSeleccionados.find((m) => String(m.id) === String(id));
+    if (existe) {
+      if (confirm("Este material ya fue agregado. ¿Actualizar cantidad?")) {
+        existe.cantidad = cantidad;
+        render.renderizarMateriales();
+      }
+      return;
+    }
+
+    estadoApp.materialesSeleccionados.push({ id, nombre, cantidad, stock, unidad });
+    selectores.selectMaterial.value = "";
+    selectores.inputCantidad.value = "1";
+    render.renderizarMateriales();
+  },
+
+  eliminarMaterial(index) {
+    estadoApp.materialesSeleccionados.splice(index, 1);
+    render.renderizarMateriales();
+    toastInfo("Material eliminado.");
+  },
+
+  limpiarMateriales() {
+    estadoApp.materialesSeleccionados = [];
+    render.renderizarMateriales();
+  },
 };
 
-// ============================================================
-//  GESTIÓN DE PAGINACIÓN
-// ============================================================
 const paginacion = {
-    cambiarPagina(nuevaPagina) {
-        const totalSolicitudes = estadoApp.filtroActivo === 'todas' 
-            ? estadoApp.solicitudes.length 
-            : estadoApp.solicitudes.filter(s => (s.estado || 'pendiente') === estadoApp.filtroActivo).length;
-        
-        const totalPaginas = Math.ceil(totalSolicitudes / CONFIG.PAGE_SIZE);
-        
-        if (nuevaPagina < 1 || nuevaPagina > totalPaginas) return;
-        
-        estadoApp.paginaActual = nuevaPagina;
-        render.renderizarSolicitudes();
-        
-        window.scrollTo({
-            top: selectores.contenedorCards.offsetTop - 100,
-            behavior: 'smooth'
-        });
-    }
+  cambiarPagina(nuevaPagina) {
+    const total =
+      estadoApp.filtroActivo === "todas"
+        ? estadoApp.solicitudes.length
+        : estadoApp.solicitudes.filter((s) => (s.estado || "pendiente") === estadoApp.filtroActivo).length;
+
+    const totalPag = Math.ceil(total / CONFIG.PAGE_SIZE);
+    if (nuevaPagina < 1 || nuevaPagina > totalPag) return;
+
+    estadoApp.paginaActual = nuevaPagina;
+    render.renderizarSolicitudes();
+    window.scrollTo({ top: selectores.contenedorCards.offsetTop - 100, behavior: "smooth" });
+  },
 };
 
 // ============================================================
-//  🎯 FUNCIONES PARA ACEPTAR/RECHAZAR SOLICITUDES - CORREGIDAS
+//  BOTONES: Aceptar / Rechazar / Entregar
 // ============================================================
-
-// Función para agregar eventos a los botones de acción
 function agregarEventosBotonesAccion() {
-    // Botones Aceptar
-    document.querySelectorAll('.sol-btn-aceptar').forEach(btn => {
-        btn.addEventListener('click', async function(e) {
-            e.stopPropagation();
-            e.preventDefault();
-            const idSolicitud = this.dataset.id;
-            console.log(`✅ Intentando aceptar solicitud ${idSolicitud}`);
-            
-            if (confirm('¿Está seguro de ACEPTAR esta solicitud?\n\nSe cambiará el estado a "aprobada"')) {
-                await cambiarEstadoSolicitud(idSolicitud, 'aprobada');
-            }
-        });
+  // Aceptar
+  document.querySelectorAll(".sol-btn-aceptar").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const idSolicitud = btn.dataset.id;
+      await cambiarEstadoSolicitud(idSolicitud, "aprobada");
     });
+  });
 
-    // Botones Rechazar
-    document.querySelectorAll('.sol-btn-rechazar').forEach(btn => {
-        btn.addEventListener('click', async function(e) {
-            e.stopPropagation();
-            e.preventDefault();
-            const idSolicitud = this.dataset.id;
-            console.log(`❌ Intentando rechazar solicitud ${idSolicitud}`);
-            
-            const motivo = prompt('Ingrese el motivo del rechazo (requerido):');
-            
-            if (motivo !== null) {
-                if (motivo.trim() === '') {
-                    alert('Debe ingresar un motivo para rechazar la solicitud.');
-                    return;
-                }
-                
-                if (confirm('¿Está seguro de RECHAZAR esta solicitud?\n\nSe cambiará el estado a "rechazada"')) {
-                    await cambiarEstadoSolicitud(idSolicitud, 'rechazada', motivo.trim());
-                }
-            }
-        });
+
+  // Rechazar
+  document.querySelectorAll(".sol-btn-rechazar").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const idSolicitud = btn.dataset.id;
+
+      const motivo = await pedirMotivoRechazo();
+      if (motivo === null) return; // canceló
+
+      await cambiarEstadoSolicitud(idSolicitud, "rechazada", motivo);
     });
+  });
+
+
+  // Entregar
+  document.querySelectorAll(".sol-btn-entregar").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const idSolicitud = btn.dataset.id;
+      await marcarEntregada(idSolicitud);
+    });
+  });
 }
 
-// Función para cambiar el estado de la solicitud - CORREGIDA
-async function cambiarEstadoSolicitud(idSolicitud, nuevoEstado, motivo = '') {
-    try {
-        console.log(`🔄 Cambiando estado: ID=${idSolicitud}, Estado=${nuevoEstado}, Motivo=${motivo}`);
-        
-        // Verificar que el estado sea válido
-        if (!['aprobada', 'rechazada'].includes(nuevoEstado)) {
-            throw new Error(`Estado "${nuevoEstado}" no es válido. Debe ser "aprobada" o "rechazada"`);
-        }
-        
-        // Mostrar loading en los botones de ESTA solicitud
-        const card = document.querySelector(`.sol-card[data-id="${idSolicitud}"]`);
-        if (!card) {
-            console.error(`❌ No se encontró la card con ID ${idSolicitud}`);
-            utilidades.mostrarError('No se encontró la solicitud en la interfaz');
-            return;
-        }
-        
-        const btnAceptar = card.querySelector('.sol-btn-aceptar');
-        const btnRechazar = card.querySelector('.sol-btn-rechazar');
-        
-        if (btnAceptar) {
-            btnAceptar.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i>';
-            btnAceptar.disabled = true;
-        }
-        if (btnRechazar) {
-            btnRechazar.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i>';
-            btnRechazar.disabled = true;
-        }
-        
-        // Llamar a la API para cambiar el estado
-        console.log('📤 Llamando a API responder...');
-        const result = await api.cambiarEstadoSolicitud(idSolicitud, nuevoEstado, motivo);
-        
-        console.log('📦 Resultado de la API:', result);
-        
-        if (result && result.success) {
-            // Mostrar mensaje de éxito
-            const mensaje = nuevoEstado === 'aprobada' ? 
-                '✅ Solicitud aceptada correctamente' : 
-                '❌ Solicitud rechazada correctamente';
-            
-            utilidades.mostrarExito(mensaje);
-            
-            // Recargar las solicitudes para actualizar la vista
-            await app.cargarSolicitudes();
-            
-        } else {
-            const errorMsg = result?.error || result?.message || 'Error desconocido al cambiar estado';
-            throw new Error(errorMsg);
-        }
-        
-    } catch (error) {
-        console.error('❌ Error al cambiar estado:', error);
-        utilidades.mostrarError(`Error: ${error.message}`);
-        
-        // Restaurar botones en caso de error
-        const card = document.querySelector(`.sol-card[data-id="${idSolicitud}"]`);
-        if (card) {
-            const btnAceptar = card.querySelector('.sol-btn-aceptar');
-            const btnRechazar = card.querySelector('.sol-btn-rechazar');
-            
-            if (btnAceptar) {
-                btnAceptar.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4"></i> Aceptar';
-                btnAceptar.disabled = false;
-            }
-            if (btnRechazar) {
-                btnRechazar.innerHTML = '<i data-lucide="x-circle" class="w-4 h-4"></i> Rechazar';
-                btnRechazar.disabled = false;
-            }
-            
-            lucide.createIcons();
-        }
+async function cambiarEstadoSolicitud(idSolicitud, nuevoEstado, motivo = null) {
+  try {
+    const card = document.querySelector(`.sol-card[data-id="${idSolicitud}"]`);
+    if (!card) return utilidades.mostrarError("No se encontró la solicitud en la interfaz.");
+
+    const btnA = card.querySelector(".sol-btn-aceptar");
+    const btnR = card.querySelector(".sol-btn-rechazar");
+
+    if (btnA) {
+      btnA.disabled = true;
+      btnA.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i>';
     }
+    if (btnR) {
+      btnR.disabled = true;
+      btnR.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i>';
+    }
+    lucide.createIcons();
+
+    const resp = await api.responderSolicitud(idSolicitud, nuevoEstado, motivo);
+
+    if (resp?.success) {
+      utilidades.mostrarExito(resp.message || "Solicitud actualizada");
+      await app.cargarSolicitudes();
+
+      // 🔔 Actualizar badge sidebar (pendientes)
+      window.dispatchEvent(new Event("solicitudes:updated"));
+    
+      return;
+    }
+
+    throw new Error(resp?.error || resp?.message || "No se pudo actualizar la solicitud.");
+  } catch (e) {
+    utilidades.mostrarError(e.message);
+    await app.cargarSolicitudes();
+  }
+}
+
+// ✅ NUEVO: marcar como entregada usando accion=entregar
+async function marcarEntregada(idSolicitud) {
+  const card = document.querySelector(`.sol-card[data-id="${idSolicitud}"]`);
+  const btnE = card ? card.querySelector(".sol-btn-entregar") : null;
+
+  try {
+    if (btnE) {
+      btnE.disabled = true;
+      btnE.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Procesando...';
+      lucide.createIcons();
+    }
+
+    const resp = await api.entregarSolicitud(idSolicitud);
+
+    if (resp?.success) {
+      utilidades.mostrarExito(resp.message || "Solicitud marcada como entregada");
+      await app.cargarSolicitudes();
+
+      // 🔔 Actualizar badge sidebar (pendientes)
+      window.dispatchEvent(new Event("solicitudes:updated"));
+      
+      return;
+    }
+
+    throw new Error(resp?.error || resp?.message || "No se pudo marcar como entregada.");
+  } catch (e) {
+    utilidades.mostrarError(e.message);
+    if (btnE) {
+      btnE.disabled = false;
+      btnE.innerHTML = '<i data-lucide="package-check" class="w-4 h-4"></i> Marcar como entregada';
+      lucide.createIcons();
+    }
+  }
 }
 
 // ============================================================
-//  GESTIÓN DEL MODAL
+//  MODAL
 // ============================================================
 const modal = {
-    abrir() {
-        selectores.modal.classList.add('sol-modal-show');
-        selectores.paso1.classList.remove('hidden');
-        selectores.paso2.classList.add('hidden');
-        this.limpiarFormulario();
-        
-        // 🔥 Asegurar que el botón Crear Solicitud esté oculto en paso 1
-        if (selectores.btnGuardar) {
-            selectores.btnGuardar.style.display = 'none';
-        }
-        
-        setTimeout(() => {
-            selectores.selectPrograma.focus();
-        }, 100);
-    },
+  abrir() {
+    selectores.modal.classList.add("sol-modal-show");
+    selectores.paso1.classList.remove("hidden");
+    selectores.paso2.classList.add("hidden");
+    if (selectores.btnGuardar) selectores.btnGuardar.style.display = "none";
+    this.limpiarFormulario();
+    setTimeout(() => selectores.selectPrograma?.focus(), 50);
+  },
 
-    cerrar() {
-        if (estadoApp.materialesSeleccionados.length > 0 || 
-            selectores.textareaObservaciones.value.trim() !== '' ||
-            selectores.selectPrograma.value !== '') {
-            
-            if (!confirm('¿Está seguro de cerrar? Se perderán los datos no guardados.')) {
-                return;
-            }
-        }
-        
-        selectores.modal.classList.remove('sol-modal-show');
-        this.limpiarFormulario();
-    },
+  cerrar() {
+    selectores.modal.classList.remove("sol-modal-show");
+    this.limpiarFormulario();
+  },
 
-    limpiarFormulario() {
-        estadoApp.datosFormulario = {
-            programa: "",
-            rae: "",
-            ficha: "",
-            actividad: "",
-            observaciones: ""
-        };
-        estadoApp.materialesSeleccionados = [];
-        
-        selectores.formNueva.reset();
-        materiales.limpiarMateriales();
-    },
+  limpiarFormulario() {
+    estadoApp.datosFormulario = { programa: "", rae: "", ficha: "", observaciones: "" };
+    estadoApp.materialesSeleccionados = [];
+    selectores.formNueva.reset();
+    materiales.limpiarMateriales();
+  },
 
-    validarPaso1() {
-        if (!selectores.selectPrograma.value) {
-            utilidades.mostrarError('Seleccione un programa');
-            selectores.selectPrograma.focus();
-            return false;
-        }
-        
-        if (!selectores.selectRae.value) {
-            utilidades.mostrarError('Seleccione un RAE');
-            selectores.selectRae.focus();
-            return false;
-        }
-        
-        if (!selectores.selectFichas.value) {
-            utilidades.mostrarError('Seleccione una ficha');
-            selectores.selectFichas.focus();
-            return false;
-        }
-
-        estadoApp.datosFormulario = {
-            programa: selectores.selectPrograma.value,
-            rae: selectores.selectRae.value,
-            ficha: selectores.selectFichas.value,
-            observaciones: selectores.textareaObservaciones.value.trim()
-        };
-
-        return true;
-    },
-
-    irPaso2() {
-        if (this.validarPaso1()) {
-            selectores.paso1.classList.add('hidden');
-            selectores.paso2.classList.remove('hidden');
-            
-            // 🔥 Mostrar el botón Crear Solicitud en paso 2
-            if (selectores.btnGuardar) {
-                selectores.btnGuardar.style.display = 'inline-flex';
-            }
-            
-            selectores.selectMaterial.focus();
-            return true;
-        }
-        return false;
-    },
-
-    volverPaso1() {
-        selectores.paso2.classList.add('hidden');
-        selectores.paso1.classList.remove('hidden');
-        
-        // 🔥 Ocultar el botón Crear Solicitud en paso 1
-        if (selectores.btnGuardar) {
-            selectores.btnGuardar.style.display = 'none';
-        }
-        
-        selectores.selectPrograma.focus();
-    },
-
-    async enviarSolicitud() {
-        if (estadoApp.materialesSeleccionados.length === 0) {
-            utilidades.mostrarError('Debe agregar al menos un material');
-            selectores.selectMaterial.focus();
-            return;
-        }
-
-        if (!confirm('¿Está seguro de crear esta solicitud?')) {
-            return;
-        }
-
-        try {
-            selectores.btnGuardar.disabled = true;
-            selectores.btnGuardar.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Procesando...';
-            lucide.createIcons();
-
-            const datosCompletos = {
-                ...estadoApp.datosFormulario,
-                materiales: estadoApp.materialesSeleccionados.map(m => ({
-                    id_material: m.id,
-                    cantidad_solicitada: m.cantidad
-                }))
-            };
-
-            await api.crearSolicitud(datosCompletos);
-            await app.cargarSolicitudes();
-            this.cerrar();
-            
-        } catch (error) {
-            console.error('Error al enviar solicitud:', error);
-        } finally {
-            selectores.btnGuardar.disabled = false;
-            selectores.btnGuardar.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4"></i> Crear Solicitud';
-            lucide.createIcons();
-        }
+  validarPaso1() {
+    if (!selectores.selectPrograma.value) {
+      utilidades.mostrarError("Seleccione un programa");
+      selectores.selectPrograma.focus();
+      return false;
     }
+    if (!selectores.selectRae.value) {
+      utilidades.mostrarError("Seleccione un RAE");
+      selectores.selectRae.focus();
+      return false;
+    }
+    if (!selectores.selectFichas.value) {
+      utilidades.mostrarError("Seleccione una ficha");
+      selectores.selectFichas.focus();
+      return false;
+    }
+
+    estadoApp.datosFormulario = {
+      programa: selectores.selectPrograma.value,
+      rae: selectores.selectRae.value,
+      ficha: selectores.selectFichas.value,
+      observaciones: (selectores.textareaObservaciones.value || "").trim(),
+    };
+
+    return true;
+  },
+
+  irPaso2() {
+    if (!this.validarPaso1()) return;
+    selectores.paso1.classList.add("hidden");
+    selectores.paso2.classList.remove("hidden");
+    if (selectores.btnGuardar) selectores.btnGuardar.style.display = "inline-flex";
+    selectores.selectMaterial?.focus();
+  },
+
+  volverPaso1() {
+    selectores.paso2.classList.add("hidden");
+    selectores.paso1.classList.remove("hidden");
+    if (selectores.btnGuardar) selectores.btnGuardar.style.display = "none";
+    selectores.selectPrograma?.focus();
+  },
+
+  async enviarSolicitud() {
+    if (!estadoApp.materialesSeleccionados.length) {
+      utilidades.mostrarError("Debe agregar al menos un material");
+      selectores.selectMaterial.focus();
+      return;
+    }
+
+    try {
+      selectores.btnGuardar.disabled = true;
+      selectores.btnGuardar.innerHTML =
+        '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Procesando...';
+      lucide.createIcons();
+
+      const payload = {
+        id_usuario: 1,
+        id_programa: parseInt(estadoApp.datosFormulario.programa, 10),
+        id_rae: parseInt(estadoApp.datosFormulario.rae, 10),
+        id_ficha: parseInt(estadoApp.datosFormulario.ficha, 10),
+        observaciones: estadoApp.datosFormulario.observaciones || "",
+        materiales: estadoApp.materialesSeleccionados.map((m) => ({
+          id_material: parseInt(m.id, 10),
+          cantidad_solicitada: parseInt(m.cantidad, 10),
+        })),
+      };
+
+      const resp = await api.crearSolicitud(payload);
+      utilidades.mostrarExito(resp.message || "Solicitud creada correctamente");
+
+      await app.cargarSolicitudes();
+      this.cerrar();
+    } catch (e) {
+      utilidades.mostrarError(e.message);
+    } finally {
+      selectores.btnGuardar.disabled = false;
+      selectores.btnGuardar.innerHTML = "Crear Solicitud";
+      lucide.createIcons();
+    }
+  },
 };
 
-// ============================================================
-//  EVENT LISTENERS
-// ============================================================
 const eventos = {
-    inicializar() {
-        console.log("🎯 Inicializando eventos...");
-        
-        // Botón Nueva Solicitud
-        if (selectores.btnNueva) {
-            selectores.btnNueva.addEventListener('click', () => modal.abrir());
-            console.log("✅ Botón Nueva inicializado");
-        }
-        
-        // Botón Cerrar Modal (X)
-        if (selectores.btnCerrarModal) {
-            selectores.btnCerrarModal.addEventListener('click', () => modal.cerrar());
-            console.log("✅ Botón Cerrar modal inicializado");
-        }
-        
-        // Botón Cancelar (Paso 1)
-        if (selectores.btnCancelar) {
-            selectores.btnCancelar.addEventListener('click', () => modal.cerrar());
-            console.log("✅ Botón Cancelar inicializado");
-        }
-        
-        // Botón Siguiente (Paso 1 → Paso 2)
-        if (selectores.btnPaso2) {
-            selectores.btnPaso2.addEventListener('click', () => modal.irPaso2());
-            console.log("✅ Botón Siguiente inicializado");
-        }
-        
-        // Botón Volver (Paso 2 → Paso 1)
-        if (selectores.btnVolver) {
-            selectores.btnVolver.addEventListener('click', () => modal.volverPaso1());
-            console.log("✅ Botón Volver inicializado");
-        }
-        
-        // Botón Crear Solicitud (Paso 2)
-        if (selectores.btnGuardar) {
-            selectores.btnGuardar.addEventListener('click', async (e) => {
-                e.preventDefault();
-                await modal.enviarSolicitud();
-            });
-            console.log("✅ Botón Crear Solicitud inicializado");
-        }
-        
-        // Botón Agregar Material
-        if (selectores.btnAgregarMaterial) {
-            selectores.btnAgregarMaterial.addEventListener('click', () => materiales.agregarMaterial());
-            console.log("✅ Botón Agregar Material inicializado");
-        }
-        
-        // Enter en cantidad de material
-        if (selectores.inputCantidad) {
-            selectores.inputCantidad.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    materiales.agregarMaterial();
-                }
-            });
-        }
-        
-        // Prevenir submit del formulario
-        if (selectores.formNueva) {
-            selectores.formNueva.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                await modal.enviarSolicitud();
-                return false;
-            });
-        }
-        
-        // Filtros
-        if (selectores.filtros.length > 0) {
-            selectores.filtros.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    selectores.filtros.forEach(b => b.classList.remove('sol-filtro-btn-activo'));
-                    btn.classList.add('sol-filtro-btn-activo');
-                    
-                    estadoApp.filtroActivo = btn.dataset.filtro;
-                    estadoApp.paginaActual = 1;
-                    render.renderizarSolicitudes();
-                });
-            });
-            console.log(`✅ ${selectores.filtros.length} filtros inicializados`);
-        }
+  inicializar() {
+    selectores.btnNueva?.addEventListener("click", () => modal.abrir());
+    selectores.btnCerrarModal?.addEventListener("click", () => modal.cerrar());
+    selectores.btnCancelar?.addEventListener("click", () => modal.cerrar());
+    selectores.btnPaso2?.addEventListener("click", () => modal.irPaso2());
+    selectores.btnVolver?.addEventListener("click", () => modal.volverPaso1());
+    selectores.btnAgregarMaterial?.addEventListener("click", () => materiales.agregarMaterial());
 
-        // Cerrar modal con Escape
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && selectores.modal && selectores.modal.classList.contains('sol-modal-show')) {
-                modal.cerrar();
-            }
-        });
+    selectores.inputCantidad?.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        materiales.agregarMaterial();
+      }
+    });
 
-        // Cerrar modal haciendo click fuera
-        if (selectores.modal) {
-            selectores.modal.addEventListener('click', (e) => {
-                if (e.target === selectores.modal) {
-                    modal.cerrar();
-                }
-            });
-        }
-        
-        console.log("✅ Todos los eventos inicializados correctamente");
-    }
-};
+    selectores.formNueva?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      await modal.enviarSolicitud();
+      return false;
+    });
 
-// ============================================================
-//  APLICACIÓN PRINCIPAL
-// ============================================================
-const app = {
-    async inicializar() {
-        console.log("🚀 Inicializando módulo de solicitudes...");
-        
-        // Mostrar loader
-        selectores.contenedorCards.innerHTML = `
-            <div class="col-span-full py-12 text-center">
-                <i data-lucide="loader" class="w-12 h-12 text-blue-300 animate-spin mx-auto mb-4"></i>
-                <h3 class="text-lg font-medium text-gray-700 mb-2">Cargando solicitudes</h3>
-                <p class="text-gray-500">Obteniendo datos de la base de datos...</p>
-            </div>
-        `;
-        lucide.createIcons();
-        
-        // Cargar datos
-        await this.cargarSolicitudes();
-        await api.cargarSelectores();
-        
-        // Inicializar eventos
-        eventos.inicializar();
-        
-        console.log("✅ Módulo inicializado correctamente");
-    },
-
-    async cargarSolicitudes() {
-        estadoApp.solicitudes = await api.listarSolicitudes();
-        console.log(`✅ Cargadas ${estadoApp.solicitudes.length} solicitudes`);
-        
-        render.actualizarResumen();
-        render.actualizarFiltros();
+    selectores.filtros?.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        selectores.filtros.forEach((b) => b.classList.remove("sol-filtro-btn-activo"));
+        btn.classList.add("sol-filtro-btn-activo");
+        estadoApp.filtroActivo = btn.dataset.filtro;
+        estadoApp.paginaActual = 1;
         render.renderizarSolicitudes();
-    }
+      });
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && selectores.modal.classList.contains("sol-modal-show")) {
+        modal.cerrar();
+      }
+    });
+
+    selectores.modal?.addEventListener("click", (e) => {
+      if (e.target === selectores.modal) modal.cerrar();
+    });
+  },
 };
 
-// ============================================================
-//  INICIALIZACIÓN
-// ============================================================
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("📄 DOM cargado, inicializando app...");
-    
-    // Verificar que lucide esté disponible
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-        console.log("✅ Lucide icons inicializados");
-    } else {
-        console.error("❌ Lucide no está disponible");
-    }
-    
-    // Inicializar la aplicación
-    app.inicializar();
+const app = {
+  async inicializar() {
+    selectores.contenedorCards.innerHTML = `
+      <div class="col-span-full py-12 text-center">
+        <i data-lucide="loader" class="w-12 h-12 text-blue-300 animate-spin mx-auto mb-4"></i>
+        <h3 class="text-lg font-medium text-gray-700 mb-2">Cargando solicitudes</h3>
+        <p class="text-gray-500">Obteniendo datos de la base de datos...</p>
+      </div>`;
+    lucide.createIcons();
+
+    await this.cargarSolicitudes();
+    await api.cargarSelectores();
+    eventos.inicializar();
+  },
+
+  async cargarSolicitudes() {
+    estadoApp.solicitudes = await api.listarSolicitudes();
+    render.actualizarResumen();
+    render.actualizarFiltros();
+    render.renderizarSolicitudes();
+  },
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  if (typeof lucide !== "undefined") lucide.createIcons();
+  console.log("[SOLICITUDES] API =", API);
+  app.inicializar();
 });
 
-// Exportar funciones para acceso global
 window.paginacion = paginacion;
 window.materiales = materiales;
 window.app = app;
 window.agregarEventosBotonesAccion = agregarEventosBotonesAccion;
 window.cambiarEstadoSolicitud = cambiarEstadoSolicitud;
+window.marcarEntregada = marcarEntregada;
+    
