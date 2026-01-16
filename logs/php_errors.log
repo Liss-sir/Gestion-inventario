@@ -28,3 +28,25 @@
 [14-Jan-2026 21:41:14 UTC] ✅ Solicitud 3 actualizada a Aprobada. Filas afectadas: 1
 [14-Jan-2026 21:44:54 UTC] ✅ Solicitud 5 actualizada a Aprobada. Filas afectadas: 1
 [14-Jan-2026 21:45:34 UTC] ✅ Solicitud 9 actualizada a Rechazada. Filas afectadas: 1
+[16-Jan-2026 17:04:46 UTC] ⚠️ Fallback subbodegas: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'nombre' in 'field list'
+[16-Jan-2026 17:04:46 UTC] ❌ Error obtenerSubBodegas(): SQLSTATE[42S22]: Column not found: 1054 Unknown column 'id_sub_bodega' in 'field list'
+[16-Jan-2026 17:05:33 UTC] ⚠️ Fallback subbodegas: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'nombre' in 'field list'
+[16-Jan-2026 17:05:33 UTC] ❌ Error obtenerSubBodegas(): SQLSTATE[42S22]: Column not found: 1054 Unknown column 'id_sub_bodega' in 'field list'
+[16-Jan-2026 17:27:34 UTC] ❌ Error obtenerMaterialesFiltrados(): SQLSTATE[42S22]: Column not found: 1054 Unknown column 'sb.id_subbodega' in 'where clause'
+[16-Jan-2026 17:29:13 UTC] ❌ Error obtenerMaterialesFiltrados(): SQLSTATE[42S22]: Column not found: 1054 Unknown column 'sb.id_subbodega' in 'where clause'
+[16-Jan-2026 17:35:07 UTC] ❌ Error obtenerMaterialesFiltrados(): SQLSTATE[42S22]: Column not found: 1054 Unknown column 'sb.id_subbodega' in 'where clause'
+[16-Jan-2026 17:45:17 UTC] ❌ Error obtenerMaterialesFiltrados(): SQLSTATE[42S22]: Column not found: 1054 Unknown column 'sb.id_subbodega' in 'where clause'
+[16-Jan-2026 19:11:36 UTC] ❌ Error obtenerMaterialesFiltrados(): SQLSTATE[42S22]: Column not found: 1054 Unknown column 'sb.id_subbodega' in 'where clause'
+[16-Jan-2026 19:29:30 UTC] ❌ Error obtenerMaterialesFiltrados(): SQLSTATE[42S22]: Column not found: 1054 Unknown column 'sb.id_subbodega' in 'where clause'
+[16-Jan-2026 19:42:09 UTC] ❌ Error obtenerMaterialesFiltrados(): SQLSTATE[42S22]: Column not found: 1054 Unknown column 'sb.id_subbodega' in 'where clause'
+[16-Jan-2026 19:48:06 UTC] 📝 Primera actividad creada con ID: 1
+[16-Jan-2026 19:48:06 UTC] ✅ Actividad asignada/creada: 1
+[16-Jan-2026 19:53:40 UTC] ✅ Solicitud 1 actualizada a Aprobada. Filas afectadas: 1
+[16-Jan-2026 19:56:35 UTC] ✅ Actividad encontrada: 1
+[16-Jan-2026 19:56:35 UTC] ✅ Actividad asignada/creada: 1
+[16-Jan-2026 19:57:21 UTC] ❌ Error obtenerMaterialesFiltrados(): SQLSTATE[42S22]: Column not found: 1054 Unknown column 'sb.id_subbodega' in 'where clause'
+[16-Jan-2026 19:57:53 UTC] ✅ Actividad encontrada: 1
+[16-Jan-2026 19:57:53 UTC] ✅ Actividad asignada/creada: 1
+[16-Jan-2026 19:57:55 UTC] ✅ Solicitud 3 actualizada a Aprobada. Filas afectadas: 1
+[16-Jan-2026 19:58:12 UTC] ✅ Solicitud 2 actualizada a Rechazada. Filas afectadas: 1
+[16-Jan-2026 20:00:50 UTC] ❌ Error obtenerMaterialesFiltrados(): SQLSTATE[42S22]: Column not found: 1054 Unknown column 'sb.id_subbodega' in 'where clause'
