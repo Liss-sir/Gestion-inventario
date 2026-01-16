@@ -1,11 +1,11 @@
 document.addEventListener("DOMContentLoaded", function () {
-  // Inicializar iconos de Lucide
+  // 1. Inicializar iconos de Lucide
   if (window.lucide && typeof lucide.createIcons === "function") {
     lucide.createIcons();
   }
 
   // =====================================================
-  // 📚 REFERENCIAS DOM
+  // 📚 2. REFERENCIAS DOM (SIEMPRE AL PRINCIPIO)
   // =====================================================
   const modalPerfilVer = document.getElementById("modalPerfilVer");
   const modalPerfilEditar = document.getElementById("modalPerfilEditar");
@@ -15,38 +15,24 @@ document.addEventListener("DOMContentLoaded", function () {
   const btnVerPerfil = document.getElementById("btnVerPerfil");
   const btnEditarPerfil = document.getElementById("btnEditarPerfil");
   const btnInfoDatosSensibles = document.getElementById("btnInfoDatosSensibles");
-  const formDatosSensibles = document.getElementById("formDatosSensibles");
+  
   const formEditarPerfil = document.getElementById("formEditarPerfil");
+  const formDatosSensibles = document.getElementById("formDatosSensibles");
   const formCambiarPassword = document.getElementById("formCambiarPassword");
 
   const avatarPerfilEditar = document.getElementById("avatarPerfilEditar");
   const inputFotoPerfilEditar = document.getElementById("inputFotoPerfilEditar");
+  const btnGuardarPerfil = document.getElementById("btnGuardarPerfil");
+
+  const sensibleChecks = document.querySelectorAll('input[type="checkbox"][data-sensible]');
 
   // =====================================================
-  // ✅ HELPERS DE ALERTAS (ESTILO FLOWBITE)
+  // ✅ 3. HELPERS DE ALERTAS
   // =====================================================
   function toastError(message) { showFlowbiteAlert("warning", message); }
   function toastSuccess(message) { showFlowbiteAlert("success", message); }
-  function toastInfo(message) { showFlowbiteAlert("info", message); }
 
   function showFlowbiteAlert(type, message) {
-    const container = getOrCreateFlowbiteContainer();
-    const wrapper = document.createElement("div");
-    let borderColor = "border-amber-500";
-    if (type === "success") borderColor = "border-emerald-500";
-    if (type === "info") borderColor = "border-blue-500";
-
-    wrapper.className = `relative flex items-center w-full p-4 mb-4 bg-white border-l-4 ${borderColor} shadow-md rounded-xl animate-fade-in-up pointer-events-auto z-[9999]`;
-    wrapper.innerHTML = `<div class="text-sm font-medium text-slate-800">${message}</div>`;
-    container.appendChild(wrapper);
-
-    setTimeout(() => {
-      wrapper.classList.add("opacity-0");
-      setTimeout(() => wrapper.remove(), 500);
-    }, 4000);
-  }
-
-  function getOrCreateFlowbiteContainer() {
     let container = document.getElementById("flowbite-alert-container");
     if (!container) {
       container = document.createElement("div");
@@ -54,43 +40,45 @@ document.addEventListener("DOMContentLoaded", function () {
       container.className = "fixed top-6 right-4 z-[9999] flex flex-col gap-3 w-full max-w-md px-4 pointer-events-none";
       document.body.appendChild(container);
     }
-    return container;
+    const wrapper = document.createElement("div");
+    let borderColor = type === "success" ? "border-emerald-500" : "border-amber-500";
+    wrapper.className = `relative flex items-center w-full p-4 mb-4 bg-white border-l-4 ${borderColor} shadow-md rounded-xl animate-fade-in-up pointer-events-auto`;
+    wrapper.innerHTML = `<div class="text-sm font-medium text-slate-800">${message}</div>`;
+    container.appendChild(wrapper);
+    setTimeout(() => {
+      wrapper.classList.add("opacity-0");
+      setTimeout(() => wrapper.remove(), 500);
+    }, 4000);
   }
 
   // =====================================================
-  // ✅ FUNCIÓN: CAPTURAR DATOS ACTUALES (LÓGICA CORREGIDA)
+  // ✅ 4. LÓGICA DE DATOS SENSIBLES
   // =====================================================
   function inicializarValoresActuales() {
-    const datosActuales = {};
+    // Si inyectaste window.userData en el header, úsalo aquí
+    if (!window.userData) return;
     
-    // Capturar Nombre (está en el h2 del modal de visualización)
-    const nombreVer = document.querySelector("#modalPerfilVer h2");
-    if (nombreVer) datosActuales['nombre'] = nombreVer.textContent.trim();
+    const mapping = {
+      'nombre': window.userData.nombre_completo,
+      'tipo_documento': window.userData.tipo_documento,
+      'numero_documento': window.userData.numero_documento,
+      'correo': window.userData.correo
+    };
 
-    // Capturar otros datos buscando las etiquetas <p> en el modal de Ver Perfil
-    const etiquetas = document.querySelectorAll("#modalPerfilVer p.text-xs.font-medium.text-slate-400");
-    etiquetas.forEach(p => {
-      const texto = p.textContent.toLowerCase();
-      const valor = p.nextElementSibling ? p.nextElementSibling.textContent.trim() : "";
-      
-      if (texto.includes("tipo de documento")) datosActuales['tipo_documento'] = valor;
-      if (texto.includes("número de documento")) datosActuales['numero_documento'] = valor;
-      if (texto.includes("correo")) datosActuales['correo'] = valor;
-    });
-
-    // Inyectar valores actuales en los inputs del modal de solicitud para enviarlos luego
-    for (const [campo, valor] of Object.entries(datosActuales)) {
-      const inputDestino = document.querySelector(`#field_${campo} input, #field_${campo} select`);
-      if (inputDestino) {
-        inputDestino.setAttribute('data-valor-actual', valor);
-        if (inputDestino.tagName === 'INPUT') inputDestino.placeholder = "Actual: " + valor;
+    for (const [campo, valor] of Object.entries(mapping)) {
+      const fieldWrap = document.getElementById(`field_${campo}`);
+      if (fieldWrap) {
+        const input = fieldWrap.querySelector("input, select");
+        if (input) {
+          input.setAttribute('data-valor-actual', valor || "");
+          if (input.tagName === 'INPUT') input.placeholder = "Actual: " + (valor || "No registrado");
+        }
       }
     }
-    console.log("🔍 Datos actuales capturados:", datosActuales);
   }
 
   // =====================================================
-  // ✅ GESTIÓN DE MODALES
+  // ✅ 5. GESTIÓN DE MODALES
   // =====================================================
   const openModal = (modal) => {
     if (!modal) return;
@@ -105,96 +93,86 @@ document.addEventListener("DOMContentLoaded", function () {
     document.body.classList.remove("overflow-hidden");
   };
 
+  // Botones Menú Usuario
   if (btnVerPerfil) btnVerPerfil.onclick = () => { closeUserMenu(); openModal(modalPerfilVer); };
   if (btnEditarPerfil) btnEditarPerfil.onclick = () => { closeUserMenu(); openModal(modalPerfilEditar); };
   if (btnInfoDatosSensibles) btnInfoDatosSensibles.onclick = () => openModal(modalDatosSensibles);
 
-  // Cerrar modales al hacer clic en botones de cerrar o cancelar
   document.querySelectorAll('[id^="btnCerrar"], [id^="btnCancelar"]').forEach(btn => {
-    btn.addEventListener("click", (e) => {
-      const modal = e.target.closest('.fixed');
-      if (modal) closeModal(modal);
-    });
+    btn.onclick = (e) => closeModal(e.target.closest('.fixed'));
   });
 
-  // Mostrar/Ocultar campos en el modal de datos sensibles según el checkbox
-  const sensibleChecks = document.querySelectorAll('input[type="checkbox"][data-sensible]');
+  // Checkboxes de datos sensibles
   sensibleChecks.forEach(chk => {
-    chk.addEventListener("change", () => {
-      const fieldId = "field_" + chk.getAttribute("data-sensible");
-      const field = document.getElementById(fieldId);
+    chk.onchange = () => {
+      const field = document.getElementById("field_" + chk.getAttribute("data-sensible"));
       if (field) field.classList.toggle("hidden", !chk.checked);
-    });
+    };
   });
 
   // =====================================================
-  // ✅ EVENTO: ENVIAR SOLICITUD DE CAMBIO (UNIFICADO)
+  // ✅ 6. ENVÍO DE FORMULARIOS
   // =====================================================
-  if (formDatosSensibles) {
-    formDatosSensibles.addEventListener("submit", async (e) => {
+
+  // Guardar Perfil (Foto, Teléfono, Dirección)
+  if (formEditarPerfil) {
+    formEditarPerfil.onsubmit = async (e) => {
       e.preventDefault();
-      
-      const btnSubmit = formDatosSensibles.querySelector('button[type="submit"]');
-      const selected = Array.from(sensibleChecks).filter(c => c.checked);
-
-      if (selected.length === 0) {
-        toastError("Selecciona al menos un dato para cambiar.");
-        return;
-      }
-
-      const datosSolicitados = {};
-      for (const chk of selected) {
-        const key = chk.getAttribute("data-sensible");
-        const fieldWrap = document.getElementById("field_" + key);
-        const inputNuevo = fieldWrap.querySelector("input, select");
-        
-        if (!inputNuevo || !inputNuevo.value.trim()) {
-          toastError(`Ingresa el nuevo valor para ${key.replace('_',' ')}`);
-          return;
-        }
-
-        const nuevoValor = inputNuevo.value.trim();
-        const valorAnterior = inputNuevo.getAttribute('data-valor-actual') || "No registrado";
-
-        datosSolicitados[key] = {
-          anterior: valorAnterior,
-          nuevo: nuevoValor,
-          campo_nombre: obtenerNombreCampo(key)
-        };
-      }
-
       try {
-        if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = 'Enviando...'; }
-
-        const formData = new FormData();
-        formData.append("datos_cambiados", JSON.stringify(datosSolicitados));
-
-        const resp = await fetch("src/controllers/usuario_controller.php?accion=solicitar_cambio_datos_sensibles", {
+        btnGuardarPerfil.disabled = true;
+        btnGuardarPerfil.innerHTML = 'Guardando...';
+        const formData = new FormData(formEditarPerfil);
+        
+        const resp = await fetch("src/controllers/usuario_controller.php?accion=editar_perfil_usuario", {
           method: "POST",
           body: formData
         });
-
         const data = await resp.json();
         if (data.success) {
-          toastSuccess("✅ Solicitud enviada correctamente.");
-          closeModal(modalDatosSensibles);
+          toastSuccess("Perfil actualizado.");
           setTimeout(() => location.reload(), 1000);
-        } else {
-          toastError(data.error || "Error al enviar");
-        }
-      } catch (err) {
-        toastError("Error de conexión con el servidor.");
-      } finally {
-        if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = 'Continuar'; }
+        } else { toastError(data.error || "Error"); }
+      } catch (err) { toastError("Error de conexión"); }
+      finally { btnGuardarPerfil.disabled = false; btnGuardarPerfil.innerHTML = 'Guardar cambios'; }
+    };
+  }
+
+  // Solicitar Cambio Datos Sensibles
+  if (formDatosSensibles) {
+    formDatosSensibles.onsubmit = async (e) => {
+      e.preventDefault();
+      const selected = Array.from(sensibleChecks).filter(c => c.checked);
+      if (selected.length === 0) return toastError("Selecciona un campo.");
+
+      const datosCambiados = {};
+      for (const chk of selected) {
+        const key = chk.getAttribute("data-sensible");
+        const input = document.getElementById(`field_${key}`).querySelector("input, select");
+        datosCambiados[key] = {
+          anterior: input.getAttribute("data-valor-actual"),
+          nuevo: input.value.trim(),
+          campo_nombre: key.replace('_',' ').toUpperCase()
+        };
       }
-    });
+
+      const formData = new FormData();
+      formData.append("datos_cambiados", JSON.stringify(datosCambiados));
+
+      const resp = await fetch("src/controllers/usuario_controller.php?accion=solicitar_cambio_datos_sensibles", {
+        method: "POST",
+        body: formData
+      });
+      const res = await resp.json();
+      if (res.success) {
+        toastSuccess("Solicitud enviada.");
+        closeModal(modalDatosSensibles);
+      } else { toastError(res.error); }
+    };
   }
 
   // =====================================================
-  // ✅ OTROS EVENTOS (FOTO, PASSWORD, MENÚ)
+  // ✅ 7. OTROS (FOTO, DROPDOWN)
   // =====================================================
-
-  // Cambiar foto de perfil (Previsualización)
   if (avatarPerfilEditar) {
     avatarPerfilEditar.onclick = () => inputFotoPerfilEditar.click();
     inputFotoPerfilEditar.onchange = (e) => {
@@ -202,15 +180,31 @@ document.addEventListener("DOMContentLoaded", function () {
       if (file) {
         const reader = new FileReader();
         reader.onload = (ev) => {
-          const img = avatarPerfilEditar.querySelector("img") || document.createElement("img");
+          let img = avatarPerfilEditar.querySelector("img");
+          if (!img) {
+            img = document.createElement("img");
+            img.className = "h-full w-full object-cover rounded-full";
+            avatarPerfilEditar.querySelector("div").appendChild(img);
+          }
           img.src = ev.target.result;
-          img.className = "h-full w-full object-cover rounded-full";
-          if (!avatarPerfilEditar.querySelector("img")) avatarPerfilEditar.querySelector("div").appendChild(img);
         };
         reader.readAsDataURL(file);
       }
     };
   }
+
+  const btnUserMenu = document.getElementById("btnUserMenu");
+  const userMenuDropdown = document.getElementById("userMenuDropdown");
+  const closeUserMenu = () => userMenuDropdown?.classList.add("hidden");
+
+  if (btnUserMenu) {
+    btnUserMenu.onclick = (e) => {
+      e.stopPropagation();
+      userMenuDropdown.classList.toggle("hidden");
+    };
+  }
+  document.addEventListener("click", closeUserMenu);
+});
 
   // Dropdown Menú Usuario
   const btnUserMenu = document.getElementById("btnUserMenu");
@@ -254,5 +248,19 @@ document.addEventListener("DOMContentLoaded", function () {
       this.querySelectorAll('i').forEach(i => i.classList.toggle('hidden'));
     };
   });
-
-});
+async function actualizarContadorNotificaciones() {
+    try {
+      const resp = await fetch('src/utils/notificaciones_sesion.php?accion=contar');
+      const data = await resp.json();
+      
+      const badge = document.querySelector('.badge-notificaciones');
+      if (badge && data.no_leidas > 0) {
+        badge.textContent = data.no_leidas > 9 ? '9+' : data.no_leidas;
+        badge.style.display = 'inline-block';
+      } else if (badge) {
+        badge.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Error actualizando contador:', error);
+    }
+  }

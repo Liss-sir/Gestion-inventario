@@ -218,7 +218,9 @@ $alerts = array_map(function ($n) {
     </div>
   </div>
 
-  <script>
+  <!-- En tu archivo HTML, reemplaza la sección del script con este código actualizado: -->
+
+<script>
     lucide.createIcons();
     let notificacionActualId = null;
 
@@ -233,56 +235,46 @@ $alerts = array_map(function ($n) {
             notificacionActualId = btn.getAttribute('data-notif-id');
             let html = '<div class="space-y-5">';
             
-            // Verificar si datos es un objeto válido
             if (datos && typeof datos === 'object' && Object.keys(datos).length > 0) {
-                // Dentro del bucle for...of de openModal
-for (const [campo, info] of Object.entries(datos)) {
-    if (info && typeof info === 'object') {
-        const label = info.campo_nombre || campo.replace(/_/g, ' ').toUpperCase();
-        
-        // DEPURACIÓN: Ver qué llega realmente desde la base de datos
-        console.log(`Campo: ${campo}`, {
-            anterior: info.anterior,
-            nuevo: info.nuevo
-        });
-        
-        // TU LÓGICA CORREGIDA:
-        const anterior = (info.anterior !== null && info.anterior !== undefined && info.anterior.toString().trim() !== "") 
-            ? info.anterior 
-            : "No especificado";
-            
-        const nuevo = (info.nuevo !== null && info.nuevo !== undefined && info.nuevo.toString().trim() !== "") 
-            ? info.nuevo 
-            : "Sin valor nuevo";
+                for (const [campo, info] of Object.entries(datos)) {
+                    if (info && typeof info === 'object') {
+                        const label = info.campo_nombre || campo.replace(/_/g, ' ').toUpperCase();
+                        
+                        console.log(`Campo: ${campo}`, {
+                            anterior: info.anterior,
+                            nuevo: info.nuevo
+                        });
+                        
+                        const anterior = (info.anterior !== null && info.anterior !== undefined && info.anterior.toString().trim() !== "") 
+                            ? info.anterior 
+                            : "No especificado";
+                            
+                        const nuevo = (info.nuevo !== null && info.nuevo !== undefined && info.nuevo.toString().trim() !== "") 
+                            ? info.nuevo 
+                            : "Sin valor nuevo";
 
-        // AGREGAR AL HTML (Manteniendo tus estilos)
-        html += `
-        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">${label}</p>
-            <div class="flex flex-col gap-2">
-                <div class="flex items-center gap-2">
-                    <span class="text-[9px] bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">Actual</span>
-                    <span class="text-sm text-slate-400 ">${anterior}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="text-[9px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded font-bold uppercase">Nuevo</span>
-                    <span class="text-sm font-bold text-slate-800">${nuevo}</span>
-                </div>
-            </div>
-        </div>`;
-    
+                        html += `
+                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">${label}</p>
+                            <div class="flex flex-col gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[9px] bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">Actual</span>
+                                    <span class="text-sm text-slate-400 ">${anterior}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[9px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded font-bold uppercase">Nuevo</span>
+                                    <span class="text-sm font-bold text-slate-800">${nuevo}</span>
+                                </div>
+                            </div>
+                        </div>`;
                     }
                 }
             } else {
-                // Si no hay datos válidos
                 html += `
                 <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
                     <p class="text-sm text-yellow-700">
                         <i data-lucide="alert-triangle" class="w-4 h-4 inline mr-2"></i>
                         No se encontraron detalles específicos del cambio.
-                    </p>
-                    <p class="text-xs text-yellow-600 mt-1">
-                        Los datos recibidos están vacíos o no tienen la estructura esperada.
                     </p>
                 </div>`;
             }
@@ -298,20 +290,113 @@ for (const [campo, info] of Object.entries(datos)) {
                 <div class="p-4 bg-red-50 border border-red-200 rounded-xl">
                     <p class="text-sm text-red-700">
                         <i data-lucide="alert-circle" class="w-4 h-4 inline mr-2"></i>
-                        Error al procesar los datos: ${error.message}
+                        Error al procesar los datos
                     </p>
-                    <p class="text-xs text-red-600 mt-1">Datos crudos: ${rawData || 'VACÍO'}</p>
                 </div>`;
             document.getElementById('modalCambioDatos').style.display = 'flex';
         }
     };
 
-    // ... resto del código se mantiene igual
-    document.querySelectorAll('.btn-gestionar-cambio').forEach(btn => btn.onclick = () => openModal(btn));
-    document.querySelectorAll('.btn-ver-detalles').forEach(btn => btn.onclick = () => openModal(btn));
+    // Función para eliminar notificación
+    async function eliminarNotificacion(notificacionId) {
+        if (!confirm('¿Estás seguro de que deseas eliminar esta notificación?')) {
+            return;
+        }
+        
+        try {
+            const fd = new FormData();
+            fd.append('notificacion_id', notificacionId);
+            
+            const response = await fetch('src/controllers/usuario_controller.php?accion=eliminar_notificacion', {
+                method: 'POST',
+                body: fd
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Encontrar y eliminar el elemento del DOM
+                const notificacionElement = document.querySelector(`button[data-notif-id="${notificacionId}"]`)?.closest('.flex.items-start.justify-between');
+                if (notificacionElement) {
+                    notificacionElement.remove();
+                    
+                    // Actualizar contadores
+                    actualizarContadores();
+                    
+                    // Mostrar mensaje de éxito
+                    mostrarMensaje('success', result.message);
+                }
+            } else {
+                mostrarMensaje('error', result.message);
+            }
+        } catch (error) {
+            console.error('Error al eliminar:', error);
+            mostrarMensaje('error', 'Error al eliminar la notificación');
+        }
+    }
 
-    document.getElementById('cerrarModal').onclick = () => document.getElementById('modalCambioDatos').style.display = 'none';
-    document.getElementById('btnCerrarModal').onclick = () => document.getElementById('modalCambioDatos').style.display = 'none';
+    // Función para actualizar contadores después de eliminar
+    function actualizarContadores() {
+        const notificacionesRestantes = document.querySelectorAll('.flex.items-start.justify-between').length;
+        
+        // Actualizar contador total
+        const totalElement = document.querySelector('.text-xl.font-semibold:first-of-type');
+        if (totalElement) {
+            totalElement.textContent = notificacionesRestantes;
+        }
+        
+        // Opcional: Actualizar otros contadores si es necesario
+        // Podrías hacer una petición AJAX para obtener datos actualizados
+        // o actualizar localmente según el tipo de notificación eliminada
+    }
+
+    // Función para mostrar mensajes flotantes
+    function mostrarMensaje(tipo, mensaje) {
+        // Crear elemento de mensaje
+        const mensajeDiv = document.createElement('div');
+        mensajeDiv.className = `fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 ${
+            tipo === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+        }`;
+        mensajeDiv.textContent = mensaje;
+        
+        document.body.appendChild(mensajeDiv);
+        
+        // Remover después de 3 segundos
+        setTimeout(() => {
+            mensajeDiv.remove();
+        }, 3000);
+    }
+
+    // Event Listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        // Abrir modal para gestionar cambios
+        document.querySelectorAll('.btn-gestionar-cambio, .btn-ver-detalles').forEach(btn => {
+            btn.onclick = () => openModal(btn);
+        });
+        
+        // Eliminar notificaciones
+        document.querySelectorAll('.btn-eliminar-notificacion').forEach(btn => {
+            btn.onclick = () => {
+                const notificacionId = btn.getAttribute('data-notif-id');
+                if (notificacionId) {
+                    eliminarNotificacion(notificacionId);
+                }
+            };
+        });
+        
+        // Cerrar modal
+        document.getElementById('cerrarModal').onclick = () => {
+            document.getElementById('modalCambioDatos').style.display = 'none';
+        };
+        
+        document.getElementById('btnCerrarModal').onclick = () => {
+            document.getElementById('modalCambioDatos').style.display = 'none';
+        };
+        
+        // Aprobar/Rechazar cambios
+        document.getElementById('btnAprobarCambio').onclick = () => procesarAccion('aprobar_cambio_datos');
+        document.getElementById('btnRechazarCambio').onclick = () => procesarAccion('rechazar_cambio_datos');
+    });
 
     async function procesarAccion(accion) {
         if (!notificacionActualId) return;
@@ -322,13 +407,19 @@ for (const [campo, info] of Object.entries(datos)) {
         fd.append('notificacion_id', notificacionActualId);
         fd.append('motivo', motivo);
         
-        const resp = await fetch(`src/controllers/usuario_controller.php?accion=${accion}`, { method: 'POST', body: fd });
+        const resp = await fetch(`src/controllers/usuario_controller.php?accion=${accion}`, { 
+            method: 'POST', 
+            body: fd 
+        });
         const res = await resp.json();
-        if (res.success) { alert(res.message); location.reload(); }
+        
+        if (res.success) {
+            mostrarMensaje('success', res.message);
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            mostrarMensaje('error', res.message);
+        }
     }
-
-    document.getElementById('btnAprobarCambio').onclick = () => procesarAccion('aprobar_cambio_datos');
-    document.getElementById('btnRechazarCambio').onclick = () => procesarAccion('rechazar_cambio_datos');
 </script>
 </main>
 </body>

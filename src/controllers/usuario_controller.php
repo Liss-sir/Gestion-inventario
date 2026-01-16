@@ -161,6 +161,27 @@ switch ($accion) {
     // GET: ?accion=listar
     // =====================================================
     // Dentro del switch en usuario_controller.php
+     case 'contar_notificaciones':
+        header('Content-Type: application/json');
+        try {
+            // Asegúrate de tener la conexión $conn disponible
+            $id_usuario = $_SESSION['usuario_id'];
+            
+            $stmt = $conn->prepare("SELECT COUNT(*) as total FROM notificaciones WHERE id_usuario = ? AND leida = 0");
+            $stmt->execute([$id_usuario]);
+            $resultado = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            echo json_encode([
+                'success' => true,
+                'no_leidas' => (int)$resultado['total'],
+                'total' => (int)$resultado['total']
+            ]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    break;
+    
 case 'contador':
 case 'contar_notificaciones':
     header('Content-Type: application/json; charset=utf-8');
@@ -215,34 +236,41 @@ case 'contar_notificaciones':
     // =====================================================
     // ✅ ELIMINAR NOTIFICACIÓN
     // =====================================================
-    case 'eliminar_notificacion':
-        header('Content-Type: application/json; charset=utf-8');
+   // En tu archivo usuario_controller.php, agrega este case al switch:
 
-        if (!isset($_POST['notificacion_id'])) {
-            echo json_encode([
-                'success' => false,
-                'error' => 'ID de notificación no recibido'
-            ]);
-            exit;
+case 'eliminar_notificacion':
+    try {
+        $notificacion_id = $_POST['notificacion_id'] ?? 0;
+        $usuario_id = $_SESSION['usuario_id'] ?? 0;
+        
+        if ($notificacion_id <= 0 || $usuario_id <= 0) {
+            throw new Exception('Datos inválidos');
         }
-
-        $id = intval($_POST['notificacion_id']);
-
-        require_once '../models/Notificacion.php';
-        $model = new NotificacionModel($conn);
-
-        $ok = $model->eliminarPorId($id);
-
-        if ($ok) {
-            echo json_encode(['success' => true]);
-        } else {
-            echo json_encode([
-                'success' => false,
-                'error' => 'No se pudo eliminar la notificación'
-            ]);
+        
+        // Verificar que la notificación pertenece al usuario
+        $stmt = $conn->prepare("SELECT id_notificacion FROM notificaciones WHERE id_notificacion = ? AND id_usuario = ?");
+        $stmt->execute([$notificacion_id, $usuario_id]);
+        
+        if (!$stmt->fetch()) {
+            throw new Exception('No tienes permiso para eliminar esta notificación');
         }
-        exit;
-
+        
+        // Eliminar la notificación
+        $stmt = $conn->prepare("DELETE FROM notificaciones WHERE id_notificacion = ?");
+        $stmt->execute([$notificacion_id]);
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'Notificación eliminada correctamente'
+        ]);
+        
+    } catch (Exception $e) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Error al eliminar: ' . $e->getMessage()
+        ]);
+    }
+    break;
     // =====================================================
     // ✅ RESET PASSWORD (VALIDA TOKEN + CAMBIA PASSWORD)
     // POST FORM: ?accion=reset_password
@@ -1293,74 +1321,61 @@ case 'contar_notificaciones':
     // ✅ MARCAR NOTIFICACIÓN COMO LEÍDA
     // GET: ?accion=marcar_notificacion_leida&id=123
     // =====================================================
-    case 'marcar_notificacion_leida':
-        header('Content-Type: application/json; charset=utf-8');
+    // Agrega estos casos al switch en tu controlador:
+
+case 'marcar_notificacion_leida':
+    try {
+        $notificacion_id = $_POST['notificacion_id'] ?? 0;
+        $usuario_id = $_SESSION['usuario_id'] ?? 0;
         
-        if (!isset($_SESSION['usuario_id'])) {
-            echo json_encode(['success' => false, 'error' => 'No autorizado']);
-            exit;
+        if ($notificacion_id <= 0) {
+            throw new Exception('ID inválido');
         }
         
-        $id_usuario = (int)$_SESSION['usuario_id'];
-        $id_notificacion = (int)($_GET['id'] ?? 0);
+        $stmt = $conn->prepare("UPDATE notificaciones SET leida = 1 WHERE id_notificacion = ? AND id_usuario = ?");
+        $stmt->execute([$notificacion_id, $usuario_id]);
         
-        if ($id_notificacion <= 0) {
-            echo json_encode(['success' => false, 'error' => 'ID inválido']);
-            exit;
-        }
+        echo json_encode([
+            'success' => true,
+            'message' => 'Notificación marcada como leída'
+        ]);
         
-        try {
-            // Verificar que la notificación pertenezca al usuario
-            $stmt = $conn->prepare("SELECT id_notificacion FROM notificaciones WHERE id_notificacion = ? AND id_usuario = ?");
-            $stmt->execute([$id_notificacion, $id_usuario]);
-            
-            if (!$stmt->fetch()) {
-                echo json_encode(['success' => false, 'error' => 'Notificación no encontrada o no autorizada']);
-                exit;
-            }
-            
-            // Marcar como leída
-            $stmt = $conn->prepare("UPDATE notificaciones SET leida = 1 WHERE id_notificacion = ?");
-            $stmt->execute([$id_notificacion]);
-            
-            echo json_encode(['success' => true, 'message' => 'Notificación marcada como leída']);
-            
-        } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => 'Error: ' . $e->getMessage()]);
-        }
-        exit;
-        break;
+    } catch (Exception $e) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage()
+        ]);
+    }
+    break;
+
+
+
+// Ya deberías tener es                                                                                                              
 
     // =====================================================
     // ✅ MARCAR TODAS COMO LEÍDAS
     // GET: ?accion=marcar_todas_leidas
     // =====================================================
     case 'marcar_todas_leidas':
-        header('Content-Type: application/json; charset=utf-8');
+    try {
+        $usuario_id = $_SESSION['usuario_id'] ?? 0;
         
-        if (!isset($_SESSION['usuario_id'])) {
-            echo json_encode(['success' => false, 'error' => 'No autorizado']);
-            exit;
-        }
+        $stmt = $conn->prepare("UPDATE notificaciones SET leida = 1 WHERE id_usuario = ?");
+        $stmt->execute([$usuario_id]);
         
-        $id_usuario = (int)$_SESSION['usuario_id'];
+        echo json_encode([
+            'success' => true,
+            'message' => 'Todas las notificaciones marcadas como leídas',
+            'actualizadas' => $stmt->rowCount()
+        ]);
         
-        try {
-            $stmt = $conn->prepare("UPDATE notificaciones SET leida = 1 WHERE id_usuario = ? AND leida = 0");
-            $stmt->execute([$id_usuario]);
-            
-            $afectadas = $stmt->rowCount();
-            
-            echo json_encode([
-                'success' => true,
-                'message' => "Se marcaron {$afectadas} notificaciones como leídas"
-            ]);
-            
-        } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => 'Error: ' . $e->getMessage()]);
-        }
-        exit;
-        break;
+    } catch (Exception $e) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage()
+        ]);
+    }
+    break;
 
     // =====================================================
     //  DEFAULT
