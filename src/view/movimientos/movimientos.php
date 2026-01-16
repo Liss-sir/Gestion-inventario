@@ -303,6 +303,35 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
         </div>
 
 
+        <!-- CONFIRMATION MODAL - BODEGA/SUBBODEGA -->
+        <div id="confirmBodegaModal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div class="absolute inset-0" onclick="closeConfirmBodegaModal()"></div>
+
+            <div class="relative mx-4 w-full max-w-sm rounded-2xl bg-white shadow-xl p-6">
+                <div class="flex items-start justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">Destino de materiales</h3>
+                        <p class="text-sm text-gray-500 mt-1">¿Deseas agregar los materiales a una subbodega específica o a la bodega general?</p>
+                    </div>
+                    <button type="button" onclick="closeConfirmBodegaModal()"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100">
+                        <i data-lucide="x" class="h-4 w-4"></i>
+                    </button>
+                </div>
+
+                <div class="mt-6 flex gap-3 justify-end">
+                    <button type="button" onclick="selectBodegaDestino('bodega')"
+                        class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 border border-border">
+                        No, a la bodega
+                    </button>
+                    <button type="button" onclick="selectBodegaDestino('subbodega')"
+                        class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-secondary hover:opacity-90">
+                        Sí, a una subbodega
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- MATERIALS VIEW MODAL -->
         <div id="materialesModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
             <div class="absolute inset-0" onclick="closeMaterialesModal()"></div>
@@ -432,10 +461,10 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
                         </div>
 
-                        <div>
+                        <div data-field="subbodega-row" class="hidden">
                             <label class="text-sm font-medium">Subbodega</label>
                             <select id="subbodega" class="w-full border rounded-lg px-3 py-2">
-                                <option value="">Seleccione bodega primero</option>
+                                <option value="">Seleccione</option>
                             </select>
 
                         </div>

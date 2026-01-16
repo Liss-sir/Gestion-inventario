@@ -68,7 +68,6 @@ class MovimientoController
             !$data ||
             empty($data['id_usuario']) ||
             empty($data['id_bodega']) ||
-            empty($data['id_subbodega']) ||
             empty($data['materiales'])
         ) {
             echo json_encode(["success" => false, "message" => "Datos incompletos"]);
