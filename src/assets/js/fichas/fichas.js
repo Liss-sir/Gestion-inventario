@@ -31,6 +31,10 @@ let selectedFicha = null;
 let programas = [];
 let programasMap = {};
 
+// Estudiantes (aprendices)
+let aprendices = [];
+let estudiantesSeleccionados = [];
+
 // =========================
 // PAGINATION
 // =========================
@@ -174,6 +178,17 @@ const inputModalidad = document.getElementById("modalidad");
 const inputFechaInicio = document.getElementById("fecha_inicio");
 const inputFechaFin = document.getElementById("fecha_fin");
 
+// Pasos del formulario
+const paso1Ficha = document.getElementById("paso1Ficha");
+const paso2Ficha = document.getElementById("paso2Ficha");
+const btnIrPaso2 = document.getElementById("btnIrPaso2");
+const btnVolverPaso1 = document.getElementById("btnVolverPaso1");
+
+// Estudiantes
+const selectEstudiante = document.getElementById("selectEstudiante");
+// const btnAgregarEstudiante = document.getElementById("btnAgregarEstudiante");
+const listaEstudiantesSeleccionados = document.getElementById("listaEstudiantesSeleccionados");
+
 const modalVerFicha = document.getElementById("modalVerFicha")
 const btnCerrarModalVerFicha = document.getElementById("btnCerrarModalVerFicha")
 const detalleFichaContent = document.getElementById("detalleFichaContent")
@@ -309,9 +324,214 @@ async function cargarProgramas() {
   }
 }
 
+// =========================
+// CARGAR APRENDICES
+// =========================
+async function cargarAprendices() {
+  try {
+    const res = await fetch(`${API_URL}?accion=aprendices`)
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+    }
+    
+    const data = await res.json()
+    
+    if (Array.isArray(data)) {
+      aprendices = data
+    } else {
+      aprendices = []
+      console.error("La respuesta de aprendices no es un array:", data)
+    }
+
+    renderOpcionesAprendices()
+  } catch (error) {
+    console.error("Error al cargar aprendices:", error)
+    aprendices = []
+    renderOpcionesAprendices()
+  }
+}
+
+function renderOpcionesAprendices() {
+  if (!selectEstudiante) return
+
+  selectEstudiante.innerHTML = ""
+
+  if (!Array.isArray(aprendices) || aprendices.length === 0) {
+    selectEstudiante.innerHTML = `<option value="">No hay aprendices disponibles</option>`
+    selectEstudiante.disabled = true
+    return
+  }
+
+  selectEstudiante.disabled = false
+  selectEstudiante.innerHTML = `<option value="">Seleccione un estudiante...</option>`
+
+  // Filtrar solo los aprendices que no están seleccionados
+  const aprendicesDisponibles = aprendices.filter(a => 
+    !estudiantesSeleccionados.some(e => e.id_usuario === a.id_usuario)
+  )
+
+  // Agregar opción para seleccionar todos si hay disponibles
+  if (aprendicesDisponibles.length > 0) {
+    const optAll = document.createElement("option")
+    optAll.value = "all"
+    optAll.textContent = "Seleccionar todos los aprendices"
+    selectEstudiante.appendChild(optAll)
+  }
+
+  // No agregar opciones individuales de aprendices
+}
+
+function agregarEstudiante() {
+  const estudianteId = selectEstudiante.value
+  
+  if (!estudianteId) {
+    toastError("Seleccione un estudiante")
+    return
+  }
+
+  if (estudianteId === "all") {
+    // Agregar todos los aprendices disponibles
+    const aprendicesDisponibles = aprendices.filter(a => 
+      !estudiantesSeleccionados.some(e => e.id_usuario === a.id_usuario)
+    )
+    aprendicesDisponibles.forEach(a => {
+      const estudiante = {
+        id_usuario: a.id_usuario,
+        nombre_completo: a.nombre_completo,
+        numero_documento: a.numero_documento,
+        correo: a.correo || ''
+      }
+      estudiantesSeleccionados.push(estudiante)
+    })
+  } else {
+    const option = selectEstudiante.selectedOptions[0]
+    const estudiante = {
+      id_usuario: estudianteId,
+      nombre_completo: option.dataset.nombre,
+      numero_documento: option.dataset.documento,
+      correo: option.dataset.correo
+    }
+    estudiantesSeleccionados.push(estudiante)
+  }
+
+  selectEstudiante.value = ''
+  
+  renderOpcionesAprendices() // Actualizar lista excluyendo los agregados
+  renderChecklistAprendices()
+}
+
+function seleccionarTodosVisibles() {
+  const searchTerm = (selectEstudiante && selectEstudiante.value ? selectEstudiante.value.toLowerCase() : '')
+  const aprendicesFiltrados = aprendices.filter(a => 
+    (a.nombre_completo && a.nombre_completo.toLowerCase().includes(searchTerm)) ||
+    (a.numero_documento && a.numero_documento.toString().toLowerCase().includes(searchTerm)) ||
+    (a.correo && a.correo.toLowerCase().includes(searchTerm))
+  )
+
+  // Verificar si todos los filtrados están seleccionados
+  const todosSeleccionados = aprendicesFiltrados.every(a => 
+    estudiantesSeleccionados.some(e => e.id_usuario == a.id_usuario)
+  )
+
+  if (todosSeleccionados) {
+    // Quitar todos los filtrados de estudiantesSeleccionados
+    estudiantesSeleccionados = estudiantesSeleccionados.filter(e => 
+      !aprendicesFiltrados.some(a => a.id_usuario == e.id_usuario)
+    )
+  } else {
+    // Agregar los que no están
+    aprendicesFiltrados.forEach(a => {
+      if (!estudiantesSeleccionados.some(e => e.id_usuario == a.id_usuario)) {
+        estudiantesSeleccionados.push({
+          id_usuario: a.id_usuario,
+          nombre_completo: a.nombre_completo,
+          numero_documento: a.numero_documento,
+          correo: a.correo || ''
+        })
+      }
+    })
+  }
+
+  renderChecklistAprendices()
+}
+
+function renderChecklistAprendices() {
+  if (!listaEstudiantesSeleccionados) return
+
+  if (!Array.isArray(aprendices) || aprendices.length === 0) {
+    listaEstudiantesSeleccionados.innerHTML = `
+      <div class="text-center text-muted-foreground py-8">
+        <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <p class="text-sm">No hay aprendices disponibles</p>
+      </div>
+    `
+    return
+  }
+
+  // Filtrar por búsqueda
+  const searchTerm = (selectEstudiante && selectEstudiante.value ? selectEstudiante.value.toLowerCase() : '')
+  const aprendicesFiltrados = aprendices.filter(a => 
+    (a.nombre_completo && a.nombre_completo.toLowerCase().includes(searchTerm)) ||
+    (a.numero_documento && a.numero_documento.toString().toLowerCase().includes(searchTerm)) ||
+    (a.correo && a.correo.toLowerCase().includes(searchTerm))
+  )
+
+  let html = `
+    <div class="space-y-2">
+      <div class="flex justify-between text-xs font-medium text-gray-500 pb-2 border-b">
+        <span class="flex-1">Estudiante</span>
+        <span class="w-32 text-center">Documento</span>
+        <span class="w-16 text-center">Seleccionar</span>
+      </div>
+  `
+
+  aprendicesFiltrados.forEach((aprendiz) => {
+    const isSelected = estudiantesSeleccionados.some(e => e.id_usuario == aprendiz.id_usuario)
+    html += `
+      <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+        <div class="flex-1">
+          <div class="font-medium text-sm">${aprendiz.nombre_completo}</div>
+          ${aprendiz.correo ? `<div class="text-xs text-gray-500">${aprendiz.correo}</div>` : ''}
+        </div>
+        <div class="w-32 text-center text-sm">${aprendiz.numero_documento}</div>
+        <div class="w-16 text-center">
+          <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleEstudiante(${aprendiz.id_usuario})" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+        </div>
+      </div>
+    `
+  })
+
+  const totalSeleccionados = estudiantesSeleccionados.length
+  html += `
+      <div class="pt-2 border-t">
+        <div class="flex justify-between font-medium text-gray-700 text-sm">
+          <span>Total seleccionados:</span>
+          <span>${totalSeleccionados}</span>
+        </div>
+        <div class="mt-2 text-center">
+          <a href="#" onclick="seleccionarTodosVisibles(); return false;" class="text-blue-600 hover:text-blue-800 underline text-sm">
+            Seleccionar todos los visibles
+          </a>
+        </div>
+      </div>
+    </div>
+  `
+
+  listaEstudiantesSeleccionados.innerHTML = html
+}
+
 function openModalFicha(editFicha = null) {
   selectedFicha = editFicha
   modalFicha.classList.add("active")
+
+  // Limpiar estudiantes seleccionados
+  estudiantesSeleccionados = []
+
+  // Mostrar paso 1 y ocultar paso 2
+  if (paso1Ficha) paso1Ficha.classList.remove("hidden")
+  if (paso2Ficha) paso2Ficha.classList.add("hidden")
 
   if (editFicha) {
     modalFichaTitulo.textContent = "Editar Ficha"
@@ -336,6 +556,9 @@ function openModalFicha(editFicha = null) {
       fecha_fin: editFicha.fecha_fin || "",
     }
 
+    // Cargar estudiantes de esta ficha si está editando
+    cargarEstudiantesDeFicha(editFicha.id)
+
   } else {
     modalFichaTitulo.textContent = "Crear Nueva Ficha"
     modalFichaDescripcion.textContent = "Complete los datos para registrar una nueva ficha de formación"
@@ -353,6 +576,25 @@ function openModalFicha(editFicha = null) {
   }
 
   renderOpcionesPrograma()
+  renderOpcionesAprendices()
+  renderChecklistAprendices()
+}
+
+async function cargarEstudiantesDeFicha(idFicha) {
+  try {
+    const res = await fetch(`${API_URL}?accion=estudiantesFicha&id_ficha=${idFicha}`)
+    if (!res.ok) return
+
+    const data = await res.json()
+    
+    if (Array.isArray(data) && data.length > 0) {
+      estudiantesSeleccionados = data
+      renderOpcionesAprendices()
+      renderChecklistAprendices()
+    }
+  } catch (error) {
+    console.error("Error al cargar estudiantes de la ficha:", error)
+  }
 }
 
 function closeModalFicha() {
@@ -360,6 +602,11 @@ function closeModalFicha() {
   selectedFicha = null
   hiddenFichaId.value = ""
   originalEditData = null
+  estudiantesSeleccionados = []
+  
+  // Volver al paso 1
+  if (paso1Ficha) paso1Ficha.classList.remove("hidden")
+  if (paso2Ficha) paso2Ficha.classList.add("hidden")
 }
 
 function openModalVerFicha(ficha) {
@@ -1124,6 +1371,36 @@ function attachActionEvents() {
 // GLOBAL EVENT LISTENERS
 // =========================
 
+// Navegación entre pasos
+if (btnIrPaso2) {
+  btnIrPaso2.addEventListener("click", function() {
+    if (validarPaso1()) {
+      paso1Ficha.classList.add("hidden")
+      paso2Ficha.classList.remove("hidden")
+    }
+  })
+}
+
+if (btnVolverPaso1) {
+  btnVolverPaso1.addEventListener("click", function() {
+    paso2Ficha.classList.add("hidden")
+    paso1Ficha.classList.remove("hidden")
+  })
+}
+
+// Agregar estudiante
+// if (btnAgregarEstudiante) {
+//   btnAgregarEstudiante.addEventListener("click", agregarEstudiante)
+// }
+
+// Agregar estudiante con Enter
+if (selectEstudiante) {
+  selectEstudiante.addEventListener("keyup", () => {
+    console.log("Filtro activado:", selectEstudiante.value);
+    renderChecklistAprendices()
+  })
+}
+
 inputBuscar.addEventListener("input", () => {
   currentPageTable = 1
   currentPageCards = 1
@@ -1148,8 +1425,68 @@ btnVistaTarjetas.addEventListener("click", setVistaTarjetas)
 // ================================
 // FORM VALIDATION AND SUBMISSION
 // ================================
+
+function validarPaso1() {
+  const numeroRegex = /^[0-9]+$/
+
+  if (!inputNumeroFicha.value.trim()) {
+    toastError("El número de ficha es obligatorio.")
+    inputNumeroFicha.focus()
+    return false
+  }
+
+  if (!numeroRegex.test(inputNumeroFicha.value.trim())) {
+    toastError("El número de ficha solo puede contener números.")
+    inputNumeroFicha.focus()
+    return false
+  }
+
+  if (!inputPrograma.value) {
+    toastError("Debe seleccionar un programa de formación.")
+    inputPrograma.focus()
+    return false
+  }
+
+  if (!inputJornada.value) {
+    toastError("Debe seleccionar una jornada.")
+    inputJornada.focus()
+    return false
+  }
+
+  if (!inputModalidad.value) {
+    toastError("Debe seleccionar una modalidad.")
+    inputModalidad.focus()
+    return false
+  }
+
+  if (!inputFechaInicio.value) {
+    toastError("Debe seleccionar la fecha de inicio.")
+    inputFechaInicio.focus()
+    return false
+  }
+
+  if (!inputFechaFin.value) {
+    toastError("Debe seleccionar la fecha de fin.")
+    inputFechaFin.focus()
+    return false
+  }
+
+  if (inputFechaFin.value < inputFechaInicio.value) {
+    toastError("La fecha fin no puede ser menor que la fecha inicio.")
+    inputFechaFin.focus()
+    return false
+  }
+
+  return true
+}
+
 formFicha.addEventListener("submit", async (e) => {
     e.preventDefault();
+
+    // Validar paso 1
+    if (!validarPaso1()) {
+        return
+    }
 
     // Determine if it is editing or creation
     const isEdit = hiddenFichaId.value !== "" && hiddenFichaId.value !== null && hiddenFichaId.value !== undefined;
@@ -1163,57 +1500,6 @@ formFicha.addEventListener("submit", async (e) => {
         fecha_fin: inputFechaFin.value || null,
         estado: "Activa" // It is always created as "Activa"
     };
-
-    const numeroRegex = /^[0-9]+$/;
-
-    // BASIC VALIDATIONS
-    if (!payload.numero_ficha) {
-        toastError("El número de ficha es obligatorio.");
-        inputNumeroFicha.focus();
-        return;
-    }
-
-    if (!numeroRegex.test(payload.numero_ficha)) {
-        toastError("El número de ficha solo puede contener números.");
-        inputNumeroFicha.focus();
-        return;
-    }
-
-    if (!payload.id_programa) {
-        toastError("Debe seleccionar un programa de formación.");
-        inputPrograma.focus();
-        return;
-    }
-
-    if (!payload.jornada) {
-        toastError("Debe seleccionar una jornada.");
-        inputJornada.focus();
-        return;
-    }
-
-    if (!payload.modalidad) {
-        toastError("Debe seleccionar una modalidad.");
-        inputModalidad.focus();
-        return;
-    }
-
-    if (!payload.fecha_inicio) {
-        toastError("Debe seleccionar la fecha de inicio.");
-        inputFechaInicio.focus();
-        return;
-    }
-
-    if (!payload.fecha_fin) {
-        toastError("Debe seleccionar la fecha de fin.");
-        inputFechaFin.focus();
-        return;
-    }
-
-    if (payload.fecha_fin < payload.fecha_inicio) {
-        toastError("La fecha fin no puede ser menor que la fecha inicio.");
-        inputFechaFin.focus();
-        return;
-    }
 
     // Add ID if it's an edit
     if (isEdit) {
@@ -1233,7 +1519,33 @@ formFicha.addEventListener("submit", async (e) => {
             return;
         }
 
-        toastSuccess(data.message || (isEdit ? "Ficha actualizada correctamente." : "Ficha creada correctamente."));
+        // Si hay estudiantes seleccionados, agregarlos
+        if (estudiantesSeleccionados.length > 0) {
+            const idFicha = isEdit ? hiddenFichaId.value : data.id_ficha
+
+            if (idFicha) {
+                const estudiantesPayload = {
+                    id_ficha: idFicha,
+                    estudiantes: estudiantesSeleccionados.map(e => e.id_usuario)
+                }
+
+                const resEstudiantes = await fetch(`${API_URL}?accion=agregarEstudiantes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(estudiantesPayload)
+                })
+
+                const dataEstudiantes = await resEstudiantes.json()
+                
+                if (dataEstudiantes.success) {
+                    toastSuccess(data.message + ". Estudiantes agregados correctamente.");
+                } else {
+                    toastInfo(data.message + ". Pero hubo un problema al agregar estudiantes.");
+                }
+            }
+        } else {
+            toastSuccess(data.message || (isEdit ? "Ficha actualizada correctamente." : "Ficha creada correctamente."));
+        }
 
         closeModalFicha();
         await cargarFichas();
@@ -1263,6 +1575,7 @@ document.addEventListener("keydown", (e) => {
 async function inicializar() {
   await Promise.all([
       cargarProgramas(),  // Load programs first
+      cargarAprendices(), // Load aprendices
       cargarFichas()      // Load chips in parallel
   ]);
   setVistaTabla();        // Render after both have loaded
@@ -1270,3 +1583,7 @@ async function inicializar() {
 
 // Start
 inicializar();
+
+// Exponer funciones globales necesarias
+window.eliminarEstudiante = eliminarEstudiante;
+window.seleccionarTodosVisibles = seleccionarTodosVisibles;

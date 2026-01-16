@@ -138,8 +138,8 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
         <!-- Updated materials table with consistent styling -->
         <div id="tableView">
-          <div class="overflow-visible rounded-lg border-border bg-card relative">
-            <table class="min-w-full divide-y border divide-border text-sm rounded-lg">
+          <div class="overflow-visible rounded-xl border-border bg-card relative">
+            <table class="min-w-full divide-y border divide-border text-sm rounded-xl">
               <thead class="bg-gray-100">
                 <tr>
                   <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">Código</th>
@@ -209,20 +209,20 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 <!-- Nombre -->
                 <div class="space-y-2">
                     <label class="text-sm font-medium">Nombre *</label>
-                    <input id="nombre" type="text" placeholder="Ej: Cemento gris" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <input id="nombre" type="text" placeholder="Ej: Cemento gris" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required>
                 </div>
                 
                 <!-- Descripción -->
                 <div class="space-y-2">
                     <label class="text-sm font-medium">Descripción *</label>
-                    <textarea id="descripcion" placeholder="Descripción del material" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm h-16"></textarea>
+                    <textarea id="descripcion" placeholder="Descripción del material" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm h-16" required></textarea>
                 </div>
                 
                 <!-- Clasificación y Unidad -->
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Clasificación *</label>
-                        <select id="clasificacion" class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input" onchange="toggleCodigoField()">
+                        <select id="clasificacion" class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input" required onchange="toggleCodigoField()">
                             <option value="">Seleccione...</option>
                             <option value="Inventariado">Inventariado</option>
                             <option value="Consumible">Consumible</option>
@@ -230,7 +230,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                     </div>
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Unidad de medida *</label>
-                        <select id="unidad" class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input">
+                        <select id="unidad" class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input" required>
                             <option value="">Seleccione...</option>
                           <option value="AMP">AMP</option>
                           <option value="BARRA">BARRA</option>
@@ -276,12 +276,12 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 <div class="grid grid-cols-2 gap-4">
                   <div class="space-y-2">
                     <label class="text-sm font-medium">Precio *</label>
-                    <input id="precio" type="text" inputmode="decimal" placeholder="$ 0" min="100" class="w-full rounded-md border border-input px-3 py-2 text-sm bg-transparent">
+                    <input id="precio" type="text" inputmode="decimal" placeholder="$ 0" min="100" required class="w-full rounded-md border border-input px-3 py-2 text-sm bg-transparent">
                   </div>
                   
                   <div id="codigoContainer" class="space-y-2" style="display: none;">
                     <label class="text-sm font-medium">Código *</label>
-                    <input id="codigo" type="text" placeholder="TEC-001" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <input id="codigo" type="text" placeholder="EJ: 1234" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                   </div>
                 </div>
                 
@@ -300,12 +300,17 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                     </svg>
                     <p class="text-xs text-muted-foreground">Arrastra una imagen o haz clic para seleccionar</p>
                     <p class="text-[10px] text-muted-foreground">PNG, JPG hasta 2MB</p>
-                    <input id="imagen" type="file" accept="image/png,image/jpeg" class="sr-only" />
+                    <input id="imagen" type="file" accept="image/png,image/jpeg" required class="sr-only" />
                     <img id="previewImagen" alt="Vista previa" class="absolute inset-0 h-full w-full object-cover hidden" />
                   </div>
                 </div>
                 
-                
+                <!-- Código (solo si es Inventariado) -->
+                <div id="codigoContainer" class="space-y-2" style="display: none;">
+                    <label class="text-sm font-medium">Código *</label>
+                    <input id="codigo" type="text" placeholder="TEC-001" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <p class="text-xs text-muted-foreground">Este campo es obligatorio solo para materiales inventariados</p>
+                </div>
                 
                 <!-- Buttons -->
                 <div class="flex justify-end gap-2 pt-4">
@@ -376,27 +381,27 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 <!-- Nombre -->
                 <div class="space-y-2">
                     <label class="text-sm font-medium">Nombre *</label>
-                    <input id="editNombre" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <input id="editNombre" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required>
                 </div>
                 
                 <!-- Descripción -->
                 <div class="space-y-2">
                     <label class="text-sm font-medium">Descripción *</label>
-                    <textarea id="editDescripcion" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm h-16"></textarea>
+                    <textarea id="editDescripcion" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm h-16" required></textarea>
                 </div>
                 
                 <!-- Clasificación y Unidad -->
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Clasificación *</label>
-                        <select id="editClasificacion" class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input" onchange="toggleEditCodigoField()">
+                        <select id="editClasificacion" class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input" required onchange="toggleEditCodigoField()">
                             <option value="Inventariado">Inventariado</option>
                             <option value="Consumible">Consumible</option>
                         </select>
                     </div>
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Unidad de medida *</label>
-                        <select id="editUnidad" class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input">
+                        <select id="editUnidad" class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input" required>
                           <option value="AMP">AMP</option>
                           <option value="BARRA">BARRA</option>
                           <option value="BIDÓN">BIDÓN</option>
@@ -441,12 +446,12 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 <div class="grid grid-cols-2 gap-4">
                   <div class="space-y-2">
                     <label class="text-sm font-medium">Precio *</label>
-                    <input id="editPrecio" type="text" inputmode="decimal" placeholder="$ 0" min="100" class="w-full rounded-md border border-input px-3 py-2 text-sm bg-transparent">
+                    <input id="editPrecio" type="text" inputmode="decimal" placeholder="$ 0" min="100" required class="w-full rounded-md border border-input px-3 py-2 text-sm bg-transparent">
                   </div>
                   
                   <div id="editCodigoContainer" class="space-y-2">
                     <label class="text-sm font-medium">Código <span id="editCodigoRequired">*</span></label>
-                    <input id="editCodigo" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <input id="editCodigo" type="text" placeholder="EJ: 1234" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                   </div>
                 </div>
                 
@@ -469,7 +474,11 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 </div>
                 
                 <!-- Código (solo si es Inventariado) -->
-                
+                <div id="editCodigoContainer" class="space-y-2">
+                    <label class="text-sm font-medium">Código <span id="editCodigoRequired">*</span></label>
+                    <input id="editCodigo" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <p class="text-xs text-muted-foreground">Este campo es obligatorio solo para materiales inventariados</p>
+                </div>
                 
                 <!-- Buttons -->
                 <div class="flex justify-end gap-2 pt-4">

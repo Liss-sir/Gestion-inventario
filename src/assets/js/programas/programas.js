@@ -262,7 +262,6 @@ function checkAndShowEmptyStates(currentView) {
     tableView?.classList.add('hidden')
     gridView?.classList.add('hidden')
   } else {
-    // !!!HERE IS THE SOLUTION!!!
     // There are visible results - determine which view to show based on buttons
     emptyState?.classList.add('hidden')
     emptySearch?.classList.add('hidden')

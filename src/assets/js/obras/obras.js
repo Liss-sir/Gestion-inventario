@@ -1,4 +1,4 @@
-﻿// Global variables
+﻿// Variables globales
 let obras = [];
 let fichas = [];
 let raes = [];
@@ -12,27 +12,28 @@ let fichaSeleccionadaId = null;
 let aprendicesSeleccionados = [];
 
 // ==============================
-// API CONFIGURATION - FIXED URL
+// CONFIGURACIÓN DE API - URL FIJA
 // ==============================
 
+// URL COMPLETA DE LA API (usa esta)
 const API_URL = 'src/controllers/obra_controller.php';
 
-// For debugging
-console.log('API URL configured:', API_URL);
+// Para debugging
+console.log('API URL configurada:', API_URL);
 
 // ==============================
-// SIDEBAR DETECTION
+// DETECCIÓN DEL SIDEBAR
 // ==============================
 
-// Function to check and apply sidebar state
+// Función para verificar y aplicar estado del sidebar
 function setupSidebarDetection() {
-    // Check initial state
+    // Verificar estado inicial
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('coll') === '1') {
         document.body.classList.add('sidebar-collapsed');
     }
     
-    // Watch for future changes
+    // Observar cambios futuros
     document.addEventListener('click', function(e) {
         if (e.target.closest('a[href*="coll="]')) {
             setTimeout(() => {
@@ -48,22 +49,22 @@ function setupSidebarDetection() {
 }
 
 // ==============================
-// API FUNCTIONS
+// FUNCIONES DE API
 // ==============================
 
-// Function to make requests to the API
+// Función para hacer peticiones a la API
 async function fetchAPI(params = {}) {
     try {
-        // Build URL with parameters
+        // Construir URL con parámetros
         let url = API_URL;
         
-        // Add parameters if they exist
+        // Agregar parámetros si existen
         if (Object.keys(params).length > 0) {
             const queryParams = new URLSearchParams(params).toString();
             url += `?${queryParams}`;
         }
         
-        console.log('Fetching:', url); // For debugging
+        console.log('Fetching:', url); // Para debugging
         
         const response = await fetch(url);
         
@@ -71,129 +72,100 @@ async function fetchAPI(params = {}) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        // Verify that the response is JSON
+        // Verificar que la respuesta sea JSON
         const contentType = response.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
             const text = await response.text();
-            console.error('Non-JSON response:', text.substring(0, 500));
-            throw new Error('The server did not respond with JSON. Check the route.');
+            console.error('Respuesta no JSON:', text.substring(0, 500));
+            throw new Error('El servidor no respondió con JSON. Verifica la ruta.');
         }
         
         const data = await response.json();
         return data;
         
     } catch (error) {
-        console.error('Error in fetchAPI:', error);
+        console.error('Error en fetchAPI:', error);
         throw error;
     }
 }
 
-// Load works from API
+// Cargar obras desde API
 async function cargarObras() {
     try {
-        console.log('Loading works...');
+        console.log('Cargando obras...');
         const data = await fetchAPI({ accion: 'listar' });
         
-        console.log('Data received:', data);
+        console.log('Datos recibidos:', data);
         
         if (data && data.error) {
-            mostrarError(`Server error: ${data.error}`);
+            mostrarError(`Error del servidor: ${data.error}`);
             return;
         }
         
         obras = data || [];
-        console.log(`${obras.length} works loaded`);
+        console.log(`${obras.length} obras cargadas`);
         updateEstadisticas();
         renderObras(obras);
         
-        // Hide loading
+        // Ocultar loading
         const loadingElement = document.getElementById('loading');
         if (loadingElement) {
             loadingElement.style.display = 'none';
         }
         
     } catch (error) {
-        console.error('Complete error when loading works:', error);
+        console.error('Error completo al cargar obras:', error);
         
-        let errorMsg = 'Could not load works. ';
-        errorMsg += `URL attempted: ${API_URL}?accion=listar\n`;
+        let errorMsg = 'No se pudieron cargar las obras. ';
+        errorMsg += `URL intentada: ${API_URL}?accion=listar\n`;
         errorMsg += `Error: ${error.message}`;
         
         mostrarError(errorMsg);
     }
 }
 
-// Load master data (records, raes, instructors)
+// Cargar datos maestros (fichas, raes, instructores)
 async function cargarDatosMaestros() {
     try {
-        console.log('Loading master data...');
+        console.log('Cargando datos maestros...');
         
-        // Load records
+        // Cargar fichas
         const fichasData = await fetchAPI({ accion: 'obtener_fichas' });
         fichas = fichasData || [];
-        console.log(`${fichas.length} records loaded`);
+        console.log(`${fichas.length} fichas cargadas`);
         
-        // Load RAEs
+        // Cargar RAEs
         const raesData = await fetchAPI({ accion: 'obtener_raes' });
         raes = raesData || [];
-        console.log(`${raes.length} RAEs loaded`);
+        console.log(`${raes.length} RAEs cargados`);
         
-        // Load instructors
+        // Cargar instructores
         const instructoresData = await fetchAPI({ accion: 'obtener_instructores' });
         instructores = instructoresData || [];
-        console.log(`${instructores.length} instructors loaded`);
+        console.log(`${instructores.length} instructores cargados`);
         
-        // Fill modal creation selects
+        // Llenar selects del modal de creación
         llenarSelectFichas();
         llenarSelectRaes();
         llenarSelectInstructores();
         
     } catch (error) {
-        console.error('Error loading master data:', error);
-        mostrarErrorSelects('Error loading options');
+        console.error('Error cargando datos maestros:', error);
+        mostrarErrorSelects('Error al cargar opciones');
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('Initializing works module...');
-    setupSidebarDetection();
-    cargarObras();
-    
-    // Add listener for type change
-    document.getElementById('create_tipo')?.addEventListener('change', function() {
-        const container = document.getElementById('containerAprendizIndividual');
-        if (this.value === 'Individual') {
-            container.classList.remove('hidden');
-            // Load learners if there is already a record selected
-            const fichaId = document.getElementById('create_ficha').value;
-            if (fichaId) {
-                cargarAprendicesParaSelect(fichaId);
-            }
-        } else {
-            container.classList.add('hidden');
-        }
-    });
-    
-    // Also when the record changes
-    document.getElementById('create_ficha')?.addEventListener('change', function() {
-        const tipo = document.getElementById('create_tipo').value;
-        if (tipo === 'Individual' && this.value) {
-            cargarAprendicesParaSelect(this.value);
-        }
-    });
-});
-
-// Fill records select
+// Llenar select de fichas
 function llenarSelectFichas() {
     const select = document.getElementById('create_ficha');
     if (!select) return;
     
     if (fichas.length === 0) {
-        select.innerHTML = '<option value="" disabled selected class="text-red-500">No records available</option>';
+        select.innerHTML = '<option value="" disabled selected class="text-red-500">No hay fichas disponibles</option>';
         return;
     }
     
-    select.innerHTML = '<option value="" disabled selected class="text-gray-500">Select a Record</option>';
+    select.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona una Ficha</option>';
     
     fichas.forEach(ficha => {
         const option = document.createElement('option');
@@ -201,19 +173,25 @@ function llenarSelectFichas() {
         option.textContent = ficha.numero_ficha;
         select.appendChild(option);
     });
+    
+    // Inicializar select de aprendices con opción por defecto
+    const selectAprendiz = document.getElementById('create_aprendiz_individual');
+    if (selectAprendiz) {
+        selectAprendiz.innerHTML = '<option value="" disabled selected>Selecciona primero una ficha</option>';
+    }
 }
 
-// Fill RAEs select
+// Llenar select de RAEs
 function llenarSelectRaes() {
     const select = document.getElementById('create_rae');
     if (!select) return;
     
     if (raes.length === 0) {
-        select.innerHTML = '<option value="" disabled selected class="text-red-500">No RAEs available</option>';
+        select.innerHTML = '<option value="" disabled selected class="text-red-500">No hay RAEs disponibles</option>';
         return;
     }
     
-    select.innerHTML = '<option value="" disabled selected class="text-gray-500">Select an RAE</option>';
+    select.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona un RAE</option>';
     
     raes.forEach(rae => {
         const option = document.createElement('option');
@@ -223,17 +201,17 @@ function llenarSelectRaes() {
     });
 }
 
-// Fill instructors select
+// Llenar select de instructores
 function llenarSelectInstructores() {
     const select = document.getElementById('create_instructor');
     if (!select) return;
     
     if (instructores.length === 0) {
-        select.innerHTML = '<option value="" disabled selected class="text-red-500">No instructors available</option>';
+        select.innerHTML = '<option value="" disabled selected class="text-red-500">No hay instructores disponibles</option>';
         return;
     }
     
-    select.innerHTML = '<option value="" disabled selected class="text-gray-500">Select an instructor</option>';
+    select.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona un instructor</option>';
     
     instructores.forEach(instructor => {
         const option = document.createElement('option');
@@ -243,7 +221,7 @@ function llenarSelectInstructores() {
     });
 }
 
-// Show error in selects
+// Mostrar error en selects
 function mostrarErrorSelects(mensaje) {
   const selects = ['create_ficha', 'create_rae', 'create_instructor'];
   selects.forEach(selectId => {
@@ -256,21 +234,50 @@ function mostrarErrorSelects(mensaje) {
 }
 
 // ==============================
-// INITIALIZATION
+// INICIALIZACIÓN
 // ==============================
 
-// Load data on startup
+// Cargar datos al iniciar
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Initializing works module...');
+    console.log('Inicializando módulo de obras...');
     setupSidebarDetection();
     cargarObras();
+    
+    // Agrega este listener para el cambio de tipo
+    document.getElementById('create_tipo')?.addEventListener('change', function() {
+        const container = document.getElementById('containerAprendizIndividual');
+        if (this.value === 'Individual') {
+            container.classList.remove('hidden');
+            // Cargar aprendices si ya hay ficha seleccionada
+            const fichaId = document.getElementById('create_ficha').value;
+            if (fichaId) {
+                cargarAprendicesParaSelect(fichaId);
+            } else {
+                // Si no hay ficha seleccionada, mostrar mensaje por defecto
+                const selectAprendiz = document.getElementById('create_aprendiz_individual');
+                if (selectAprendiz) {
+                    selectAprendiz.innerHTML = '<option value="" disabled selected>Selecciona primero una ficha</option>';
+                }
+            }
+        } else {
+            container.classList.add('hidden');
+        }
+    });
+    
+    // También cuando cambie la ficha
+    document.getElementById('create_ficha')?.addEventListener('change', function() {
+        const tipo = document.getElementById('create_tipo').value;
+        if (tipo === 'Individual' && this.value) {
+            cargarAprendicesParaSelect(this.value);
+        }
+    });
 });
 
 // ==============================
-// INTERFACE FUNCTIONS
+// FUNCIONES DE INTERFAZ
 // ==============================
 
-// Update statistics
+// Actualizar estadísticas
 function updateEstadisticas() {
     const total = obras.length;
     const activas = obras.filter(o => o.estado === 'Activa').length;
@@ -281,7 +288,7 @@ function updateEstadisticas() {
     document.getElementById('obrasFinalizadas').textContent = finalizadas;
 }
 
-// RenderObras function
+// Función renderObras
 function renderObras(obrasData) {
     const container = document.getElementById('obrasContainer');
 
@@ -289,7 +296,7 @@ function renderObras(obrasData) {
         container.innerHTML = `
             <div class="text-center py-12 text-gray-500">
                 <i class="fas fa-folder-open text-4xl mb-3"></i>
-                <p>No works found</p>
+                <p>No se encontraron obras</p>
             </div>
         `;
         return;
@@ -352,7 +359,7 @@ function renderObras(obrasData) {
                             <!-- Fondo del switch -->
                             <div class="w-11 h-6 bg-[#64748b] rounded-full transition-all peer-checked:bg-[var(--secondary)]"></div>
                             
-                            <!-- Sliding button -->
+                            <!-- Botón deslizante -->
                             <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-all peer-checked:translate-x-5"></div>
 
                         </label>
@@ -386,9 +393,9 @@ function renderObras(obrasData) {
     `).join('');
 }
 
-// Format date
+// Formatear fecha
 function formatDate(dateString) {
-    if (!dateString) return 'Not defined';
+    if (!dateString) return 'No definida';
     
     const date = new Date(dateString + 'T00:00:00');
     const day = date.getDate().toString().padStart(2, '0');
@@ -397,19 +404,20 @@ function formatDate(dateString) {
     return `${day}/${month}/${year}`;
 }
 
+// Formatear fecha completa
 function formatFullDate(dateString) {
-    if (!dateString) return 'Not defined';
+    if (!dateString) return 'No definida';
     
     const date = new Date(dateString + 'T00:00:00');
-    const months = ['january', 'february', 'march', 'april', 'may', 'june', 
-                    'july', 'august', 'september', 'october', 'november', 'december'];
+    const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
     const day = date.getDate();
     const month = months[date.getMonth()];
     const year = date.getFullYear();
-    return `${day} of ${month} of ${year}`;
+    return `${day} de ${month} de ${year}`;
 }
 
-// Search works
+// Buscar obras
 function searchObras() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
 
@@ -429,7 +437,7 @@ function searchObras() {
     renderObras(results);
 }
 
-// Toggle work status
+// Alternar estado de obra
 async function toggleEstado(id, estado) {
     const accion = estado ? 'activar' : 'finalizar';
     
@@ -440,19 +448,19 @@ async function toggleEstado(id, estado) {
         });
         
         if (result.success) {
-            // Reload works
+            // Recargar obras
             await cargarObras();
-            toastSuccess('Status updated successfully');
+            toastSuccess('Estado actualizado exitosamente');
         } else {
-            toastError('Error updating status');
+            toastError('Error al actualizar estado');
             const checkbox = document.querySelector(`input[onchange="toggleEstado(${id}, this.checked)"]`);
             if (checkbox) {
                 checkbox.checked = !estado;
             }
         }
     } catch (error) {
-        console.error('Error changing status:', error);
-        toastError('Error changing status');
+        console.error('Error al cambiar estado:', error);
+        toastError('Error al cambiar estado');
 
         const checkbox = document.querySelector(`input[onchange="toggleEstado(${id}, this.checked)"]`);
         if (checkbox) {
@@ -461,14 +469,14 @@ async function toggleEstado(id, estado) {
     }
 }
 
-// Function to show custom confirmation dialog
+// Función para mostrar diálogo de confirmación personalizado
 function showConfirmationDialog(title, message) {
   return new Promise((resolve) => {
-    // Create overlay
+    // Crear overlay
     const overlay = document.createElement('div');
     overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]';
     
-    // Create modal
+    // Crear modal
     const modal = document.createElement('div');
     modal.className = 'bg-white rounded-lg shadow-xl w-full max-w-md mx-4';
     
@@ -489,14 +497,14 @@ function showConfirmationDialog(title, message) {
             id="confirmCancel"
             class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            Cancel
+            Cancelar
           </button>
           <button 
             type="button"
             id="confirmAccept"
             class="px-4 py-2 bg-secondary text-white rounded-lg hover:opacity-90 transition-colors"
           >
-            Accept
+            Aceptar
           </button>
         </div>
       </div>
@@ -505,7 +513,7 @@ function showConfirmationDialog(title, message) {
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
     
-    // Handle events
+    // Manejar eventos
     document.getElementById('confirmCancel').addEventListener('click', () => {
       document.body.removeChild(overlay);
       resolve(false);
@@ -516,7 +524,7 @@ function showConfirmationDialog(title, message) {
       resolve(true);
     });
     
-    // Close when clicking outside the modal
+    // Cerrar al hacer clic fuera del modal
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) {
         document.body.removeChild(overlay);
@@ -524,7 +532,7 @@ function showConfirmationDialog(title, message) {
       }
     });
     
-    // Close with ESC
+    // Cerrar con ESC
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
         document.body.removeChild(overlay);
@@ -537,30 +545,43 @@ function showConfirmationDialog(title, message) {
 }
 
 // ==============================
-// MODALS
+// MODALES
 // ==============================
 
-// Create work modal
+// Modal crear obra
 async function openCreateModal() {
-    // Ensure that master data is loaded
+    // Asegurar que los datos maestros estén cargados
     if (fichas.length === 0) {
         await cargarDatosMaestros();
     }
     
+    // Mostrar el modal
     document.getElementById('modalCreate').classList.remove('hidden');
     document.getElementById('formCreate').reset();
+    
+    // Establecer tipo por defecto
+    document.getElementById('create_tipo').value = 'Individual';
+    
+    // Mostrar container de aprendiz individual
+    const container = document.getElementById('containerAprendizIndividual');
+    container.classList.remove('hidden');
+    
+    // Inicializar select de aprendices con mensaje por defecto
+    const selectAprendiz = document.getElementById('create_aprendiz_individual');
+    if (selectAprendiz) {
+        selectAprendiz.innerHTML = '<option value="" disabled selected>Selecciona una ficha primero</option>';
+    }
 }
 
 function closeCreateModal() {
     document.getElementById('modalCreate').classList.add('hidden');
 }
 
-// Create work
-// Find the handleCreateObra function and replace it with:
+// Crear obra
 async function handleCreateObra(e) {
     e.preventDefault();
     
-    // Get form data
+    // Obtener datos del formulario
     const obraData = {
         id_ficha: document.getElementById('create_ficha').value,
         id_rae: document.getElementById('create_rae').value,
@@ -573,21 +594,21 @@ async function handleCreateObra(e) {
         estado: 'Activa'
     };
 
-    // If it is Individual, get the learner from the select
+    // Si es Individual, obtener el aprendiz del select
     if (obraData.tipo_trabajo === 'Individual') {
         const aprendizId = document.getElementById('create_aprendiz_individual').value;
         if (!aprendizId) {
-            toastError('You must select a learner for the individual work');
+            toastError('Debes seleccionar un aprendiz para la obra individual');
             return;
         }
         obraData.aprendiz_seleccionado = aprendizId;
     }
 
-    // Save type and record for later use
+    // Guardar tipo y ficha para uso posterior
     tipoTrabajoActual = obraData.tipo_trabajo;
     fichaSeleccionadaId = obraData.id_ficha;
 
-    // Validations (the ones you already have)
+    // Validaciones
     if (!validateObraData(obraData, false)) {
         return;
     }
@@ -596,7 +617,7 @@ async function handleCreateObra(e) {
     const btnCreateText = document.getElementById('btnCreateText');
     const btnCreateLoading = document.getElementById('btnCreateLoading');
     
-    // Show loading
+    // Mostrar loading
     btnCreate.disabled = true;
     btnCreateText.classList.add('hidden');
     btnCreateLoading.classList.remove('hidden');
@@ -617,37 +638,36 @@ async function handleCreateObra(e) {
             obraCreadaData = obraData;
             
             if (tipoTrabajoActual === 'Individual') {
-                // Assign individual learner
+                // Asignar el aprendiz individual
                 await asignarAprendizIndividual(obraData.aprendiz_seleccionado);
             } else if (tipoTrabajoActual === 'Grupal') {
-                // Load learners from record and show modal group
+                // Cargar aprendices de la ficha y mostrar modal grupal
                 await cargarAprendicesFicha(fichaSeleccionadaId);
                 openAsignarModal();
             } else {
-                // If there is no specific type, just create
-                toastSuccess('Work created successfully');
+                // Si no hay tipo específico, solo crear
+                toastSuccess('Obra creada exitosamente');
                 closeCreateModal();
                 await cargarObras();
             }
         } else {
-            toastError(result.error || 'Error creating work');
+            toastError(result.error || 'Error al crear la obra');
         }
     } catch (error) {
-        console.error('Error creating work:', error);
-        toastError('Error creating work');
+        console.error('Error creando obra:', error);
+        toastError('Error al crear la obra');
     } finally {
-        // Restore button
+        // Restaurar botón
         btnCreate.disabled = false;
         btnCreateText.classList.remove('hidden');
         btnCreateLoading.classList.add('hidden');
     }
 }
 
-
-// Edit work modal
+// Modal editar obra
 async function openEditModal(id) {
     try {
-        // Ensure that master data is loaded
+        // Asegurar que los datos maestros estén cargados
         if (fichas.length === 0) {
             await cargarDatosMaestros();
         }
@@ -658,14 +678,14 @@ async function openEditModal(id) {
         });
         
         if (!obra || obra.error) {
-            toastError('Could not load work');
-            console.error('Work not found with ID:', id);
+            toastError('No se pudo cargar la obra');
+            console.error('No se encontró obra con ID:', id);
             return;
         }
 
-        console.log('Data of work to edit:', obra);
+        console.log('Datos de obra para editar:', obra);
 
-        // SAVE ORIGINAL DATA FOR VALIDATION
+        // GUARDAR DATOS ORIGINALES PARA VALIDACIÓN
         originalEditData = {
             id_ficha: obra.id_ficha,
             id_rae: obra.id_rae,
@@ -677,15 +697,15 @@ async function openEditModal(id) {
             fecha_fin: obra.fecha_fin
         };
         
-        // SAVE COMPLETE WORK TO MAINTAIN STATUS
+        // GUARDAR OBRA COMPLETA PARA MANTENER EL ESTADO
         obraOriginal = obra;
 
-        // Fill selects with master data and select the correct one
+        // Llenar los selects con los datos maestros y seleccionar el correcto
         llenarSelectFichasEdit(obra.id_ficha);
         llenarSelectRaesEdit(obra.id_rae);
         llenarSelectInstructoresEdit(obra.id_instructor);
 
-        // Fill other form fields
+        // Llenar los otros campos del formulario
         document.getElementById('edit_id').value = obra.id_actividad;
         document.getElementById('edit_nombre').value = obra.nombre_actividad;
         document.getElementById('edit_descripcion').value = obra.descripcion || '';
@@ -693,12 +713,12 @@ async function openEditModal(id) {
         document.getElementById('edit_fecha_inicio').value = obra.fecha_inicio;
         document.getElementById('edit_fecha_fin').value = obra.fecha_fin;
 
-        // Show the modal
+        // Mostrar el modal
         document.getElementById('modalEdit').classList.remove('hidden');
         
     } catch (error) {
-        console.error('Error loading work:', error);
-        toastError('Error loading work: ' + error.message);
+        console.error('Error cargando obra:', error);
+        toastError('Error al cargar la obra: ' + error.message);
     }
 }
 
@@ -713,7 +733,7 @@ async function handleEditObra(e) {
 
     const id = parseInt(document.getElementById('edit_id').value);
     
-    // Collect data first
+    // Recopilar datos primero
     const currentData = {
         id_ficha: parseInt(document.getElementById('edit_ficha').value),
         id_rae: parseInt(document.getElementById('edit_rae').value),
@@ -725,57 +745,15 @@ async function handleEditObra(e) {
         fecha_fin: document.getElementById('edit_fecha_fin').value
     };
 
-    // VALIDATE BEFORE CONTINUING
-    // 1. Validate required fields
-    const requiredFields = {
-        id_ficha: 'Record',
-        id_rae: 'RAE', 
-        id_instructor: 'Instructor',
-        nombre_actividad: 'Activity name',
-        descripcion: 'Description',
-        tipo_trabajo: 'Work type',
-        fecha_inicio: 'Start date',
-        fecha_fin: 'End date'
-    };
-
-    for (const [field, name] of Object.entries(requiredFields)) {
-        if (!currentData[field] || currentData[field].toString().trim() === '') {
-            toastError(`The field "${name}" is required.`);
-            return;
-        }
-    }
-
-    // 2. Validate name
-    if (currentData.nombre_actividad.length < 3) {
-        toastError("The activity name must be at least 3 characters.");
+    // VALIDAR ANTES DE CONTINUAR
+    if (!validateObraData(currentData, true)) { // true = es edición
         return;
-    }
-
-    // 3. Validate description (MINIMUM 10 CHARACTERS)
-    if (!validarDescripcion(currentData.descripcion)) {
-        return; // The function already shows the error
-    }
-
-    // 4. Validate dates
-    if (!validarFechas(currentData.fecha_inicio, currentData.fecha_fin, false)) {
-        return; // The function already shows the error
     }
 
     // Check if there are any changes (only for editing)
     if (originalEditData) {
-        const originalDataForComparison = {
-            ...originalEditData,
-            id_ficha: parseInt(originalEditData.id_ficha),
-            id_rae: parseInt(originalEditData.id_rae),
-            id_instructor: parseInt(originalEditData.id_instructor),
-            nombre_actividad: originalEditData.nombre_actividad.trim(),
-            descripcion: (originalEditData.descripcion || '').trim(),
-            fecha_inicio: originalEditData.fecha_inicio,
-            fecha_fin: originalEditData.fecha_fin
-        };
-
         if (!hasChanges(originalEditData, currentData)) {
-            toastInfo("To update the work you need to modify at least one piece of data.");
+            toastInfo("Para actualizar la obra es necesario modificar al menos un dato.");
             return;
         }
     }
@@ -783,10 +761,10 @@ async function handleEditObra(e) {
     const obraData = {
         id_actividad: id,
         ...currentData,
-        estado: obraOriginal ? obraOriginal.estado : 'Activa' // Maintain original status
+        estado: obraOriginal ? obraOriginal.estado : 'Activa' // Mantener el estado original
     };
 
-    console.log('Data to update:', obraData);
+    console.log('Datos a actualizar:', obraData);
 
     try {
         const response = await fetch(API_URL, {
@@ -803,19 +781,19 @@ async function handleEditObra(e) {
         const result = await response.json();
         
         if (result.success) {
-            toastSuccess('Work updated successfully');
+            toastSuccess('Obra actualizada exitosamente');
             closeEditModal();
             await cargarObras();
         } else {
-            toastError(result.error || 'Error updating work');
+            toastError(result.error || 'Error al actualizar la obra');
         }
     } catch (error) {
-        console.error('Error updating work:', error);
-        toastError('Error updating work: ' + error.message);
+        console.error('Error actualizando obra:', error);
+        toastError('Error al actualizar la obra: ' + error.message);
     }
 }
 
-// Details modal
+// Modal detalles
 async function openDetailsModal(id) {
     try {
         const obra = await fetchAPI({ 
@@ -824,27 +802,27 @@ async function openDetailsModal(id) {
         });
         
         if (!obra || obra.error) {
-            toastError('Could not load work');
+            toastError('No se pudo cargar la obra');
             return;
         }
 
         document.getElementById('details_nombre').textContent = obra.nombre_actividad;
-        document.getElementById('details_badge_tipo').textContent = obra.estado === 'Activa' ? 'Active' : 'Completed';
+        document.getElementById('details_badge_tipo').textContent = obra.estado === 'Activa' ? 'Activa' : 'Finalizada';
         document.getElementById('details_badge_tipo').className = obra.estado === 'Activa'
             ? 'inline-block px-3 py-1 bg-secondary text-white text-xs font-semibold rounded-full'
             : 'inline-block px-3 py-1 bg-gray-500 text-white text-xs font-semibold rounded-full';
-        document.getElementById('details_descripcion').textContent = obra.descripcion || 'No description';
+        document.getElementById('details_descripcion').textContent = obra.descripcion || 'Sin descripción';
         document.getElementById('details_ficha').textContent = obra.numero_ficha || 'N/A';
         document.getElementById('details_tipo').textContent = obra.tipo_trabajo;
-        document.getElementById('details_instructor').textContent = obra.nombre_instructor || 'Not assigned';
-        document.getElementById('details_rae').textContent = obra.descripcion_rae || 'Not assigned';
+        document.getElementById('details_instructor').textContent = obra.nombre_instructor || 'No asignado';
+        document.getElementById('details_rae').textContent = obra.descripcion_rae || 'No asignado';
         document.getElementById('details_fecha_inicio').textContent = formatFullDate(obra.fecha_inicio);
         document.getElementById('details_fecha_fin').textContent = formatFullDate(obra.fecha_fin);
 
         document.getElementById('modalDetails').classList.remove('hidden');
     } catch (error) {
-        console.error('Error loading details:', error);
-        toastError('Error loading details');
+        console.error('Error cargando detalles:', error);
+        toastError('Error al cargar los detalles');
     }
 }
 
@@ -853,10 +831,10 @@ function closeDetailsModal() {
 }
 
 // ==============================
-// UTILITY FUNCTIONS
+// FUNCIONES UTILITARIAS
 // ==============================
 
-// Function to show errors
+// Función para mostrar errores
 function mostrarError(mensaje) {
     const container = document.getElementById('obrasContainer');
     if (!container) return;
@@ -867,23 +845,23 @@ function mostrarError(mensaje) {
             <p class="mb-2 font-medium">Error</p>
             <p class="text-sm mb-4 whitespace-pre-line">${mensaje}</p>
             <button onclick="cargarObras()" class="mt-4 px-4 py-2 bg-secondary text-white rounded hover:opacity-90">
-                Retry
+                Reintentar
             </button>
         </div>
     `;
 }
 
-// Fill records select for EDIT
+// Llenar select de fichas para EDITAR
 function llenarSelectFichasEdit(selectedId = null) {
     const select = document.getElementById('edit_ficha');
     if (!select) return;
     
     if (fichas.length === 0) {
-        select.innerHTML = '<option value="" disabled selected class="text-red-500">No records available</option>';
+        select.innerHTML = '<option value="" disabled selected class="text-red-500">No hay fichas disponibles</option>';
         return;
     }
     
-    select.innerHTML = '<option value="" disabled class="text-gray-500">Select a Record</option>';
+    select.innerHTML = '<option value="" disabled class="text-gray-500">Selecciona una Ficha</option>';
     
     fichas.forEach(ficha => {
         const option = document.createElement('option');
@@ -896,17 +874,17 @@ function llenarSelectFichasEdit(selectedId = null) {
     });
 }
 
-// Fill RAEs select for EDIT
+// Llenar select de RAEs para EDITAR
 function llenarSelectRaesEdit(selectedId = null) {
     const select = document.getElementById('edit_rae');
     if (!select) return;
     
     if (raes.length === 0) {
-        select.innerHTML = '<option value="" disabled selected class="text-red-500">No RAEs available</option>';
+        select.innerHTML = '<option value="" disabled selected class="text-red-500">No hay RAEs disponibles</option>';
         return;
     }
     
-    select.innerHTML = '<option value="" disabled class="text-gray-500">Select an RAE</option>';
+    select.innerHTML = '<option value="" disabled class="text-gray-500">Selecciona un RAE</option>';
     
     raes.forEach(rae => {
         const option = document.createElement('option');
@@ -919,17 +897,17 @@ function llenarSelectRaesEdit(selectedId = null) {
     });
 }
 
-// Fill instructors select for EDIT
+// Llenar select de instructores para EDITAR
 function llenarSelectInstructoresEdit(selectedId = null) {
     const select = document.getElementById('edit_instructor');
     if (!select) return;
     
     if (instructores.length === 0) {
-        select.innerHTML = '<option value="" disabled selected class="text-red-500">No instructors available</option>';
+        select.innerHTML = '<option value="" disabled selected class="text-red-500">No hay instructores disponibles</option>';
         return;
     }
     
-    select.innerHTML = '<option value="" disabled class="text-gray-500">Select an instructor</option>';
+    select.innerHTML = '<option value="" disabled class="text-gray-500">Selecciona un instructor</option>';
     
     instructores.forEach(instructor => {
         const option = document.createElement('option');
@@ -942,13 +920,13 @@ function llenarSelectInstructoresEdit(selectedId = null) {
     });
 }
 
-// Close modals with ESC key
+// Cerrar modales con tecla ESC
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     closeCreateModal();
     closeEditModal();
     closeDetailsModal();
-    // Clean confirmation data if it exists
+    // Limpiar datos de confirmación si existe
     const confirmModal = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50');
     if (confirmModal) {
       document.body.removeChild(confirmModal);
@@ -991,7 +969,7 @@ function showFlowbiteAlert(type, message) {
   // Default style: warning
   let borderColor = "border-amber-500";
   let textColor = "text-amber-900";
-  let titleText = "Warning";
+  let titleText = "Advertencia";
 
   // Default icon: warning triangle
   let iconSVG = `
@@ -1077,10 +1055,10 @@ function toastInfo(message) {
 }
 
 // =========================
-// VALIDATION OF CHANGES IN EDITING
+// VALIDACIÓN DE CAMBIOS EN EDICIÓN
 // =========================
 
-let originalEditData = null; // Variable to store original data
+let originalEditData = null; // Variable para almacenar datos originales
 
 /**
  * Check if there are any changes between original and current data
@@ -1092,38 +1070,35 @@ function hasChanges(originalData, currentData) {
 /**
  * Validates obra data before sending to server
  */
-/**
- * Validates work data before sending to server
- */
 function validateObraData(data, isEdit = false) {
   // Check required fields
   const requiredFields = {
-    id_ficha: 'Record',
+    id_ficha: 'Ficha',
     id_rae: 'RAE', 
     id_instructor: 'Instructor',
-    nombre_actividad: 'Activity name',
-    descripcion: 'Description',
-    tipo_trabajo: 'Work type',
-    fecha_inicio: 'Start date',
-    fecha_fin: 'End date'
+    nombre_actividad: 'Nombre de la actividad',
+    descripcion: 'Descripción',
+    tipo_trabajo: 'Tipo de trabajo',
+    fecha_inicio: 'Fecha de inicio',
+    fecha_fin: 'Fecha de fin'
   };
 
   for (const [field, name] of Object.entries(requiredFields)) {
     if (!data[field]) {
-      toastError(`The field "${name}" is required.`);
+      toastError(`El campo "${name}" es obligatorio.`);
       return false;
     }
   }
 
   // Validate name length
   if (data.nombre_actividad.trim().length < 3) {
-    toastError("The activity name must be at least 3 characters.");
+    toastError("El nombre de la actividad debe tener al menos 3 caracteres.");
     return false;
   }
 
   // Validate description length
   if (data.descripcion.trim().length < 10) {
-    toastError("The description must be at least 10 characters.");
+    toastError("La descripción debe tener al menos 10 caracteres.");
     return false;
   }
 
@@ -1137,10 +1112,10 @@ function validateObraData(data, isEdit = false) {
 
 /**
  * Check if there are any changes between original and current data
- * Improved to handle different types of data
+ * Upgraded for manage distinct types of data
  */
 function hasChanges(originalData, currentData) {
-  // Convert everything to string for exact comparison
+  // Turn all to string for exact comparison
   const normalize = (obj) => {
     return {
       id_ficha: parseInt(obj.id_ficha) || 0,
@@ -1161,44 +1136,8 @@ function hasChanges(originalData, currentData) {
 }
 
 // ==============================
-// DATE VALIDATIONS
+// VALIDACIONES DE FECHAS
 // ==============================
-
-// Function to validate that start date is not greater than end date
-function validarFechas(fechaInicio, fechaFin, esCreacion = false) {
-    const inicio = new Date(fechaInicio);
-    const fin = new Date(fechaFin);
-    
-    // Validate that the dates are valid
-    if (isNaN(inicio.getTime())) {
-        toastError("Start date is not valid.");
-        return false;
-    }
-    
-    if (isNaN(fin.getTime())) {
-        toastError("End date is not valid.");
-        return false;
-    }
-    
-    // Validate that start date is not greater than end date
-    if (inicio > fin) {
-        toastError("Start date cannot be later than end date.");
-        return false;
-    }
-    
-    // Validate that it is not a future date for creation (optional)
-    if (esCreacion) {
-        const hoy = new Date();
-        hoy.setHours(0, 0, 0, 0); // Remove the time part to compare only dates
-        
-        if (inicio > hoy) {
-            toastError("Start date cannot be a future date.");
-            return false;
-        }
-    }
-    
-    return true;
-}
 
 // Función para validar que fecha de inicio no sea mayor que fecha de fin
 function validarFechas(fechaInicio, fechaFin, esCreacion = false) {
@@ -1207,19 +1146,30 @@ function validarFechas(fechaInicio, fechaFin, esCreacion = false) {
     
     // Validar que las fechas sean válidas
     if (isNaN(inicio.getTime())) {
-        toastError("The start date is not valid.");
+        toastError("La fecha de inicio no es válida.");
         return false;
     }
     
     if (isNaN(fin.getTime())) {
-        toastError("The end date is not valid.");
+        toastError("La fecha de fin no es válida.");
         return false;
     }
     
     // Validar que fecha de inicio no sea mayor a fecha de fin
     if (inicio > fin) {
-        toastError("The start date cannot be later than the end date.");
+        toastError("La fecha de inicio no puede ser posterior a la fecha de fin.");
         return false;
+    }
+    
+    // Validar que no sea una fecha futura para creación (opcional)
+    if (esCreacion) {
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0); // Eliminar la parte de tiempo para comparar solo fechas
+        
+        if (inicio > hoy) {
+            toastError("La fecha de inicio no puede ser una fecha futura.");
+            return false;
+        }
     }
     
     return true;
@@ -1228,68 +1178,98 @@ function validarFechas(fechaInicio, fechaFin, esCreacion = false) {
 // Función para validar longitud mínima de descripción
 function validarDescripcion(descripcion) {
     if (descripcion.trim().length < 10) {
-        toastError("Description must be at least 10 characters.");
+        toastError("La descripción debe tener al menos 10 caracteres.");
         return false;
     }
     return true;
 }
 
 // ==============================
-// FUNCTIONS FOR LEARNERS
+// FUNCIONES PARA APRENDICES
 // ==============================
 
-// Function to load learners for individual select
+// Función para cargar aprendices para el select individual
 async function cargarAprendicesParaSelect(idFicha) {
     try {
         const select = document.getElementById('create_aprendiz_individual');
-        select.innerHTML = '<option value="" disabled selected>Loading learners...</option>';
         
-        const response = await fetch(API_URL + '?accion=obtener_aprendices_ficha&id_ficha=' + idFicha);
-        const data = await response.json();
+        if (!idFicha || idFicha === "") {
+            select.innerHTML = '<option value="" disabled selected>Selecciona primero una ficha</option>';
+            return;
+        }
+        
+        select.innerHTML = '<option value="" disabled selected>Cargando aprendices...</option>';
+        
+        const url = API_URL + '?accion=obtener_aprendices_ficha&id_ficha=' + idFicha;
+        
+        const response = await fetch(url);
+        const textResponse = await response.text();
+        
+        let data;
+        try {
+            data = JSON.parse(textResponse);
+        } catch (jsonError) {
+            console.error('No se pudo parsear como JSON:', jsonError);
+            select.innerHTML = '<option value="" disabled selected>Error al cargar aprendices</option>';
+            return;
+        }
         
         if (data && !data.error) {
             if (data.length === 0) {
-                select.innerHTML = '<option value="" disabled selected>No learners in this record</option>';
+                select.innerHTML = '<option value="" disabled selected>No hay aprendices en esta ficha</option>';
             } else {
-                select.innerHTML = '<option value="" disabled selected>Select a learner</option>';
+                select.innerHTML = '<option value="" disabled selected>Selecciona un aprendiz</option>';
                 data.forEach(aprendiz => {
                     const option = document.createElement('option');
                     option.value = aprendiz.id_usuario;
-                    option.textContent = `${aprendiz.nombre_completo} (${aprendiz.documento || 'No document'})`;
+                    option.textContent = `${aprendiz.nombre_completo} (${aprendiz.documento || 'Sin documento'})`;
                     select.appendChild(option);
                 });
             }
         } else {
-            select.innerHTML = '<option value="" disabled selected>Error loading learners</option>';
-            toastError('Error loading learners');
+            select.innerHTML = '<option value="" disabled selected>Error al cargar aprendices</option>';
+            console.error('Error del servidor:', data?.error);
         }
     } catch (error) {
-        console.error('Error loading learners:', error);
-        toastError('Error loading learners');
+        console.error('Error en cargarAprendicesParaSelect:', error);
+        const select = document.getElementById('create_aprendiz_individual');
+        select.innerHTML = '<option value="" disabled selected>Error de conexión</option>';
     }
 }
 
-// New function to load learners from a record
+// Nueva función para cargar aprendices de una ficha
 async function cargarAprendicesFicha(idFicha) {
     try {
-        const response = await fetch(API_URL + '?accion=obtener_aprendices_ficha&id_ficha=' + idFicha);
+        console.log('Cargando aprendices para ficha ID:', idFicha);
+        
+        const url = API_URL + '?accion=obtener_aprendices_ficha&id_ficha=' + idFicha;
+        console.log('URL de solicitud:', url);
+        
+        const response = await fetch(url);
+        console.log('Respuesta HTTP:', response.status, response.statusText);
+        
         const data = await response.json();
+        console.log('Datos recibidos:', data);
         
         if (data && !data.error) {
             aprendicesFicha = data;
+            console.log(`Cargados ${data.length} aprendices`);
             return true;
         } else {
-            toastError('Error loading learners: ' + (data.error || 'Unknown'));
+            const errorMsg = 'Error al cargar aprendices: ' + (data?.error || 'Desconocido');
+            console.error(errorMsg);
+            toastError(errorMsg);
             return false;
         }
     } catch (error) {
-        console.error('Error loading learners:', error);
-        toastError('Error loading learners');
+        console.error('Error cargando aprendices:', error);
+        console.error('Stack:', error.stack);
+        toastError('Error al cargar aprendices: ' + error.message);
         return false;
     }
 }
 
-// Function to assign individual learner
+// Función para asignar aprendiz individual
 async function asignarAprendizIndividual(idAprendiz) {
     try {
         const response = await fetch(API_URL, {
@@ -1307,30 +1287,30 @@ async function asignarAprendizIndividual(idAprendiz) {
         const result = await response.json();
         
         if (result.success) {
-            toastSuccess('Individual work created and learner assigned successfully');
+            toastSuccess('Obra individual creada y aprendiz asignado exitosamente');
             closeCreateModal();
             await cargarObras();
         } else {
-            toastError('Error assigning learner: ' + (result.error || 'Unknown'));
+            toastError('Error al asignar aprendiz: ' + (result.error || 'Desconocido'));
         }
     } catch (error) {
-        console.error('Error assigning learner:', error);
-        toastError('Error assigning learner');
+        console.error('Error asignando aprendiz:', error);
+        toastError('Error al asignar aprendiz');
     }
 }
 
-// Function to open individual selection modal
+// Función para abrir modal de selección individual
 function openSeleccionarModal() {
     const select = document.getElementById('selectAprendizIndividual');
     
     if (aprendicesFicha.length === 0) {
-        select.innerHTML = '<option value="" disabled selected>No learners in this record</option>';
+        select.innerHTML = '<option value="" disabled selected>No hay aprendices en esta ficha</option>';
     } else {
-        select.innerHTML = '<option value="" disabled selected>Select a learner</option>';
+        select.innerHTML = '<option value="" disabled selected>Selecciona un aprendiz</option>';
         aprendicesFicha.forEach(aprendiz => {
             const option = document.createElement('option');
             option.value = aprendiz.id_usuario;
-            option.textContent = `${aprendiz.nombre_completo} (${aprendiz.documento || 'No document'})`;
+            option.textContent = `${aprendiz.nombre_completo} (${aprendiz.documento || 'Sin documento'})`;
             select.appendChild(option);
         });
     }
@@ -1343,24 +1323,24 @@ function closeSeleccionarModal() {
     resetearCreacion();
 }
 
-// Function to open group assignment modal
+// Función para abrir modal de asignación grupal
 function openAsignarModal() {
-    // Update work information
+    // Actualizar información de la obra
     document.getElementById('infoObraCreada').textContent = 
-        `${obraCreadaData.nombre_actividad} - Record: ${fichaSeleccionadaId}`;
+        `${obraCreadaData.nombre_actividad} - Ficha: ${fichaSeleccionadaId}`;
     
-    // Fill learners select
+    // Llenar select de aprendices
     const select = document.getElementById('selectAprendiz');
     
     if (aprendicesFicha.length === 0) {
-        select.innerHTML = '<option value="" disabled selected>No learners in this record</option>';
+        select.innerHTML = '<option value="" disabled selected>No hay aprendices en esta ficha</option>';
         select.disabled = true;
     } else {
-        select.innerHTML = '<option value="" selected disabled>Select a learner</option>';
+        select.innerHTML = '<option value="" selected disabled>Selecciona un aprendiz</option>';
         aprendicesFicha.forEach(aprendiz => {
             const option = document.createElement('option');
             option.value = aprendiz.id_usuario;
-            option.textContent = `${aprendiz.nombre_completo} (${aprendiz.documento || 'No document'})`;
+            option.textContent = `${aprendiz.nombre_completo} (${aprendiz.documento || 'Sin documento'})`;
             option.setAttribute('data-nombre', aprendiz.nombre_completo);
             option.setAttribute('data-documento', aprendiz.documento || '');
             select.appendChild(option);
@@ -1368,7 +1348,7 @@ function openAsignarModal() {
         select.disabled = false;
     }
     
-    // Clear list of selected learners
+    // Limpiar lista de seleccionados
     aprendicesSeleccionados = [];
     actualizarListaAprendicesSeleccionados();
     
@@ -1380,21 +1360,21 @@ function closeAsignarModal() {
     resetearCreacion();
 }
 
-// Function to add selected learner (group)
+// Función para agregar aprendiz seleccionado (grupal)
 function agregarAprendizSeleccionado() {
     const select = document.getElementById('selectAprendiz');
     const idAprendiz = select.value;
     
     if (!idAprendiz) return;
     
-    // Verify that it is not already selected
+    // Verificar si ya está seleccionado
     if (aprendicesSeleccionados.some(a => a.id_usuario == idAprendiz)) {
-        toastInfo('This learner has already been selected');
+        toastInfo('Este aprendiz ya fue seleccionado');
         select.value = '';
         return;
     }
     
-    // Get learner data
+    // Obtener datos del aprendiz
     const option = select.options[select.selectedIndex];
     const aprendiz = {
         id_usuario: idAprendiz,
@@ -1402,22 +1382,22 @@ function agregarAprendizSeleccionado() {
         documento: option.getAttribute('data-documento')
     };
     
-    // Add to the list
+    // Agregar a la lista
     aprendicesSeleccionados.push(aprendiz);
     
-    // Clear select
+    // Limpiar select
     select.value = '';
     
-    // Update visual list
+    // Actualizar lista visual
     actualizarListaAprendicesSeleccionados();
 }
 
-// Function to filter learners in the group modal
+// Función para filtrar aprendices en el modal grupal
 function filtrarAprendices() {
     const searchTerm = document.getElementById('searchAprendiz').value.toLowerCase();
     const select = document.getElementById('selectAprendiz');
     
-    // Filter available learners (not selected)
+    // Filtrar aprendices disponibles (no seleccionados)
     const aprendicesDisponibles = aprendicesFicha.filter(aprendiz => 
         !aprendicesSeleccionados.some(a => a.id_usuario == aprendiz.id_usuario)
     );
@@ -1427,16 +1407,16 @@ function filtrarAprendices() {
         (aprendiz.documento && aprendiz.documento.toLowerCase().includes(searchTerm))
     );
     
-    // Update select
-    select.innerHTML = '<option value="" selected disabled>Select a learner</option>';
+    // Actualizar select
+    select.innerHTML = '<option value="" selected disabled>Selecciona un aprendiz</option>';
     
     if (aprendicesFiltrados.length === 0) {
-        select.innerHTML += '<option value="" disabled>No learners found</option>';
+        select.innerHTML += '<option value="" disabled>No se encontraron aprendices</option>';
     } else {
         aprendicesFiltrados.forEach(aprendiz => {
             const option = document.createElement('option');
             option.value = aprendiz.id_usuario;
-            option.textContent = `${aprendiz.nombre_completo} (${aprendiz.documento || 'No document'})`;
+            option.textContent = `${aprendiz.nombre_completo} (${aprendiz.documento || 'Sin documento'})`;
             option.setAttribute('data-nombre', aprendiz.nombre_completo);
             option.setAttribute('data-documento', aprendiz.documento || '');
             select.appendChild(option);
@@ -1444,12 +1424,12 @@ function filtrarAprendices() {
     }
 }
 
-// Function to update the visual list of selected learners
+// Función para actualizar la lista visual de aprendices seleccionados
 function actualizarListaAprendicesSeleccionados() {
     const container = document.getElementById('listaAprendicesSeleccionados');
     
     if (aprendicesSeleccionados.length === 0) {
-        container.innerHTML = '<p class="text-sm text-muted-foreground text-center py-4">No learners selected</p>';
+        container.innerHTML = '<p class="text-sm text-muted-foreground text-center py-4">No hay aprendices seleccionados</p>';
         return;
     }
     
@@ -1457,13 +1437,13 @@ function actualizarListaAprendicesSeleccionados() {
         <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
             <div>
                 <p class="text-sm font-medium text-gray-900">${aprendiz.nombre_completo}</p>
-                ${aprendiz.documento ? `<p class="text-xs text-gray-500">Document: ${aprendiz.documento}</p>` : ''}
+                ${aprendiz.documento ? `<p class="text-xs text-gray-500">Documento: ${aprendiz.documento}</p>` : ''}
             </div>
             <button 
                 type="button" 
                 onclick="removerAprendiz(${index})"
                 class="text-red-600 hover:text-red-800 p-1"
-                title="Remove"
+                title="Remover"
             >
                 <i class="fas fa-times"></i>
             </button>
@@ -1471,26 +1451,26 @@ function actualizarListaAprendicesSeleccionados() {
     `).join('');
 }
 
-// Function to remove learner from the list
+// Función para remover aprendiz de la lista
 function removerAprendiz(index) {
     aprendicesSeleccionados.splice(index, 1);
     actualizarListaAprendicesSeleccionados();
-    // Update the filter as well
+    // Actualizar el filtro también
     filtrarAprendices();
 }
 
-// Function to finish individual creation (modal version)
+// Función para finalizar creación individual (versión modal)
 async function finalizarCreacionIndividual() {
     const select = document.getElementById('selectAprendizIndividual');
     const idAprendiz = select.value;
     
     if (!idAprendiz) {
-        toastError('You must select a learner');
+        toastError('Debes seleccionar un aprendiz');
         return;
     }
     
     try {
-        // Assign learner to activity
+        // Asignar aprendiz a la actividad
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: {
@@ -1506,23 +1486,23 @@ async function finalizarCreacionIndividual() {
         const result = await response.json();
         
         if (result.success) {
-            toastSuccess('Individual work created and learner assigned successfully');
+            toastSuccess('Obra individual creada y aprendiz asignado exitosamente');
             closeSeleccionarModal();
             closeCreateModal();
             await cargarObras();
         } else {
-            toastError('Error assigning learner: ' + (result.error || 'Unknown'));
+            toastError('Error al asignar aprendiz: ' + (result.error || 'Desconocido'));
         }
     } catch (error) {
-        console.error('Error assigning learner:', error);
-        toastError('Error assigning learner');
+        console.error('Error asignando aprendiz:', error);
+        toastError('Error al asignar aprendiz');
     }
 }
 
-// Function to finish group creation
+// Función para finalizar creación grupal
 async function finalizarCreacionGrupal() {
     if (aprendicesSeleccionados.length === 0) {
-        toastError('You must select at least one learner');
+        toastError('Debes seleccionar al menos un aprendiz');
         return;
     }
     
@@ -1530,16 +1510,16 @@ async function finalizarCreacionGrupal() {
     const btnText = document.getElementById('btnFinalizarText');
     const btnLoading = document.getElementById('btnFinalizarLoading');
     
-    // Show loading
+    // Mostrar loading
     btn.disabled = true;
     btnText.classList.add('hidden');
     btnLoading.classList.remove('hidden');
     
     try {
-        // Get only the IDs of the learners
+        // Obtener solo los IDs de los aprendices
         const idsAprendices = aprendicesSeleccionados.map(a => a.id_usuario);
         
-        // Assign learners to activity
+        // Asignar aprendices a la actividad
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: {
@@ -1555,25 +1535,25 @@ async function finalizarCreacionGrupal() {
         const result = await response.json();
         
         if (result.success) {
-            toastSuccess(`Group work created and ${aprendicesSeleccionados.length} learners assigned successfully`);
+            toastSuccess(`Obra grupal creada y ${aprendicesSeleccionados.length} aprendices asignados exitosamente`);
             closeAsignarModal();
             closeCreateModal();
             await cargarObras();
         } else {
-            toastError('Error assigning learners: ' + (result.error || 'Unknown'));
+            toastError('Error al asignar aprendices: ' + (result.error || 'Desconocido'));
         }
     } catch (error) {
-        console.error('Error assigning learners:', error);
-        toastError('Error assigning learners');
+        console.error('Error asignando aprendices:', error);
+        toastError('Error al asignar aprendices');
     } finally {
-        // Restore button
+        // Restaurar botón
         btn.disabled = false;
         btnText.classList.remove('hidden');
         btnLoading.classList.add('hidden');
     }
 }
 
-// Function to reset the creation process
+// Función para resetear el proceso de creación
 function resetearCreacion() {
     obraCreadaId = null;
     obraCreadaData = null;
@@ -1583,7 +1563,7 @@ function resetearCreacion() {
     aprendicesFicha = [];
 }
 
-// Add to ESC key listener to close modals
+// Agregar al listener de tecla ESC para cerrar modales
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     closeCreateModal();
@@ -1592,7 +1572,7 @@ document.addEventListener('keydown', (e) => {
     closeSeleccionarModal();
     closeAsignarModal();
     
-    // Clean confirmation data if it exists
+    // Limpiar datos de confirmación si existe
     const confirmModal = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50');
     if (confirmModal && !confirmModal.id) {
       document.body.removeChild(confirmModal);

@@ -4,6 +4,7 @@ class ObraModel {
 
     private $conn;
     private $table = "actividades_formacion";
+    private $tableActividadesAprendices = "actividades_aprendices";
 
     public function __construct(PDO $conn) {
         $this->conn = $conn;
@@ -35,10 +36,14 @@ class ObraModel {
                 WHERE estado = 'Activa' 
                 ORDER BY numero_ficha";
         
-        $stmt = $this->conn->prepare($sql);
-        $stmt->execute();
-
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Error obteniendo fichas: " . $e->getMessage());
+            return [];
+        }
     }
 
     /* OBTENER RAES ACTIVOS */
@@ -48,21 +53,51 @@ class ObraModel {
                 WHERE estado = 'Activo' 
                 ORDER BY descripcion_rae";
         
-        $stmt = $this->conn->prepare($sql);
-        $stmt->execute();
-
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Error obteniendo RAEs: " . $e->getMessage());
+            return [];
+        }
     }
 
     /* OBTENER INSTRUCTORES ACTIVOS */
     public function obtenerInstructoresActivos() {
         $sql = "SELECT id_usuario, nombre_completo
                 FROM usuarios 
-                WHERE cargo = 'instructor' AND estado = 'Activo' 
+                WHERE cargo = 'instructor' 
+                AND estado = 'activo'
                 ORDER BY nombre_completo";
         
+        try {
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Error obteniendo instructores: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /* OBTENER APRENDICES DE UNA FICHA */
+    public function obtenerAprendicesFicha($idFicha) {
+        $sql = "SELECT 
+                    u.id_usuario,
+                    u.nombre_completo,
+                    u.numero_documento as documento,
+                    u.estado
+                FROM fichas_aprendices fa
+                INNER JOIN usuarios u ON fa.id_usuario = u.id_usuario
+                WHERE fa.id_ficha = ? 
+                AND u.cargo = 'aprendiz'
+                AND u.estado = 'activo'
+                AND fa.estado = 'Activo'
+                ORDER BY u.nombre_completo";
+        
         $stmt = $this->conn->prepare($sql);
-        $stmt->execute();
+        $stmt->execute([$idFicha]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -95,7 +130,7 @@ class ObraModel {
 
         $stmt = $this->conn->prepare($sql);
 
-        return $stmt->execute([
+        $success = $stmt->execute([
             $data["id_ficha"],
             $data["id_rae"],
             $data["id_instructor"],
@@ -106,6 +141,12 @@ class ObraModel {
             $data["fecha_fin"] ?? null,
             $data["estado"] ?? "Activa"
         ]);
+
+        if ($success) {
+            return $this->conn->lastInsertId();
+        }
+        
+        return false;
     }
 
     /* ACTUALIZAR */
@@ -144,5 +185,42 @@ class ObraModel {
         $stmt = $this->conn->prepare($sql);
 
         return $stmt->execute([$estado, $id]);
+    }
+
+    /* ASIGNAR APRENDICES A UNA ACTIVIDAD */
+    public function asignarAprendices($idActividad, $aprendices) {
+        // Eliminar asignaciones anteriores (si las hay)
+        $deleteSql = "DELETE FROM {$this->tableActividadesAprendices} WHERE id_actividad = ?";
+        $deleteStmt = $this->conn->prepare($deleteSql);
+        $deleteStmt->execute([$idActividad]);
+        
+        // Si no hay aprendices para asignar, retornar éxito
+        if (empty($aprendices)) {
+            return true;
+        }
+        
+        // Insertar nuevos aprendices
+        $insertSql = "INSERT INTO {$this->tableActividadesAprendices} (id_actividad, id_usuario) VALUES (?, ?)";
+        $insertStmt = $this->conn->prepare($insertSql);
+        
+        try {
+            $this->conn->beginTransaction();
+            
+            foreach ($aprendices as $idAprendiz) {
+                // Validar que el ID sea numérico
+                if (!is_numeric($idAprendiz)) {
+                    throw new Exception("ID de aprendiz inválido: " . $idAprendiz);
+                }
+                
+                $insertStmt->execute([$idActividad, intval($idAprendiz)]);
+            }
+            
+            $this->conn->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->conn->rollBack();
+            error_log("Error asignando aprendices: " . $e->getMessage());
+            return false;
+        }
     }
 }
