@@ -1,4 +1,31 @@
-﻿<!DOCTYPE html>
+﻿<?php
+// Incluir configuración y modelo
+include_once __DIR__ . '/../../../Config/database.php';
+include_once __DIR__ . '/../../models/programa.php';
+
+// Crear instancia del modelo
+$programaModel = new Programa($conn);
+
+// Obtener todos los programas
+try {
+    $programas = $programaModel->listar();
+    
+    // Verificar si hay error en la consulta
+    if (isset($programas['error'])) {
+        error_log("Error al listar programas: " . $programas['error']);
+        $programas = []; // Asegurar que sea un array vacío
+    }
+    
+    // Debug: Ver qué datos se obtienen
+    error_log("Programas obtenidos: " . print_r($programas, true));
+    
+} catch (Exception $e) {
+    error_log("Excepción al listar programas: " . $e->getMessage());
+    $programas = [];
+}
+?>
+
+<!DOCTYPE html>
 <html lang="es">
     <head>
         <meta charset="UTF-8">
