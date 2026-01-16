@@ -229,6 +229,7 @@ $bodegas = $model->listar();
               <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">Nombre</th>
               <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">Clasificación</th>
               <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">Ubicación</th>
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">Materiales</th>
               <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">Estado</th>
               <th class="px-4 py-3 text-right font-medium text-xs text-muted-foreground">Acciones</th>
             </tr>
@@ -237,7 +238,7 @@ $bodegas = $model->listar();
           <tbody id="tbodyBodegas" class="divide-y divide-border bg-card">
             <?php foreach ($bodegas as $b): ?>
               <?php $activo = $b['estado'] === "Activo"; ?>
-              <tr class="hover:bg-muted/30 bodegas-row">
+              <tr class="hover:bg-muted/30 bodegas-row" data-bodega-id="<?= $b['id_bodega'] ?>">
                 <td class="px-4 py-3 bodegas-codigo">#<?= $b['codigo_bodega'] ?></td>
 
                 <td class="px-4 py-3 bodegas-nombre">
@@ -258,6 +259,14 @@ $bodegas = $model->listar();
                 <td class="px-4 py-3 text-muted-foreground">
                   <i data-lucide="map-pin" class="w-4 h-4 inline-block text-muted-foreground mr-1"></i>
                   <?= htmlspecialchars($b['ubicacion']) ?>
+                </td>
+
+                <td class="px-4 py-3 inventario-cell" data-bodega-id="<?= $b['id_bodega'] ?>">
+                  <button type="button" onclick="verMaterialesBodega(<?= $b['id_bodega'] ?>)" 
+                    class="text-xs text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1">
+                    <i data-lucide="package" class="w-3 h-3"></i>
+                    Ver materiales
+                  </button>
                 </td>
 
                 <td class="px-4 py-3 bodegas-estado">
@@ -365,10 +374,11 @@ $bodegas = $model->listar();
             <hr class="border-border">
 
             <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                <i data-lucide="package" class="w-4 h-4 text-muted-foreground"></i>
-                <span><?= (int)($b['materiales'] ?? 0) ?> Materiales</span>
-              </div>
+              <button type="button" onclick="verMaterialesBodega(<?= $b['id_bodega'] ?>)" 
+                class="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 hover:underline">
+                <i data-lucide="package" class="w-4 h-4"></i>
+                <span>Ver materiales</span>
+              </button>
 
               <div class="flex items-center gap-3">
                 <span class="estado-text text-sm font-medium <?= $estadoActivo ? 'text-emerald-700' : 'text-red-700' ?>"></span>
@@ -846,6 +856,38 @@ $bodegas = $model->listar();
     </div>
   </div>
 </div>
+
+  <!-- Modal Ver Materiales de Bodega -->
+  <div id="modalMaterialesBodega" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div class="absolute inset-0" onclick="cerrarModalMateriales()"></div>
+
+    <div class="relative mx-4 w-full max-w-3xl rounded-2xl bg-white shadow-xl p-6">
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <h2 class="text-xl font-semibold text-gray-900">Materiales en Bodega</h2>
+          <p class="text-sm text-gray-500" id="nombreBodegaMateriales">Inventario actual</p>
+        </div>
+        <button type="button" onclick="cerrarModalMateriales()" 
+          class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100">
+          <i data-lucide="x" class="h-4 w-4"></i>
+        </button>
+      </div>
+
+      <div id="listaMaterialesBodega" class="space-y-2 max-h-96 overflow-y-auto">
+        <div class="text-center py-8 text-gray-500">
+          <i data-lucide="package-open" class="h-12 w-12 mx-auto mb-2 text-gray-300"></i>
+          <p>Cargando materiales...</p>
+        </div>
+      </div>
+
+      <div class="mt-6 flex justify-end">
+        <button type="button" onclick="cerrarModalMateriales()" 
+          class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 border border-border">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal Editar sub-bodega -->
 

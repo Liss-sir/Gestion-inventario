@@ -1334,65 +1334,265 @@ btnGuardarEditarSub?.addEventListener("click", async () => {
     cont.innerHTML = materiales.map(m => `
       <div class="flex items-center justify-between p-3 rounded-lg border bg-white">
         <div class="min-w-0">
-          <p class="font-medium text-gray-900 truncate">${m.nombre}</p>
+          <p class="font-medium text-gray-900 truncate">${m.nombre_material || m.nombre || "Material sin nombre"}</p>
           <p class="text-xs text-gray-500">
-            ${m.unidad_medida} · ${m.clasificacion}
+            ${m.unidad_medida || "N/A"}${m.clasificacion ? " · " + m.clasificacion : ""}
             ${m.codigo_inventario ? " · " + m.codigo_inventario : ""}
           </p>
         </div>
 
-        <span class="text-sm font-semibold text-gray-700">
-          ${m.stock_actual}
+        <span class="text-sm font-semibold text-gray-700 whitespace-nowrap ml-2">
+          ${m.cantidad_total || m.stock_actual || "0"}
         </span>
       </div>
     `).join("");
   };
 
-  const loadMaterialesBodega = async (idBodega) => {
-    try {
-      const res = await fetch(
-        `${API_MATERIALES}?accion=porBodega&id=${encodeURIComponent(idBodega)}`
-      );
-      const parsed = await safeJson(res);
-
-      if (!parsed.ok || !Array.isArray(parsed.data)) {
-        throw new Error("Respuesta inválida");
-      }
-
-      renderMateriales(parsed.data, {
-        containerId: "detalleBodegaMateriales",
-        emptyId: "detalleBodegaMaterialesVacio",
-        totalId: "totalMateriales"
-      });
-
-    } catch (err) {
-      console.error("Error cargando materiales bodega", err);
-      toastError("No se pudieron cargar los materiales de la bodega.");
-    }
-  };
-
-  const loadMaterialesSubBodega = async (idSubBodega) => {
-    try {
-      const res = await fetch(
-        `${API_MATERIALES}?accion=porSubBodega&id=${encodeURIComponent(idSubBodega)}`
-      );
-      const parsed = await safeJson(res);
-
-      if (!parsed.ok || !Array.isArray(parsed.data)) {
-        throw new Error("Respuesta inválida");
-      }
-
-      renderMateriales(parsed.data, {
-        containerId: "detalleSubBodegaMateriales",
-        emptyId: "detalleSubBodegaMaterialesVacio",
-        totalId: "totalSubMateriales"
-      });
-
-    } catch (err) {
-      console.error("Error cargando materiales sub-bodega", err);
-      toastError("No se pudieron cargar los materiales de la sub-bodega.");
-    }
-  };
-
-
 });
+
+// ============================
+// FUNCIONES GLOBALES (fuera de DOMContentLoaded)
+// ============================
+
+const loadMaterialesBodega = async (idBodega) => {
+  try {
+    console.log("� [loadMaterialesBodega] Buscando materiales para bodega ID:", idBodega);
+    
+    const API_URL = new URL("src/controllers/bodega_controller.php", document.baseURI).toString();
+    const url = `${API_URL}?accion=inventario_bodega&id_bodega=${encodeURIComponent(idBodega)}`;
+    console.log("🔗 [loadMaterialesBodega] URL:", url);
+    
+    const res = await fetch(url);
+    const json = await res.json();
+    
+    console.log("📥 [loadMaterialesBodega] Respuesta:", json);
+
+    const cont = document.getElementById("detalleBodegaMateriales");
+    const empty = document.getElementById("detalleBodegaMaterialesVacio");
+    const total = document.getElementById("totalMateriales");
+
+    console.log("🎯 [loadMaterialesBodega] Contenedores encontrados:", {
+      cont: !!cont,
+      empty: !!empty,
+      total: !!total
+    });
+
+    if (!cont) {
+      console.error("❌ [loadMaterialesBodega] Contenedor no encontrado");
+      return;
+    }
+
+    if (!json.success || !Array.isArray(json.data)) {
+      console.error("❌ [loadMaterialesBodega] Respuesta inválida:", json);
+      cont.innerHTML = "";
+      empty?.classList.remove("hidden");
+      if (total) total.textContent = "0";
+      return;
+    }
+
+    console.log("✅ [loadMaterialesBodega] Materiales encontrados:", json.data.length);
+
+    if (json.data.length === 0) {
+      cont.innerHTML = "";
+      empty?.classList.remove("hidden");
+      if (total) total.textContent = "0";
+      return;
+    }
+
+    empty?.classList.add("hidden");
+    if (total) total.textContent = json.data.length;
+
+    cont.innerHTML = json.data.map(m => `
+      <div class="flex items-center justify-between p-3 rounded-lg border bg-white">
+        <div class="min-w-0">
+          <p class="font-medium text-gray-900 truncate">${m.nombre_material || "Material sin nombre"}</p>
+          <p class="text-xs text-gray-500">
+            ${m.unidad_medida || "N/A"}
+          </p>
+        </div>
+        <span class="text-sm font-semibold text-gray-700 whitespace-nowrap ml-2">
+          ${m.cantidad_total || "0"}
+        </span>
+      </div>
+    `).join("");
+    
+    console.log("✅ [loadMaterialesBodega] Renderizado completo");
+
+  } catch (err) {
+    console.error("❌ [loadMaterialesBodega] Error:", err);
+    const cont = document.getElementById("detalleBodegaMateriales");
+    const empty = document.getElementById("detalleBodegaMaterialesVacio");
+    if (cont) cont.innerHTML = "";
+    if (empty) empty?.classList.remove("hidden");
+  }
+};
+
+const loadMaterialesSubBodega = async (idSubBodega) => {
+  try {
+    console.log("🔍 [loadMaterialesSubBodega] Buscando materiales para subbodega ID:", idSubBodega);
+    
+    const API_URL = new URL("src/controllers/bodega_controller.php", document.baseURI).toString();
+    const url = `${API_URL}?accion=inventario_subbodega&id_subbodega=${encodeURIComponent(idSubBodega)}`;
+    console.log("🔗 [loadMaterialesSubBodega] URL:", url);
+    
+    const res = await fetch(url);
+    const json = await res.json();
+    
+    console.log("📥 [loadMaterialesSubBodega] Respuesta:", json);
+
+    const cont = document.getElementById("detalleSubBodegaMateriales");
+    const empty = document.getElementById("detalleSubBodegaMaterialesVacio");
+    const total = document.getElementById("totalSubMateriales");
+
+    console.log("🎯 [loadMaterialesSubBodega] Contenedores encontrados:", {
+      cont: !!cont,
+      empty: !!empty,
+      total: !!total
+    });
+
+    if (!cont) {
+      console.error("❌ [loadMaterialesSubBodega] Contenedor no encontrado");
+      return;
+    }
+
+    if (!json.success || !Array.isArray(json.data)) {
+      console.error("❌ [loadMaterialesSubBodega] Respuesta inválida:", json);
+      cont.innerHTML = "";
+      empty?.classList.remove("hidden");
+      if (total) total.textContent = "0";
+      return;
+    }
+
+    console.log("✅ [loadMaterialesSubBodega] Materiales encontrados:", json.data.length);
+
+    if (json.data.length === 0) {
+      cont.innerHTML = "";
+      empty?.classList.remove("hidden");
+      if (total) total.textContent = "0";
+      return;
+    }
+
+    empty?.classList.add("hidden");
+    if (total) total.textContent = json.data.length;
+
+    cont.innerHTML = json.data.map(m => `
+      <div class="flex items-center justify-between p-3 rounded-lg border bg-white">
+        <div class="min-w-0">
+          <p class="font-medium text-gray-900 truncate">${m.nombre_material || "Material sin nombre"}</p>
+          <p class="text-xs text-gray-500">
+            ${m.unidad_medida || "N/A"}
+          </p>
+        </div>
+        <span class="text-sm font-semibold text-gray-700 whitespace-nowrap ml-2">
+          ${m.cantidad_total || "0"}
+        </span>
+      </div>
+    `).join("");
+    
+    console.log("✅ [loadMaterialesSubBodega] Renderizado completo");
+
+  } catch (err) {
+    console.error("❌ [loadMaterialesSubBodega] Error:", err);
+    const cont = document.getElementById("detalleSubBodegaMateriales");
+    const empty = document.getElementById("detalleSubBodegaMaterialesVacio");
+    if (cont) cont.innerHTML = "";
+    if (empty) empty?.classList.remove("hidden");
+  }
+};
+
+// Función para ver materiales de una bodega
+async function verMaterialesBodega(idBodega) {
+  const modal = document.getElementById("modalMaterialesBodega");
+  const lista = document.getElementById("listaMaterialesBodega");
+  const nombreBodega = document.getElementById("nombreBodegaMateriales");
+  
+  if (!modal || !lista) return;
+  
+  // Mostrar modal
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+  
+  // Mostrar loading
+  lista.innerHTML = `
+    <div class="text-center py-8 text-gray-500">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-2"></div>
+      <p>Cargando materiales...</p>
+    </div>
+  `;
+  
+  try {
+    const API_URL = new URL("src/controllers/bodega_controller.php", document.baseURI).toString();
+    const res = await fetch(`${API_URL}?accion=inventario_bodega&id_bodega=${idBodega}`);
+    const json = await res.json();
+    
+    if (json.success && Array.isArray(json.data)) {
+      const materiales = json.data;
+      
+      if (materiales.length === 0) {
+        lista.innerHTML = `
+          <div class="text-center py-8">
+            <i data-lucide="package-open" class="h-16 w-16 mx-auto mb-3 text-gray-300"></i>
+            <p class="text-gray-500 font-medium">No hay materiales en esta bodega</p>
+            <p class="text-xs text-gray-400 mt-1">Los materiales aparecerán aquí cuando se registren entradas</p>
+          </div>
+        `;
+      } else {
+        lista.innerHTML = materiales.map(m => `
+          <div class="flex justify-between items-center border rounded-lg p-4 bg-green-50 border-green-200 hover:shadow-sm transition">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                <i data-lucide="package" class="w-5 h-5 text-green-600"></i>
+              </div>
+              <div>
+                <p class="font-semibold text-green-900">${escapeHtml(m.nombre_material)}</p>
+                <p class="text-xs text-green-700">Unidad: ${escapeHtml(m.unidad_medida)}</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="text-2xl font-bold text-green-600">${m.cantidad_total}</p>
+              <p class="text-xs text-green-700">${escapeHtml(m.unidad_medida)}</p>
+            </div>
+          </div>
+        `).join('');
+      }
+      
+      // Reiniciar iconos de Lucide
+      if (window.lucide) window.lucide.createIcons();
+    } else {
+      throw new Error(json.message || "Error al cargar materiales");
+    }
+  } catch (err) {
+    console.error("Error cargando materiales:", err);
+    lista.innerHTML = `
+      <div class="text-center py-8 text-red-500">
+        <i data-lucide="alert-circle" class="h-12 w-12 mx-auto mb-2"></i>
+        <p class="font-medium">Error al cargar materiales</p>
+        <p class="text-xs mt-1">${err.message}</p>
+      </div>
+    `;
+    if (window.lucide) window.lucide.createIcons();
+  }
+}
+
+function cerrarModalMateriales() {
+  const modal = document.getElementById("modalMaterialesBodega");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
+}
+
+function escapeHtml(text) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
+// Exponer funciones globalmente
+window.verMaterialesBodega = verMaterialesBodega;
+window.cerrarModalMateriales = cerrarModalMateriales;

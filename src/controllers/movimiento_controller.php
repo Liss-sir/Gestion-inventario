@@ -62,7 +62,11 @@ class MovimientoController
 
     public function crear()
     {
-        $data = json_decode(file_get_contents("php://input"), true);
+        $rawInput = file_get_contents("php://input");
+        error_log("[CONTROLLER] JSON recibido: " . $rawInput);
+        
+        $data = json_decode($rawInput, true);
+        error_log("[CONTROLLER] JSON parseado: " . json_encode($data));
 
         if (
             !$data ||
@@ -70,6 +74,7 @@ class MovimientoController
             empty($data['id_bodega']) ||
             empty($data['materiales'])
         ) {
+            error_log("[CONTROLLER] Validación falló - Datos incompletos");
             echo json_encode(["success" => false, "message" => "Datos incompletos"]);
             return;
         }
