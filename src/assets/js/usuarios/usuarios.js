@@ -66,6 +66,11 @@ document.addEventListener("DOMContentLoaded", () => {
       container.className =
         "fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-3 w-full max-w-md px-4 pointer-events-none";
 
+      // ✅ ADDED (WITHOUT ALTERING YOUR BASE CLASS): Force top-right position
+      container.style.left = "auto";
+      container.style.right = "1.5rem";
+      container.style.transform = "none";
+
       document.body.appendChild(container);
     }
 
@@ -474,13 +479,113 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
+   * ✅ ADDED (NO-DELETE): Extract JSON safely from server output
+   * This prevents breaking when PHP outputs warnings or spaces before JSON.
+   */
+  function extractJSON(text) {
+    if (!text) return null;
+
+    // Try object first
+    let s = text.indexOf("{");
+    let e = text.lastIndexOf("}");
+    if (s !== -1 && e !== -1 && e > s) {
+      try {
+        return JSON.parse(text.slice(s, e + 1));
+      } catch (err) {}
+    }
+
+    // Try array fallback
+    s = text.indexOf("[");
+    e = text.lastIndexOf("]");
+    if (s !== -1 && e !== -1 && e > s) {
+      try {
+        return JSON.parse(text.slice(s, e + 1));
+      } catch (err) {}
+    }
+
+    return null;
+  }
+
+  /**
+   * ✅ ADDED (NO-DELETE): Redirect helper to login using project base URL
+   */
+  function redirectToLogin() {
+    const base = getBaseUrlFromApi(); // ends with "/"
+    window.location.href = base + "src/view/login/login.php";
+  }
+
+  /**
+   * ✅ ADDED (NO-DELETE): Session validation (token_sesion)
+   * - Calls usuario_controller.php?accion=check_session
+   * - If revoked/disabled -> toast + redirect
+   */
+  let _sessionGuardTimer = null;
+  let _sessionGuardBusy = false;
+
+  const SESSION_CHECK_INTERVAL_SECONDS = 10; // you can set 5, 8, 15...
+
+  async function checkSessionGuard() {
+    if (_sessionGuardBusy) return;
+
+    // Avoid session checks during modal editing to prevent noisy redirects mid-action
+    if (modalUsuario && modalUsuario.classList.contains("active")) return;
+
+    _sessionGuardBusy = true;
+
+    try {
+      const res = await fetch(`${API_URL}?accion=check_session&t=${Date.now()}`, {
+        method: "GET",
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+
+      const text = await res.text();
+      const data = extractJSON(text);
+
+      // If parsing fails, do not break the app
+      if (!data) return;
+
+      // If session is not active -> notify and redirect
+      if (Number(data.active) === 0) {
+        // Stop refresh timers immediately
+        if (_autoRefreshTimer) clearInterval(_autoRefreshTimer);
+        if (_sessionGuardTimer) clearInterval(_sessionGuardTimer);
+
+        const msg =
+          data.message ||
+          "Tu sesión fue cerrada o revocada. Debes iniciar sesión nuevamente.";
+
+        toastError(msg);
+
+        // Small delay to let the user read the alert
+        setTimeout(() => {
+          redirectToLogin();
+        }, 1200);
+      }
+    } catch (e) {
+      // Silent fail to avoid blocking UI on temporary network issues
+    } finally {
+      _sessionGuardBusy = false;
+    }
+  }
+
+  function startSessionGuard() {
+    if (_sessionGuardTimer) return;
+    _sessionGuardTimer = setInterval(checkSessionGuard, SESSION_CHECK_INTERVAL_SECONDS * 1000);
+  }
+
+  /**
    * Loads training programs from the backend and refreshes the select options.
    */
   async function cargarProgramas() {
     if (!inputPrograma) return;
 
     try {
-      const res = await fetch(`${PROGRAMAS_API_URL}?accion=listar`);
+      const res = await fetch(`${PROGRAMAS_API_URL}?accion=listar&t=${Date.now()}`, {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+
       const text = await res.text();
       console.log("Respuesta listar programas (cruda):", text);
 
@@ -810,23 +915,19 @@ document.addEventListener("DOMContentLoaded", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+
+      // ✅ ADDED (NO-DELETE): ensure cookies/session are sent
+      credentials: "same-origin",
+      cache: "no-store",
     });
 
     const text = await res.text();
     console.log("Respuesta cruda del servidor:", text);
 
-    try {
-      const start = text.indexOf("{");
-      const end = text.lastIndexOf("}");
-      if (start !== -1 && end !== -1 && end > start) {
-        const jsonString = text.slice(start, end + 1);
-        return JSON.parse(jsonString);
-      }
-      return { error: "Respuesta no válida del servidor: " + text };
-    } catch (e) {
-      console.error("Error parseando JSON:", e);
-      return { error: "Respuesta no válida del servidor: " + text };
-    }
+    const parsed = extractJSON(text);
+    if (parsed) return parsed;
+
+    return { error: "Respuesta no válida del servidor: " + text };
   }
 
   /**
@@ -834,7 +935,12 @@ document.addEventListener("DOMContentLoaded", () => {
    */
   async function cargarUsuarios() {
     try {
-      const res = await fetch(`${API_URL}?accion=listar`);
+      // ✅ FIX (WITHOUT ALTERING YOUR BASE LOGIC): Prevent cache by adding timestamp
+      const res = await fetch(`${API_URL}?accion=listar&t=${Date.now()}`, {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+
       const text = await res.text();
       console.log("Respuesta listar (cruda):", text);
 
@@ -900,6 +1006,37 @@ document.addEventListener("DOMContentLoaded", () => {
       users = [];
       renderTable();
     }
+  }
+
+  // =========================
+  // AUTO REFRESH USERS (WITHOUT PAGE REFRESH)
+  // =========================
+  // ✅ ADDED: Updates automatically every X seconds without needing to refresh the browser
+  const AUTO_REFRESH_SECONDS = 5; // Change to 2, 3, 10, etc.
+  let _autoRefreshTimer = null;
+  let _autoRefreshBusy = false;
+
+  async function autoRefreshUsuarios() {
+    if (_autoRefreshBusy) return;
+
+    // Do not refresh while modals are open to avoid overwriting edit form state
+    if (modalUsuario && modalUsuario.classList.contains("active")) return;
+    if (modalVerUsuario && modalVerUsuario.classList.contains("active")) return;
+
+    _autoRefreshBusy = true;
+
+    try {
+      await cargarUsuarios();
+    } catch (e) {
+      // Silent fail
+    } finally {
+      _autoRefreshBusy = false;
+    }
+  }
+
+  function startAutoRefresh() {
+    if (_autoRefreshTimer) return;
+    _autoRefreshTimer = setInterval(autoRefreshUsuarios, AUTO_REFRESH_SECONDS * 1000);
   }
 
   /**
@@ -1822,4 +1959,13 @@ document.addEventListener("DOMContentLoaded", () => {
   cargarUsuarios();
   cargarProgramas();
   setVistaTabla();
+
+  // ✅ ADDED: start auto refresh (without affecting your base flow)
+  startAutoRefresh();
+
+  // ✅ ADDED: start session guard (revoked/disabled token_sesion protection)
+  startSessionGuard();
+
+  // ✅ ADDED: run a first check quickly
+  setTimeout(checkSessionGuard, 900);
 });
