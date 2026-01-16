@@ -478,6 +478,24 @@ function renderChecklistAprendices() {
     (a.correo && a.correo.toLowerCase().includes(searchTerm))
   )
 
+  // Si hay aprendices pero ninguno coincide con la búsqueda, mostrar aviso
+  if (aprendicesFiltrados.length === 0) {
+    listaEstudiantesSeleccionados.innerHTML = `
+      <div class="flex flex-col items-center justify-center text-center py-8">
+        <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
+          <svg class="h-7 w-7 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <circle cx="11" cy="11" r="6" stroke-linecap="round" stroke-linejoin="round"></circle>
+            <line x1="16" y1="16" x2="20" y2="20" stroke-linecap="round" stroke-linejoin="round"></line>
+          </svg>
+        </div>
+        <h3 class="text-lg font-semibold mt-4">No se encontraron resultados</h3>
+        <p class="text-sm text-muted-foreground mt-1 max-w-md">No se encontraron aprendices que coincidan con los criterios de búsqueda actuales.</p>
+      </div>
+    `
+    return
+  }
+
   let html = `
     <div class="space-y-2">
       <div class="flex justify-between text-xs font-medium text-gray-500 pb-2 border-b">
@@ -520,6 +538,39 @@ function renderChecklistAprendices() {
   `
 
   listaEstudiantesSeleccionados.innerHTML = html
+}
+
+// Toggle selection when checking/unchecking a single estudiante
+function toggleEstudiante(id) {
+  if (id === undefined || id === null) return
+
+  const idStr = String(id)
+  const exists = estudiantesSeleccionados.some(e => String(e.id_usuario) === idStr)
+
+  if (exists) {
+    estudiantesSeleccionados = estudiantesSeleccionados.filter(e => String(e.id_usuario) !== idStr)
+  } else {
+    const aprendiz = aprendices.find(a => String(a.id_usuario) === idStr)
+    if (!aprendiz) return
+
+    estudiantesSeleccionados.push({
+      id_usuario: aprendiz.id_usuario,
+      nombre_completo: aprendiz.nombre_completo,
+      numero_documento: aprendiz.numero_documento,
+      correo: aprendiz.correo || ''
+    })
+  }
+
+  renderOpcionesAprendices()
+  renderChecklistAprendices()
+}
+
+function eliminarEstudiante(id) {
+  if (id === undefined || id === null) return
+  const idStr = String(id)
+  estudiantesSeleccionados = estudiantesSeleccionados.filter(e => String(e.id_usuario) !== idStr)
+  renderOpcionesAprendices()
+  renderChecklistAprendices()
 }
 
 function openModalFicha(editFicha = null) {
@@ -1587,3 +1638,4 @@ inicializar();
 // Exponer funciones globales necesarias
 window.eliminarEstudiante = eliminarEstudiante;
 window.seleccionarTodosVisibles = seleccionarTodosVisibles;
+window.toggleEstudiante = toggleEstudiante;
