@@ -54,32 +54,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
         <!-- Evidence Grid -->
         <div id="evidenceGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            <!-- Evidence Card 1 -->
-            <div class="evidence-card bg-card rounded-xl border border-border overflow-hidden cursor-pointer hover:shadow-lg transition-all" onclick="openDetailModal(1)">
-                <div class="relative">
-                    <img src="<?= BASE_URL ?>/uploads/evidencias/prueba.jpg" alt="Evidencia" class="w-full h-48 object-cover">
-                    <div class="absolute top-3 right-3 bg-card/90 backdrop-blur-sm px-3 py-1.5 rounded-lg flex items-center gap-2">
-                        </div>
-                    </div>
-                    <div class="p-4">
-                        <div class="flex items-center justify-between mb-2">
-                            
-                        <span class="text-xs text-muted-foreground">2024-04-06</span>
-                        <span class="text-xs font-medium">Ficha 2896441</span>
-                    </div>
-                    <p class="text-sm text-foreground line-clamp-2 mb-3">Trabajo de cimentación realizado por los aprendices de la ficha 2567890</p>
-                    <div class="flex flex-wrap gap-2">
-                        <span class="badge-material">
-                            <img src="tag-icon.png" alt="material" class="w-3 h-3">
-                            Cemento Gris
-                        </span>
-                        <span class="badge-material">
-                            <img src="tag-icon.png" alt="material" class="w-3 h-3">
-                            Arena de Río
-                        </span>
-                    </div>
-                </div>
-            </div>
+            <!-- Las tarjetas se generarán dinámicamente con JavaScript -->
         </div>
       </div>
     </main>

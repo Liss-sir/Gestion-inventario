@@ -5,19 +5,6 @@
    ========================= */
 let evidencesData = []
 
-// Datos de ejemplo (simula backend)
-const mockEvidences = [
-  {
-    id: 1,
-    fecha: "2024-04-06",
-    ficha: "2896441",
-    imagen: "src/uploads/evidencias/prueba.jpg",
-    titulo: "Técnico en Instalaciones Eléctricas Residenciales",
-    descripcion: "Trabajo de cimentación realizado por los aprendices de la ficha 2567890",
-    materiales: ["Cemento Gris", "Arena de Río"],
-  }
-]
-
 /* =========================
    Inicialización
    ========================= */
@@ -65,16 +52,11 @@ async function fetchAndRenderEvidences() {
       materiales: [],
     }))
 
-    // Si backend no tiene datos aún, usar mock como fallback visual
-    if (!evidencesData.length) {
-      evidencesData = [...mockEvidences]
-    }
-
     renderEvidenceCards()
   } catch (err) {
     console.warn("[Evidencias] No se pudo cargar desde backend:", err)
-    // Fallback a mock para no romper la UI
-    evidencesData = [...mockEvidences]
+    // Si hay error, mostrar array vacío
+    evidencesData = []
     renderEvidenceCards()
   }
 }
@@ -96,6 +78,28 @@ const icons = {
 function renderEvidenceCards() {
   const grid = document.getElementById("evidenceGrid")
   grid.innerHTML = ""
+
+  // Si no hay evidencias, mostrar estado vacío
+  if (evidencesData.length === 0) {
+    grid.className = "col-span-full"
+    grid.innerHTML = `
+      <div class="flex flex-col items-center justify-center py-24 px-6 bg-card rounded-2xl border border-border">
+        <div class="w-20 h-20 rounded-full bg-muted/50 border-2 border-border flex items-center justify-center mb-6">
+          <svg class="w-10 h-10 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold text-foreground mb-3">No hay evidencias registradas</h3>
+        <p class="text-sm text-muted-foreground text-center max-w-md leading-relaxed">
+          Una vez agregues evidencias desde el botón <strong>"Nueva Evidencia"</strong>, aparecerán listadas en esta vista.
+        </p>
+      </div>
+    `
+    return
+  }
+
+  // Restaurar clase del grid cuando hay evidencias
+  grid.className = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
 
   evidencesData.forEach((evidence) => {
     const card = document.createElement("div")
