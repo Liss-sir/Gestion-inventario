@@ -13,133 +13,86 @@ class FichaController {
         $this->model = new FichaModel($conn);
     }
 
-    /* List fichas */
     public function listar() {
         echo json_encode($this->model->listar());
     }
 
-    /* Get ficha by ID */
     public function obtener($id) {
         if (!$id) {
             echo json_encode(['error' => 'id_ficha requerido']);
             return;
         }
-
-        $data = $this->model->obtener($id);
-        echo json_encode($data ?: ['error' => 'Ficha no encontrada']);
+        echo json_encode($this->model->obtener($id));
     }
 
-    /* Create ficha */
     public function crear() {
         $input = json_decode(file_get_contents("php://input"), true);
-
-        if (!$input) {
-            echo json_encode(['error' => 'Datos inválidos']);
-            return;
-        }
-
         $id = $this->model->crear($input);
 
-        if ($id) {
-            echo json_encode([
-                'success' => true,
-                'message' => "Ficha creada correctamente",
-                'id_ficha' => $id
-            ]);
-        } else {
-            echo json_encode([
-                'success' => false,
-                'message' => "Error al crear ficha"
-            ]);
-        }
+        echo json_encode([
+            'success' => (bool)$id,
+            'id_ficha' => $id
+        ]);
     }
 
-    /* Update ficha */
     public function actualizar() {
         $input = json_decode(file_get_contents("php://input"), true);
-
-        if (!isset($input['id_ficha'])) {
-            echo json_encode(['error' => 'id_ficha requerido']);
-            return;
-        }
-
-        $ok = $this->model->actualizar($input);
-
         echo json_encode([
-            'success' => $ok,
-            'message' => $ok ? "Ficha actualizada correctamente" : "Error al actualizar ficha"
+            'success' => $this->model->actualizar($input)
         ]);
     }
 
-    /* Change ficha state */
     public function cambiarEstado($id, $accion) {
-        if (!$id) {
-            echo json_encode(['error' => 'id_ficha requerido']);
-            return;
-        }
-
-        // Convertir acción en estado válido
         $map = [
-            "activar"    => "Activa",
-            "finalizar"  => "Finalizada",
-            "cancelar"   => "Cancelada"
+            "activar" => "Activa",
+            "finalizar" => "Finalizada",
+            "cancelar" => "Cancelada"
         ];
-
-        if (!isset($map[$accion])) {
-            echo json_encode(['error' => 'Acción inválida']);
-            return;
-        }
-
-        $estado = $map[$accion];
-        $ok = $this->model->cambiarEstado($id, $estado);
-
         echo json_encode([
-            'success' => $ok,
-            'message' => $ok ? "Ficha actualizada a estado: $estado" : "Error al cambiar estado"
+            'success' => $this->model->cambiarEstado($id, $map[$accion])
         ]);
     }
 
-    /* Get aprendices (students) */
+    /* ================= APRENDICES ================= */
+
     public function obtenerAprendices() {
         echo json_encode($this->model->obtenerAprendices());
     }
 
-    /* Add students to ficha */
     public function agregarEstudiantes() {
         $input = json_decode(file_get_contents("php://input"), true);
-
-        if (!isset($input['id_ficha']) || !isset($input['estudiantes'])) {
-            echo json_encode([
-                'success' => false,
-                'error' => 'Datos incompletos'
-            ]);
-            return;
-        }
-
-        $ok = $this->model->agregarEstudiantes(
-            $input['id_ficha'],
-            $input['estudiantes']
-        );
-
         echo json_encode([
-            'success' => $ok,
-            'message' => $ok ? 'Estudiantes agregados correctamente' : 'Error al agregar estudiantes'
+            'success' => $this->model->agregarEstudiantes(
+                $input['id_ficha'],
+                $input['estudiantes']
+            )
         ]);
     }
 
-    /* Get students of a ficha */
     public function obtenerEstudiantesFicha($id) {
-        if (!$id) {
-            echo json_encode(['error' => 'id_ficha requerido']);
-            return;
-        }
-
         echo json_encode($this->model->obtenerEstudiantesDeFicha($id));
     }
 
+    /* ================= INSTRUCTORES ================= */
+
+    public function obtenerInstructores() {
+        echo json_encode($this->model->obtenerInstructores());
+    }
+
+    public function asignarInstructores() {
+        $input = json_decode(file_get_contents("php://input"), true);
+
+        echo json_encode([
+            'success' => $this->model->asignarInstructoresFicha(
+                $input['id_ficha'],
+                $input['instructores']
+            )
+        ]);
+    }
 }
 
-/* Router */
+/* ================= ROUTER ================= */
+
 $accion = $_GET['accion'] ?? null;
 $id = $_GET['id_ficha'] ?? null;
 
@@ -187,7 +140,14 @@ switch ($accion) {
         $controller->obtenerEstudiantesFicha($id);
         break;
 
+    case "instructores":
+        $controller->obtenerInstructores();
+        break;
+
+    case "asignarInstructores":
+        $controller->asignarInstructores();
+        break;
+
     default:
         echo json_encode(["error" => "Acción no válida"]);
 }
-

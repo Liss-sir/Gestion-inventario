@@ -9,35 +9,31 @@ class FichaModel {
         $this->conn = $db;
     }
 
-    /*List all FICHAS*/
+    /* List all FICHAS */
     public function listar() {
         try {
             $sql = "SELECT * FROM " . $this->table;
             $stmt = $this->conn->prepare($sql);
             $stmt->execute();
-
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-
         } catch (Exception $e) {
-            return ['error' => $e->getMessage()];
+            return [];
         }
     }
 
-    /*Get FICHA for ID*/
+    /* Get FICHA by ID */
     public function obtener($id) {
         try {
             $sql = "SELECT * FROM " . $this->table . " WHERE id_ficha = ?";
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([$id]);
-
             return $stmt->fetch(PDO::FETCH_ASSOC);
-
         } catch (Exception $e) {
-            return ['error' => $e->getMessage()];
+            return null;
         }
     }
 
-    /*Create FICHA*/
+    /* Create FICHA */
     public function crear($data) {
         try {
             $sql = "INSERT INTO " . $this->table . "
@@ -46,7 +42,7 @@ class FichaModel {
 
             $stmt = $this->conn->prepare($sql);
 
-            $result = $stmt->execute([
+            $ok = $stmt->execute([
                 $data['numero_ficha'],
                 $data['id_programa'],
                 $data['jornada'],
@@ -56,27 +52,23 @@ class FichaModel {
                 isset($data['estado']) ? $data['estado'] : "Activa"
             ]);
 
-            if ($result) {
-                return (int)$this->conn->lastInsertId();
-            }
-            
-            return false;
+            return $ok ? (int)$this->conn->lastInsertId() : false;
 
         } catch (Exception $e) {
             return false;
         }
     }
 
-    /*Update FICHA*/
+    /* Update FICHA */
     public function actualizar($data) {
         try {
             $sql = "UPDATE " . $this->table . "
-                SET numero_ficha = ?, 
-                    id_programa = ?, 
-                    jornada = ?, 
-                    modalidad = ?, 
-                    fecha_inicio = ?, 
-                    fecha_fin = ?, 
+                SET numero_ficha = ?,
+                    id_programa = ?,
+                    jornada = ?,
+                    modalidad = ?,
+                    fecha_inicio = ?,
+                    fecha_fin = ?,
                     estado = ?
                 WHERE id_ficha = ?";
 
@@ -92,33 +84,32 @@ class FichaModel {
                 $data['estado'],
                 $data['id_ficha']
             ]);
-
         } catch (Exception $e) {
             return false;
         }
     }
 
+    /* Change FICHA state */
     public function cambiarEstado($id, $estado) {
         try {
             $sql = "UPDATE " . $this->table . " SET estado = ? WHERE id_ficha = ?";
             $stmt = $this->conn->prepare($sql);
             return $stmt->execute([$estado, $id]);
-
         } catch (Exception $e) {
             return false;
         }
     }
 
-    /*Get APRENDICES (students)*/
+    /* Get APRENDICES (students) */
     public function obtenerAprendices() {
         try {
-            $sql = "SELECT id_usuario, nombre_completo, numero_documento, correo 
-                    FROM usuarios 
-                    WHERE cargo = 'Aprendiz' AND estado = 'activo' 
+            $sql = "SELECT id_usuario, nombre_completo, numero_documento, correo
+                    FROM usuarios
+                    WHERE cargo = 'Aprendiz' AND estado = 'activo'
                     ORDER BY nombre_completo";
+
             $stmt = $this->conn->prepare($sql);
             $stmt->execute();
-
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         } catch (Exception $e) {
@@ -126,22 +117,24 @@ class FichaModel {
         }
     }
 
-    /*Add STUDENTS to FICHA*/
+    /* Add students to FICHA */
     public function agregarEstudiantes($id_ficha, $estudiantes) {
         try {
             if (empty($estudiantes) || !is_array($estudiantes)) {
-                return true; // No hay estudiantes que agregar
+                return true;
             }
 
-            $sqlDelete = "DELETE FROM fichas_aprendices WHERE id_ficha = ?";
-            $stmtDelete = $this->conn->prepare($sqlDelete);
+            $stmtDelete = $this->conn->prepare(
+                "DELETE FROM fichas_aprendices WHERE id_ficha = ?"
+            );
             $stmtDelete->execute([$id_ficha]);
 
-            $sql = "INSERT INTO fichas_aprendices (id_ficha, id_usuario) VALUES (?, ?)";
-            $stmt = $this->conn->prepare($sql);
+            $stmtInsert = $this->conn->prepare(
+                "INSERT INTO fichas_aprendices (id_ficha, id_usuario) VALUES (?, ?)"
+            );
 
             foreach ($estudiantes as $id_estudiante) {
-                $stmt->execute([$id_ficha, $id_estudiante]);
+                $stmtInsert->execute([$id_ficha, $id_estudiante]);
             }
 
             return true;
@@ -151,21 +144,66 @@ class FichaModel {
         }
     }
 
-    /*Get STUDENTS of a FICHA*/
+    /* Get students of a FICHA */
     public function obtenerEstudiantesDeFicha($id_ficha) {
         try {
             $sql = "SELECT u.id_usuario, u.nombre_completo, u.numero_documento, u.correo
-                    FROM fichas_aprendices fe
-                    INNER JOIN usuarios u ON fe.id_usuario = u.id_usuario
-                    WHERE fe.id_ficha = ?
+                    FROM fichas_aprendices fa
+                    INNER JOIN usuarios u ON fa.id_usuario = u.id_usuario
+                    WHERE fa.id_ficha = ?
                     ORDER BY u.nombre_completo";
+
             $stmt = $this->conn->prepare($sql);
             $stmt->execute([$id_ficha]);
-
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         } catch (Exception $e) {
             return [];
+        }
+    }
+
+    /* Get INSTRUCTORS */
+    public function obtenerInstructores() {
+        try {
+            $sql = "SELECT id_usuario, nombre_completo, numero_documento, correo
+                    FROM usuarios
+                    WHERE cargo = 'Instructor' AND estado = 'activo'
+                    ORDER BY nombre_completo";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    /* Assign INSTRUCTORES to FICHA */
+    public function asignarInstructoresFicha($id_ficha, $instructores) {
+        try {
+            if (empty($instructores) || !is_array($instructores)) {
+                return true;
+            }
+
+            $stmtDelete = $this->conn->prepare(
+                "DELETE FROM ficha_instructores WHERE id_ficha = ?"
+            );
+            $stmtDelete->execute([$id_ficha]);
+
+            $stmtInsert = $this->conn->prepare(
+                "INSERT INTO ficha_instructores (id_ficha, id_instructor)
+                 VALUES (?, ?)"
+            );
+
+            foreach ($instructores as $id_instructor) {
+                $stmtInsert->execute([$id_ficha, $id_instructor]);
+            }
+
+            return true;
+
+        } catch (Exception $e) {
+            return false;
         }
     }
 
