@@ -158,6 +158,11 @@ class MovimientoModel {
                 )
             ");
 
+            // DEBUG: Ver qué valor tiene id_solicitud
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', 
+                date('Y-m-d H:i:s') . " [INSERT] id_solicitud recibido: " . var_export($data['id_solicitud'] ?? 'NO_EXISTE', true) . "\n", 
+                FILE_APPEND);
+
             $stmtMov->execute([
                 $data['tipo_movimiento'] ?? 'entrada',
                 $data['id_usuario'],
@@ -171,6 +176,10 @@ class MovimientoModel {
                 $primerMaterial['id_material'],
                 $primerMaterial['cantidad']
             ]);
+
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', 
+                date('Y-m-d H:i:s') . " [INSERT] Movimiento insertado con ID: " . $this->conn->lastInsertId() . "\n", 
+                FILE_APPEND);
 
             $idMovimiento = $this->conn->lastInsertId();
             error_log("ID movimiento creado: " . $idMovimiento);
@@ -236,7 +245,8 @@ class MovimientoModel {
                 m.id_programa,
                 m.id_ficha,
                 m.id_rae,
-                m.id_usuario
+                m.id_usuario,
+                m.id_solicitud
             FROM movimientos_material m
             LEFT JOIN bodegas b ON b.id_bodega = m.id_bodega
             LEFT JOIN subbodegas sb ON sb.id_subbodega = m.id_subbodega
