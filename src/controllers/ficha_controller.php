@@ -13,10 +13,6 @@ class FichaController {
         $this->model = new FichaModel($conn);
     }
 
-    /* =========================
-       FICHAS
-    ========================== */
-
     public function listar() {
         echo json_encode($this->model->listar());
     }
@@ -30,69 +26,85 @@ class FichaController {
     }
 
     public function crear() {
-        $data = json_decode(file_get_contents("php://input"), true);
+        $input = json_decode(file_get_contents("php://input"), true);
+        $id = $this->model->crear($input);
+
         echo json_encode([
-            'success' => (bool)$this->model->crear($data)
+            'success' => (bool)$id,
+            'id_ficha' => $id
         ]);
     }
 
     public function actualizar() {
-        $data = json_decode(file_get_contents("php://input"), true);
+        $input = json_decode(file_get_contents("php://input"), true);
         echo json_encode([
-            'success' => $this->model->actualizar($data)
+            'success' => $this->model->actualizar($input)
         ]);
     }
 
     public function cambiarEstado($id, $accion) {
         $map = [
-            'activar'   => 'Activa',
-            'finalizar' => 'Finalizada',
-            'cancelar'  => 'Cancelada'
+            "activar" => "Activa",
+            "finalizar" => "Finalizada",
+            "cancelar" => "Cancelada"
         ];
-
         echo json_encode([
             'success' => $this->model->cambiarEstado($id, $map[$accion])
         ]);
     }
 
-    /* =========================
-       INSTRUCTORES
-    ========================== */
+    /* ================= APRENDICES ================= */
+
+    public function obtenerAprendices() {
+        echo json_encode($this->model->obtenerAprendices());
+    }
+
+    public function agregarEstudiantes() {
+        $input = json_decode(file_get_contents("php://input"), true);
+        echo json_encode([
+            'success' => $this->model->agregarEstudiantes(
+                $input['id_ficha'],
+                $input['estudiantes']
+            )
+        ]);
+    }
+
+    public function obtenerEstudiantesFicha($id) {
+        echo json_encode($this->model->obtenerEstudiantesDeFicha($id));
+    }
+
+    /* ================= INSTRUCTORES ================= */
 
     public function obtenerInstructores() {
         echo json_encode($this->model->obtenerInstructores());
     }
 
     public function asignarInstructores() {
-        $data = json_decode(file_get_contents("php://input"), true);
+        $input = json_decode(file_get_contents("php://input"), true);
 
         echo json_encode([
-            'success' => $this->model->asignarInstructores(
-                $data['id_ficha'],
-                $data['instructores']
+            'success' => $this->model->asignarInstructoresFicha(
+                $input['id_ficha'],
+                $input['instructores']
             )
         ]);
     }
 
-    public function obtenerInstructoresFicha($id) {
-        echo json_encode($this->model->obtenerInstructoresFicha($id));
-    }
+    /* ================= JEFE DE FICHA ================= */
 
     public function asignarJefeFicha() {
-        $data = json_decode(file_get_contents("php://input"), true);
+        $input = json_decode(file_get_contents("php://input"), true);
 
         echo json_encode([
             'success' => $this->model->asignarJefeFicha(
-                $data['id_ficha'],
-                $data['id_usuario']
+                $input['id_ficha'],
+                $input['id_usuario']
             )
         ]);
     }
 }
 
-/* =========================
-   ROUTER
-========================= */
+/* ================= ROUTER ================= */
 
 $accion = $_GET['accion'] ?? null;
 $id = $_GET['id_ficha'] ?? null;
@@ -118,15 +130,27 @@ switch ($accion) {
         break;
 
     case "activar":
-        $controller->cambiarEstado($id, 'activar');
+        $controller->cambiarEstado($id, "activar");
         break;
 
     case "finalizar":
-        $controller->cambiarEstado($id, 'finalizar');
+        $controller->cambiarEstado($id, "finalizar");
         break;
 
     case "cancelar":
-        $controller->cambiarEstado($id, 'cancelar');
+        $controller->cambiarEstado($id, "cancelar");
+        break;
+
+    case "aprendices":
+        $controller->obtenerAprendices();
+        break;
+
+    case "agregarEstudiantes":
+        $controller->agregarEstudiantes();
+        break;
+
+    case "estudiantesFicha":
+        $controller->obtenerEstudiantesFicha($id);
         break;
 
     case "instructores":
@@ -135,10 +159,6 @@ switch ($accion) {
 
     case "asignarInstructores":
         $controller->asignarInstructores();
-        break;
-
-    case "instructoresFicha":
-        $controller->obtenerInstructoresFicha($id);
         break;
 
     case "asignarJefeFicha":
