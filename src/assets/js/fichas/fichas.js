@@ -39,6 +39,9 @@ let estudiantesSeleccionados = [];
 let instructores = [];
 let instructoresSeleccionados = [];
 
+// Jefe de grupo 
+let jefeGrupoSeleccionado = null;
+
 // =========================
 // PAGINATION
 // =========================
@@ -186,10 +189,13 @@ const inputFechaFin = document.getElementById("fecha_fin");
 const paso1Ficha = document.getElementById("paso1Ficha");
 const paso2Ficha = document.getElementById("paso2Ficha");
 const paso3Ficha = document.getElementById("paso3Ficha");
+const paso4Ficha = document.getElementById("paso4Ficha");
 const btnIrPaso2 = document.getElementById("btnIrPaso2");
 const btnVolverPaso1 = document.getElementById("btnVolverPaso1");
 const btnIrPaso3 = document.getElementById("btnIrPaso3");
 const btnVolverPaso2 = document.getElementById("btnVolverPaso2");
+const btnIrPaso4 = document.getElementById("btnIrPaso4");
+const btnVolverPaso3 = document.getElementById("btnVolverPaso3");
 
 // Estudiantes
 const selectEstudiante = document.getElementById("selectEstudiante");
@@ -204,6 +210,8 @@ const modalVerFicha = document.getElementById("modalVerFicha")
 const btnCerrarModalVerFicha = document.getElementById("btnCerrarModalVerFicha")
 const detalleFichaContent = document.getElementById("detalleFichaContent")
 
+// Jefe de grupo
+const listaJefeGrupo = document.getElementById("listaJefeGrupo");
 // =========================
 // SINGLE PAGINATION CONTAINER
 // =========================
@@ -758,11 +766,13 @@ function openModalFicha(editFicha = null) {
   // Limpiar estudiantes e instructores seleccionados
   estudiantesSeleccionados = []
   instructoresSeleccionados = []
+  jefeGrupoSeleccionado = null // Limpiar jefe de grupo
 
   // Mostrar paso 1 y ocultar paso 2 y paso 3
   if (paso1Ficha) paso1Ficha.classList.remove("hidden")
   if (paso2Ficha) paso2Ficha.classList.add("hidden")
   if (paso3Ficha) paso3Ficha.classList.add("hidden")
+  if (paso4Ficha) paso4Ficha.classList.add("hidden")
 
   if (editFicha) {
     modalFichaTitulo.textContent = "Editar Ficha"
@@ -811,6 +821,7 @@ function openModalFicha(editFicha = null) {
   renderOpcionesAprendices()
   renderChecklistAprendices()
   renderChecklistInstructores()
+  renderOpcionesJefeGrupo()
 }
 
 async function cargarEstudiantesDeFicha(idFicha) {
@@ -853,11 +864,13 @@ function closeModalFicha() {
   originalEditData = null
   estudiantesSeleccionados = []
   instructoresSeleccionados = []
+  jefeGrupoSeleccionado = null
   
-  // Volver al paso 1
+  // Volver al paso anterior
   if (paso1Ficha) paso1Ficha.classList.remove("hidden")
   if (paso2Ficha) paso2Ficha.classList.add("hidden")
   if (paso3Ficha) paso3Ficha.classList.add("hidden")
+  if (paso4Ficha) paso4Ficha.classList.add("hidden")
 }
 
 function openModalVerFicha(ficha) {
@@ -1653,10 +1666,25 @@ if (btnVolverPaso2) {
   })
 }
 
-// Agregar estudiante
-// if (btnAgregarEstudiante) {
-//   btnAgregarEstudiante.addEventListener("click", agregarEstudiante)
-// }
+if (btnIrPaso4) {
+  btnIrPaso4.addEventListener("click", function() {
+    if (instructoresSeleccionados.length === 0) {
+      toastError("Debe seleccionar al menos un instructor antes de continuar.");
+      return;
+    }
+    
+    paso3Ficha.classList.add("hidden");
+    paso4Ficha.classList.remove("hidden");
+    renderOpcionesJefeGrupo();
+  })
+}
+
+if (btnVolverPaso3) {
+  btnVolverPaso3.addEventListener("click", function() {
+    paso4Ficha.classList.add("hidden");
+    paso3Ficha.classList.remove("hidden");
+  })
+}
 
 // Agregar estudiante con Enter
 if (selectEstudiante) {
@@ -1761,6 +1789,12 @@ formFicha.addEventListener("submit", async (e) => {
         return
     }
 
+    // Validar que se haya seleccionado un jefe de grupo si hay instructores
+    if (instructoresSeleccionados.length > 0 && !jefeGrupoSeleccionado) {
+        toastError("Debe seleccionar un jefe de grupo entre los instructores.");
+        return;
+    }
+
     // Determine if it is editing or creation
     const isEdit = hiddenFichaId.value !== "" && hiddenFichaId.value !== null && hiddenFichaId.value !== undefined;
 
@@ -1808,26 +1842,25 @@ formFicha.addEventListener("submit", async (e) => {
                     body: JSON.stringify(estudiantesPayload)
                 })
 
-                const dataEstudiantes = await resEstudiantes.json()
+                const dataEstudiantes = await resEstudiantes.json();
                 
                 if (dataEstudiantes.success) {
-                    toastSuccess(data.message + ". Estudiantes agregados correctamente.");
+                    // No mostrar mensaje aquí todavía, esperaremos al final
                 } else {
-                    toastInfo(data.message + ". Pero hubo un problema al agregar estudiantes.");
+                    toastInfo("Hubo un problema al agregar estudiantes.");
                 }
             }
-        } else {
-            toastSuccess(data.message || (isEdit ? "Ficha actualizada correctamente." : "Ficha creada correctamente."));
         }
 
         // Si hay instructores seleccionados, agregarlos
         if (instructoresSeleccionados.length > 0) {
-            const idFicha = isEdit ? hiddenFichaId.value : data.id_ficha
+            const idFicha = isEdit ? hiddenFichaId.value : data.id_ficha;
 
             if (idFicha) {
                 const instructoresPayload = {
                     id_ficha: idFicha,
-                    instructores: instructoresSeleccionados.map(i => i.id_usuario)
+                    instructores: instructoresSeleccionados.map(i => i.id_usuario),
+                    jefe_grupo: jefeGrupoSeleccionado ? jefeGrupoSeleccionado.id_usuario : null
                 }
 
                 const resInstructores = await fetch(`${API_URL}?accion=asignarInstructores`, {
@@ -1836,16 +1869,31 @@ formFicha.addEventListener("submit", async (e) => {
                     body: JSON.stringify(instructoresPayload)
                 })
 
-                const dataInstructores = await resInstructores.json()
+                const dataInstructores = await resInstructores.json();
                 
                 if (dataInstructores.success) {
-                    toastSuccess(data.message + ". Instructores asignados correctamente.");
+                    // No mostrar mensaje aquí todavía, esperaremos al final
                 } else {
-                    toastInfo(data.message + ". Pero hubo un problema al asignar instructores.");
+                    toastInfo("Hubo un problema al asignar instructores.");
                 }
             }
         }
 
+        // Mensaje final consolidado
+        let mensajeFinal = isEdit ? "Ficha actualizada correctamente." : "Ficha creada correctamente.";
+        
+        if (estudiantesSeleccionados.length > 0) {
+            mensajeFinal += ` ${estudiantesSeleccionados.length} estudiante(s) agregado(s).`;
+        }
+        
+        if (instructoresSeleccionados.length > 0) {
+            mensajeFinal += ` ${instructoresSeleccionados.length} instructor(es) asignado(s).`;
+            if (jefeGrupoSeleccionado) {
+                mensajeFinal += ` Jefe de grupo: ${jefeGrupoSeleccionado.nombre_completo}`;
+            }
+        }
+
+        toastSuccess(mensajeFinal);
         closeModalFicha();
         await cargarFichas();
     } catch (error) {
@@ -1869,6 +1917,78 @@ document.addEventListener("keydown", (e) => {
   }
 })
 
+// =========================
+function renderOpcionesJefeGrupo() {
+  if (!listaJefeGrupo) return;
+
+  if (instructoresSeleccionados.length === 0) {
+    listaJefeGrupo.innerHTML = `
+      <div class="text-center text-muted-foreground py-8">
+        <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <p class="text-sm">Primero debe seleccionar instructores en el paso anterior</p>
+      </div>
+    `;
+    return;
+  }
+
+  let html = `
+    <div class="space-y-3">
+      <div class="text-xs font-medium text-gray-500 pb-2 border-b">
+        Seleccione un instructor como jefe de grupo:
+      </div>
+  `;
+
+  instructoresSeleccionados.forEach((instructor, index) => {
+    const isSelected = jefeGrupoSeleccionado && jefeGrupoSeleccionado.id_usuario == instructor.id_usuario;
+    html += `
+      <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer ${isSelected ? 'ring-2 ring-blue-500' : ''}"
+           onclick="seleccionarJefeGrupo(${index})">
+        <div class="flex-shrink-0">
+          <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+            <span class="text-blue-600 font-semibold">${instructor.nombre_completo.charAt(0)}</span>
+          </div>
+        </div>
+        <div class="flex-1">
+          <div class="font-medium text-sm">${instructor.nombre_completo}</div>
+          <div class="text-xs text-gray-500">${instructor.numero_documento}</div>
+          ${instructor.correo ? `<div class="text-xs text-gray-500">${instructor.correo}</div>` : ''}
+        </div>
+        <div class="flex-shrink-0">
+          <input type="radio" name="jefeGrupo" ${isSelected ? 'checked' : ''} 
+                 class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                 onclick="seleccionarJefeGrupo(${index})">
+        </div>
+      </div>
+    `;
+  });
+
+  html += `
+      <div class="pt-3 border-t">
+        <div class="text-sm text-gray-600">
+          <p><strong>Nota:</strong> Solo puede seleccionar un instructor como jefe de grupo.</p>
+        </div>
+        ${jefeGrupoSeleccionado ? `
+        <div class="mt-2 p-2 bg-blue-50 rounded-lg border border-blue-100">
+          <div class="text-sm font-medium text-blue-800">Jefe de grupo seleccionado:</div>
+          <div class="text-sm text-blue-600">${jefeGrupoSeleccionado.nombre_completo}</div>
+        </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+
+  listaJefeGrupo.innerHTML = html;
+}
+
+function seleccionarJefeGrupo(index) {
+  if (index >= 0 && index < instructoresSeleccionados.length) {
+    jefeGrupoSeleccionado = { ...instructoresSeleccionados[index] };
+    renderOpcionesJefeGrupo();
+  }
+}
+
 /*INITIAL LOAD*/
 
 async function inicializar() {
@@ -1890,3 +2010,4 @@ window.seleccionarTodosVisibles = seleccionarTodosVisibles;
 window.toggleEstudiante = toggleEstudiante;
 window.seleccionarTodosInstructoresVisibles = seleccionarTodosInstructoresVisibles;
 window.toggleInstructor = toggleInstructor;
+window.seleccionarJefeGrupo = seleccionarJefeGrupo;

@@ -336,6 +336,42 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               Atrás
             </button>
 
+            <button type="button" id="btnIrPaso4"
+              class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm text-white shadow">
+              Siguiente
+            </button>
+          </div>
+
+        </div>
+
+        <!-- PASO 4: SELECCIONAR JEFE DE GRUPO -->
+        <div id="paso4Ficha" class="hidden space-y-4">
+          
+          <div class="space-y-3">
+            <label class="text-sm font-medium">Seleccionar Jefe de Grupo</label>
+            <p class="text-xs text-muted-foreground">
+              Seleccione un instructor como jefe de grupo para esta ficha
+            </p>
+
+            <!-- Lista de instructores para seleccionar jefe de grupo -->
+            <div id="listaJefeGrupo"
+              class="border rounded-xl p-4 min-h-[150px] max-h-[300px] overflow-y-auto">
+              <div class="text-center text-muted-foreground py-8">
+                <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <p class="text-sm">Primero seleccione instructores en el paso anterior</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- FOOTER PASO 4 -->
+          <div class="flex justify-between gap-2 pt-4">
+            <button type="button" id="btnVolverPaso3"
+              class="inline-flex items-center justify-center rounded-md border border-input px-4 py-2 text-sm hover:bg-muted">
+              Atrás
+            </button>
+
             <button type="submit"
               class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm text-white shadow">
               Guardar Ficha
