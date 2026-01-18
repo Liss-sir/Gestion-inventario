@@ -1,12 +1,12 @@
 document.addEventListener("DOMContentLoaded", () => {
   // =========================
-  // CONFIG: CONTROLLER ENDPOINTS
+  // CONFIGURATION: CONTROLLER ENDPOINTS
   // =========================
   const API_URL = "src/controllers/usuario_controller.php";
   const PROGRAMAS_API_URL = "src/controllers/programa_controller.php";
 
   // =========================
-  // ROLE CONFIGURATION (label and badge styles)
+  // ROLE CONFIGURATION (LABELS AND BADGE STYLES)
   // =========================
   const roleLabels = {
     Coordinador: "Coordinador",
@@ -27,33 +27,34 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // =========================
-  // VALID LISTS ACCORDING TO DATABASE
+  // VALID VALUES BASED ON DATABASE RULES
   // =========================
   const VALID_TIPOS_DOCUMENTO = ["CC", "TI", "CE"];
   const VALID_CARGOS = ["Coordinador", "Subcoordinador", "Instructor", "Pasante", "Aprendiz"];
 
-  // In-memory list used to render table and cards
+  // In-memory collection used to render both table rows and user cards
   let users = [];
-  let originalEditData = null; // Keeps original data snapshot when editing a record
+  let originalEditData = null; // Stores the original snapshot for change detection in edit mode
   let selectedUser = null;
   let programas = [];
   let programasMap = {}; // Maps id_programa => nombre_programa
 
   // =========================
-  // PAGINATION
+  // PAGINATION SETTINGS
   // =========================
-  const PAGE_SIZE_TABLE = 10; // Page size for table view
-  const PAGE_SIZE_CARDS = 9; // Page size for cards view
+  const PAGE_SIZE_TABLE = 10; // Items per page in table view
+  const PAGE_SIZE_CARDS = 9; // Items per page in card view
 
   let currentPageTable = 1;
   let currentPageCards = 1;
 
   // =========================
-  // FLOWBITE-STYLE ALERTS (WHITE BACKGROUND, WARNING, NO PROGRESS BAR)
+  // FLOWBITE-STYLE ALERTS (WHITE BACKGROUND, WARNING STYLE, NO PROGRESS BAR)
   // =========================
 
   /**
-   * Returns the existing Flowbite-style alert container or creates it if it does not exist.
+   * Returns the Flowbite-style alert container if it exists,
+   * or creates it once and reuses it across the module.
    */
   function getOrCreateFlowbiteContainer() {
     let container = document.getElementById("flowbite-alert-container");
@@ -65,6 +66,11 @@ document.addEventListener("DOMContentLoaded", () => {
       container.className =
         "fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-3 w-full max-w-md px-4 pointer-events-none";
 
+      // ✅ ADDED (WITHOUT ALTERING YOUR BASE CLASS): Force top-right position
+      container.style.left = "auto";
+      container.style.right = "1.5rem";
+      container.style.transform = "none";
+
       document.body.appendChild(container);
     }
 
@@ -72,9 +78,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
-   * Generic alert renderer using a Flowbite-like appearance.
+   * Generic alert renderer with Flowbite-like visuals.
    * type: "warning" | "success" | "info"
-   * message: string to be displayed to the user
+   * message: user-facing text
    */
   function showFlowbiteAlert(type, message) {
     const container = getOrCreateFlowbiteContainer();
@@ -141,13 +147,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     container.appendChild(wrapper);
 
-    // Smooth fade-in using CSS transition
+    // Smooth fade-in using CSS transitions
     requestAnimationFrame(() => {
       wrapper.classList.remove("opacity-0", "-translate-y-2");
       wrapper.classList.add("opacity-100", "translate-y-0");
     });
 
-    // Automatic fade-out and removal
+    // Automatic fade-out and cleanup
     setTimeout(() => {
       wrapper.classList.add("opacity-0", "-translate-y-2");
       wrapper.classList.remove("opacity-100", "translate-y-0");
@@ -155,7 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 4000);
   }
 
-  // Public API used by the rest of the module
+  // Public helpers for consistent notification usage across the module
   function toastError(message) {
     showFlowbiteAlert("warning", message);
   }
@@ -200,7 +206,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const inputPassword = document.getElementById("password");
   const inputDireccion = document.getElementById("direccion");
 
-  // Training program select and its wrapper
+  // Training program select and wrapper container
   const inputPrograma = document.getElementById("id_programa");
   const wrapperPrograma = document.getElementById("wrapper_programa");
 
@@ -209,7 +215,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const detalleUsuarioContent = document.getElementById("detalleUsuarioContent");
 
   // =========================
-  // ✅ SAFE DOM HELPERS (NO TOCA TU LÓGICA, SOLO EVITA "Cannot read..." SI FALTA ALGÚN ID)
+  // SAFE DOM EVENT BINDING
+  // Prevents runtime errors if an expected element ID is missing in the view
   // =========================
   const safeOn = (el, evt, fn) => {
     if (!el) return false;
@@ -218,13 +225,13 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // =========================
-  // SINGLE PAGINATION CONTAINER
+  // SHARED PAGINATION CONTAINER
   // =========================
   let paginationTabla = document.getElementById("paginationTabla");
 
   /**
-   * Ensures there is a single shared pagination container placed
-   * after the cards view. It is reused for both table and card views.
+   * Ensures a single pagination container exists and is placed after the cards view.
+   * This container is reused for both table and card view pagination.
    */
   function ensurePaginationContainer() {
     if (vistaTarjetas && vistaTarjetas.parentNode && !paginationTabla) {
@@ -239,12 +246,12 @@ document.addEventListener("DOMContentLoaded", () => {
   ensurePaginationContainer();
 
   // =========================
-  // EMPTY STATE CONTAINERS (OUTSIDE OF TABLE)
+  // EMPTY STATE CONTAINERS (OUTSIDE TABLE)
   // =========================
   let emptyStateContainer = document.getElementById("emptyStateUsuarios");
   let emptySearchContainer = document.getElementById("emptySearchUsuarios");
 
-  // Global "no users in system" empty state
+  // Global empty state: no users available in the system
   if (!emptyStateContainer && vistaTabla && vistaTabla.parentNode) {
     emptyStateContainer = document.createElement("div");
     emptyStateContainer.id = "emptyStateUsuarios";
@@ -269,7 +276,7 @@ document.addEventListener("DOMContentLoaded", () => {
     vistaTabla.parentNode.insertBefore(emptyStateContainer, vistaTabla);
   }
 
-  // Search-specific empty state: used when there are users but no matches for current filters
+  // Search empty state: used when users exist but none match current filters
   if (!emptySearchContainer && vistaTabla && vistaTabla.parentNode) {
     emptySearchContainer = document.createElement("div");
     emptySearchContainer.id = "emptySearchUsuarios";
@@ -304,7 +311,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // =========================
 
   /**
-   * Returns the initials of a full name.
+   * Computes initials from a full name (up to two letters).
    */
   function getInitials(nombre) {
     return String(nombre || "")
@@ -317,7 +324,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =========================
-  // ✅ NUEVO: helpers para mostrar foto_perfil sin tocar tu base
+  // PROFILE PHOTO HELPERS (NON-INTRUSIVE)
   // =========================
   function getBaseUrlFromApi() {
     try {
@@ -325,7 +332,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const idx = u.pathname.indexOf("/src/");
       const basePath =
         idx !== -1 ? u.pathname.slice(0, idx + 1) : u.pathname.replace(/\/[^/]*$/, "/");
-      return u.origin + basePath; // termina en "/"
+      return u.origin + basePath; // must end with "/"
     } catch (e) {
       return window.location.origin + "/";
     }
@@ -337,22 +344,24 @@ document.addEventListener("DOMContentLoaded", () => {
     const raw = String(path).trim();
     if (!raw) return null;
 
-    // ya es url completa
+    // Already an absolute URL
     if (/^https?:\/\//i.test(raw)) return raw;
 
-    // normaliza: quita "/" inicial para concatenar bien
+    // Normalize: remove leading slashes for proper concatenation
     const clean = raw.replace(/^\/+/, "");
     return getBaseUrlFromApi() + clean;
   }
 
   /**
-   * Render de avatar: si hay foto -> <img>, si no -> iniciales
+   * Avatar rendering:
+   * - If there is a profile photo, render <img>
+   * - Otherwise, render the initials fallback
    */
   function renderAvatarHTML(user, sizeClass = "h-9 w-9", textClass = "text-sm") {
     const fotoUrl = resolveFotoUrl(user?.foto_perfil);
 
     if (fotoUrl) {
-      // fallback a iniciales si el <img> falla
+      // Fallback to initials if the image fails to load
       const initials = getInitials(user?.nombre_completo || "");
       const safeName = String(user?.nombre_completo || "usuario").replace(/"/g, "&quot;");
 
@@ -374,13 +383,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =========================
-  // ✅ FIX: REGEX DEFINITIONS (evita ReferenceError en validaciones)
+  // REGEX DEFINITIONS (USED BY VALIDATION)
   // =========================
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const numeroRegex = /^\d+$/;
 
   // =========================
-  // ✅ FIX: validateUserPayload (evita ReferenceError al submit)
+  // PAYLOAD VALIDATION HELPER
   // =========================
   function validateUserPayload(payload, opts = {}) {
     const { isEdit = false, currentId = null } = opts;
@@ -388,7 +397,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const doc = String(payload.numero_documento || "").trim();
     const mail = String(payload.correo || "").trim().toLowerCase();
 
-    // Evitar duplicados en memoria (mejora UX antes de pegarle al backend)
+    // Prevent duplicates locally to improve user experience before hitting the backend
     if (doc) {
       const dupDoc = users.find(
         (u) => String(u.id) !== String(currentId) && String(u.numero_documento || "").trim() === doc
@@ -415,13 +424,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =========================
-  // ✅ FIX EXTRA: "Guard" global para evitar ReferenceError si el browser ejecuta un JS viejo
-  // (NO toca tu lógica, solo asegura que exista la función)
+  // GLOBAL GUARD: AVOID ReferenceError IN LEGACY / CACHED BUILDS
   // =========================
   if (typeof window.validateUserPayload !== "function") {
     window.validateUserPayload = validateUserPayload;
   } else {
-    // si ya existía, mantenemos la del window (no sobreescribimos nada)
+    // If a validation function already exists globally, do not override it
   }
 
   /**
@@ -439,7 +447,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
-   * Renders the options for the training program select based on the loaded "programas" list.
+   * Renders the training program options based on the loaded dataset.
    */
   function renderOpcionesPrograma() {
     if (!inputPrograma) return;
@@ -471,13 +479,113 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
-   * Loads training programs from the backend and updates the select element.
+   * ✅ ADDED (NO-DELETE): Extract JSON safely from server output
+   * This prevents breaking when PHP outputs warnings or spaces before JSON.
+   */
+  function extractJSON(text) {
+    if (!text) return null;
+
+    // Try object first
+    let s = text.indexOf("{");
+    let e = text.lastIndexOf("}");
+    if (s !== -1 && e !== -1 && e > s) {
+      try {
+        return JSON.parse(text.slice(s, e + 1));
+      } catch (err) {}
+    }
+
+    // Try array fallback
+    s = text.indexOf("[");
+    e = text.lastIndexOf("]");
+    if (s !== -1 && e !== -1 && e > s) {
+      try {
+        return JSON.parse(text.slice(s, e + 1));
+      } catch (err) {}
+    }
+
+    return null;
+  }
+
+  /**
+   * ✅ ADDED (NO-DELETE): Redirect helper to login using project base URL
+   */
+  function redirectToLogin() {
+    const base = getBaseUrlFromApi(); // ends with "/"
+    window.location.href = base + "src/view/login/login.php";
+  }
+
+  /**
+   * ✅ ADDED (NO-DELETE): Session validation (token_sesion)
+   * - Calls usuario_controller.php?accion=check_session
+   * - If revoked/disabled -> toast + redirect
+   */
+  let _sessionGuardTimer = null;
+  let _sessionGuardBusy = false;
+
+  const SESSION_CHECK_INTERVAL_SECONDS = 10; // you can set 5, 8, 15...
+
+  async function checkSessionGuard() {
+    if (_sessionGuardBusy) return;
+
+    // Avoid session checks during modal editing to prevent noisy redirects mid-action
+    if (modalUsuario && modalUsuario.classList.contains("active")) return;
+
+    _sessionGuardBusy = true;
+
+    try {
+      const res = await fetch(`${API_URL}?accion=check_session&t=${Date.now()}`, {
+        method: "GET",
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+
+      const text = await res.text();
+      const data = extractJSON(text);
+
+      // If parsing fails, do not break the app
+      if (!data) return;
+
+      // If session is not active -> notify and redirect
+      if (Number(data.active) === 0) {
+        // Stop refresh timers immediately
+        if (_autoRefreshTimer) clearInterval(_autoRefreshTimer);
+        if (_sessionGuardTimer) clearInterval(_sessionGuardTimer);
+
+        const msg =
+          data.message ||
+          "Tu sesión fue cerrada o revocada. Debes iniciar sesión nuevamente.";
+
+        toastError(msg);
+
+        // Small delay to let the user read the alert
+        setTimeout(() => {
+          redirectToLogin();
+        }, 1200);
+      }
+    } catch (e) {
+      // Silent fail to avoid blocking UI on temporary network issues
+    } finally {
+      _sessionGuardBusy = false;
+    }
+  }
+
+  function startSessionGuard() {
+    if (_sessionGuardTimer) return;
+    _sessionGuardTimer = setInterval(checkSessionGuard, SESSION_CHECK_INTERVAL_SECONDS * 1000);
+  }
+
+  /**
+   * Loads training programs from the backend and refreshes the select options.
    */
   async function cargarProgramas() {
     if (!inputPrograma) return;
 
     try {
-      const res = await fetch(`${PROGRAMAS_API_URL}?accion=listar`);
+      const res = await fetch(`${PROGRAMAS_API_URL}?accion=listar&t=${Date.now()}`, {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+
       const text = await res.text();
       console.log("Respuesta listar programas (cruda):", text);
 
@@ -510,10 +618,10 @@ document.addEventListener("DOMContentLoaded", () => {
         programas = [];
       }
 
-      // Always refresh the program options after loading
+      // Refresh program options after loading
       renderOpcionesPrograma();
 
-      // ✅ FIX: si el modal está abierto en modo edición y es Instructor, re-selecciona el programa
+      // If the modal is currently open in edit mode and role is Instructor, re-select the current program
       if (
         modalUsuario &&
         modalUsuario.classList.contains("active") &&
@@ -525,7 +633,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (pid) inputPrograma.value = pid;
       }
 
-      // Informative alert when there are no programs in the system
+      // Inform the user if there are no programs to assign
       if (programas.length === 0) {
         toastInfo(
           "No hay programas de formación registrados aún. Registre al menos un programa antes de asignarlo a un Instructor."
@@ -540,18 +648,18 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =========================
-  // ✅ PASSWORD GENERATOR (letters + numbers + special chars)
+  // PASSWORD GENERATOR (LETTERS + NUMBERS + SPECIAL CHARACTERS)
   // =========================
-  const PASSWORD_LENGTH = 12; // puedes subirlo a 14 o 16 si quieres más seguridad
+  const PASSWORD_LENGTH = 12; // adjust to 14 or 16 if higher entropy is required
 
   function getSecureRandomInt(max) {
-    // crypto seguro (navegadores modernos)
+    // Cryptographically secure randomness (modern browsers)
     if (window.crypto && window.crypto.getRandomValues) {
       const array = new Uint32Array(1);
       window.crypto.getRandomValues(array);
       return array[0] % max;
     }
-    // fallback
+    // Fallback
     return Math.floor(Math.random() * max);
   }
 
@@ -569,7 +677,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const numbers = "0123456789";
     const specials = "!@#$%^&*()_+-=[]{},.<>?/|~";
 
-    // ✅ Garantiza al menos 1 de cada tipo
+    // Ensure at least one character from each category
     const required = [
       lettersLower[getSecureRandomInt(lettersLower.length)],
       lettersUpper[getSecureRandomInt(lettersUpper.length)],
@@ -596,13 +704,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /**
    * Opens the create/edit user modal.
-   * If "editUser" is provided, the modal is configured in edit mode.
+   * If "editUser" is provided, the modal is initialized in edit mode.
    */
   function openModalUsuario(editUser = null) {
     if (!modalUsuario || !formUsuario || !hiddenUserId || !modalUsuarioTitulo || !modalUsuarioDescripcion)
       return;
 
-    // inputs required
+    // Required inputs for a consistent form state
     if (
       !inputNombreCompleto ||
       !inputTipoDocumento ||
@@ -619,7 +727,7 @@ document.addEventListener("DOMContentLoaded", () => {
     selectedUser = editUser;
     modalUsuario.classList.add("active");
 
-    // Wrapper of the password field (identified via the closest valid container)
+    // Password field wrapper (found via the closest valid container)
     let passwordWrapper = null;
     if (inputPassword) {
       passwordWrapper =
@@ -627,7 +735,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (editUser) {
-      // Edit mode configuration
+      // Edit mode
       modalUsuarioTitulo.textContent = "Editar Usuario";
       modalUsuarioDescripcion.textContent = "Modifica la información del usuario";
       hiddenUserId.value = editUser.id;
@@ -641,7 +749,7 @@ document.addEventListener("DOMContentLoaded", () => {
       inputPassword.value = "";
       inputDireccion.value = editUser.direccion;
 
-      // Store original data snapshot for change detection
+      // Preserve original snapshot for change detection
       originalEditData = {
         nombre_completo: editUser.nombre_completo?.trim() || "",
         tipo_documento: editUser.tipo_documento || "",
@@ -654,7 +762,7 @@ document.addEventListener("DOMContentLoaded", () => {
           editUser.cargo === "Instructor" && editUser.id_programa ? String(editUser.id_programa) : null,
       };
 
-      // For edit mode, password is not shown by default
+      // In edit mode, the password field is hidden by default
       if (passwordWrapper) {
         passwordWrapper.classList.add("hidden");
       }
@@ -674,7 +782,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
     } else {
-      // Create mode configuration
+      // Create mode
       modalUsuarioTitulo.textContent = "Crear Nuevo Usuario";
       modalUsuarioDescripcion.textContent = "Complete los datos para registrar un nuevo usuario";
       hiddenUserId.value = "";
@@ -684,21 +792,21 @@ document.addEventListener("DOMContentLoaded", () => {
       if (inputPrograma) inputPrograma.value = "";
       actualizarVisibilidadPrograma();
 
-      // No original data in create mode
+      // No edit snapshot in create mode
       originalEditData = null;
 
-      // Show password field in create mode
+      // Password field is required for new users
       if (passwordWrapper) {
         passwordWrapper.classList.remove("hidden");
       }
 
-      // ✅ NUEVO: contraseña genérica automática (letras + números + especiales)
+      // Auto-generate a secure default password for new records
       setGenericPasswordInInput();
     }
   }
 
   /**
-   * Closes the create/edit user modal and resets related state.
+   * Closes the create/edit user modal and resets relevant state.
    */
   function closeModalUsuario() {
     if (!modalUsuario) return;
@@ -709,7 +817,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
-   * Opens the "view user details" modal for the given user.
+   * Opens the user details modal for the provided user.
    */
   function openModalVerUsuario(user) {
     if (!modalVerUsuario || !detalleUsuarioContent) return;
@@ -730,7 +838,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div>
           <h3 class="font-semibold text-lg">${user.nombre_completo}</h3>
 
-          <!-- ✅ AHORA ROL + ESTADO AL LADO -->
+          <!-- Role and status displayed side-by-side -->
           <div class="mt-1 flex flex-wrap items-center gap-2">
             <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
               roleBadgeStyles[user.cargo] || "badge-role-default"
@@ -786,7 +894,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
-   * Closes the "view user details" modal.
+   * Closes the user details modal.
    */
   function closeModalVerUsuario() {
     if (!modalVerUsuario) return;
@@ -795,42 +903,44 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =========================
-  // BACKEND COMMUNICATION LOGIC
+  // BACKEND COMMUNICATION
   // =========================
 
   /**
-   * Generic helper for calling JSON-based endpoints.
+   * Generic helper for JSON-based POST endpoints.
+   * It tolerates extra output by extracting the JSON object from the response.
    */
   async function callApi(url, payload) {
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+
+      // ✅ ADDED (NO-DELETE): ensure cookies/session are sent
+      credentials: "same-origin",
+      cache: "no-store",
     });
 
     const text = await res.text();
     console.log("Respuesta cruda del servidor:", text);
 
-    try {
-      const start = text.indexOf("{");
-      const end = text.lastIndexOf("}");
-      if (start !== -1 && end !== -1 && end > start) {
-        const jsonString = text.slice(start, end + 1);
-        return JSON.parse(jsonString);
-      }
-      return { error: "Respuesta no válida del servidor: " + text };
-    } catch (e) {
-      console.error("Error parseando JSON:", e);
-      return { error: "Respuesta no válida del servidor: " + text };
-    }
+    const parsed = extractJSON(text);
+    if (parsed) return parsed;
+
+    return { error: "Respuesta no válida del servidor: " + text };
   }
 
   /**
-   * Loads users from the backend and maps them to the internal "users" structure.
+   * Loads users from the backend and maps them into the internal "users" structure.
    */
   async function cargarUsuarios() {
     try {
-      const res = await fetch(`${API_URL}?accion=listar`);
+      // ✅ FIX (WITHOUT ALTERING YOUR BASE LOGIC): Prevent cache by adding timestamp
+      const res = await fetch(`${API_URL}?accion=listar&t=${Date.now()}`, {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+
       const text = await res.text();
       console.log("Respuesta listar (cruda):", text);
 
@@ -877,15 +987,14 @@ document.addEventListener("DOMContentLoaded", () => {
             direccion: u.direccion,
             estado: estadoBool,
 
-            // ✅ FIX SIN TOCAR TU BASE:
-            // El backend trae fecha_creacion (no created_at), por eso el modal quedaba vacío.
-            // Guardamos ambos por compatibilidad.
+            // Field mapping compatibility:
+            // Backend returns "fecha_creacion" (not "created_at"), so both are stored to prevent empty views.
             fecha_creacion: u.fecha_creacion || u.created_at || "",
             created_at: u.created_at || u.fecha_creacion || "",
 
             id_programa: u.id_programa ?? null,
 
-            // ✅ NUEVO: foto perfil (si viene del backend)
+            // Optional profile photo from backend
             foto_perfil: u.foto_perfil ?? null,
           };
         });
@@ -897,6 +1006,37 @@ document.addEventListener("DOMContentLoaded", () => {
       users = [];
       renderTable();
     }
+  }
+
+  // =========================
+  // AUTO REFRESH USERS (WITHOUT PAGE REFRESH)
+  // =========================
+  // ✅ ADDED: Updates automatically every X seconds without needing to refresh the browser
+  const AUTO_REFRESH_SECONDS = 5; // Change to 2, 3, 10, etc.
+  let _autoRefreshTimer = null;
+  let _autoRefreshBusy = false;
+
+  async function autoRefreshUsuarios() {
+    if (_autoRefreshBusy) return;
+
+    // Do not refresh while modals are open to avoid overwriting edit form state
+    if (modalUsuario && modalUsuario.classList.contains("active")) return;
+    if (modalVerUsuario && modalVerUsuario.classList.contains("active")) return;
+
+    _autoRefreshBusy = true;
+
+    try {
+      await cargarUsuarios();
+    } catch (e) {
+      // Silent fail
+    } finally {
+      _autoRefreshBusy = false;
+    }
+  }
+
+  function startAutoRefresh() {
+    if (_autoRefreshTimer) return;
+    _autoRefreshTimer = setInterval(autoRefreshUsuarios, AUTO_REFRESH_SECONDS * 1000);
   }
 
   /**
@@ -914,8 +1054,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
-   * Optional: dedicated endpoint for changing user status, if implemented.
-   * ✅ FIX: fallback automático si tu backend usa otro nombre de acción.
+   * Optional endpoint to toggle user status (if implemented).
+   * Includes automatic fallback for alternative action names.
    */
   async function cambiarEstadoUsuario(payload) {
     const posiblesAcciones = ["cambiar_estado", "cambiarEstado", "toggle_estado", "toggleEstado"];
@@ -926,10 +1066,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await callApi(`${API_URL}?accion=${accion}`, payload);
       last = data;
 
-      // Si no hay error, listo
+      // If no error is present, return immediately
       if (!data || !data.error) return data;
 
-      // Si el error NO es de "acción no válida", no seguimos probando (es un error real)
+      // If error is not "invalid action", stop and return the real error
       const msg = String(data.error || "");
       const esAccionNoValida = /acción no válida|accion no valida|acción inválida|accion invalida/i.test(msg);
       if (!esAccionNoValida) return data;
@@ -939,7 +1079,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
-   * Toggles the active/inactive status of a user and persists it in the backend.
+   * Toggles the active/inactive status of a user and persists changes in the backend.
    */
   async function toggleStatus(userId) {
     const user = users.find((u) => String(u.id) === String(userId));
@@ -970,15 +1110,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // 👉 Para que el onclick inline funcione siempre (cards)
+  // Expose for inline onclick usage (cards)
   window.toggleStatus = toggleStatus;
 
   // =========================
-  // – VIEW MODE SWITCH: TABLE / CARDS
+  // VIEW MODE SWITCH: TABLE / CARDS
   // =========================
 
   /**
-   * Activates the table view and re-renders the table.
+   * Activates the table view and re-renders content.
    */
   function setVistaTabla() {
     if (!vistaTabla || !vistaTarjetas || !btnVistaTabla || !btnVistaTarjetas) return;
@@ -994,7 +1134,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
-   * Activates the cards view and re-renders the cards.
+   * Activates the cards view and re-renders content.
    */
   function setVistaTarjetas() {
     if (!vistaTabla || !vistaTarjetas || !btnVistaTabla || !btnVistaTarjetas) return;
@@ -1010,11 +1150,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =========================
-  // GENERIC PAGINATION RENDER
+  // PAGINATION RENDERING
   // =========================
 
   /**
-   * Renders pagination controls and wires them to the given "onPageChange" callback.
+   * Renders pagination controls and binds them to the provided callback.
    */
   function renderPaginationControls(container, totalItems, pageSize, currentPage, onPageChange) {
     if (!container) return;
@@ -1065,34 +1205,33 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =========================
-  // TABLE AND CARDS RENDERING
+  // TABLE AND CARD RENDERING
   // =========================
 
   /**
-   * Applies filters, handles empty states, and renders both table and cards with pagination.
+   * Applies filters, handles empty states, and renders both table and card views with pagination.
    * Distinguishes between:
-   *  - No users in the system
-   *  - No results for the current search/filter criteria
+   *  - No visible users available
+   *  - No results matching current search/filter criteria
    */
   function renderTable() {
-    // ✅ SAFE: si falta algo crítico en el DOM, no revienta el módulo
+    // Defensive check: if critical elements are missing, avoid breaking other views
     if (!vistaTabla || !vistaTarjetas || !cardsContainer || !paginationTabla || !tbodyUsuarios) {
-      // aún así intentamos no romper si estás cargando esta lógica en otra vista
       return;
     }
 
     const search = (inputBuscar ? inputBuscar.value : "").trim().toLowerCase();
     const rol = selectFiltroRol ? selectFiltroRol.value : "";
 
-    // ✅ FIX: primero calculamos lo "visible" SIN search/rol
-    // (para que no muestre "No se encontraron resultados" cuando solo existen usuarios ocultos: id=1 y/o logueado)
+    // Base visibility filter (applied before search/role filters)
+    // Ensures the UI does not show "no results" when users exist but are hidden by business rules.
     const visibleBase = users.filter((u) => {
-      // ✅ 1) No mostrar el usuario "Sistema Interno" (id 1) si NO estás logueado con esa cuenta
+      // Hide internal system user (id=1) unless the current authenticated user is that account
       if (typeof AUTH_USER_ID !== "undefined" && String(AUTH_USER_ID) !== "1" && String(u.id) === "1") {
         return false;
       }
 
-      // ✅ 2) No mostrar el usuario logueado en la lista (tu regla actual)
+      // Hide the currently authenticated user from the listing
       if (typeof AUTH_USER_ID !== "undefined" && String(u.id) === String(AUTH_USER_ID)) {
         return false;
       }
@@ -1100,7 +1239,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return true;
     });
 
-    // Ahora sí aplicamos search + rol sobre lo visible
+    // Apply search and role filter on top of base visibility
     const filtered = visibleBase.filter((u) => {
       const matchName = String(u.nombre_completo || "").toLowerCase().includes(search);
       const matchRol = rol ? u.cargo === rol : true;
@@ -1109,48 +1248,48 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const totalItems = filtered.length;
 
-    // Reset lists and pagination content whenever we enter the empty-state logic
+    // Helper to clear rendered content and pagination
     const clearRenderedContent = () => {
       tbodyUsuarios.innerHTML = "";
       cardsContainer.innerHTML = "";
       if (paginationTabla) paginationTabla.innerHTML = "";
     };
 
-    // Case 1: there are no users visible in the system (aunque existan en DB pero estén ocultos)
+    // Case 1: no visible users exist (even if hidden users exist in DB)
     if (visibleBase.length === 0) {
       clearRenderedContent();
 
-      // Hide views
+      // Hide both views
       vistaTabla.classList.add("hidden");
       vistaTarjetas.classList.add("hidden");
 
-      // Show "no users registered" empty state
+      // Show global empty state
       if (emptyStateContainer) emptyStateContainer.classList.remove("hidden");
       if (emptySearchContainer) emptySearchContainer.classList.add("hidden");
 
       return;
     }
 
-    // Case 2: there are visible users, but the current search/filter yields zero results
+    // Case 2: users exist, but current filter returns no results
     if (totalItems === 0) {
       clearRenderedContent();
 
-      // Hide views
+      // Hide both views
       vistaTabla.classList.add("hidden");
       vistaTarjetas.classList.add("hidden");
 
-      // Show search-specific empty state instead of "no users registered"
+      // Show search-specific empty state
       if (emptyStateContainer) emptyStateContainer.classList.add("hidden");
       if (emptySearchContainer) emptySearchContainer.classList.remove("hidden");
 
       return;
     }
 
-    // Case 3: there are results for the current search/filter
+    // Case 3: results exist
     if (emptyStateContainer) emptyStateContainer.classList.add("hidden");
     if (emptySearchContainer) emptySearchContainer.classList.add("hidden");
 
-    // Respect current view selection (table or cards)
+    // Respect the current selected view (table or cards)
     if (btnVistaTabla && btnVistaTabla.classList.contains("bg-muted")) {
       vistaTabla.classList.remove("hidden");
     }
@@ -1449,7 +1588,7 @@ document.addEventListener("DOMContentLoaded", () => {
       cardsContainer.appendChild(card);
     });
 
-    // Attach dropdown menu behavior to the newly rendered items
+    // Attach contextual menu behavior to newly rendered items
     attachMenuEvents();
 
     const tablaVisible = !vistaTabla.classList.contains("hidden");
@@ -1471,12 +1610,12 @@ document.addEventListener("DOMContentLoaded", () => {
   // DROPDOWN MENU HANDLING
   // =========================
 
-  // ✅ FIX: evita listeners duplicados en cada render (esto era lo que suele romper menús/acciones)
+  // Prevent duplicate listeners across re-renders
   let _menuEventsAttached = false;
 
   /**
-   * Sets up global click handling for contextual menus in both table and card views.
-   * ✅ FIX: Delegación de eventos (1 sola vez) para que no se multipliquen listeners.
+   * Registers global click handling for contextual menus in table and card views.
+   * Uses event delegation to keep a single listener bound for the entire module lifecycle.
    */
   function attachMenuEvents() {
     if (_menuEventsAttached) return;
@@ -1494,7 +1633,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const actionBtn = e.target.closest("[data-menu] [data-action]");
       const anyMenu = e.target.closest("[data-menu]");
 
-      // 1) Si clic en un item de acción
+      // 1) Action item click inside a menu
       if (actionBtn) {
         e.stopPropagation();
 
@@ -1514,7 +1653,7 @@ document.addEventListener("DOMContentLoaded", () => {
           toggleStatus(id);
         }
 
-        // Cierra el menú al ejecutar acción
+        // Close the menu after executing the action
         const menu = actionBtn.closest("[data-menu]");
         if (menu) {
           menu.classList.add("hidden");
@@ -1524,7 +1663,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // 2) Si clic en el trigger (botón de 3 puntos)
+      // 2) Trigger click (three-dot button)
       if (trigger) {
         e.stopPropagation();
 
@@ -1541,7 +1680,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const isHidden = menu.classList.contains("hidden");
 
-        // Cierra otros menús
+        // Close other menus first
         closeAllMenus();
 
         if (isHidden) {
@@ -1559,7 +1698,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // 3) Si clic fuera de triggers y fuera de menús => cerrar todo
+      // 3) Click outside triggers/menus closes everything
       if (!anyMenu) {
         closeAllMenus();
       }
@@ -1570,14 +1709,14 @@ document.addEventListener("DOMContentLoaded", () => {
   // GLOBAL EVENT LISTENERS
   // =========================
 
-  // Search field filter
+  // Search input filtering
   safeOn(inputBuscar, "input", () => {
     currentPageTable = 1;
     currentPageCards = 1;
     renderTable();
   });
 
-  // Role filter
+  // Role select filtering
   safeOn(selectFiltroRol, "change", () => {
     currentPageTable = 1;
     currentPageCards = 1;
@@ -1591,7 +1730,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   safeOn(btnCerrarModalVerUsuario, "click", closeModalVerUsuario);
 
-  // Role change handling for training program field
+  // Role change behavior for the training program selector
   safeOn(inputCargo, "change", actualizarVisibilidadPrograma);
 
   // View switch buttons
@@ -1616,14 +1755,14 @@ document.addEventListener("DOMContentLoaded", () => {
       id_programa: inputPrograma ? inputPrograma.value : null,
     };
 
-    // Normalize program assignment: only valid for "Instructor"
+    // Normalize program assignment: only applicable for "Instructor"
     if (payload.cargo !== "Instructor" || !payload.id_programa) {
       payload.id_programa = null;
     }
 
     const isEdit = !!(hiddenUserId && hiddenUserId.value);
 
-    // ✅ FIX: usa la función global garantizada (evita ReferenceError si corre un JS viejo/caché)
+    // Use the globally guarded validation function to avoid runtime errors in cached builds
     if (!window.validateUserPayload(payload, { isEdit, currentId: hiddenUserId ? hiddenUserId.value : null }))
       return;
 
@@ -1723,7 +1862,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Additional validation in edit mode: prevent saving if there are no changes
+    // Edit mode validation: prevent saving if there are no changes
     if (isEdit && originalEditData) {
       const currentData = {
         nombre_completo: payload.nombre_completo,
@@ -1772,7 +1911,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ================================
-  // KEYBOARD SHORTCUTS: CLOSE MODALS WITH ESC
+  // KEYBOARD SHORTCUTS: ESC CLOSES ACTIVE MODALS
   // ================================
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" || e.key === "Esc" || e.keyCode === 27) {
@@ -1787,7 +1926,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // =========================
-  // TOGGLE PASSWORD (OJITO)
+  // PASSWORD VISIBILITY TOGGLE
   // =========================
   (function initPasswordToggle() {
     const inputPass = document.getElementById("password");
@@ -1807,7 +1946,7 @@ document.addEventListener("DOMContentLoaded", () => {
       btnToggle.title = isHidden ? "Ocultar contraseña" : "Ver contraseña";
       btnToggle.setAttribute("aria-label", btnToggle.title);
 
-      // Mantener el foco y el cursor al final (nice UX)
+      // Keep focus and place the cursor at the end for better UX
       inputPass.focus();
       const len = inputPass.value.length;
       inputPass.setSelectionRange(len, len);
@@ -1820,4 +1959,13 @@ document.addEventListener("DOMContentLoaded", () => {
   cargarUsuarios();
   cargarProgramas();
   setVistaTabla();
+
+  // ✅ ADDED: start auto refresh (without affecting your base flow)
+  startAutoRefresh();
+
+  // ✅ ADDED: start session guard (revoked/disabled token_sesion protection)
+  startSessionGuard();
+
+  // ✅ ADDED: run a first check quickly
+  setTimeout(checkSessionGuard, 900);
 });

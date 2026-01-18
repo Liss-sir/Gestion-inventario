@@ -10,7 +10,7 @@ $navigation = [
   ["name" => "Materiales",  "page" => "materiales",  "icon" => "Package"],
   ["name" => "Obras",       "page" => "obras",       "icon" => "Hammer"],
   ["name" => "Movimientos", "page" => "movimientos", "icon" => "ArrowLeftRight"],
-  ["name" => "Solicitudes", "page" => "solicitudes", "icon" => "ClipboardList", "badge" => 2],
+  ["name" => "Solicitudes", "page" => "solicitudes", "icon" => "ClipboardList", "badge" => 0,"badge_id" => "sidebar-badge-solicitudes"],
   ["name" => "Programas",   "page" => "programas",   "icon" => "GraduationCap"],
   ["name" => "Fichas",      "page" => "fichas",      "icon" => "FolderKanban"],
   ["name" => "RAEs",        "page" => "raes",        "icon" => "BookOpen"],
@@ -118,8 +118,14 @@ if (!defined('BASE_URL')) {
             <span class="flex-1"><?php echo $item["name"]; ?></span>
 
             <?php if (isset($item["badge"])): ?>
-              <span class="h-5 min-w-5 flex items-center justify-center bg-primary text-white text-[11px] rounded-full">
-                <?php echo $item["badge"]; ?>
+              <span
+                <?php if (isset($item["badge_id"])): ?>
+                  id="<?php echo htmlspecialchars($item["badge_id"], ENT_QUOTES, 'UTF-8'); ?>"
+                <?php endif; ?>
+                class="h-5 min-w-5 flex items-center justify-center bg-primary text-white text-[11px] rounded-full"
+                style="display: none;"
+              >
+                <?php echo (int)$item["badge"]; ?>
               </span>
             <?php endif; ?>
           <?php endif; ?>
@@ -187,3 +193,53 @@ if (!defined('BASE_URL')) {
     }
   });
 </script>
+
+<script>
+(function () {
+  const API = new URL("src/controllers/solicitudes_controller.php", document.baseURI).toString();
+  const badge = document.getElementById("sidebar-badge-solicitudes");
+  if (!badge) return;
+
+  function normalizarEstado(estado) {
+    if (!estado) return "pendiente";
+    const s = String(estado).trim().toLowerCase();
+    // por si viene "Pendiente" desde BD
+    return s;
+  }
+
+  async function actualizarBadgeSolicitudes() {
+    try {
+      const res = await fetch(`${API}?accion=listar`, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+      if (!Array.isArray(data)) {
+        // si backend devuelve {success:false,...}
+        badge.style.display = "none";
+        return;
+      }
+
+      const pendientes = data.reduce((acc, row) => {
+        const st = normalizarEstado(row.estado);
+        return acc + (st === "pendiente" ? 1 : 0);
+      }, 0);
+
+      if (pendientes > 0) {
+        badge.textContent = pendientes;
+        badge.style.display = "flex";
+      } else {
+        badge.textContent = "0";
+        badge.style.display = "none";
+      }
+    } catch (e) {
+      // si falla, ocultamos (no dañamos UI)
+      badge.style.display = "none";
+      console.error("[SIDEBAR] No se pudo actualizar badge solicitudes:", e);
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", actualizarBadgeSolicitudes);
+  window.addEventListener("solicitudes:updated", actualizarBadgeSolicitudes);
+})();
+</script>
+

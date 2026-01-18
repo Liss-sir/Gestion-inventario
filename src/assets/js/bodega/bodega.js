@@ -1,6 +1,11 @@
 document.addEventListener("DOMContentLoaded", () => {
   console.log("[BODEGAS.JS] cargado v2025-12-18_flowbite-alerts+toggle-no-reload+empty-icons-fixed");
 
+  const API_MATERIALES = new URL(
+  "src/controllers/material_formacion_controller.php",
+  document.baseURI
+).toString();
+
   const API_URL = new URL("src/controllers/bodega_controller.php", document.baseURI).toString();
   const API_SUBBODEGAS = new URL("src/controllers/sub_bodega_controller.php", document.baseURI).toString();
 
@@ -584,30 +589,35 @@ const initSubBodegas = async () => {
 
 initSubBodegas();
 
- // ============================
-// MENÚ CONTEXTUAL SUB-BODEGAS (FIX DEFINITIVO)
+// ============================
+// MENÚ CONTEXTUAL SUB-BODEGAS (TOGGLE BLINDADO)
 // ============================
 let selectedSubBodega = null;
 
 const subMenu = document.getElementById("context-menu-subbodega");
 
+const isSubMenuOpen = () => subMenu && !subMenu.classList.contains("hidden");
+
 const closeSubMenu = () => {
   if (!subMenu) return;
   subMenu.classList.add("hidden");
+  delete subMenu.dataset.openFor; // 👈 clave para el toggle
 };
 
 const openSubMenu = (btn) => {
   if (!subMenu || !btn) return;
 
+  // Posición (fixed/absolute depende tu HTML, pero esto funciona con tu cálculo)
   const r = btn.getBoundingClientRect();
   subMenu.style.left = `${r.right + window.scrollX - 220}px`;
   subMenu.style.top = `${r.bottom + window.scrollY + 8}px`;
 
   subMenu.classList.remove("hidden");
+  subMenu.dataset.openFor = btn.dataset.id || ""; // 👈 guardamos para saber si es el mismo botón
   safeIcons();
 };
 
-// ABRIR menú desde el botón "..." de cada sub-bodega
+// ABRIR/CERRAR desde el botón ...
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".subbodega-actions-btn");
   if (!btn) return;
@@ -615,8 +625,20 @@ document.addEventListener("click", (e) => {
   e.preventDefault();
   e.stopPropagation();
 
+  // Si está abierto para el MISMO botón => toggle cerrar
+  const openFor = subMenu?.dataset?.openFor || "";
+  const thisId = btn.dataset.id || "";
+
+  if (isSubMenuOpen() && openFor === thisId) {
+    closeSubMenu();
+    return;
+  }
+
+  // Siempre cerramos antes (evita estados raros)
+  closeSubMenu();
+
   selectedSubBodega = {
-    id: btn.dataset.id,
+    id: thisId,
     id_bodega: btn.dataset.idbodega,
     codigo: btn.dataset.codigo,
     nombre: btn.dataset.nombre,
@@ -633,7 +655,7 @@ document.addEventListener("click", (e) => {
   openSubMenu(btn);
 });
 
-// CLICK en opciones del menú (CIERRA SIEMPRE AL INICIO)
+// Click en opciones del menú
 subMenu?.addEventListener("click", async (e) => {
   const btn = e.target.closest(".ctx-sub-btn");
   if (!btn || !selectedSubBodega) return;
@@ -643,21 +665,22 @@ subMenu?.addEventListener("click", async (e) => {
 
   const action = btn.dataset.action;
 
-  closeSubMenu(); // ✅ CLAVE: se oculta apenas presionas cualquier opción
+  closeSubMenu();
 
-  // 👁 VER
   if (action === "ver") {
+    
     document.getElementById("detalleSubNombre").textContent = selectedSubBodega.nombre;
     document.getElementById("detalleSubCodigo").textContent = selectedSubBodega.codigo;
     document.getElementById("detalleSubClasificacion").textContent = selectedSubBodega.clasificacion;
     document.getElementById("detalleSubDescripcion").textContent = selectedSubBodega.descripcion || "-";
     document.getElementById("detalleSubEstado").textContent = selectedSubBodega.estado;
 
+    loadMaterialesSubBodega(selectedSubBodega.id); // 👈 CLAVE
+
     openModal(document.getElementById("modalDetalleSubBodega"));
     return;
   }
 
-  // ✏️ EDITAR
   if (action === "editar") {
     document.getElementById("editSubId").value = selectedSubBodega.id;
     document.getElementById("editSubCodigo").value = selectedSubBodega.codigo;
@@ -669,7 +692,6 @@ subMenu?.addEventListener("click", async (e) => {
     return;
   }
 
-  // 🔁 ACTIVAR / DESACTIVAR
   if (action === "toggle") {
     const next = selectedSubBodega.estado === "Activo" ? "Inactivo" : "Activo";
 
@@ -694,7 +716,7 @@ subMenu?.addEventListener("click", async (e) => {
 // Cerrar al hacer click afuera
 document.addEventListener("click", (e) => {
   if (!subMenu) return;
-  if (e.target.closest(".subbodega-actions-btn")) return; // si es el botón, no cierres
+  if (e.target.closest(".subbodega-actions-btn")) return;
   if (!subMenu.contains(e.target)) closeSubMenu();
 });
 
@@ -985,11 +1007,15 @@ const fillDetalleSub = (data) => {
     if (!selectedData) return;
 
     if (action === "ver") {
-      fillDetalle(selectedData);
-      loadSubBodegas(selectedData.id);
-      openModal(modalDetalle);
-      return;
-    }
+    fillDetalle(selectedData);
+
+    loadSubBodegas(selectedData.id);
+    loadMaterialesBodega(selectedData.id); 
+
+    openModal(modalDetalle);
+    return;
+  }
+
 
     if (action === "editar") {
       fillEditar(selectedData);
@@ -1277,10 +1303,296 @@ btnGuardarEditarSub?.addEventListener("click", async () => {
     closeModal(document.getElementById("modalEditarSubBodega"));
     toastSuccess(parsed.data?.message || "Sub-bodega actualizada correctamente.");
     setTimeout(() => location.reload(), 650);
-  } catch (err) {
-    console.error(err);
-    toastError(err?.message || "No se pudo guardar los cambios.");
-  }
-});
+      } catch (err) {
+      console.error(err);
+      toastError(err.message || "No se pudo actualizar la sub-bodega.");
+    }
+  });
+
+  const renderMateriales = (materiales, {
+    containerId,
+    emptyId,
+    totalId
+  }) => {
+    const cont = document.getElementById(containerId);
+    const empty = document.getElementById(emptyId);
+    const total = document.getElementById(totalId);
+
+    if (!cont) return;
+
+    cont.innerHTML = "";
+
+    if (!Array.isArray(materiales) || materiales.length === 0) {
+      empty?.classList.remove("hidden");
+      if (total) total.textContent = "0";
+      return;
+    }
+
+    empty?.classList.add("hidden");
+    if (total) total.textContent = materiales.length;
+
+    cont.innerHTML = materiales.map(m => `
+      <div class="flex items-center justify-between p-3 rounded-lg border bg-white">
+        <div class="min-w-0">
+          <p class="font-medium text-gray-900 truncate">${m.nombre_material || m.nombre || "Material sin nombre"}</p>
+          <p class="text-xs text-gray-500">
+            ${m.unidad_medida || "N/A"}${m.clasificacion ? " · " + m.clasificacion : ""}
+            ${m.codigo_inventario ? " · " + m.codigo_inventario : ""}
+          </p>
+        </div>
+
+        <span class="text-sm font-semibold text-gray-700 whitespace-nowrap ml-2">
+          ${m.cantidad_total || m.stock_actual || "0"}
+        </span>
+      </div>
+    `).join("");
+  };
 
 });
+
+// ============================
+// FUNCIONES GLOBALES (fuera de DOMContentLoaded)
+// ============================
+
+const loadMaterialesBodega = async (idBodega) => {
+  try {
+    console.log("� [loadMaterialesBodega] Buscando materiales para bodega ID:", idBodega);
+    
+    const API_URL = new URL("src/controllers/bodega_controller.php", document.baseURI).toString();
+    const url = `${API_URL}?accion=inventario_bodega&id_bodega=${encodeURIComponent(idBodega)}`;
+    console.log("🔗 [loadMaterialesBodega] URL:", url);
+    
+    const res = await fetch(url);
+    const json = await res.json();
+    
+    console.log("📥 [loadMaterialesBodega] Respuesta:", json);
+
+    const cont = document.getElementById("detalleBodegaMateriales");
+    const empty = document.getElementById("detalleBodegaMaterialesVacio");
+    const total = document.getElementById("totalMateriales");
+
+    console.log("🎯 [loadMaterialesBodega] Contenedores encontrados:", {
+      cont: !!cont,
+      empty: !!empty,
+      total: !!total
+    });
+
+    if (!cont) {
+      console.error("❌ [loadMaterialesBodega] Contenedor no encontrado");
+      return;
+    }
+
+    if (!json.success || !Array.isArray(json.data)) {
+      console.error("❌ [loadMaterialesBodega] Respuesta inválida:", json);
+      cont.innerHTML = "";
+      empty?.classList.remove("hidden");
+      if (total) total.textContent = "0";
+      return;
+    }
+
+    console.log("✅ [loadMaterialesBodega] Materiales encontrados:", json.data.length);
+
+    if (json.data.length === 0) {
+      cont.innerHTML = "";
+      empty?.classList.remove("hidden");
+      if (total) total.textContent = "0";
+      return;
+    }
+
+    empty?.classList.add("hidden");
+    if (total) total.textContent = json.data.length;
+
+    cont.innerHTML = json.data.map(m => `
+      <div class="flex items-center justify-between p-3 rounded-lg border bg-white">
+        <div class="min-w-0">
+          <p class="font-medium text-gray-900 truncate">${m.nombre_material || "Material sin nombre"}</p>
+          <p class="text-xs text-gray-500">
+            ${m.unidad_medida || "N/A"}
+          </p>
+        </div>
+        <span class="text-sm font-semibold text-gray-700 whitespace-nowrap ml-2">
+          ${m.cantidad_total || "0"}
+        </span>
+      </div>
+    `).join("");
+    
+    console.log("✅ [loadMaterialesBodega] Renderizado completo");
+
+  } catch (err) {
+    console.error("❌ [loadMaterialesBodega] Error:", err);
+    const cont = document.getElementById("detalleBodegaMateriales");
+    const empty = document.getElementById("detalleBodegaMaterialesVacio");
+    if (cont) cont.innerHTML = "";
+    if (empty) empty?.classList.remove("hidden");
+  }
+};
+
+const loadMaterialesSubBodega = async (idSubBodega) => {
+  try {
+    console.log("🔍 [loadMaterialesSubBodega] Buscando materiales para subbodega ID:", idSubBodega);
+    
+    const API_URL = new URL("src/controllers/bodega_controller.php", document.baseURI).toString();
+    const url = `${API_URL}?accion=inventario_subbodega&id_subbodega=${encodeURIComponent(idSubBodega)}`;
+    console.log("🔗 [loadMaterialesSubBodega] URL:", url);
+    
+    const res = await fetch(url);
+    const json = await res.json();
+    
+    console.log("📥 [loadMaterialesSubBodega] Respuesta:", json);
+
+    const cont = document.getElementById("detalleSubBodegaMateriales");
+    const empty = document.getElementById("detalleSubBodegaMaterialesVacio");
+    const total = document.getElementById("totalSubMateriales");
+
+    console.log("🎯 [loadMaterialesSubBodega] Contenedores encontrados:", {
+      cont: !!cont,
+      empty: !!empty,
+      total: !!total
+    });
+
+    if (!cont) {
+      console.error("❌ [loadMaterialesSubBodega] Contenedor no encontrado");
+      return;
+    }
+
+    if (!json.success || !Array.isArray(json.data)) {
+      console.error("❌ [loadMaterialesSubBodega] Respuesta inválida:", json);
+      cont.innerHTML = "";
+      empty?.classList.remove("hidden");
+      if (total) total.textContent = "0";
+      return;
+    }
+
+    console.log("✅ [loadMaterialesSubBodega] Materiales encontrados:", json.data.length);
+
+    if (json.data.length === 0) {
+      cont.innerHTML = "";
+      empty?.classList.remove("hidden");
+      if (total) total.textContent = "0";
+      return;
+    }
+
+    empty?.classList.add("hidden");
+    if (total) total.textContent = json.data.length;
+
+    cont.innerHTML = json.data.map(m => `
+      <div class="flex items-center justify-between p-3 rounded-lg border bg-white">
+        <div class="min-w-0">
+          <p class="font-medium text-gray-900 truncate">${m.nombre_material || "Material sin nombre"}</p>
+          <p class="text-xs text-gray-500">
+            ${m.unidad_medida || "N/A"}
+          </p>
+        </div>
+        <span class="text-sm font-semibold text-gray-700 whitespace-nowrap ml-2">
+          ${m.cantidad_total || "0"}
+        </span>
+      </div>
+    `).join("");
+    
+    console.log("✅ [loadMaterialesSubBodega] Renderizado completo");
+
+  } catch (err) {
+    console.error("❌ [loadMaterialesSubBodega] Error:", err);
+    const cont = document.getElementById("detalleSubBodegaMateriales");
+    const empty = document.getElementById("detalleSubBodegaMaterialesVacio");
+    if (cont) cont.innerHTML = "";
+    if (empty) empty?.classList.remove("hidden");
+  }
+};
+
+// Función para ver materiales de una bodega
+async function verMaterialesBodega(idBodega) {
+  const modal = document.getElementById("modalMaterialesBodega");
+  const lista = document.getElementById("listaMaterialesBodega");
+  const nombreBodega = document.getElementById("nombreBodegaMateriales");
+  
+  if (!modal || !lista) return;
+  
+  // Mostrar modal
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+  
+  // Mostrar loading
+  lista.innerHTML = `
+    <div class="text-center py-8 text-gray-500">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-2"></div>
+      <p>Cargando materiales...</p>
+    </div>
+  `;
+  
+  try {
+    const API_URL = new URL("src/controllers/bodega_controller.php", document.baseURI).toString();
+    const res = await fetch(`${API_URL}?accion=inventario_bodega&id_bodega=${idBodega}`);
+    const json = await res.json();
+    
+    if (json.success && Array.isArray(json.data)) {
+      const materiales = json.data;
+      
+      if (materiales.length === 0) {
+        lista.innerHTML = `
+          <div class="text-center py-8">
+            <i data-lucide="package-open" class="h-16 w-16 mx-auto mb-3 text-gray-300"></i>
+            <p class="text-gray-500 font-medium">No hay materiales en esta bodega</p>
+            <p class="text-xs text-gray-400 mt-1">Los materiales aparecerán aquí cuando se registren entradas</p>
+          </div>
+        `;
+      } else {
+        lista.innerHTML = materiales.map(m => `
+          <div class="flex justify-between items-center border rounded-lg p-4 bg-green-50 border-green-200 hover:shadow-sm transition">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                <i data-lucide="package" class="w-5 h-5 text-green-600"></i>
+              </div>
+              <div>
+                <p class="font-semibold text-green-900">${escapeHtml(m.nombre_material)}</p>
+                <p class="text-xs text-green-700">Unidad: ${escapeHtml(m.unidad_medida)}</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="text-2xl font-bold text-green-600">${m.cantidad_total}</p>
+              <p class="text-xs text-green-700">${escapeHtml(m.unidad_medida)}</p>
+            </div>
+          </div>
+        `).join('');
+      }
+      
+      // Reiniciar iconos de Lucide
+      if (window.lucide) window.lucide.createIcons();
+    } else {
+      throw new Error(json.message || "Error al cargar materiales");
+    }
+  } catch (err) {
+    console.error("Error cargando materiales:", err);
+    lista.innerHTML = `
+      <div class="text-center py-8 text-red-500">
+        <i data-lucide="alert-circle" class="h-12 w-12 mx-auto mb-2"></i>
+        <p class="font-medium">Error al cargar materiales</p>
+        <p class="text-xs mt-1">${err.message}</p>
+      </div>
+    `;
+    if (window.lucide) window.lucide.createIcons();
+  }
+}
+
+function cerrarModalMateriales() {
+  const modal = document.getElementById("modalMaterialesBodega");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
+}
+
+function escapeHtml(text) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
+// Exponer funciones globalmente
+window.verMaterialesBodega = verMaterialesBodega;
+window.cerrarModalMateriales = cerrarModalMateriales;
