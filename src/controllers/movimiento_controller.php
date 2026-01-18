@@ -9,7 +9,6 @@ header("Content-Type: application/json; charset=utf-8");
    CONEXIÓN PDO
 ================================ */
 
-
 /* database.php crea $conn directamente */
 if (!isset($conn) || !($conn instanceof PDO)) {
     echo json_encode([
@@ -64,7 +63,7 @@ class MovimientoController
     {
         $rawInput = file_get_contents("php://input");
         error_log("[CONTROLLER] JSON recibido: " . $rawInput);
-        
+
         $data = json_decode($rawInput, true);
         error_log("[CONTROLLER] JSON parseado: " . json_encode($data));
 
@@ -80,6 +79,7 @@ class MovimientoController
         }
 
         try {
+            // ✅ REGISTRA MOVIMIENTO + ACTUALIZA STOCK AUTOMÁTICAMENTE (EN EL MODEL)
             $codigo = $this->model->registrarEntrada($data);
 
             echo json_encode([

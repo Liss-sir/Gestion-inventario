@@ -194,6 +194,24 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
             <!-- PASO 2 -->
             <div id="sol-paso-2" class="hidden space-y-4">
+
+                <!-- ✅ NUEVO: FILTRO BODEGA + SUBBODEGA -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="bodega-select" class="text-sm font-medium block mb-1">Bodega *</label>
+                        <select id="bodega-select" class="input-siga w-full">
+                            <option value="">Seleccione una bodega</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="subbodega-select" class="text-sm font-medium block mb-1">Subbodega *</label>
+                        <select id="subbodega-select" class="input-siga w-full" disabled>
+                            <option value="">Seleccione una subbodega</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div>
                     <label class="text-sm font-medium block mb-1">Materiales *</label>
                     

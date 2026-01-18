@@ -115,44 +115,43 @@ class SolicitudMaterialModel {
 
     // Approve or reject request
     public function responderSolicitud($idSolicitud, $estado, $idAprobador, $observaciones = null)
-{
-    // Normalizar el estado (aceptar mayúscula o minúscula)
-    $estadoNormalizado = ucfirst(strtolower($estado)); // Convierte "aprobada" a "Aprobada"
-    
-    // Only valid states
-    if (!in_array($estadoNormalizado, ['Aprobada', 'Rechazada'])) {
-        error_log("❌ Estado no válido recibido: $estado (normalizado a: $estadoNormalizado)");
-        return false;
+    {
+        // Normalizar el estado (aceptar mayúscula o minúscula)
+        $estadoNormalizado = ucfirst(strtolower($estado));
+        
+        // Only valid states
+        if (!in_array($estadoNormalizado, ['Aprobada', 'Rechazada'])) {
+            error_log("❌ Estado no válido recibido: $estado (normalizado a: $estadoNormalizado)");
+            return false;
+        }
+
+        $sql = "UPDATE solicitudes_material
+                SET estado = ?,
+                    id_usuario_aprobador = ?,
+                    fecha_respuesta = NOW(),
+                    observaciones = COALESCE(?, observaciones)
+                WHERE id_solicitud = ?
+                AND estado = 'Pendiente'";
+
+        $stmt = $this->db->prepare($sql);
+
+        $result = $stmt->execute([
+            $estadoNormalizado,
+            $idAprobador,
+            $observaciones,
+            $idSolicitud
+        ]);
+        
+        if ($result) {
+            $rows = $stmt->rowCount();
+            error_log("✅ Solicitud $idSolicitud actualizada a $estadoNormalizado. Filas afectadas: $rows");
+            return $rows > 0;
+        } else {
+            $errorInfo = $stmt->errorInfo();
+            error_log("❌ Error al actualizar solicitud $idSolicitud: " . json_encode($errorInfo));
+            return false;
+        }
     }
-
-    $sql = "UPDATE solicitudes_material
-            SET estado = ?,
-                id_usuario_aprobador = ?,
-                fecha_respuesta = NOW(),
-                observaciones = COALESCE(?, observaciones)
-            WHERE id_solicitud = ?
-            AND estado = 'Pendiente'";
-
-    $stmt = $this->db->prepare($sql);
-
-    $result = $stmt->execute([
-        $estadoNormalizado, // Usar el estado normalizado
-        $idAprobador,
-        $observaciones,
-        $idSolicitud
-    ]);
-    
-    // Agregar logs para depuración
-    if ($result) {
-        $rows = $stmt->rowCount();
-        error_log("✅ Solicitud $idSolicitud actualizada a $estadoNormalizado. Filas afectadas: $rows");
-        return $rows > 0;
-    } else {
-        $errorInfo = $stmt->errorInfo();
-        error_log("❌ Error al actualizar solicitud $idSolicitud: " . json_encode($errorInfo));
-        return false;
-    }
-}
 
     // Mark request as delivered
     public function marcarEntregada($idSolicitud, $idUsuario)
