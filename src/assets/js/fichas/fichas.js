@@ -915,7 +915,7 @@ function closeModalFicha() {
   if (paso4Ficha) paso4Ficha.classList.add("hidden")
 }
 
-function openModalVerFicha(ficha) {
+async function openModalVerFicha(ficha) {
   selectedFicha = ficha
   modalVerFicha.classList.add("active")
 
@@ -924,6 +924,21 @@ function openModalVerFicha(ficha) {
     : "Sin programa asignado"
 
   const nivelNombre = ficha.nivel || "N/A"
+
+  // Fetch instructors to get the jefe
+  let jefeNombre = "No asignado"
+  try {
+    const res = await fetch(`${API_URL}?accion=instructoresFicha&id_ficha=${ficha.id}`)
+    if (res.ok) {
+      const instructores = await res.json()
+      const jefe = instructores.find(inst => inst.es_jefe_grupo == 1 || inst.es_jefe_grupo === true)
+      if (jefe) {
+        jefeNombre = jefe.nombre_completo || "Sin nombre"
+      }
+    }
+  } catch (error) {
+    console.error("Error al cargar jefe de ficha:", error)
+  }
 
   detalleFichaContent.innerHTML = `
     <div class="flex items-center gap-4">
@@ -951,6 +966,10 @@ function openModalVerFicha(ficha) {
       </div>
     </div>
     <div class="space-y-3 text-sm mt-4">
+      <div class="flex items-start gap-3">
+        <span class="text-muted-foreground min-w-[80px]">Jefe de Ficha:</span>
+        <span class="font-medium">${jefeNombre}</span>
+      </div>
       <div class="flex items-start gap-3">
         <span class="text-muted-foreground min-w-[80px]">Programa:</span>
         <span class="font-medium">${programaNombre}</span>
@@ -1661,7 +1680,7 @@ function attachActionEvents() {
       // Manage different actions
       if (action === "ver") {
         const ficha = fichas.find((f) => String(f.id) === String(id))
-        if (ficha) openModalVerFicha(ficha)
+        if (ficha) await openModalVerFicha(ficha)
       } else if (action === "editar") {
         const ficha = fichas.find((f) => String(f.id) === String(id))
         if (ficha) openModalFicha(ficha)

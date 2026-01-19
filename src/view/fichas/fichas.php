@@ -126,19 +126,22 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
       <!-- TABLE VIEW -->
       <div id="vistaTabla"
-        class="rounded-xl border border-border bg-card overflow-hidden">
-        <table class="min-w-full divide-y divide-border text-sm">
-          <thead class="bg-gray-50">
+        class="relative rounded-xl border border-border bg-card p-[1px] overflow-visible">
+        <table class="min-w-full border-separate border-spacing-0 text-sm rounded-[11px] bg-card">
+          <thead>
             <tr>
-              <th class="px-4 py-3 text-left text-xs text-muted-foreground">Número</th>
-              <th class="px-4 py-3 text-left text-xs text-muted-foreground">Programa</th>
-              <th class="px-4 py-3 text-left text-xs text-muted-foreground">Nivel</th>
-              <th class="px-4 py-3 text-left text-xs text-muted-foreground">Jornada</th>
-              <th class="px-4 py-3 text-left text-xs text-muted-foreground">Estado</th>
-              <th class="px-4 py-3 text-right text-xs text-muted-foreground">Acciones</th>
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100 first:rounded-tl-[11px]">Número</th>
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">Programa</th>
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">Nivel</th>
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">Jornada</th>
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">Estado</th>
+              <th class="px-4 py-3 text-right font-medium text-xs text-muted-foreground bg-gray-100 last:rounded-tr-[11px]">Acciones</th>
             </tr>
           </thead>
-          <tbody id="tbodyFichas" class="divide-y divide-border bg-card">
+          <tbody id="tbodyFichas" class="divide-y divide-border bg-card
+                   [&>tr>td]:bg-card
+                   [&>tr:last-child>td:first-child]:rounded-bl-[11px]
+                   [&>tr:last-child>td:last-child]:rounded-br-[11px]">
           </tbody>
         </table>
       </div>
