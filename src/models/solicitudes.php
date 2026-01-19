@@ -116,41 +116,176 @@ class SolicitudMaterialModel {
     // Approve or reject request
     public function responderSolicitud($idSolicitud, $estado, $idAprobador, $observaciones = null)
     {
+        // Escribir en archivo de debug
+        file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " [RESPONDER] Iniciando responderSolicitud($idSolicitud, $estado, $idAprobador)\n", FILE_APPEND);
+        
         // Normalizar el estado (aceptar mayúscula o minúscula)
         $estadoNormalizado = ucfirst(strtolower($estado));
         
         // Only valid states
         if (!in_array($estadoNormalizado, ['Aprobada', 'Rechazada'])) {
-            error_log("❌ Estado no válido recibido: $estado (normalizado a: $estadoNormalizado)");
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ Estado no válido: $estado\n", FILE_APPEND);
             return false;
         }
 
-        $sql = "UPDATE solicitudes_material
-                SET estado = ?,
-                    id_usuario_aprobador = ?,
-                    fecha_respuesta = NOW(),
-                    observaciones = COALESCE(?, observaciones)
-                WHERE id_solicitud = ?
-                AND estado = 'Pendiente'";
+        try {
+            // Transacción para mantener consistencia entre estado y movimiento
+            $this->db->beginTransaction();
 
+            $sql = "UPDATE solicitudes_material
+                    SET estado = ?,
+                        id_usuario_aprobador = ?,
+                        fecha_respuesta = NOW(),
+                        observaciones = COALESCE(?, observaciones)
+                    WHERE id_solicitud = ?
+                      AND estado = 'Pendiente'";
+
+            $stmt = $this->db->prepare($sql);
+
+            $result = $stmt->execute([
+                $estadoNormalizado,
+                $idAprobador,
+                $observaciones,
+                $idSolicitud
+            ]);
+            
+            if (!$result) {
+                $errorInfo = $stmt->errorInfo();
+                file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ Error en BD: " . json_encode($errorInfo) . "\n", FILE_APPEND);
+                $this->db->rollBack();
+                return false;
+            }
+
+            $rows = $stmt->rowCount();
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ✅ Solicitud $idSolicitud actualizada a $estadoNormalizado. Filas: $rows\n", FILE_APPEND);
+            
+            // ✅ SI FUE APROBADA, crear movimiento de tipo "salida"
+            if ($estadoNormalizado === 'Aprobada' && $rows > 0) {
+                file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " 🔵 Llamando crearMovimientoSalidaDeSolicitud($idSolicitud, $idAprobador)\n", FILE_APPEND);
+                $okMov = $this->crearMovimientoSalidaDeSolicitud($idSolicitud, $idAprobador);
+                if (!$okMov) {
+                    // Si no se pudo crear el movimiento, revertir aprobación
+                    file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ Falló creación de movimiento. Haciendo ROLLBACK.\n", FILE_APPEND);
+                    $this->db->rollBack();
+                    return false;
+                }
+            }
+
+            $this->db->commit();
+            return $rows > 0;
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ Excepción en responderSolicitud: " . $e->getMessage() . "\n", FILE_APPEND);
+            return false;
+        }
+    }
+
+    /* ===============================
+       CREAR MOVIMIENTO DE SALIDA
+       Cuando se aprueba una solicitud
+    =============================== */
+    private function crearMovimientoSalidaDeSolicitud($idSolicitud, $idUsuario)
+    {
+        try {
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud($idSolicitud, $idUsuario)\n", FILE_APPEND);
+            
+            // Obtener la solicitud completa con sus materiales
+            $solicitud = $this->getSolicitudCompleta($idSolicitud);
+            
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " 📋 [SALIDA] Solicitud: " . json_encode($solicitud) . "\n", FILE_APPEND);
+            
+            if (!$solicitud) {
+                file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ [SALIDA] Solicitud no encontrada\n", FILE_APPEND);
+                return false;
+            }
+            
+            if (empty($solicitud['materiales'])) {
+                file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ [SALIDA] Sin materiales\n", FILE_APPEND);
+                return false;
+            }
+
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " 📦 [SALIDA] " . count($solicitud['materiales']) . " materiales encontrados\n", FILE_APPEND);
+            
+            // ⭐ Obtener la bodega del primer material (todos deben estar en la misma bodega)
+            $idBodega = $this->obtenerBodegaDeMaterial($solicitud['materiales'][0]['id_material']);
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " 🏪 [SALIDA] Bodega obtenida: $idBodega\n", FILE_APPEND);
+            
+            if (!$idBodega) {
+                file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ [SALIDA] No se encontró bodega para el material\n", FILE_APPEND);
+                return false;
+            }
+            
+            // Preparar datos para el movimiento
+            $datosMovimiento = [
+                'tipo_movimiento' => 'Salida',  // ⭐ MAYÚSCULA para coincidir con el trigger
+                'id_usuario' => $idUsuario,
+                'id_bodega' => $idBodega,  // ⭐ USAR LA BODEGA DEL MATERIAL
+                'id_subbodega' => $solicitud['id_subbodega'] ?? null,
+                'id_programa' => $solicitud['id_programa'] ?? null,
+                'id_ficha' => $solicitud['id_ficha'] ?? null,
+                'id_rae' => $solicitud['id_rae'] ?? null,
+                // ⭐ INCLUIR LAS OBSERVACIONES ORIGINALES DE LA SOLICITUD
+                'observaciones' => ($solicitud['observaciones']),
+                'id_solicitud' => $idSolicitud,
+                'materiales' => []
+            ];
+
+            // Convertir materiales de solicitud al formato de movimiento
+            foreach ($solicitud['materiales'] as $material) {
+                $datosMovimiento['materiales'][] = [
+                    'id_material' => $material['id_material'],
+                    'nombre' => $material['material'] ?? 'Material',
+                    'cantidad' => $material['cantidad'],
+                    'unidad' => $material['unidad_medida'] ?? ''
+                ];
+                file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . "   📌 {$material['material']} (ID: {$material['id_material']}, Cant: {$material['cantidad']})\n", FILE_APPEND);
+            }
+
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " 🔧 [SALIDA] Datos movimiento: " . json_encode($datosMovimiento) . "\n", FILE_APPEND);
+
+            // Usar el modelo de movimientos para registrar la salida
+            require_once __DIR__ . '/movimiento.php';
+            $movimientoModel = new MovimientoModel($this->db);
+            
+            $codigoMovimiento = $movimientoModel->registrarEntrada($datosMovimiento);
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ✅ [SALIDA] Movimiento creado: $codigoMovimiento\n", FILE_APPEND);
+            
+            return true;
+
+        } catch (Exception $e) {
+            // Re-lanzar para que responderSolicitud pueda hacer rollback
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ [SALIDA] Exception (rethrow): " . $e->getMessage() . "\n", FILE_APPEND);
+            throw $e;
+        }
+    }
+
+    /* ===============================
+       OBTENER BODEGA DE UN MATERIAL
+       Busca dónde está almacenado el material
+    =============================== */
+    private function obtenerBodegaDeMaterial($idMaterial)
+    {
+        // Buscar en movimientos_material la bodega donde está almacenado este material
+        // (el más reciente)
+        $sql = "SELECT id_bodega 
+                FROM movimientos_material 
+                WHERE id_material = ? 
+                AND tipo_movimiento = 'entrada'
+                ORDER BY fecha_hora DESC 
+                LIMIT 1";
+        
         $stmt = $this->db->prepare($sql);
-
-        $result = $stmt->execute([
-            $estadoNormalizado,
-            $idAprobador,
-            $observaciones,
-            $idSolicitud
-        ]);
+        $stmt->execute([$idMaterial]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($result) {
-            $rows = $stmt->rowCount();
-            error_log("✅ Solicitud $idSolicitud actualizada a $estadoNormalizado. Filas afectadas: $rows");
-            return $rows > 0;
-        } else {
-            $errorInfo = $stmt->errorInfo();
-            error_log("❌ Error al actualizar solicitud $idSolicitud: " . json_encode($errorInfo));
-            return false;
+            return $result['id_bodega'];
         }
+        
+        // Si no hay movimiento de entrada, retorna null
+        return null;
     }
 
     // Mark request as delivered

@@ -107,6 +107,10 @@ class MovimientoModel {
             return;
         }
 
+        // ✅ Calcular el delta (positivo para entrada, negativo para salida)
+        $tipo = $data['tipo_movimiento'] ?? 'entrada';
+        $delta = ($tipo === 'Entrada') ? 1 : -1;
+
         foreach ($materiales as $m) {
             $idMaterial = (int)($m['id_material'] ?? 0);
             $cantidad   = (int)($m['cantidad'] ?? 0);
@@ -115,12 +119,15 @@ class MovimientoModel {
                 continue;
             }
 
-            // ✅ Siempre sumar al stock total de bodega
-            $this->upsertStockBodega($idBodega, $idMaterial, $cantidad);
+            // ✅ Multiplicar por delta: entrada suma, salida resta
+            $cantidadAjustada = $cantidad * $delta;
 
-            // ✅ Si hay subbodega, también sumar stock en subbodega
+            // ✅ Actualizar stock total de bodega
+            $this->upsertStockBodega($idBodega, $idMaterial, $cantidadAjustada);
+
+            // ✅ Si hay subbodega, también actualizar stock en subbodega
             if ($idSub > 0) {
-                $this->upsertStockSubBodega($idSub, $idMaterial, $cantidad);
+                $this->upsertStockSubBodega($idSub, $idMaterial, $cantidadAjustada);
             }
         }
     }
@@ -135,7 +142,16 @@ class MovimientoModel {
         error_log("Datos recibidos: " . json_encode($data));
         error_log("Total materiales: " . count($data['materiales'] ?? []));
 
-        $this->conn->beginTransaction();
+        // ✅ FIX: Verificar si ya hay una transacción activa
+        // (puede ser llamado desde responderSolicitud que ya tiene una abierta)
+        $transaccionNuestra = false;
+        if (!$this->conn->inTransaction()) {
+            $this->conn->beginTransaction();
+            $transaccionNuestra = true;
+            error_log("⚙️ Iniciando nueva transacción en registrarEntrada()");
+        } else {
+            error_log("⚙️ Usando transacción existente en registrarEntrada()");
+        }
 
         try {
             // Insertar UNA SOLA fila en movimientos_material con el PRIMER material
@@ -158,6 +174,16 @@ class MovimientoModel {
                 )
             ");
 
+            // DEBUG: Ver qué valor tiene id_solicitud
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', 
+                date('Y-m-d H:i:s') . " [INSERT] id_solicitud recibido: " . var_export($data['id_solicitud'] ?? 'NO_EXISTE', true) . "\n", 
+                FILE_APPEND);
+
+            // ⭐ DEBUG: Ver cantidad que se intenta insertar
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', 
+                date('Y-m-d H:i:s') . " [INSERT] Cantidad a insertar: " . var_export($primerMaterial['cantidad'] ?? 'NO_EXISTE', true) . " | tipo_movimiento: " . var_export($data['tipo_movimiento'], true) . "\n", 
+                FILE_APPEND);
+
             $stmtMov->execute([
                 $data['tipo_movimiento'] ?? 'entrada',
                 $data['id_usuario'],
@@ -171,6 +197,10 @@ class MovimientoModel {
                 $primerMaterial['id_material'],
                 $primerMaterial['cantidad']
             ]);
+
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', 
+                date('Y-m-d H:i:s') . " [INSERT] Movimiento insertado con ID: " . $this->conn->lastInsertId() . "\n", 
+                FILE_APPEND);
 
             $idMovimiento = $this->conn->lastInsertId();
             error_log("ID movimiento creado: " . $idMovimiento);
@@ -206,7 +236,10 @@ class MovimientoModel {
             $this->actualizarStockEntrada($data, $data['materiales']);
             error_log("✓ Stock actualizado correctamente");
 
-            $this->conn->commit();
+            // ✅ Solo hacer commit si FUE NUESTRA transacción
+            if ($transaccionNuestra) {
+                $this->conn->commit();
+            }
 
             $codigo = 'MOV-' . date('Y') . '-' . str_pad($idMovimiento, 5, '0', STR_PAD_LEFT);
             error_log("✓ Movimiento registrado exitosamente: " . $codigo);
@@ -215,8 +248,12 @@ class MovimientoModel {
             return $codigo;
 
         } catch (Exception $e) {
-            $this->conn->rollBack();
+            // ✅ Solo hacer rollback si FUE NUESTRA transacción
+            if ($transaccionNuestra) {
+                $this->conn->rollBack();
+            }
             error_log("✗ ERROR al registrar: " . $e->getMessage());
+            // Re-lanzar la excepción para que responderSolicitud pueda hacer rollback
             throw new Exception("Error al registrar movimiento: " . $e->getMessage());
         }
     }
@@ -236,7 +273,8 @@ class MovimientoModel {
                 m.id_programa,
                 m.id_ficha,
                 m.id_rae,
-                m.id_usuario
+                m.id_usuario,
+                m.id_solicitud
             FROM movimientos_material m
             LEFT JOIN bodegas b ON b.id_bodega = m.id_bodega
             LEFT JOIN subbodegas sb ON sb.id_subbodega = m.id_subbodega

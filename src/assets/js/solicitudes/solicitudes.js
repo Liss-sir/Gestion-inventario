@@ -61,6 +61,8 @@ const selectores = {
   selectFichas: document.getElementById("ficha"),
   textareaObservaciones: document.getElementById("observaciones"),
 
+  selectActividad: document.getElementById("actividad"),
+
   // ✅ NUEVO: Bodega/Subbodega
   selectBodega: document.getElementById("bodega-select"),
   selectSubBodega: document.getElementById("subbodega-select"),
@@ -428,6 +430,50 @@ const api = {
     }
   },
 
+  async cargarActividades(fichaId, raeId) {
+    if (!selectores.selectActividad) return;
+
+    selectores.selectActividad.innerHTML = '<option value="">Cargando actividades...</option>';
+
+    // Si no hay ficha/rae aún, no cargamos
+    if (!fichaId || !raeId) {
+      selectores.selectActividad.innerHTML = '<option value="">Seleccione ficha y RAE</option>';
+      return;
+    }
+
+    try {
+      // Intento 1: endpoint actividades (si tu controller ya lo tiene)
+      let res = await fetch(`${API}?accion=actividades&ficha=${encodeURIComponent(fichaId)}&rae=${encodeURIComponent(raeId)}`);
+
+      // Si no existe ese endpoint, intentamos un fallback común
+      if (!res.ok) {
+        res = await fetch(`${API}?accion=actividad&ficha=${encodeURIComponent(fichaId)}&rae=${encodeURIComponent(raeId)}`);
+      }
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+
+      if (!Array.isArray(data) || !data.length) {
+        selectores.selectActividad.innerHTML = '<option value="">No hay actividades disponibles</option>';
+        return;
+      }
+
+      selectores.selectActividad.innerHTML = '<option value="">Seleccionar actividad</option>';
+
+      data.forEach((a) => {
+        const opt = document.createElement("option");
+        opt.value = a.id_actividad ?? a.id ?? "";
+        opt.textContent = a.nombre_actividad ?? a.nombre ?? `Actividad ${opt.value}`;
+        selectores.selectActividad.appendChild(opt);
+      });
+    } catch (e) {
+      selectores.selectActividad.innerHTML = '<option value="">Error cargando actividades</option>';
+      toastError("No se pudieron cargar las actividades. Revise el endpoint en el controller.");
+    }
+  },
+
+
   async crearSolicitud(payload) {
     const res = await fetch(`${API}?accion=crear`, {
       method: "POST",
@@ -576,6 +622,10 @@ const api = {
           selectores.selectPrograma.addEventListener("change", async function () {
             const programaId = this.value;
 
+            if (selectores.selectActividad) {
+              selectores.selectActividad.innerHTML = '<option value="">Seleccione ficha y RAE</option>';
+            }
+
             if (selectores.selectRae) selectores.selectRae.innerHTML = '<option value="">Seleccionar RAE</option>';
             if (selectores.selectFichas) selectores.selectFichas.innerHTML = '<option value="">Seleccionar ficha</option>';
 
@@ -618,6 +668,26 @@ const api = {
           });
 
           selectores.selectPrograma.dataset.boundChange = "1";
+
+          // ✅ Cargar actividades al cambiar RAE
+          if (selectores.selectRae && !selectores.selectRae.dataset.boundAct) {
+            selectores.selectRae.addEventListener("change", () => {
+              const fichaId = selectores.selectFichas?.value || "";
+              const raeId = selectores.selectRae?.value || "";
+              api.cargarActividades(fichaId, raeId);
+            });
+            selectores.selectRae.dataset.boundAct = "1";
+          }
+
+          // ✅ Cargar actividades al cambiar Ficha
+          if (selectores.selectFichas && !selectores.selectFichas.dataset.boundAct) {
+            selectores.selectFichas.addEventListener("change", () => {
+              const fichaId = selectores.selectFichas?.value || "";
+              const raeId = selectores.selectRae?.value || "";
+              api.cargarActividades(fichaId, raeId);
+            });
+            selectores.selectFichas.dataset.boundAct = "1";
+          }
         }
       }
 
@@ -1192,6 +1262,8 @@ const modal = {
     this.limpiarFormulario();
   },
 
+
+
   limpiarFormulario() {
     estadoApp.datosFormulario = { programa: "", rae: "", ficha: "", observaciones: "" };
     estadoApp.materialesSeleccionados = [];
@@ -1200,6 +1272,11 @@ const modal = {
     estadoApp.filtrosInventario = { bodega: "", subbodega: "" };
 
     if (selectores.formNueva) selectores.formNueva.reset();
+
+    if (selectores.selectActividad) {
+      selectores.selectActividad.innerHTML = '<option value="">Seleccione ficha y RAE</option>';
+      selectores.selectActividad.value = "";
+    }
 
     // ✅ reset selects bodega/subbodega visualmente
     if (selectores.selectBodega) selectores.selectBodega.value = "";
@@ -1228,11 +1305,16 @@ const modal = {
       selectores.selectFichas?.focus();
       return false;
     }
-
+    if (!selectores.selectActividad?.value) {
+      utilidades.mostrarError("Seleccione una actividad");
+      selectores.selectActividad?.focus();
+      return false;
+    }
     estadoApp.datosFormulario = {
       programa: selectores.selectPrograma.value,
       rae: selectores.selectRae.value,
       ficha: selectores.selectFichas.value,
+      actividad: selectores.selectActividad.value,
       observaciones: (selectores.textareaObservaciones?.value || "").trim(),
     };
 
@@ -1261,6 +1343,12 @@ const modal = {
       return;
     }
 
+    const idActividad = parseInt(estadoApp.datosFormulario.actividad, 10);
+    if (!idActividad || isNaN(idActividad)) {
+      utilidades.mostrarError("Actividad inválida. Seleccione una actividad.");
+      selectores.selectActividad?.focus();
+      return;
+    }
     try {
       if (selectores.btnGuardar) {
         selectores.btnGuardar.disabled = true;
@@ -1274,6 +1362,7 @@ const modal = {
         id_programa: parseInt(estadoApp.datosFormulario.programa, 10),
         id_rae: parseInt(estadoApp.datosFormulario.rae, 10),
         id_ficha: parseInt(estadoApp.datosFormulario.ficha, 10),
+        id_actividad: parseInt(estadoApp.datosFormulario.actividad, 10),
         observaciones: estadoApp.datosFormulario.observaciones || "",
         materiales: estadoApp.materialesSeleccionados.map((m) => ({
           id_material: parseInt(m.id, 10),
