@@ -270,11 +270,11 @@ class SolicitudMaterialModel {
         // Buscar en movimientos_material la bodega donde está almacenado este material
         // (el más reciente)
         $sql = "SELECT id_bodega 
-                FROM movimientos_material 
-                WHERE id_material = ? 
-                AND tipo_movimiento = 'entrada'
-                ORDER BY fecha_hora DESC 
-                LIMIT 1";
+            FROM movimientos_material 
+            WHERE id_material = ? 
+            AND tipo_movimiento = 'Entrada'
+            ORDER BY fecha_hora DESC 
+            LIMIT 1";
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$idMaterial]);
@@ -283,8 +283,17 @@ class SolicitudMaterialModel {
         if ($result) {
             return $result['id_bodega'];
         }
-        
-        // Si no hay movimiento de entrada, retorna null
+
+        // 🔁 Fallback: buscar en stock_bodega dónde haya stock del material
+        $sqlStock = "SELECT id_bodega FROM stock_bodega WHERE id_material = ? AND stock_actual > 0 ORDER BY stock_actual DESC LIMIT 1";
+        $stStock = $this->db->prepare($sqlStock);
+        $stStock->execute([$idMaterial]);
+        $rowStock = $stStock->fetch(PDO::FETCH_ASSOC);
+        if ($rowStock) {
+            return $rowStock['id_bodega'];
+        }
+
+        // Si no hay referencia, retorna null
         return null;
     }
 
