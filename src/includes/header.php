@@ -1,11 +1,10 @@
 <?php
-// ==========================
-// HEADER DASHBOARD – PHP
-// ==========================
-
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+// 1. Conexión a la base de datos (asegúrate que la ruta sea correcta)
+require_once __DIR__ . '/../../Config/database.php'; 
 
 require_once __DIR__ . '/auth_guard.php';
 
@@ -154,7 +153,24 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
 
 
 <header class="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card px-6 transition-all duration-300 <?php echo $sidebarMarginClass; ?>">
+<!-- Datos del usuario para JavaScript -->
+<div id="usuario-data" 
+     data-usuario-id="<?php echo $_SESSION['usuario_id']; ?>"
+     data-usuario-nombre="<?php echo htmlspecialchars($currentUser["nombre_completo"], ENT_QUOTES, 'UTF-8'); ?>"
+     data-usuario-cargo="<?php echo $currentUser["cargo"]; ?>"
+     style="display: none;">
+</div>
 
+<script>
+// Variables globales para JavaScript
+window.usuarioId = <?php echo $_SESSION['usuario_id']; ?>;
+window.usuarioNombre = "<?php echo htmlspecialchars($currentUser["nombre_completo"], ENT_QUOTES, 'UTF-8'); ?>";
+window.esCoordinador = <?php
+  $cargo = strtolower(trim($currentUser["cargo"] ?? ""));
+  echo ($cargo === "coordinador" || $cargo === "subcoordinador") ? "true" : "false";
+?>;
+
+</script>
   <!-- Buscador estilo pill -->
   <div class="relative flex-1 max-w-xl">
     <div class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">
@@ -170,45 +186,334 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
 
   <div class="flex items-center gap-4 ml-4">
 
-    <!-- Notificaciones -->
-    <div class="relative group">
-      <button class="relative flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted/70 transition">
-        <i data-lucide="bell" class="h-5 w-5 text-slate-500"></i>
+    <?php
+    require_once 'src/utils/notificaciones_sin_db.php';
 
-        <?php if (count($mockAlerts) > 0): ?>
-          <span class="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-[#ff4b4b] ring-2 ring-card"></span>
-        <?php endif; ?>
+    // Obtener resumen de notificaciones
+    $resumenNotificaciones = NotificacionSesion::obtenerResumen();
+    // ✅ Normalizar rol/cargo del usuario actual
+$cargoActual = strtolower(trim($currentUser["cargo"] ?? ''));
+
+// ✅ Coordinador / Subcoordinador ven TODO
+$esCoordinador = ($cargoActual === 'coordinador' || $cargoActual === 'subcoordinador');
+
+// ✅ Filtrar: coordinador ve todo, los demás ven solo lo suyo
+$notificacionesRecientes = NotificacionSesion::obtenerNotificaciones(
+    $esCoordinador ? null : ($_SESSION['usuario_id'] ?? null),
+    5
+);
+
+    ?>
+
+<!-- Notificaciones -->
+  <!-- Notificaciones -->
+<div class="relative " id="contenedor-notificaciones">
+  <button class="relative flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted/70 transition overflow-visible">
+
+  <!-- Campana mediana -->
+  <span class="relative z-[1] flex items-center justify-center">
+    <i data-lucide="bell" class="h-6 w-6 text-slate-500"></i>
+  </span>
+
+  <?php if ($resumenNotificaciones['no_leidas'] > 0): ?>
+  <span class="absolute top-[2px] right-[2px] z-[2]
+               h-4 w-4 rounded-full bg-[#ff4b4b] ring-2 ring-card
+               flex items-center justify-center text-[9px] font-bold text-white
+               badge-notificaciones pointer-events-none">
+    <?php echo $resumenNotificaciones['no_leidas'] > 9 ? '9+' : $resumenNotificaciones['no_leidas']; ?>
+  </span>
+<?php endif; ?>
+
+
+</button>
+
+
+
+
+
+
+      <div class="absolute right-0 mt-2 hidden w-96 rounded-md border border-border bg-card shadow-md" id="dropdown-notificaciones">
+
+       <div class="flex items-center justify-between px-3 py-2 border-b">
+  <span class="text-sm font-semibold">Notificaciones</span>
+
+  <div class="flex items-center gap-2">
+    <span class="rounded-full bg-muted px-2 py-0.5 text-xs">
+      <?php echo $resumenNotificaciones['total']; ?>
+    </span>
+
+    <?php if ($resumenNotificaciones['total'] > 0): ?>
+
+      <!-- ✅ NUEVO: Marcar todas como leídas -->
+      <?php if ($resumenNotificaciones['no_leidas'] > 0): ?>
+        <button 
+          onclick="marcarTodasLeidas()" 
+          class="text-xs text-blue-600 hover:text-blue-800"
+          title="Marcar todas como leídas"
+        >
+          Marcar todas
+        </button>
+      <?php endif; ?>
+
+      <!-- ✅ NUEVO: Limpiar = ELIMINAR TODAS -->
+      <button 
+        onclick="limpiarNotificaciones()" 
+        class="text-xs text-red-600 hover:text-red-800"
+        title="Eliminar todas las notificaciones"
+      >
+        Limpiar
       </button>
 
-      <div class="absolute right-0 mt-2 hidden w-80 rounded-md border border-border bg-card shadow-md group-hover:block">
-        <div class="flex items-center justify-between px-3 py-2">
-          <span class="text-sm font-semibold">Notificaciones</span>
-          <span class="rounded-full bg-muted px-2 py-0.5 text-xs">
-            <?php echo count($mockAlerts); ?>
-          </span>
-        </div>
-        <hr class="border-border" />
+    <?php endif; ?>
+  </div>
+</div>
 
-        <?php if (count($mockAlerts) === 0): ?>
-          <p class="px-3 py-3 text-xs text-muted-foreground">No hay notificaciones nuevas.</p>
-        <?php else: ?>
-          <div class="<?php echo $manyAlerts ? 'max-h-60 overflow-y-auto' : ''; ?>">
-            <?php foreach ($mockAlerts as $alert): ?>
-              <div class="flex flex-col gap-1 px-3 py-2 hover:bg-muted/50">
-                <div class="flex items-center gap-2">
-                  <span class="h-2 w-2 rounded-full bg-warning"></span>
-                  <span class="text-xs font-medium">Stock bajo</span>
-                </div>
-                <p class="text-xs text-muted-foreground">
-                  <?php echo $alert["material_nombre"]; ?>:
-                  <?php echo $alert["stock_actual"]; ?>/<?php echo $alert["stock_minimo"]; ?> unidades
-                </p>
-              </div>
-            <?php endforeach; ?>
+
+       <?php if (empty($notificacionesRecientes)): ?>
+  <div id="estado-vacio-notificaciones" class="px-3 py-6 text-center">
+    <i data-lucide="bell-off" class="h-8 w-8 text-slate-300 mx-auto mb-2"></i>
+    <p class="text-xs text-muted-foreground">No hay notificaciones nuevas.</p>
+  </div>
+<?php else: ?>
+
+          <div class="max-h-96 overflow-y-auto" id="lista-notificaciones">
+            <?php foreach ($notificacionesRecientes as $notif): ?>
+  <div 
+    class="flex flex-col gap-0.5 px-3 py-2 hover:bg-muted/50 border-b border-border last:border-b-0 transition-all duration-200 
+          <?php echo !$notif['leido'] ? 'bg-blue-50 no-leida border-l-2 border-l-blue-500' : 'leida'; ?>"
+    data-notif-id="<?php echo $notif['id']; ?>"
+  >
+    <!-- FILA 1: Icono + Título + Botón eliminar -->
+    <div class="flex items-start justify-between gap-2">
+      <div class="flex items-start gap-2 flex-1 min-w-0">
+        <div class="h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0
+                  <?php echo match($notif['color']) {
+                    'warning' => 'bg-amber-100 text-amber-600',
+                    'danger' => 'bg-red-100 text-red-600',
+                    'success' => 'bg-emerald-100 text-emerald-600',
+                    default => 'bg-blue-100 text-blue-600'
+                  }; ?>">
+          <i data-lucide="<?php echo $notif['icono']; ?>" class="h-3.5 w-3.5"></i>
+        </div>
+        
+        <div class="flex-1 min-w-0">
+          <!-- Título y hora en la misma línea -->
+          <div class="flex items-baseline justify-between gap-2">
+            <p class="text-xs font-semibold text-slate-800 truncate flex-1">
+              <?php echo htmlspecialchars($notif['titulo']); ?>
+            </p>
+            <p class="text-[10px] text-slate-500 whitespace-nowrap">
+              <?php echo date('d/m H:i', strtotime($notif['fecha'])); ?>
+            </p>
           </div>
+        </div>
+      </div>
+      
+      <!-- Botón eliminar -->
+      <div class="flex items-center gap-1 flex-shrink-0">
+        <?php if (!$notif['leido']): ?>
+          <span class="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+        <?php endif; ?>
+        
+        <button 
+          onclick="eliminarNotificacion('<?php echo $notif['id']; ?>')"
+          class="h-5 w-5 flex items-center justify-center text-slate-400 hover:text-red-500"
+          title="Eliminar"
+        >
+          <i data-lucide="x" class="h-3 w-3"></i>
+        </button>
+      </div>
+    </div>
+    
+    <!-- FILA 2: Usuario y botón Marcar como leído (más compacto) -->
+    <div class="flex items-center justify-between gap-2 text-[10px] pl-9">
+      <span class="text-slate-500 truncate flex-1">
+       Usuario: <?php echo htmlspecialchars(trim($notif['usuario_nombre'] ?? 'Sin nombre')); ?>
+
+      </span>
+      
+      <?php if (!$notif['leido']): ?>
+        <button 
+          onclick="marcarNotificacionLeida('<?php echo $notif['id']; ?>')"
+          class="text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap"
+        >
+          Marcar leído
+        </button>
+      <?php endif; ?>
+    </div>
+  </div>
+<?php endforeach; ?>
+          </div>
+          
+          <?php if ($resumenNotificaciones['total'] > 5): ?>
+            <div class="px-3 py-2 border-t text-center">
+              <a href="?page=notificaciones" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">
+                Ver todas las notificaciones
+              </a>
+            </div>
+          <?php endif; ?>
         <?php endif; ?>
       </div>
     </div>
+
+    <script>
+    // Funciones JavaScript para manejar notificaciones
+    function marcarNotificacionLeida(notifId) {
+      fetch('src/utils/notificaciones_sesion.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'accion=marcar_leido&notificacion_id=' + notifId
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const notifElement = document.querySelector(`[data-notif-id="${notifId}"]`);
+          if (notifElement) {
+            notifElement.classList.remove('no-leida', 'bg-blue-50', 'border-l-blue-500');
+            notifElement.classList.add('leida');
+            
+            // Actualizar contador
+            actualizarContadorNotificaciones();
+          }
+        }
+      });
+    }
+
+    function marcarTodasLeidas() {
+      fetch('src/utils/notificaciones_sesion.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'accion=marcar_todas_leidas'
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Actualizar todas las notificaciones visualmente
+          document.querySelectorAll('.no-leida').forEach(el => {
+            el.classList.remove('no-leida', 'bg-blue-50', 'border-l-blue-500');
+            el.classList.add('leida');
+          });
+          
+          // Actualizar contador
+          actualizarContadorNotificaciones();
+        }
+      });
+    }
+
+    function mostrarEstadoVacioNotificaciones() {
+  const dropdown = document.getElementById("dropdown-notificaciones");
+  const lista = document.getElementById("lista-notificaciones");
+
+  // ✅ Si existe la lista, la quitamos
+  if (lista) lista.remove();
+
+  // ✅ Si ya existe el estado vacío, lo quitamos para no duplicar
+  const existente = document.getElementById("estado-vacio-notificaciones");
+  if (existente) existente.remove();
+
+  // ✅ ESTE HTML ES IGUAL AL QUE TE RENDERIZA PHP (imagen 1)
+  const emptyHTML = `
+    <div id="estado-vacio-notificaciones" class="px-3 py-6 text-center">
+      <i data-lucide="bell-off" class="h-8 w-8 text-slate-300 mx-auto mb-2"></i>
+      <p class="text-xs text-muted-foreground">No hay notificaciones nuevas.</p>
+    </div>
+  `;
+
+  dropdown.insertAdjacentHTML("beforeend", emptyHTML);
+
+  // ✅ Volver a renderizar los íconos
+  if (window.lucide && typeof window.lucide.createIcons === "function") {
+    window.lucide.createIcons();
+  }
+}
+
+
+
+
+    function eliminarNotificacion(notifId) {
+  fetch('src/utils/notificaciones_sesion.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'accion=eliminar&notificacion_id=' + notifId
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      const notifElement = document.querySelector(`[data-notif-id="${notifId}"]`);
+      if (notifElement) {
+        notifElement.style.opacity = '0';
+        notifElement.style.transform = 'translateX(100%)';
+        setTimeout(() => notifElement.remove(), 300);
+
+        // ✅ Actualizar contador y UI
+        actualizarContadorNotificaciones();
+        verificarListaVacia();
+      }
+    }
+  });
+}
+
+function limpiarNotificaciones() {
+  fetch('src/utils/notificaciones_sesion.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'accion=eliminar_todas'
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // ✅ Borra todos los elementos visuales
+      const lista = document.getElementById("lista-notificaciones");
+      if (lista) {
+        lista.innerHTML = "";
+      }
+
+      // ✅ Elimina el badge
+      const badge = document.querySelector('.badge-notificaciones');
+      if (badge) badge.remove();
+
+      // ✅ Mostrar "vacío"
+      mostrarEstadoVacioNotificaciones();
+    }
+  });
+}
+
+
+
+    async function actualizarContadorNotificaciones() {
+      try {
+        const resp = await fetch('src/utils/notificaciones_sesion.php?accion=contar');
+        const data = await resp.json();
+        
+        const badge = document.querySelector('.badge-notificaciones');
+        if (data.no_leidas > 0) {
+          if (!badge) {
+            // Crear badge si no existe
+            const newBadge = document.createElement('span');
+            newBadge.className = 'absolute right-1.5 top-1.5 h-5 w-5 rounded-full bg-[#ff4b4b] ring-2 ring-card flex items-center justify-center text-[10px] font-bold text-white badge-notificaciones';
+            document.querySelector('#contenedor-notificaciones button').appendChild(newBadge);
+          }
+          const badgeElement = badge || document.querySelector('.badge-notificaciones');
+          badgeElement.textContent = data.no_leidas > 9 ? '9+' : data.no_leidas;
+        } else if (badge) {
+          badge.remove();
+        }
+      } catch (error) {
+        console.error('Error actualizando contador:', error);
+      }
+    }
+
+    // Actualizar notificaciones cada 30 segundos
+    setInterval(actualizarContadorNotificaciones, 30000);
+    </script> <!-- FIN DE NOTIFICACIONES -->
 
     <!-- Menú de usuario (CLICK TOGGLE, NO HOVER) -->
     <div class="relative">
@@ -304,6 +609,9 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
 
   </div>
 </header>
+
+<!-- ✅ NUEVO: CONTENEDOR GLOBAL DE TOASTS (FUERA DEL MODAL) - SIN TOCAR TU BASE -->
+<div id="toastGlobalContainer" class="fixed top-5 right-5 z-[9999] space-y-3"></div>
 
 <!-- ===================================================
    MODAL VER PERFIL (SOLO VISUALIZAR, SIN INPUTS)
@@ -557,50 +865,72 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
         class="hidden"
       />
 
-      <form id="formEditarPerfil" method="post" action="#" class="space-y-6">
-        <div>
-          <h3 class="mb-3 text-sm font-semibold text-slate-800">Datos personales</h3>
-          <div class="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+      <?php
+// ... (mantenemos tu lógica de sesión y foto inicial) ...
 
+// ✅ NUEVO: Preparar datos para JS de forma limpia
+$datosParaJS = [
+    "id_usuario"       => $_SESSION['usuario_id'],
+    "nombre_completo"  => $profileData["nombre_completo"],
+    "tipo_documento"   => $profileData["tipo_documento"],
+    "numero_documento" => $profileData["numero_documento"],
+    "correo"           => $profileData["correo"],
+    "telefono"         => $profileData["telefono"],
+    "direccion"        => $profileData["direccion"]
+];
+?>
+
+<!-- Inyectar datos para JS antes de cerrar el header -->
+<script>
+    window.userData = <?php echo json_encode($datosParaJS); ?>;
+</script>
+
+<!-- ... (Tu HTML del header se mantiene igual hasta el modal de editar) ... -->
+
+<!-- MODAL EDITAR PERFIL (Normal: Teléfono, Dirección y Foto) -->
+<form id="formEditarPerfil" method="post" enctype="multipart/form-data" class="space-y-6">
+    <!-- Se añade campo oculto para el ID -->
+    <input type="hidden" name="id_usuario" value="<?php echo $_SESSION['usuario_id']; ?>">
+    
+    <div>
+        <h3 class="mb-3 text-sm font-semibold text-slate-800">Datos personales</h3>
+        <div class="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
             <div>
-              <label class="text-xs font-medium text-slate-400 block mb-1">Teléfono</label>
-              <input
-                type="text"
-                name="telefono"
-                value="<?php echo htmlspecialchars($profileData["telefono"], ENT_QUOTES, 'UTF-8'); ?>"
-                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
+                <label class="text-xs font-medium text-slate-400 block mb-1">Teléfono</label>
+                <input type="text" name="telefono" id="edit_telefono"
+                    value="<?php echo htmlspecialchars($profileData["telefono"]); ?>"
+                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary/40" />
             </div>
-
             <div>
-              <label class="text-xs font-medium text-slate-400 block mb-1">Dirección</label>
-              <input
-                type="text"
-                name="direccion"
-                value="<?php echo htmlspecialchars($profileData["direccion"], ENT_QUOTES, 'UTF-8'); ?>"
-                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
+                <label class="text-xs font-medium text-slate-400 block mb-1">Dirección</label>
+                <input type="text" name="direccion" id="edit_direccion"
+                    value="<?php echo htmlspecialchars($profileData["direccion"]); ?>"
+                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary/40" />
             </div>
-          </div>
         </div>
+    </div>
+   <!-- ✅ BOTONES (GUARDAR / CANCELAR) -->
+<div class="mt-6 flex justify-end gap-3 pt-2">
 
-        <div class="flex justify-end pt-2 gap-3">
-          <button
-            type="button"
-            id="btnCancelarPerfilEditar"
-            class="inline-flex items-center justify-center rounded-lg border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            id="btnGuardarPerfil"
-            class="inline-flex items-center justify-center rounded-lg bg-secondary px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-secondary/90 transition"
-          >
-            Guardar cambios
-          </button>
-        </div>
-      </form>
+  <button
+    type="button"
+    id="btnCancelarEditarPerfil"
+    class="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+  >
+    Cancelar
+  </button>
+
+  <button
+    type="submit"
+    id="btnGuardarEditarPerfil"
+    class="inline-flex items-center justify-center rounded-lg bg-secondary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-secondary/90 transition"
+  >
+    Guardar cambios
+  </button>
+
+</div>
+
+</form>
     </div>
   </div>
 </div>
@@ -624,6 +954,9 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
       <p class="text-xs text-slate-500">
         Si requieres cambiar datos sensibles, selecciona cuáles y escribe el dato correcto.
       </p>
+
+      <!-- ✅ NUEVO: CONTENEDOR DE ALERTAS FLOWBITE (SIN TOCAR TU DISEÑO) -->
+      <div id="alertaDatosSensiblesContainer"></div>
 
       <div class="rounded-xl border border-slate-200 p-4">
         <p class="text-xs font-semibold text-slate-700 mb-3">Selecciona los datos a cambiar</p>
@@ -651,20 +984,34 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
         </div>
       </div>
 
-      <form id="formDatosSensibles" class="space-y-3" method="post" action="#">
+      <form id="formDatosSensibles"
+      class="space-y-3"
+      method="post"
+      action="src/controllers/usuario_controller.php?accion=solicitar_cambio_datos_sensibles">
+
+  <input type="hidden" id="datosSensiblesSeleccionados" name="datos_sensibles_seleccionados" value="">
+  <input type="hidden" id="inputDatosCambiadosJSON" name="datos_cambiados" value="">
+
+  <!-- tus fields normales abajo -->
+
+
         <div id="field_nombre" class="hidden">
           <label class="text-xs font-medium text-slate-400 block mb-1">Nombre correcto</label>
           <input
             type="text"
+            id="input_nombre_sensible"
             name="nombre_completo"
             value="<?php echo htmlspecialchars($profileData["nombre_completo"], ENT_QUOTES, 'UTF-8'); ?>"
             class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
+          <!-- ✅ NUEVO: mensaje de error -->
+          <p class="mt-1 text-[11px] text-red-600 hidden" id="error_nombre_sensible"></p>
         </div>
 
         <div id="field_tipo_documento" class="hidden">
           <label class="text-xs font-medium text-slate-400 block mb-1">Tipo de documento correcto</label>
           <select
+            id="select_tipo_documento_sensible"
             name="tipo_documento"
             class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
@@ -677,26 +1024,31 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
               }
             ?>
           </select>
+          <p class="mt-1 text-[11px] text-red-600 hidden" id="error_tipo_documento_sensible"></p>
         </div>
 
         <div id="field_numero_documento" class="hidden">
           <label class="text-xs font-medium text-slate-400 block mb-1">Número de documento correcto</label>
           <input
             type="text"
+            id="input_numero_documento_sensible"
             name="numero_documento"
             value="<?php echo htmlspecialchars($profileData["numero_documento"], ENT_QUOTES, 'UTF-8'); ?>"
             class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
+          <p class="mt-1 text-[11px] text-red-600 hidden" id="error_numero_documento_sensible"></p>
         </div>
 
         <div id="field_correo" class="hidden">
           <label class="text-xs font-medium text-slate-400 block mb-1">Correo correcto</label>
           <input
             type="email"
+            id="input_correo_sensible"
             name="correo"
             value="<?php echo htmlspecialchars($profileData["correo"], ENT_QUOTES, 'UTF-8'); ?>"
             class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
+          <p class="mt-1 text-[11px] text-red-600 hidden" id="error_correo_sensible"></p>
         </div>
 
         <div class="mt-4 flex justify-end gap-3">
@@ -709,6 +1061,7 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
           </button>
           <button
             type="submit"
+            id="btnEnviarDatosSensibles"
             class="inline-flex items-center justify-center rounded-lg bg-secondary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-secondary/90 transition"
           >
             Continuar
@@ -738,6 +1091,10 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
       <p class="text-xs text-slate-500">
         Por seguridad, ingresa tu contraseña actual y luego la nueva contraseña.
       </p>
+
+      <!-- ✅ Alertas Flowbite para Password -->
+<div id="alertaPasswordContainer" class="mb-4"></div>
+
 
       <form id="formCambiarPassword" method="post" action="#">
         <div class="space-y-4 text-sm">
@@ -837,141 +1194,10 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
   </div>
 </div>
 
+
 <!-- Lucide -->
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <script src="src/assets/js/perfil/perfil.js"></script>
-
-<script>
-/* ============================================================
-   AUTO LOGOUT BY INACTIVITY (15 minutes) — No page refresh needed
-   - Detects user activity (mouse, keyboard, scroll, touch)
-   - Shows warning 30 seconds before expiring
-   - Pings backend to keep LAST_ACTIVITY updated
-   - If time expires -> src/view/login/login.php?reason=idle_timeout
-============================================================ */
-
-(function () {
-  // ✅ FIX: asegurar BASE_URL sin redeclarar si ya existe
-  window.BASE_URL = window.BASE_URL || "<?= defined('BASE_URL') ? BASE_URL : '' ?>";
-  const BASE_URL_SAFE = window.BASE_URL || "";
-
-  const IDLE_LIMIT_MS = 15 * 60 * 1000;  // ✅ 15 minutes
-  const WARNING_MS    = 30 * 1000;       // ✅ warning at 30 seconds left
-
-  let idleTimer = null;
-  let warningTimer = null;
-  let lastPingAt = 0;
-
-  // Toast container (top-right like your alerts)
-  function ensureToastContainer() {
-    let container = document.getElementById("idleToastContainer");
-    if (!container) {
-      container = document.createElement("div");
-      container.id = "idleToastContainer";
-      container.className = "fixed top-4 right-4 z-[9999] flex flex-col gap-2";
-      document.body.appendChild(container);
-    }
-    return container;
-  }
-
-  function showToast(message) {
-    const container = ensureToastContainer();
-
-    const toast = document.createElement("div");
-    toast.className = `
-      w-[320px] rounded-xl border border-slate-200 bg-white shadow-lg
-      px-4 py-3 text-sm text-slate-700
-      animate-[fadeIn_.2s_ease-out]
-    `;
-
-    toast.innerHTML = `
-      <div class="flex items-start gap-3">
-        <div class="mt-0.5 h-2.5 w-2.5 rounded-full bg-yellow-500"></div>
-        <div class="flex-1">
-          <p class="font-semibold text-slate-900">Sesión por expirar</p>
-          <p class="text-xs text-slate-500 mt-0.5">${message}</p>
-        </div>
-        <button type="button" class="text-slate-400 hover:text-slate-600">
-          ✕
-        </button>
-      </div>
-    `;
-
-    const btnClose = toast.querySelector("button");
-    btnClose.addEventListener("click", () => toast.remove());
-
-    container.appendChild(toast);
-
-    // Auto-remove after 8s
-    setTimeout(() => {
-      if (toast && toast.parentNode) toast.remove();
-    }, 8000);
-  }
-
-  // Optional backend ping so LAST_ACTIVITY updates even without navigation
-  async function pingBackend() {
-    try {
-      const res = await fetch(`${BASE_URL_SAFE}src/includes/ping.php`, {
-        method: "GET",
-        credentials: "same-origin",
-        cache: "no-store"
-      });
-
-      if (!res.ok) return false;
-
-      const data = await res.json();
-      if (data && data.expired) return false;
-
-      return true;
-    } catch (e) {
-      return true; // do not kick user for network glitches
-    }
-  }
-
-  function clearTimers() {
-    if (idleTimer) clearTimeout(idleTimer);
-    if (warningTimer) clearTimeout(warningTimer);
-  }
-
-  function startTimers() {
-    clearTimers();
-
-    // ✅ Warning 30 seconds before logout
-    warningTimer = setTimeout(() => {
-      showToast("Si sigues inactivo, tu sesión se cerrará automáticamente en 30 segundos.");
-    }, IDLE_LIMIT_MS - WARNING_MS);
-
-    // ✅ Logout at 15 minutes
-    idleTimer = setTimeout(() => {
-      window.location.href = `${BASE_URL_SAFE}src/view/login/login.php?reason=idle_timeout`;
-    }, IDLE_LIMIT_MS);
-  }
-
-  // Reset timers on any activity
-  async function resetIdle() {
-    startTimers();
-
-    // Ping at most once every 30 seconds to avoid spam
-    const now = Date.now();
-    if (now - lastPingAt > 30000) {
-      lastPingAt = now;
-      const ok = await pingBackend();
-
-      if (!ok) {
-        window.location.href = `${BASE_URL_SAFE}src/view/login/login.php?reason=idle_timeout`;
-      }
-    }
-  }
-
-  const events = ["mousemove", "mousedown", "keydown", "scroll", "touchstart"];
-  events.forEach((evt) => window.addEventListener(evt, resetIdle, { passive: true }));
-
-  // Start on load
-  startTimers();
-})();
-</script>
-
-
 
 <style>
 @keyframes fadeIn {

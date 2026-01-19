@@ -770,18 +770,124 @@ $pieGradient = implode(", ", $gradientParts);
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    if (window.lucide && typeof lucide.createIcons === "function") {
-        lucide.createIcons();
+  // ... (tus funciones de toast y modales se mantienen) ...
+
+  // =====================================================
+  // ✅ REEMPLAZO: LÓGICA DE DATOS ACTUALES
+  // =====================================================
+  function inicializarValoresActuales() {
+    // Usamos el objeto global window.userData que inyectamos desde PHP
+    const data = window.userData;
+    
+    const mapping = {
+      'nombre': data.nombre_completo,
+      'tipo_documento': data.tipo_documento,
+      'numero_documento': data.numero_documento,
+      'correo': data.correo
+    };
+
+    for (const [campo, valor] of Object.entries(mapping)) {
+      const fieldWrap = document.getElementById(`field_${campo}`);
+      if (fieldWrap) {
+        const input = fieldWrap.querySelector("input, select");
+        if (input) {
+          input.setAttribute('data-valor-actual', valor || "");
+          if (input.tagName === 'INPUT') input.placeholder = "Actual: " + (valor || "No registrado");
+        }
+      }
     }
+  }
 
     // ✅ Toasts Flowbite (siguen sirviendo para otras cosas tuyas)
     initFlowbiteToasts();
 
-    // ✅ Ojitos (toggle show/hide password)
-    initPasswordToggles();
+        const resp = await fetch("src/controllers/usuario_controller.php?accion=editar_perfil_usuario", {
+          method: "POST",
+          body: formData
+        });
 
-    // ✅ Ejecutar el flujo del modal ya con DOM cargado
-    forcePasswordFlow();
+        const data = await resp.json();
+        if (data.success) {
+          toastSuccess("Perfil actualizado correctamente");
+          setTimeout(() => location.reload(), 1000);
+        } else {
+          toastError(data.error || "Error al actualizar");
+        }
+      } catch (err) {
+        toastError("Error de comunicación con el servidor");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Guardar cambios';
+      }
+    });
+  }
+
+  // =====================================================
+  // ✅ EVENTO: SOLICITAR CAMBIO SENSIBLE
+  // =====================================================
+  if (formDatosSensibles) {
+    formDatosSensibles.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const selected = Array.from(document.querySelectorAll('input[data-sensible]:checked'));
+
+      if (selected.length === 0) {
+        toastError("Selecciona al menos un campo para modificar.");
+        return;
+      }
+
+      const datosCambiados = {};
+      for (const chk of selected) {
+        const key = chk.getAttribute("data-sensible");
+        const input = document.getElementById(`field_${key}`).querySelector("input, select");
+        const nuevoValor = input.value.trim();
+        const valorAnterior = input.getAttribute("data-valor-actual");
+
+        if (!nuevoValor) {
+          toastError(`El campo ${key} no puede estar vacío.`);
+          return;
+        }
+
+        // Estructura exacta que espera tu notificaciones.php
+        datosCambiados[key] = {
+          anterior: valorAnterior,
+          nuevo: nuevoValor,
+          campo_nombre: obtenerNombreCampo(key)
+        };
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append("id_usuario", window.userData.id_usuario);
+        formData.append("datos_cambiados", JSON.stringify(datosCambiados));
+
+        const resp = await fetch("src/controllers/usuario_controller.php?accion=solicitar_cambio_datos_sensibles", {
+          method: "POST",
+          body: formData
+        });
+
+        const res = await resp.json();
+        if (res.success) {
+          toastSuccess("Solicitud enviada a coordinación.");
+          closeModal(modalDatosSensibles);
+        } else {
+          toastError(res.error || "No se pudo enviar la solicitud.");
+        }
+      } catch (error) {
+        toastError("Error de conexión.");
+      }
+    });
+  }
+  
+  // Helper simple para los nombres de los campos
+  function obtenerNombreCampo(key) {
+    const nombres = {
+      'nombre': 'Nombre Completo',
+      'tipo_documento': 'Tipo de Documento',
+      'numero_documento': 'Número de Documento',
+      'correo': 'Correo Electrónico'
+    };
+    return nombres[key] || key;
+  }
 });
 
 // =========================

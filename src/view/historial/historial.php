@@ -17,7 +17,6 @@ $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
   <!-- Lucide icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
-  <script src="script.js" defer></script>
 
   <!-- ✅ NO TOCA TU BASE: solo empuja el contenido para que no lo tape el sidebar -->
   <style>

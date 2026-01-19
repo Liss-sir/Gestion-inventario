@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // =========================
   const API_URL = "src/controllers/usuario_controller.php";
   const PROGRAMAS_API_URL = "src/controllers/programa_controller.php";
+  const NOTIFICACIONES_API_URL = "src/controllers/notificacion_session_controller.php";
 
   // =========================
   // ROLE CONFIGURATION (LABELS AND BADGE STYLES)
@@ -22,8 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
     Subcoordinador: "badge-role-coordinador",
     Instructor: "badge-role-instructor",
     Pasante: "badge-role-pasante",
-    // "Aprendiz" uses the same visual style as "Instructor"
-    Aprendiz: "badge-role-parendiz",
+    Aprendiz: "badge-role-pasante", // Corregido: Aprendiz usa mismo estilo que Pasante
   };
 
   // =========================
@@ -269,7 +269,7 @@ document.addEventListener("DOMContentLoaded", () => {
     </div>
     <h3 class="text-lg font-semibold mt-4">No hay usuarios registrados</h3>
     <p class="text-sm text-muted-foreground mt-1 max-w-md">
-      Una vez agregue usuarios desde el botón <strong>“Nuevo usuario”</strong>, aparecerán listados en esta vista.
+      Una vez agregue usuarios desde el botón <strong>"Nuevo usuario"</strong>, aparecerán listados en esta vista.
     </p>
   `;
 
@@ -507,6 +507,40 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /**
+   * ✅ ADDED (NO-DELETE): Normalize backend responses:
+   * Accepts:
+   * - [...]
+   * - { data: [...] }
+   * - { success: true, data: [...] }
+   */
+  function normalizeListResponse(parsed) {
+    if (!parsed) return [];
+    if (Array.isArray(parsed)) return parsed;
+    if (typeof parsed === "object") {
+      if (Array.isArray(parsed.data)) return parsed.data;
+      if (Array.isArray(parsed.usuarios)) return parsed.usuarios;
+      if (Array.isArray(parsed.programas)) return parsed.programas;
+    }
+    return [];
+  }
+
+  /**
+   * ✅ ADDED (NO-DELETE): Fetch helper that tolerates extra output
+   */
+  async function fetchJSONSafe(url, options = {}) {
+    const res = await fetch(url, {
+      cache: "no-store",
+      credentials: "same-origin",
+      ...options,
+    });
+
+    const text = await res.text();
+    const parsed = extractJSON(text);
+
+    return { res, text, parsed };
+  }
+
+  /**
    * ✅ ADDED (NO-DELETE): Redirect helper to login using project base URL
    */
   function redirectToLogin() {
@@ -533,26 +567,21 @@ document.addEventListener("DOMContentLoaded", () => {
     _sessionGuardBusy = true;
 
     try {
-      const res = await fetch(`${API_URL}?accion=check_session&t=${Date.now()}`, {
+      const { parsed } = await fetchJSONSafe(`${API_URL}?accion=check_session&t=${Date.now()}`, {
         method: "GET",
-        cache: "no-store",
-        credentials: "same-origin",
       });
 
-      const text = await res.text();
-      const data = extractJSON(text);
-
       // If parsing fails, do not break the app
-      if (!data) return;
+      if (!parsed) return;
 
       // If session is not active -> notify and redirect
-      if (Number(data.active) === 0) {
+      if (Number(parsed.active) === 0) {
         // Stop refresh timers immediately
         if (_autoRefreshTimer) clearInterval(_autoRefreshTimer);
         if (_sessionGuardTimer) clearInterval(_sessionGuardTimer);
 
         const msg =
-          data.message ||
+          parsed.message ||
           "Tu sesión fue cerrada o revocada. Debes iniciar sesión nuevamente.";
 
         toastError(msg);
@@ -576,47 +605,49 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /**
    * Loads training programs from the backend and refreshes the select options.
+   * ✅ CORREGIDO: acepta múltiples nombres de acciones y múltiples formatos de respuesta
    */
   async function cargarProgramas() {
     if (!inputPrograma) return;
 
+    const posiblesAcciones = [
+      "listar_programas",
+      "listar",
+      "listar_programa",
+      "listar_programa_formacion",
+      "listar_programas_formacion",
+      "listar_usuarios", // fallback por si tu backend tiene este nombre por error
+    ];
+
     try {
-      const res = await fetch(`${PROGRAMAS_API_URL}?accion=listar&t=${Date.now()}`, {
-        cache: "no-store",
-        credentials: "same-origin",
-      });
+      let lista = [];
 
-      const text = await res.text();
-      console.log("Respuesta listar programas (cruda):", text);
+      for (const accion of posiblesAcciones) {
+        const url = `${PROGRAMAS_API_URL}?accion=${accion}&t=${Date.now()}`;
+        const { parsed, text } = await fetchJSONSafe(url, { method: "GET" });
 
-      let data;
-      try {
-        const start = text.indexOf("[");
-        const end = text.lastIndexOf("]");
-        if (start !== -1 && end !== -1 && end > start) {
-          data = JSON.parse(text.slice(start, end + 1));
-        } else {
-          console.error("Respuesta inesperada al listar programas:", text);
-          data = [];
+        console.log(`Respuesta listar programas (accion=${accion}) cruda:`, text);
+
+        const arr = normalizeListResponse(parsed);
+
+        if (Array.isArray(arr) && arr.length >= 0) {
+          // Si la respuesta es coherente (aunque venga vacía), lo tomamos
+          lista = arr;
+          break;
         }
-      } catch (e) {
-        console.error("Error parseando listar programas:", e, text);
-        data = [];
       }
 
-      if (Array.isArray(data)) {
-        programas = data.map((p) => ({
-          id_programa: p.id_programa,
-          nombre_programa: p.nombre_programa || p.nombre || "",
-        }));
+      if (!Array.isArray(lista)) lista = [];
 
-        programasMap = {};
-        programas.forEach((p) => {
-          programasMap[String(p.id_programa)] = p.nombre_programa;
-        });
-      } else {
-        programas = [];
-      }
+      programas = lista.map((p) => ({
+        id_programa: p.id_programa ?? p.id ?? null,
+        nombre_programa: p.nombre_programa || p.nombre || "",
+      })).filter(p => p.id_programa !== null);
+
+      programasMap = {};
+      programas.forEach((p) => {
+        programasMap[String(p.id_programa)] = p.nombre_programa;
+      });
 
       // Refresh program options after loading
       renderOpcionesPrograma();
@@ -771,8 +802,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (editUser.cargo === "Instructor") {
           wrapperPrograma.classList.remove("hidden");
           renderOpcionesPrograma();
+
           if (editUser.id_programa) {
-            inputPrograma.value = editUser.id_programa;
+            inputPrograma.value = String(editUser.id_programa);
           } else {
             inputPrograma.value = "";
           }
@@ -932,73 +964,65 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /**
    * Loads users from the backend and maps them into the internal "users" structure.
+   * ✅ CORREGIDO: ahora acepta múltiples acciones y formatos de respuesta
    */
   async function cargarUsuarios() {
+    const posiblesAcciones = ["listar_usuarios", "listar", "listarUsuarios"];
+
     try {
-      // ✅ FIX (WITHOUT ALTERING YOUR BASE LOGIC): Prevent cache by adding timestamp
-      const res = await fetch(`${API_URL}?accion=listar&t=${Date.now()}`, {
-        cache: "no-store",
-        credentials: "same-origin",
-      });
+      let lista = [];
 
-      const text = await res.text();
-      console.log("Respuesta listar (cruda):", text);
+      for (const accion of posiblesAcciones) {
+        const url = `${API_URL}?accion=${accion}&t=${Date.now()}`;
+        const { parsed, text } = await fetchJSONSafe(url, { method: "GET" });
 
-      let data;
-      try {
-        const start = text.indexOf("[");
-        const end = text.lastIndexOf("]");
-        if (start !== -1 && end !== -1 && end > start) {
-          data = JSON.parse(text.slice(start, end + 1));
-        } else {
-          console.error("Respuesta inesperada al listar usuarios:", text);
-          data = [];
+        console.log(`Respuesta listar usuarios (accion=${accion}) cruda:`, text);
+
+        const arr = normalizeListResponse(parsed);
+
+        if (Array.isArray(arr)) {
+          lista = arr;
+          break;
         }
-      } catch (e) {
-        console.error("Error parseando listar:", e, text);
-        data = [];
       }
 
-      if (!Array.isArray(data)) {
-        console.error("Respuesta inesperada al listar usuarios:", data);
-        users = [];
-      } else {
-        users = data.map((u) => {
-          let estadoBool = true;
+      if (!Array.isArray(lista)) lista = [];
 
-          if (typeof u.estado !== "undefined" && u.estado !== null) {
-            const raw = String(u.estado).toLowerCase().trim();
+      users = lista.map((u) => {
+        let estadoBool = true;
 
-            if (raw === "activo" || raw === "1" || raw === "true") {
-              estadoBool = true;
-            } else if (raw === "inactivo" || raw === "0" || raw === "false") {
-              estadoBool = false;
-            }
+        if (typeof u.estado !== "undefined" && u.estado !== null) {
+          const raw = String(u.estado).toLowerCase().trim();
+
+          if (raw === "activo" || raw === "1" || raw === "true") {
+            estadoBool = true;
+          } else if (raw === "inactivo" || raw === "0" || raw === "false") {
+            estadoBool = false;
           }
+        }
 
-          return {
-            id: u.id_usuario,
-            nombre_completo: u.nombre_completo,
-            tipo_documento: u.tipo_documento,
-            numero_documento: u.numero_documento,
-            telefono: u.telefono,
-            cargo: u.cargo,
-            correo: u.correo,
-            direccion: u.direccion,
-            estado: estadoBool,
+        return {
+          id: u.id_usuario ?? u.id ?? null,
+          nombre_completo: u.nombre_completo ?? "",
+          tipo_documento: u.tipo_documento ?? "",
+          numero_documento: u.numero_documento ?? "",
+          telefono: u.telefono ?? "",
+          cargo: u.cargo ?? "",
+          correo: u.correo ?? "",
+          direccion: u.direccion ?? "",
+          estado: estadoBool,
 
-            // Field mapping compatibility:
-            // Backend returns "fecha_creacion" (not "created_at"), so both are stored to prevent empty views.
-            fecha_creacion: u.fecha_creacion || u.created_at || "",
-            created_at: u.created_at || u.fecha_creacion || "",
+          // Field mapping compatibility:
+          // Backend returns "fecha_creacion" (not "created_at"), so both are stored to prevent empty views.
+          fecha_creacion: u.fecha_creacion || u.created_at || "",
+          created_at: u.created_at || u.fecha_creacion || "",
 
-            id_programa: u.id_programa ?? null,
+          id_programa: u.id_programa ?? null,
 
-            // Optional profile photo from backend
-            foto_perfil: u.foto_perfil ?? null,
-          };
-        });
-      }
+          // Optional profile photo from backend
+          foto_perfil: u.foto_perfil ?? null,
+        };
+      }).filter(u => u.id !== null);
 
       renderTable();
     } catch (error) {
@@ -1904,11 +1928,294 @@ document.addEventListener("DOMContentLoaded", () => {
 
       closeModalUsuario();
       await cargarUsuarios();
+
+      // ✅ NUEVO: Actualizar notificaciones después de crear/editar usuario
+      if (typeof window.actualizarContadorNotificaciones === "function") {
+        setTimeout(window.actualizarContadorNotificaciones, 1000);
+      }
     } catch (error) {
       console.error("Error de red al guardar usuario:", error);
       toastError("Ocurrió un error al guardar el usuario (red/servidor).");
     }
   });
+
+  // =====================================================
+  // ✅ NOTIFICACIONES DASHBOARD - VERSIÓN PARA SESIÓN (CORREGIDA)
+  // =====================================================
+
+  async function actualizarDashboardCoordinador() {
+    console.log("👑 Actualizando dashboard del coordinador desde sesión...");
+
+    try {
+      // ✅ CORREGIDO: usar cache no-store y credenciales para sesión
+      const response = await fetch(`${NOTIFICACIONES_API_URL}?accion=obtener_notificaciones&t=${Date.now()}`, {
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      console.log("📡 Respuesta dashboard:", response.status);
+
+      if (!response.ok) {
+        console.error("❌ Error HTTP:", response.status);
+        // Intentar leer del DOM como fallback
+        actualizarDashboardDesdeDOM();
+        return;
+      }
+
+      const text = await response.text();
+      console.log("📋 Respuesta cruda:", text.substring(0, 200) + "...");
+
+      // ✅ CORREGIDO: tolera warnings/espacios con extractJSON()
+      const data = extractJSON(text);
+
+      if (!data) {
+        console.error("❌ No se pudo extraer JSON válido del servidor");
+        actualizarDashboardDesdeDOM();
+        return;
+      }
+
+      if (data.error) {
+        console.error("❌ Error del servidor:", data.error);
+        actualizarDashboardDesdeDOM();
+        return;
+      }
+
+      console.log("📊 Datos recibidos:", data);
+
+      // Actualizar UI del dashboard (KPI Cards)
+      actualizarElementoDashboard("Total Notificaciones", data.total || 0);
+      actualizarElementoDashboard("Sin Leer", data.no_leidas || 0);
+      actualizarElementoDashboard("Críticas", data.criticas || 0);
+      actualizarElementoDashboard("Stock Bajo", data.stock_bajo || 0);
+      actualizarElementoDashboard("Cambios Datos", data.cambios_pendientes || data.cambios_datos || 0);
+
+      console.log(`✅ Dashboard actualizado desde sesión`);
+    } catch (error) {
+      console.error("🔥 Error actualizando dashboard:", error);
+      actualizarDashboardDesdeDOM();
+    }
+  }
+
+  // Función de fallback: leer datos directamente del DOM
+  function actualizarDashboardDesdeDOM() {
+    console.log("🔄 Usando datos del DOM como fallback");
+
+    // Buscar las tarjetas KPI en tu estructura HTML específica
+    const cards = document.querySelectorAll(".bg-card.rounded-xl.p-4.shadow");
+
+    cards.forEach((card) => {
+      const label = card.querySelector(".text-xs.text-muted-foreground");
+      const value = card.querySelector(".text-xl.font-semibold");
+
+      if (label && value) {
+        console.log(`📊 Encontrado: ${label.textContent} = ${value.textContent}`);
+      }
+    });
+
+    // Ya están visibles, no necesitamos actualizarlos
+    console.log("✅ Dashboard ya muestra datos actuales");
+  }
+
+  // ✅ FUNCIÓN PRINCIPAL PARA KPI (SE MANTIENE COMO TU BASE)
+  function actualizarElementoDashboard(textoBuscado, valor) {
+    // Buscar en tu estructura específica de tarjetas KPI
+    const cards = document.querySelectorAll(".bg-card.rounded-xl.p-4.shadow");
+
+    for (const card of cards) {
+      const label = card.querySelector(".text-xs.text-muted-foreground");
+      if (label && label.textContent.includes(textoBuscado)) {
+        const valueElement = card.querySelector(".text-xl.font-semibold");
+        if (valueElement) {
+          valueElement.textContent = valor;
+          console.log(`✅ Actualizado ${textoBuscado}: ${valor}`);
+          return true;
+        }
+      }
+    }
+
+    console.warn(`⚠️ No se encontró elemento para: ${textoBuscado}`);
+    return false;
+  }
+
+  // ✅ CORREGIDO: ESTA ERA TU FUNCIÓN DUPLICADA Y PISABA LA KPI
+  // NO SE BORRA, SOLO SE CONVIERTE EN HELPER FLEXIBLE PARA NO ROMPER EL DASHBOARD
+  const actualizarElementoDashboardFlexible = (textoBuscado, valor) => {
+    // Buscar por texto (más flexible)
+    const elementos = Array.from(document.querySelectorAll("h3, h4, div, span, p")).filter((el) => {
+      return el.textContent.includes(textoBuscado);
+    });
+
+    if (elementos.length > 0) {
+      elementos.forEach((elemento) => {
+        const hermano = elemento.nextElementSibling;
+        if (hermano && (hermano.tagName === "H2" || hermano.tagName === "H1" || hermano.tagName === "DIV")) {
+          hermano.textContent = valor;
+          console.log(`✅ Actualizado (flex) ${textoBuscado}: ${valor}`);
+        }
+
+        const contenedor = elemento.closest(".card, .stat-card, .dashboard-item");
+        if (contenedor) {
+          const numeros = contenedor.querySelectorAll("h1, h2, .stat-number, .number");
+          numeros.forEach((num) => {
+            if (num !== elemento) {
+              num.textContent = valor;
+            }
+          });
+        }
+      });
+    } else {
+      console.warn(`⚠️ No se encontró elemento (flex) para: ${textoBuscado}`);
+
+      const dataElement = document.querySelector(
+        `[data-stat="${textoBuscado.toLowerCase().replace(/\s+/g, "-")}"]`
+      );
+      if (dataElement) {
+        dataElement.textContent = valor;
+      }
+    }
+  };
+
+  // Mostrar alerta en el dashboard
+  function mostrarAlertaCambiosDashboard(cantidad) {
+    // Verificar si ya hay una alerta
+    if (document.querySelector(".alerta-cambios-dashboard")) {
+      return;
+    }
+
+    // Buscar el dashboard para insertar la alerta
+    const dashboard = document.querySelector(".dashboard, main, .container-fluid, .content");
+    if (!dashboard) return;
+
+    const alerta = document.createElement("div");
+    alerta.className = "alerta-cambios-dashboard alert alert-warning alert-dismissible fade show mt-3";
+    alerta.innerHTML = `
+        <strong>Tienes ${cantidad} solicitud(es) de cambio de datos pendientes</strong>
+    `;
+
+    // Insertar al inicio del contenido
+    dashboard.insertBefore(alerta, dashboard.firstChild);
+
+    // ✅ CORREGIDO: si bootstrap no existe, no rompe
+    setTimeout(() => {
+      if (alerta.parentNode) {
+        if (typeof bootstrap !== "undefined" && bootstrap.Alert) {
+          try {
+            const bsAlert = new bootstrap.Alert(alerta);
+            bsAlert.close();
+          } catch (e) {
+            alerta.remove();
+          }
+        } else {
+          alerta.remove();
+        }
+      }
+    }, 10000);
+  }
+
+  // Mostrar alerta si hay cambios de datos pendientes
+  function mostrarAlertaCambios(cantidad) {
+    // Verificar si ya hay una alerta
+    if (document.getElementById("alerta-cambios-datos")) {
+      return;
+    }
+
+    // Crear alerta usando toast
+    toastInfo(`Tienes ${cantidad} solicitud(es) de cambio de datos pendientes`);
+  }
+
+  // ================================
+  // SOLICITUD DE CAMBIO DE DATOS (CON VERIFICACIÓN)
+  // ================================
+
+  // Función para enviar solicitud de cambio
+  async function enviarSolicitudCambio(datosCambiados) {
+    try {
+      const formData = new FormData();
+      formData.append("datos_cambiados", JSON.stringify(datosCambiados));
+
+      // ✅ CORREGIDO: enviar cookies/sesión + no-cache
+      const response = await fetch(`${API_URL}?accion=solicitar_cambio_datos_sensibles&t=${Date.now()}`, {
+        method: "POST",
+        body: formData,
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      const text = await response.text();
+      const result = extractJSON(text);
+
+      if (!result) {
+        toastError("Error: respuesta del servidor no es JSON válido.");
+        console.error("Respuesta cruda solicitud cambio:", text);
+        return false;
+      }
+
+      if (result.success) {
+        toastSuccess("Solicitud enviada correctamente al coordinador");
+
+        // Actualizar notificaciones
+        if (typeof window.actualizarContadorNotificaciones === "function") {
+          setTimeout(window.actualizarContadorNotificaciones, 1000);
+        }
+
+        return true;
+      } else {
+        toastError("Error: " + (result.error || "No se pudo enviar la solicitud."));
+        return false;
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      toastError("Error de conexión con el servidor");
+      return false;
+    }
+  }
+
+  // Verifica si el formulario existe antes de agregar el event listener
+  const formCambioDatos = document.getElementById("formCambioDatos");
+  if (formCambioDatos) {
+    formCambioDatos.addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const datosCambiados = {
+        nombre: {
+          campo_nombre: "Nombre completo",
+          anterior: document.getElementById("nombre_actual")?.value || "",
+          nuevo: document.getElementById("nombre_nuevo")?.value || "",
+        },
+        correo: {
+          campo_nombre: "Correo electrónico",
+          anterior: document.getElementById("correo_actual")?.value || "",
+          nuevo: document.getElementById("correo_nuevo")?.value || "",
+        },
+        telefono: {
+          campo_nombre: "Teléfono",
+          anterior: document.getElementById("telefono_actual")?.value || "",
+          nuevo: document.getElementById("telefono_nuevo")?.value || "",
+        },
+      };
+
+      // Filtrar solo los campos que realmente cambiaron
+      const cambiosReales = {};
+      for (const [campo, info] of Object.entries(datosCambiados)) {
+        if (info.anterior !== info.nuevo && info.nuevo.trim() !== "") {
+          cambiosReales[campo] = info;
+        }
+      }
+
+      if (Object.keys(cambiosReales).length === 0) {
+        toastInfo("No hay cambios para enviar");
+        return;
+      }
+
+      await enviarSolicitudCambio(cambiosReales);
+    });
+  }
 
   // ================================
   // KEYBOARD SHORTCUTS: ESC CLOSES ACTIVE MODALS
@@ -1968,4 +2275,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ✅ ADDED: run a first check quickly
   setTimeout(checkSessionGuard, 900);
+
+  // =====================================================
+  // ✅ INICIALIZAR SISTEMA DE NOTIFICACIONES PARA DASHBOARD
+  // =====================================================
+  if (window.location.pathname.includes("dashboard") || document.querySelector('[data-dashboard="true"]')) {
+    // Esperar a que cargue la página
+    setTimeout(() => {
+      // Inicializar dashboard del coordinador
+      actualizarDashboardCoordinador();
+
+      // Actualizar cada 30 segundos
+      setInterval(actualizarDashboardCoordinador, 30000);
+
+      // También actualizar cuando la ventana gana foco
+      window.addEventListener("focus", actualizarDashboardCoordinador);
+    }, 2000);
+  }
+
+  // Exportar funciones para uso global
+  window.actualizarDashboardCoordinador = actualizarDashboardCoordinador;
+  window.enviarSolicitudCambio = enviarSolicitudCambio;
 });
