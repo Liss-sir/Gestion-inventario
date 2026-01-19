@@ -1,9 +1,0 @@
-### Asignar rol a un usuario
-POST http://localhost/Gestion-inventario/src/controllers/rol_usuario_controller.php?accion=asignar
-Content-Type: application/json; charset=utf-8
-
-{
-  "id_usuario": 2,
-  "id_rol": 2,
-  "asignado_por": 1
-}

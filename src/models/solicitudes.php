@@ -128,37 +128,56 @@ class SolicitudMaterialModel {
             return false;
         }
 
-        $sql = "UPDATE solicitudes_material
-                SET estado = ?,
-                    id_usuario_aprobador = ?,
-                    fecha_respuesta = NOW(),
-                    observaciones = COALESCE(?, observaciones)
-                WHERE id_solicitud = ?
-                AND estado = 'Pendiente'";
+        try {
+            // Transacción para mantener consistencia entre estado y movimiento
+            $this->db->beginTransaction();
 
-        $stmt = $this->db->prepare($sql);
+            $sql = "UPDATE solicitudes_material
+                    SET estado = ?,
+                        id_usuario_aprobador = ?,
+                        fecha_respuesta = NOW(),
+                        observaciones = COALESCE(?, observaciones)
+                    WHERE id_solicitud = ?
+                      AND estado = 'Pendiente'";
 
-        $result = $stmt->execute([
-            $estadoNormalizado,
-            $idAprobador,
-            $observaciones,
-            $idSolicitud
-        ]);
-        
-        if ($result) {
+            $stmt = $this->db->prepare($sql);
+
+            $result = $stmt->execute([
+                $estadoNormalizado,
+                $idAprobador,
+                $observaciones,
+                $idSolicitud
+            ]);
+            
+            if (!$result) {
+                $errorInfo = $stmt->errorInfo();
+                file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ Error en BD: " . json_encode($errorInfo) . "\n", FILE_APPEND);
+                $this->db->rollBack();
+                return false;
+            }
+
             $rows = $stmt->rowCount();
             file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ✅ Solicitud $idSolicitud actualizada a $estadoNormalizado. Filas: $rows\n", FILE_APPEND);
             
             // ✅ SI FUE APROBADA, crear movimiento de tipo "salida"
             if ($estadoNormalizado === 'Aprobada' && $rows > 0) {
                 file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " 🔵 Llamando crearMovimientoSalidaDeSolicitud($idSolicitud, $idAprobador)\n", FILE_APPEND);
-                $this->crearMovimientoSalidaDeSolicitud($idSolicitud, $idAprobador);
+                $okMov = $this->crearMovimientoSalidaDeSolicitud($idSolicitud, $idAprobador);
+                if (!$okMov) {
+                    // Si no se pudo crear el movimiento, revertir aprobación
+                    file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ Falló creación de movimiento. Haciendo ROLLBACK.\n", FILE_APPEND);
+                    $this->db->rollBack();
+                    return false;
+                }
             }
-            
+
+            $this->db->commit();
             return $rows > 0;
-        } else {
-            $errorInfo = $stmt->errorInfo();
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ Error en BD: " . json_encode($errorInfo) . "\n", FILE_APPEND);
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ Excepción en responderSolicitud: " . $e->getMessage() . "\n", FILE_APPEND);
             return false;
         }
     }
@@ -200,7 +219,7 @@ class SolicitudMaterialModel {
             
             // Preparar datos para el movimiento
             $datosMovimiento = [
-                'tipo_movimiento' => 'salida',
+                'tipo_movimiento' => 'Salida',  // ⭐ MAYÚSCULA para coincidir con el trigger
                 'id_usuario' => $idUsuario,
                 'id_bodega' => $idBodega,  // ⭐ USAR LA BODEGA DEL MATERIAL
                 'id_subbodega' => $solicitud['id_subbodega'] ?? null,
@@ -236,8 +255,9 @@ class SolicitudMaterialModel {
             return true;
 
         } catch (Exception $e) {
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ [SALIDA] Exception: " . $e->getMessage() . "\n", FILE_APPEND);
-            return false;
+            // Re-lanzar para que responderSolicitud pueda hacer rollback
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ [SALIDA] Exception (rethrow): " . $e->getMessage() . "\n", FILE_APPEND);
+            throw $e;
         }
     }
 
