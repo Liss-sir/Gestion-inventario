@@ -223,6 +223,8 @@ class SolicitudMaterialController {
     // Approve or reject request
     public function responder($data)
     {
+        file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " [CONTROLLER] responder() invocado: " . json_encode($data) . "\n", FILE_APPEND);
+        
         $ok = $this->model->responderSolicitud(
             $data['id_solicitud'],
             $data['estado'],
@@ -231,12 +233,14 @@ class SolicitudMaterialController {
         );
 
         if (!$ok) {
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ [CONTROLLER] responderSolicitud retornó false\n", FILE_APPEND);
             return [
                 "success" => false,
                 "error" => "No se pudo responder la solicitud. Verifique su estado."
             ];
         }
 
+        file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ✅ [CONTROLLER] Solicitud respondida exitosamente\n", FILE_APPEND);
         return [
             "success" => true,
             "message" => "La solicitud fue actualizada correctamente."
