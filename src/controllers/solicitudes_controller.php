@@ -76,7 +76,7 @@ class SolicitudMaterialController {
 
     private function obtenerOCrearActividad($id_ficha, $id_rae, $id_instructor = 1)
     {
-        // 🔥 OBTEN LA CONEXIÓN DIRECTAMENTE (porque ahora $db es public)
+        //  OBTEN LA CONEXIÓN DIRECTAMENTE (porque ahora $db es public)
         $db = $this->model->db;
 
         try {
@@ -98,7 +98,7 @@ class SolicitudMaterialController {
                 $stmt->execute([$id_ficha, $id_rae, $id_instructor]);
 
                 $id = $db->lastInsertId();
-                error_log("📝 Primera actividad creada con ID: " . $id);
+                error_log(" Primera actividad creada con ID: " . $id);
                 return $id;
             }
 
@@ -112,7 +112,7 @@ class SolicitudMaterialController {
             $actividad = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($actividad) {
-                error_log("✅ Actividad encontrada: " . $actividad['id_actividad']);
+                error_log(" Actividad encontrada: " . $actividad['id_actividad']);
                 return $actividad['id_actividad'];
             }
 
@@ -129,11 +129,11 @@ class SolicitudMaterialController {
             $stmt->execute([$id_ficha, $id_rae, $id_instructor]);
 
             $id = $db->lastInsertId();
-            error_log("📝 Nueva actividad creada con ID: " . $id);
+            error_log(" Nueva actividad creada con ID: " . $id);
             return $id;
 
         } catch (Exception $e) {
-            error_log("❌ Error en obtenerOCrearActividad: " . $e->getMessage());
+            error_log(" Error en obtenerOCrearActividad: " . $e->getMessage());
 
             // Último recurso: buscar cualquier actividad
             $sql = "SELECT id_actividad FROM actividades_formacion LIMIT 1";
@@ -142,7 +142,7 @@ class SolicitudMaterialController {
             $actividad = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($actividad) {
-                error_log("⚠️ Usando actividad existente como fallback: " . $actividad['id_actividad']);
+                error_log(" Usando actividad existente como fallback: " . $actividad['id_actividad']);
                 return $actividad['id_actividad'];
             }
 
@@ -154,7 +154,7 @@ class SolicitudMaterialController {
                 $db->exec($sql);
                 return $db->lastInsertId();
             } catch (Exception $e2) {
-                error_log("❌❌ Error crítico: No se pudo crear actividad: " . $e2->getMessage());
+                error_log(" Error crítico: No se pudo crear actividad: " . $e2->getMessage());
                 return 1; // Valor por defecto
             }
         }
@@ -164,6 +164,37 @@ class SolicitudMaterialController {
     {
         $this->model = new SolicitudMaterialModel($conn);
     }
+
+    public function obtenerActividades($id_ficha, $id_rae)
+{
+    try {
+        $id_ficha = (int)$id_ficha;
+        $id_rae   = (int)$id_rae;
+
+        if ($id_ficha <= 0 || $id_rae <= 0) {
+            return [];
+        }
+
+        $db = $this->model->db;
+
+        $sql = "SELECT id_actividad, nombre_actividad
+                FROM actividades_formacion
+                WHERE id_ficha = ?
+                  AND id_rae = ?
+                  AND (estado = 'Activa' OR estado = 'Activo')
+                ORDER BY nombre_actividad ASC";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$id_ficha, $id_rae]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    } catch (Exception $e) {
+        error_log('❌ Error obtenerActividades(): ' . $e->getMessage());
+        return [];
+    }
+}
+
 
     // Create request with details
     public function crear($data)
@@ -571,6 +602,12 @@ switch ($accion) {
     case "subbodegas":
         $bodegaId = isset($_GET['bodega']) ? (int) $_GET['bodega'] : 0;
         sendJSON($controller->obtenerSubBodegas($bodegaId));
+        break;
+
+    case "actividades":
+        $fichaId = isset($_GET['ficha']) ? (int) $_GET['ficha'] : 0;
+        $raeId   = isset($_GET['rae']) ? (int) $_GET['rae'] : 0;
+        sendJSON($controller->obtenerActividades($fichaId, $raeId));
         break;
 
     default:
