@@ -208,9 +208,7 @@ class SolicitudMaterialModel {
                 'id_ficha' => $solicitud['id_ficha'] ?? null,
                 'id_rae' => $solicitud['id_rae'] ?? null,
                 // ⭐ INCLUIR LAS OBSERVACIONES ORIGINALES DE LA SOLICITUD
-                'observaciones' => ($solicitud['observaciones'] 
-                    ? $solicitud['observaciones'] . " | Solicitud #" . $idSolicitud
-                    : "Solicitud #" . $idSolicitud),
+                'observaciones' => ($solicitud['observaciones']),
                 'id_solicitud' => $idSolicitud,
                 'materiales' => []
             ];
