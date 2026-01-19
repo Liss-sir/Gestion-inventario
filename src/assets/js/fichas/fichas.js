@@ -212,6 +212,10 @@ const detalleFichaContent = document.getElementById("detalleFichaContent")
 
 // Jefe de grupo
 const listaJefeGrupo = document.getElementById("listaJefeGrupo");
+
+console.log("API_URL:", API_URL);
+console.log("PROGRAMAS_API_URL:", PROGRAMAS_API_URL);
+
 // =========================
 // SINGLE PAGINATION CONTAINER
 // =========================
@@ -372,15 +376,18 @@ async function cargarAprendices() {
 
 async function cargarInstructores() {
   try {
+    console.log("Solicitando instructores desde:", `${API_URL}?accion=instructores`);
     const res = await fetch(`${API_URL}?accion=instructores`)
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}: ${res.statusText}`)
     }
     
     const data = await res.json()
+    console.log("Instructores recibidos:", data);
     
     if (Array.isArray(data)) {
       instructores = data
+      console.log(`Se cargaron ${data.length} instructores`);
     } else {
       instructores = []
       console.error("La respuesta de instructores no es un array:", data)
@@ -729,26 +736,32 @@ function toggleEstudiante(id) {
 }
 
 function toggleInstructor(id) {
-  if (id === undefined || id === null) return
+  if (id === undefined || id === null) return;
 
-  const idStr = String(id)
-  const exists = instructoresSeleccionados.some(e => String(e.id_usuario) === idStr)
+  const idStr = String(id);
+  const exists = instructoresSeleccionados.some(e => String(e.id_usuario) === idStr);
 
   if (exists) {
-    instructoresSeleccionados = instructoresSeleccionados.filter(e => String(e.id_usuario) !== idStr)
+    // Verificar si es el jefe de grupo seleccionado
+    if (jefeGrupoSeleccionado && String(jefeGrupoSeleccionado.id_usuario) === idStr) {
+      toastError("No puede quitar al jefe de grupo. Primero seleccione otro jefe.");
+      return;
+    }
+    
+    instructoresSeleccionados = instructoresSeleccionados.filter(e => String(e.id_usuario) !== idStr);
   } else {
-    const instructor = instructores.find(i => String(i.id_usuario) === idStr)
-    if (!instructor) return
+    const instructor = instructores.find(i => String(i.id_usuario) === idStr);
+    if (!instructor) return;
 
     instructoresSeleccionados.push({
       id_usuario: instructor.id_usuario,
       nombre_completo: instructor.nombre_completo,
       numero_documento: instructor.numero_documento,
       correo: instructor.correo || ''
-    })
+    });
   }
 
-  renderChecklistInstructores()
+  renderChecklistInstructores();
 }
 
 function eliminarEstudiante(id) {
@@ -843,17 +856,46 @@ async function cargarEstudiantesDeFicha(idFicha) {
 
 async function cargarInstructoresDeFicha(idFicha) {
   try {
+    console.log(`Cargando instructores para ficha ID: ${idFicha}`);
+    
     const res = await fetch(`${API_URL}?accion=instructoresFicha&id_ficha=${idFicha}`)
-    if (!res.ok) return
+    
+    if (!res.ok) {
+      console.error(`Error HTTP: ${res.status}`);
+      return;
+    }
 
-    const data = await res.json()
+    const data = await res.json();
+    console.log('Datos recibidos de instructores:', data);
     
     if (Array.isArray(data) && data.length > 0) {
-      instructoresSeleccionados = data
-      renderChecklistInstructores()
+      instructoresSeleccionados = data;
+      
+      // Buscar y establecer jefe de grupo si existe
+      const jefe = data.find(instructor => instructor.es_jefe_grupo == 1 || instructor.es_jefe_grupo === true);
+      if (jefe) {
+        jefeGrupoSeleccionado = {
+          id_usuario: jefe.id_usuario,
+          nombre_completo: jefe.nombre_completo,
+          numero_documento: jefe.numero_documento,
+          correo: jefe.correo || ''
+        };
+        console.log(`Jefe de grupo establecido: ${jefeGrupoSeleccionado.nombre_completo}`);
+      }
+      
+      console.log(`Se cargaron ${data.length} instructores`);
+      renderChecklistInstructores();
+      renderOpcionesJefeGrupo(); // Actualizar opciones de jefe de grupo
+    } else {
+      instructoresSeleccionados = [];
+      jefeGrupoSeleccionado = null;
+      console.log('No se encontraron instructores para esta ficha');
+      renderChecklistInstructores();
     }
   } catch (error) {
-    console.error("Error al cargar instructores de la ficha:", error)
+    console.error("Error al cargar instructores de la ficha:", error);
+    instructoresSeleccionados = [];
+    jefeGrupoSeleccionado = null;
   }
 }
 
@@ -1781,6 +1823,10 @@ function validarPaso1() {
   return true
 }
 
+// ================================
+// FORM VALIDATION AND SUBMISSION
+// ================================
+
 formFicha.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -1826,74 +1872,95 @@ formFicha.addEventListener("submit", async (e) => {
             return;
         }
 
+        // Obtener el ID de la ficha (nuevo o existente)
+        const idFicha = isEdit ? hiddenFichaId.value : data.id_ficha;
+
+        // Mensaje final consolidado
+        let mensajeFinal = isEdit ? "Ficha actualizada correctamente." : "Ficha creada correctamente.";
+        let errores = [];
+
         // Si hay estudiantes seleccionados, agregarlos
         if (estudiantesSeleccionados.length > 0) {
-            const idFicha = isEdit ? hiddenFichaId.value : data.id_ficha
+            const estudiantesPayload = {
+                id_ficha: idFicha,
+                estudiantes: estudiantesSeleccionados.map(e => e.id_usuario)
+            }
 
-            if (idFicha) {
-                const estudiantesPayload = {
-                    id_ficha: idFicha,
-                    estudiantes: estudiantesSeleccionados.map(e => e.id_usuario)
-                }
+            const resEstudiantes = await fetch(`${API_URL}?accion=agregarEstudiantes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(estudiantesPayload)
+            })
 
-                const resEstudiantes = await fetch(`${API_URL}?accion=agregarEstudiantes`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(estudiantesPayload)
-                })
-
-                const dataEstudiantes = await resEstudiantes.json();
-                
-                if (dataEstudiantes.success) {
-                    // No mostrar mensaje aquí todavía, esperaremos al final
-                } else {
-                    toastInfo("Hubo un problema al agregar estudiantes.");
-                }
+            const dataEstudiantes = await resEstudiantes.json();
+            
+            if (dataEstudiantes.success) {
+                mensajeFinal += ` ${estudiantesSeleccionados.length} estudiante(s) agregado(s).`;
+            } else {
+                errores.push("Hubo un problema al agregar estudiantes.");
             }
         }
 
         // Si hay instructores seleccionados, agregarlos
         if (instructoresSeleccionados.length > 0) {
-            const idFicha = isEdit ? hiddenFichaId.value : data.id_ficha;
+            // PRIMERO: Asignar todos los instructores (sin jefe de grupo)
+            const instructoresPayload = {
+                id_ficha: idFicha,
+                instructores: instructoresSeleccionados.map(i => i.id_usuario)
+            }
 
-            if (idFicha) {
-                const instructoresPayload = {
-                    id_ficha: idFicha,
-                    instructores: instructoresSeleccionados.map(i => i.id_usuario),
-                    jefe_grupo: jefeGrupoSeleccionado ? jefeGrupoSeleccionado.id_usuario : null
-                }
+            const resInstructores = await fetch(`${API_URL}?accion=asignarInstructores`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(instructoresPayload)
+            })
 
-                const resInstructores = await fetch(`${API_URL}?accion=asignarInstructores`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(instructoresPayload)
-                })
-
-                const dataInstructores = await resInstructores.json();
+            const dataInstructores = await resInstructores.json();
+            
+            if (dataInstructores.success) {
+                mensajeFinal += ` ${instructoresSeleccionados.length} instructor(es) asignado(s).`;
                 
-                if (dataInstructores.success) {
-                    // No mostrar mensaje aquí todavía, esperaremos al final
-                } else {
-                    toastInfo("Hubo un problema al asignar instructores.");
+                // LUEGO: Asignar jefe de grupo si existe
+                if (jefeGrupoSeleccionado) {
+                    // Verificar que el jefe esté en la lista de instructores seleccionados
+                    const jefeEstaEnLista = instructoresSeleccionados.some(
+                        i => i.id_usuario == jefeGrupoSeleccionado.id_usuario
+                    );
+                    
+                    if (jefeEstaEnLista) {
+                        const jefePayload = {
+                            id_ficha: idFicha,
+                            id_usuario: jefeGrupoSeleccionado.id_usuario
+                        };
+                        
+                        const resJefe = await fetch(`${API_URL}?accion=asignarJefeFicha`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(jefePayload)
+                        });
+                        
+                        const dataJefe = await resJefe.json();
+                        if (dataJefe.success) {
+                            mensajeFinal += ` Jefe de grupo: ${jefeGrupoSeleccionado.nombre_completo}`;
+                        } else {
+                            errores.push("Instructores asignados, pero hubo problema asignando el jefe de grupo.");
+                        }
+                    } else {
+                        errores.push("El jefe de grupo seleccionado no está en la lista de instructores.");
+                    }
                 }
+            } else {
+                errores.push("Hubo un problema al asignar instructores.");
             }
         }
 
-        // Mensaje final consolidado
-        let mensajeFinal = isEdit ? "Ficha actualizada correctamente." : "Ficha creada correctamente.";
-        
-        if (estudiantesSeleccionados.length > 0) {
-            mensajeFinal += ` ${estudiantesSeleccionados.length} estudiante(s) agregado(s).`;
+        // Mostrar mensaje final
+        if (errores.length > 0) {
+            toastInfo(mensajeFinal + " " + errores.join(" "));
+        } else {
+            toastSuccess(mensajeFinal);
         }
         
-        if (instructoresSeleccionados.length > 0) {
-            mensajeFinal += ` ${instructoresSeleccionados.length} instructor(es) asignado(s).`;
-            if (jefeGrupoSeleccionado) {
-                mensajeFinal += ` Jefe de grupo: ${jefeGrupoSeleccionado.nombre_completo}`;
-            }
-        }
-
-        toastSuccess(mensajeFinal);
         closeModalFicha();
         await cargarFichas();
     } catch (error) {
@@ -1992,13 +2059,29 @@ function seleccionarJefeGrupo(index) {
 /*INITIAL LOAD*/
 
 async function inicializar() {
-  await Promise.all([
-      cargarProgramas(),  // Load programs first
-      cargarAprendices(), // Load aprendices
-      cargarInstructores(), // Load instructores
-      cargarFichas()      // Load chips in parallel
-  ]);
-  setVistaTabla();        // Render after both have loaded
+  try {
+    console.log("Iniciando carga de datos...");
+    
+    console.log("Cargando programas...");
+    await cargarProgramas();
+    
+    console.log("Cargando aprendices e instructores...");
+    await Promise.all([
+        cargarAprendices(),
+        cargarInstructores()
+    ]);
+    
+    console.log("Cargando fichas...");
+    await cargarFichas();
+    
+    console.log("Renderizando vista...");
+    setVistaTabla();
+    
+    console.log("Inicialización completada");
+  } catch (error) {
+    console.error("Error en inicialización:", error);
+    toastError("Error al cargar los datos iniciales");
+  }
 }
 
 // Start

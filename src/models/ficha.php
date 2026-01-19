@@ -175,20 +175,40 @@ class FichaModel {
         }
     }
 
+    public function obtenerInstructoresDeFicha($id_ficha) {
+        try {
+            $sql = "SELECT 
+                        u.id_usuario, 
+                        u.nombre_completo, 
+                        u.numero_documento, 
+                        u.correo,
+                        fi.es_jefe_grupo
+                    FROM fichas_instructores fi
+                    INNER JOIN usuarios u ON fi.id_usuario = u.id_usuario
+                    WHERE fi.id_ficha = ? AND fi.estado = 'Activo'
+                    ORDER BY u.nombre_completo";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([$id_ficha]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
     public function asignarInstructoresFicha($id_ficha, $instructores) {
         try {
-            if (empty($instructores) || !is_array($instructores)) {
-                return true;
-            }
-
+            // Eliminar instructores anteriores
             $this->conn->prepare(
-                "DELETE FROM ficha_instructor WHERE id_ficha = ?"
+                "DELETE FROM fichas_instructores WHERE id_ficha = ?"
             )->execute([$id_ficha]);
 
+            // Insertar todos los instructores seleccionados
             $stmt = $this->conn->prepare(
-                "INSERT INTO ficha_instructor
-                 (id_ficha, id_usuario, es_jefe_grupo, estado)
-                 VALUES (?, ?, 0, 'Activo')"
+                "INSERT INTO fichas_instructores 
+                 (id_ficha, id_usuario, es_jefe_grupo, estado, fecha_asignacion) 
+                 VALUES (?, ?, 0, 'Activo', NOW())"
             );
 
             foreach ($instructores as $id_usuario) {
@@ -205,48 +225,40 @@ class FichaModel {
     /* ================= JEFE DE FICHA ================= */
 
     public function asignarJefeFicha($id_ficha, $id_usuario) {
-
         try {
             $this->conn->beginTransaction();
 
-            /* Validar que sea instructor */
+            // Validar que sea instructor y esté asignado a la ficha
             $stmt = $this->conn->prepare(
-                "SELECT id_usuario FROM usuarios
-                 WHERE id_usuario = ? AND cargo = 'Instructor' AND estado = 'activo'"
-            );
-            $stmt->execute([$id_usuario]);
-
-            if (!$stmt->fetch()) {
-                $this->conn->rollBack();
-                return false;
-            }
-
-            /* Quitar jefe actual */
-            $this->conn->prepare(
-                "UPDATE ficha_instructor
-                 SET es_jefe_grupo = 0
-                 WHERE id_ficha = ?"
-            )->execute([$id_ficha]);
-
-            /* Verificar si ya está asignado */
-            $stmt = $this->conn->prepare(
-                "SELECT id_ficha_instructor
-                 FROM ficha_instructor
-                 WHERE id_ficha = ? AND id_usuario = ?"
+                "SELECT fi.id_ficha_instructor 
+                 FROM fichas_instructores fi
+                 INNER JOIN usuarios u ON fi.id_usuario = u.id_usuario
+                 WHERE fi.id_ficha = ? AND fi.id_usuario = ? 
+                 AND u.cargo = 'Instructor' AND u.estado = 'activo'"
             );
             $stmt->execute([$id_ficha, $id_usuario]);
 
-            if ($stmt->fetch()) {
+            // Si el instructor no está asignado a la ficha, primero lo asignamos
+            if (!$stmt->fetch()) {
+                $stmtInsert = $this->conn->prepare(
+                    "INSERT INTO fichas_instructores 
+                     (id_ficha, id_usuario, es_jefe_grupo, estado, fecha_asignacion)
+                     VALUES (?, ?, 1, 'Activo', NOW())"
+                );
+                $stmtInsert->execute([$id_ficha, $id_usuario]);
+            } else {
+                // Quitar jefe actual
                 $this->conn->prepare(
-                    "UPDATE ficha_instructor
+                    "UPDATE fichas_instructores
+                     SET es_jefe_grupo = 0
+                     WHERE id_ficha = ?"
+                )->execute([$id_ficha]);
+
+                // Establecer nuevo jefe
+                $this->conn->prepare(
+                    "UPDATE fichas_instructores
                      SET es_jefe_grupo = 1
                      WHERE id_ficha = ? AND id_usuario = ?"
-                )->execute([$id_ficha, $id_usuario]);
-            } else {
-                $this->conn->prepare(
-                    "INSERT INTO ficha_instructor
-                     (id_ficha, id_usuario, es_jefe_grupo, estado)
-                     VALUES (?, ?, 1, 'Activo')"
                 )->execute([$id_ficha, $id_usuario]);
             }
 

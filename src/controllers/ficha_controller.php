@@ -79,6 +79,14 @@ class FichaController {
         echo json_encode($this->model->obtenerInstructores());
     }
 
+    public function obtenerInstructoresFicha($id) {
+        if (!$id) {
+            echo json_encode(['error' => 'id_ficha requerido']);
+            return;
+        }
+        echo json_encode($this->model->obtenerInstructoresDeFicha($id));
+    }
+
     public function asignarInstructores() {
         $input = json_decode(file_get_contents("php://input"), true);
 
@@ -155,6 +163,10 @@ switch ($accion) {
 
     case "instructores":
         $controller->obtenerInstructores();
+        break;
+
+    case "instructoresFicha":
+        $controller->obtenerInstructoresFicha($id);
         break;
 
     case "asignarInstructores":
