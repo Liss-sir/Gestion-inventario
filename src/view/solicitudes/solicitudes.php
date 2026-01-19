@@ -176,6 +176,13 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 </div>
 
                 <div>
+                    <label for="actividad" class="text-sm font-medium block mb-1">Actividad *</label>
+                    <select id="actividad" name="actividad" class="input-siga w-full" required>
+                    <option value="">Seleccionar actividad</option>
+                    </select>
+                </div>
+
+                <div>
                     <label for="observaciones" class="text-sm font-medium block mb-1">Observaciones</label>
                     <textarea id="observaciones" name="observaciones" 
                               class="input-siga w-full" rows="3" 
