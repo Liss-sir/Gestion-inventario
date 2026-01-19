@@ -1,0 +1,15 @@
+2026-01-19 19:59:48 [CONTROLLER] responder() invocado: {"id_solicitud":11,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-19 19:59:48 [RESPONDER] Iniciando responderSolicitud(11, aprobada, 1)
+2026-01-19 19:59:48 ✅ Solicitud 11 actualizada a Aprobada. Filas: 1
+2026-01-19 19:59:48 🔵 Llamando crearMovimientoSalidaDeSolicitud(11, 1)
+2026-01-19 19:59:48 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(11, 1)
+2026-01-19 19:59:48 📋 [SALIDA] Solicitud: {"id_solicitud":11,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":1,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-19 14:59:46","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-19 14:59:48","observaciones":"kjhgfdawertyuio","materiales":[{"id_solicitud_detalle":12,"id_material":1,"material":"cemento","cantidad":1,"unidad_medida":"BULTO","clasificacion":"Consumible"}]}
+2026-01-19 19:59:48 📦 [SALIDA] 1 materiales encontrados
+2026-01-19 19:59:48 🏪 [SALIDA] Bodega obtenida: 2
+2026-01-19 19:59:48   📌 cemento (ID: 1, Cant: 1)
+2026-01-19 19:59:48 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"kjhgfdawertyuio","id_solicitud":11,"materiales":[{"id_material":1,"nombre":"cemento","cantidad":1,"unidad":"BULTO"}]}
+2026-01-19 19:59:48 [INSERT] id_solicitud recibido: 11
+2026-01-19 19:59:48 [INSERT] Cantidad a insertar: 1 | tipo_movimiento: 'Salida'
+2026-01-19 19:59:48 [INSERT] Movimiento insertado con ID: 6
+2026-01-19 19:59:48 ✅ [SALIDA] Movimiento creado: MOV-2026-00006
+2026-01-19 19:59:48 ✅ [CONTROLLER] Solicitud respondida exitosamente
