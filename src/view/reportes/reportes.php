@@ -1,4 +1,18 @@
 <?php
+// =====================================================
+// ✅ INTEGRACIÓN BACKEND REAL (SIN ROMPER TU BASE)
+//   - Mantengo tus MOCKS como fallback
+//   - Si BD funciona, se reemplazan los arrays por datos reales
+// =====================================================
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// ===========================
+// ✅ FALLBACK MOCKS (TU BASE)
+// ===========================
+
 // Datos para gráficas
 $consumoPorMes = [
     ['mes' => 'Ene', 'consumo' => 120, 'devoluciones' => 15],
@@ -79,7 +93,7 @@ $reportTypes = [
     ],
 ];
 
-// Calcular totales
+// Calcular totales (MOCK)
 $totalConsumo = array_sum(array_column($consumoPorFicha, 'consumo'));
 $totalCosto = array_sum(array_column($consumoPorFicha, 'costo'));
 
@@ -94,14 +108,95 @@ function formatCOP($number)
 
 // =====================================================
 // ✅ ADAPTACIÓN SIDEBAR (SIN TOCAR TU BASE)
-//   - si tu sidebar usa ?coll=1, lo detectamos aquí
-//   - y ajustamos el padding/offset del contenido
 // =====================================================
 $collapsed = isset($_GET['coll']) && $_GET['coll'] == '1';
-
-// En desktop dejamos espacio para el sidebar (igual que tu header):
-// expandido: 260px, colapsado: 70px
 $contentOffsetClass = $collapsed ? 'lg:pl-[90px]' : 'lg:pl-[280px]';
+
+
+// =====================================================
+// ✅ BACKEND STATUS (para saber si usa BD o MOCK)
+// =====================================================
+$__REPORTES_SOURCE = "MOCK";
+$__REPORTES_ERROR  = null;
+
+try {
+    // ✅ Ajusta rutas si tu estructura cambia
+    $dbPath    = __DIR__ . "/../../../Config/database.php";
+    $modelPath = __DIR__ . "/../../models/ReportesModel.php";
+
+    // ✅ Si no existe, fuerza error para verlo con debug
+    if (!file_exists($dbPath)) {
+        throw new Exception("No existe database.php en: " . $dbPath);
+    }
+    if (!file_exists($modelPath)) {
+        throw new Exception("No existe ReportesModel.php en: " . $modelPath);
+    }
+
+    require_once $dbPath;
+    require_once $modelPath;
+
+    if (!isset($conn) || !($conn instanceof PDO)) {
+        throw new Exception("La variable \$conn no es PDO. Revisa tu Config/database.php");
+    }
+
+    // ✅ Fuerza errores SQL visibles (para detectar tablas/columnas)
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+    $modelReportes = new ReportesModel($conn);
+
+    // Capturar filtros desde GET
+    $filters = [
+        "fecha_inicio" => $_GET["fecha_inicio"] ?? null,
+        "fecha_fin"    => $_GET["fecha_fin"] ?? null,
+        "programa"     => $_GET["programa"] ?? "all",
+        "ficha"        => $_GET["ficha"] ?? "all",
+    ];
+
+    // ✅ Combos reales
+    $mockProgramas = $modelReportes->getProgramas();
+    $mockFichas    = $modelReportes->getFichas();
+
+    // ✅ Dashboard real
+    $dashboard = $modelReportes->getDashboardData($filters);
+
+    if (!is_array($dashboard)) {
+        throw new Exception("getDashboardData() no devolvió un array");
+    }
+
+    // ✅ IMPORTANTE: sobreescribimos SIEMPRE (aunque venga vacío)
+    $consumoPorMes       = $dashboard["consumoPorMes"]       ?? [];
+    $consumoPorPrograma  = $dashboard["consumoPorPrograma"]  ?? [];
+    $materialesMasUsados = $dashboard["materialesMasUsados"] ?? [];
+    $consumoPorFicha     = $dashboard["consumoPorFicha"]     ?? [];
+
+    $totalConsumo = (int)($dashboard["totalConsumo"] ?? 0);
+    $totalCosto   = (int)($dashboard["totalCosto"] ?? 0);
+
+    // ✅ Colores para leyenda si backend no manda color
+    $legendColors = ['#6CC24A', '#007832', '#002B49', '#71277A'];
+    foreach ($consumoPorPrograma as $i => &$item) {
+        if (!isset($item["color"]) || !$item["color"]) {
+            $item["color"] = $legendColors[$i] ?? '#007832';
+        }
+    }
+    unset($item);
+
+    $__REPORTES_SOURCE = "BD ✅";
+
+} catch (Throwable $e) {
+    $__REPORTES_SOURCE = "MOCK ❌";
+    $__REPORTES_ERROR  = $e->getMessage();
+
+    // ✅ Si activas debug=1 en la URL, te muestra el error real
+    if (isset($_GET["debug"]) && $_GET["debug"] == "1") {
+        echo "<pre style='background:#111;color:#0f0;padding:14px;border-radius:10px;max-width:100%;overflow:auto'>";
+        echo "REPORTES DEBUG MODE\n";
+        echo "SOURCE: {$__REPORTES_SOURCE}\n";
+        echo "ERROR: {$__REPORTES_ERROR}\n";
+        echo "</pre>";
+    }
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -319,7 +414,7 @@ $contentOffsetClass = $collapsed ? 'lg:pl-[90px]' : 'lg:pl-[280px]';
                                             Detalle de consumo y costos por ficha
                                         </p>
                                     </div>
-                                    <button class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-border rounded-md bg-transparent text-foreground hover:bg-muted transition-colors">
+                                    <button id="btnExportConsumoFicha" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border border-border rounded-md bg-transparent text-foreground hover:bg-muted transition-colors">
                                         <svg class="w-4 h-4"
                                              xmlns="http://www.w3.org/2000/svg"
                                              viewBox="0 0 24 24"
@@ -623,7 +718,13 @@ $contentOffsetClass = $collapsed ? 'lg:pl-[90px]' : 'lg:pl-[280px]';
         </div>
     </div>
 
+    
+
     <script>
+
+        console.log("✅ Reportes source:", <?= json_encode($__REPORTES_SOURCE) ?>);
+        console.log("⚠️ Reportes error:", <?= json_encode($__REPORTES_ERROR) ?>);
+
         // Datos PHP pasados a JavaScript
         const consumoPorMes       = <?= json_encode($consumoPorMes) ?>;
         const consumoPorPrograma  = <?= json_encode($consumoPorPrograma) ?>;
@@ -746,10 +847,244 @@ $contentOffsetClass = $collapsed ? 'lg:pl-[90px]' : 'lg:pl-[280px]';
         });
         <?php endif; ?>
 
-        // Función para generar reportes
-        function handleGenerateReport(reportId) {
-            alert('Generando reporte: ' + reportId);
+        // =====================================================
+        // ✅ INTEGRACIÓN DE FILTROS (SIN DAÑAR TU BASE)
+        //   - guarda filtros en la URL (GET)
+        //   - el backend los lee y devuelve data real
+        // =====================================================
+        (function () {
+            const params = new URLSearchParams(window.location.search);
+
+            const fechaInicio = document.getElementById("fecha-inicio");
+            const fechaFin    = document.getElementById("fecha-fin");
+            const programa    = document.getElementById("programa");
+            const ficha       = document.getElementById("ficha");
+
+            if (fechaInicio) fechaInicio.value = params.get("fecha_inicio") || "";
+            if (fechaFin)    fechaFin.value    = params.get("fecha_fin") || "";
+            if (programa)    programa.value    = params.get("programa") || "all";
+            if (ficha)       ficha.value       = params.get("ficha") || "all";
+
+            function applyFiltersToURL() {
+                const newParams = new URLSearchParams(window.location.search);
+
+                // conservar page/tab/coll
+                newParams.set("page", "reportes");
+                newParams.set("tab", "estadisticas");
+
+                if (fechaInicio && fechaInicio.value) newParams.set("fecha_inicio", fechaInicio.value);
+                else newParams.delete("fecha_inicio");
+
+                if (fechaFin && fechaFin.value) newParams.set("fecha_fin", fechaFin.value);
+                else newParams.delete("fecha_fin");
+
+                if (programa && programa.value) newParams.set("programa", programa.value);
+                else newParams.set("programa", "all");
+
+                if (ficha && ficha.value) newParams.set("ficha", ficha.value);
+                else newParams.set("ficha", "all");
+
+                // mantener coll si existe
+                if (params.get("coll") === "1") newParams.set("coll", "1");
+
+                window.location.search = newParams.toString();
+            }
+
+            if (fechaInicio) fechaInicio.addEventListener("change", applyFiltersToURL);
+            if (fechaFin)    fechaFin.addEventListener("change", applyFiltersToURL);
+            if (programa)    programa.addEventListener("change", applyFiltersToURL);
+            if (ficha)       ficha.addEventListener("change", applyFiltersToURL);
+        })();
+
+
+        // =====================================================
+        // ✅ EXPORTAR PDF: Consumo por ficha
+        // ✅ MISMA PÁGINA (sin pestaña nueva, sin refresh)
+        //   - Respeta filtros de la URL
+        // =====================================================
+        (function () {
+            const btn = document.getElementById("btnExportConsumoFicha");
+            if (!btn) return;
+
+            // ✅ Descarga el PDF sin salir de la página (iframe invisible)
+            function downloadSamePage(urlPdf) {
+                let iframe = document.getElementById("pdfDownloadFrame");
+                if (!iframe) {
+                    iframe = document.createElement("iframe");
+                    iframe.id = "pdfDownloadFrame";
+                    iframe.style.display = "none";
+                    document.body.appendChild(iframe);
+                }
+
+                // ✅ Cache-buster para que siempre dispare la descarga
+                const sep = urlPdf.includes("?") ? "&" : "?";
+                iframe.src = urlPdf + sep + "t=" + Date.now();
+            }
+
+            btn.addEventListener("click", () => {
+                const params = new URLSearchParams(window.location.search);
+
+                const fecha_inicio = params.get("fecha_inicio") || "";
+                const fecha_fin    = params.get("fecha_fin") || "";
+                const programa     = params.get("programa") || "all";
+                const ficha        = params.get("ficha") || "all";
+
+                const url = `src/controllers/reportes_controller.php?action=export_consumo_ficha`
+                    + `&fecha_inicio=${encodeURIComponent(fecha_inicio)}`
+                    + `&fecha_fin=${encodeURIComponent(fecha_fin)}`
+                    + `&programa=${encodeURIComponent(programa)}`
+                    + `&ficha=${encodeURIComponent(ficha)}`;
+
+                // ✅ Descarga en la misma página (sin refresh, sin pestaña)
+                downloadSamePage(url);
+            });
+        })();
+
+        // =====================================================
+        // ✅ BACKEND PARA TAB "REPORTES PDF" + REPORTE PERSONALIZADO
+        //   - SIN TOCAR TU HTML BASE
+        //   - Usa reportes_controller.php:
+        //       action=generate_pdf&type=...
+        //       action=print_view&type=...
+        //       action=generate_custom
+        // =====================================================
+
+        // ✅ Helper global: descarga PDF/CSV/Excel sin recargar (iframe invisible)
+        function __downloadSamePage(urlFile) {
+            let iframe = document.getElementById("pdfDownloadFrame");
+            if (!iframe) {
+                iframe = document.createElement("iframe");
+                iframe.id = "pdfDownloadFrame";
+                iframe.style.display = "none";
+                document.body.appendChild(iframe);
+            }
+
+            const sep = urlFile.includes("?") ? "&" : "?";
+            iframe.src = urlFile + sep + "t=" + Date.now();
         }
+
+        // ✅ Generar PDF por tarjeta (usa filtros actuales de URL si existen)
+        function handleGenerateReport(type) {
+            const params = new URLSearchParams(window.location.search);
+
+            const fecha_inicio = params.get("fecha_inicio") || "";
+            const fecha_fin    = params.get("fecha_fin") || "";
+            const programa     = params.get("programa") || "all";
+            const ficha        = params.get("ficha") || "all";
+
+            const url =
+                `src/controllers/reportes_controller.php?action=generate_pdf&type=${encodeURIComponent(type)}`
+                + `&fecha_inicio=${encodeURIComponent(fecha_inicio)}`
+                + `&fecha_fin=${encodeURIComponent(fecha_fin)}`
+                + `&programa=${encodeURIComponent(programa)}`
+                + `&ficha=${encodeURIComponent(ficha)}`;
+
+            __downloadSamePage(url);
+        }
+
+        // ✅ Imprimir por tarjeta (abre vista imprimible)
+        function handlePrintReport(type) {
+            const params = new URLSearchParams(window.location.search);
+
+            const fecha_inicio = params.get("fecha_inicio") || "";
+            const fecha_fin    = params.get("fecha_fin") || "";
+            const programa     = params.get("programa") || "all";
+            const ficha        = params.get("ficha") || "all";
+
+            const url =
+                `src/controllers/reportes_controller.php?action=print_view&type=${encodeURIComponent(type)}`
+                + `&fecha_inicio=${encodeURIComponent(fecha_inicio)}`
+                + `&fecha_fin=${encodeURIComponent(fecha_fin)}`
+                + `&programa=${encodeURIComponent(programa)}`
+                + `&ficha=${encodeURIComponent(ficha)}`;
+
+            window.open(url, "_blank");
+        }
+
+        // ✅ Enlazar automáticamente el botón de impresora de cada card (sin tocar HTML)
+        (function () {
+            // Solo aplica cuando está el tab de reportes activo (si hay cards)
+            const cards = document.querySelectorAll(".grid.md\\:grid-cols-2.lg\\:grid-cols-3 > div.bg-card");
+            if (!cards || !cards.length) return;
+
+            cards.forEach((card) => {
+                const btnGenerate = card.querySelector("button[onclick*=\"handleGenerateReport(\"]");
+                const btnPrint = card.querySelector("button.inline-flex.items-center.justify-center.p-2");
+
+                if (!btnGenerate || !btnPrint) return;
+
+                const onclick = btnGenerate.getAttribute("onclick") || "";
+                // Extraer id dentro de handleGenerateReport('...')
+                const match = onclick.match(/handleGenerateReport\\(['"]([^'"]+)['"]\\)/);
+                if (!match || !match[1]) return;
+
+                const reportId = match[1];
+
+                btnPrint.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    handlePrintReport(reportId);
+                });
+            });
+        })();
+
+        // ✅ Reporte personalizado (leer inputs sin IDs, por orden, sin tocar HTML)
+        (function () {
+            // Buscar el bloque "Configurar Reporte Personalizado"
+            const headers = Array.from(document.querySelectorAll("h3"));
+            const titleNode = headers.find(h => (h.textContent || "").trim() === "Configurar Reporte Personalizado");
+            if (!titleNode) return;
+
+            // Contenedor principal del card
+            const card = titleNode.closest(".bg-card");
+            if (!card) return;
+
+            // Obtener todos los selects e inputs dentro del card (en el orden del layout)
+            const selects = Array.from(card.querySelectorAll("select.input-siga"));
+            const inputs  = Array.from(card.querySelectorAll("input[type='date'].input-siga"));
+
+            // Botón "Generar Reporte" (último botón del card)
+            const btns = Array.from(card.querySelectorAll("button"));
+            const btnGenerateCustom = btns.find(b => (b.textContent || "").includes("Generar Reporte"));
+            if (!btnGenerateCustom) return;
+
+            // Layout esperado:
+            // selects[0] = tipo reporte
+            // inputs[0]  = fecha inicio
+            // inputs[1]  = fecha fin
+            // selects[1] = formato
+            // selects[2] = programa
+            // selects[3] = bodega
+            // selects[4] = incluir_graficas
+            function safeVal(el, fallback = "") {
+                return el && typeof el.value !== "undefined" ? el.value : fallback;
+            }
+
+            btnGenerateCustom.addEventListener("click", function (e) {
+                e.preventDefault();
+
+                const tipo_reporte = safeVal(selects[0], "consumo");
+                const fecha_inicio = safeVal(inputs[0], "");
+                const fecha_fin    = safeVal(inputs[1], "");
+                const format       = safeVal(selects[1], "pdf");
+                const programa     = safeVal(selects[2], "all");
+                const bodega       = safeVal(selects[3], "all");
+                const incluir_graficas = safeVal(selects[4], "yes");
+
+                const url =
+                    `src/controllers/reportes_controller.php?action=generate_custom`
+                    + `&tipo_reporte=${encodeURIComponent(tipo_reporte)}`
+                    + `&format=${encodeURIComponent(format)}`
+                    + `&fecha_inicio=${encodeURIComponent(fecha_inicio)}`
+                    + `&fecha_fin=${encodeURIComponent(fecha_fin)}`
+                    + `&programa=${encodeURIComponent(programa)}`
+                    + `&bodega=${encodeURIComponent(bodega)}`
+                    + `&incluir_graficas=${encodeURIComponent(incluir_graficas)}`;
+
+                // ✅ Descarga/genera en la misma página
+                __downloadSamePage(url);
+            });
+        })();
+
     </script>
 </body>
 </html>

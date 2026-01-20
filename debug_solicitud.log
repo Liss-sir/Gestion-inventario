@@ -109,3 +109,85 @@
 2026-01-20 02:34:57 [INSERT] Movimiento insertado con ID: 11
 2026-01-20 02:34:57 ✅ [SALIDA] Movimiento creado: MOV-2026-00011
 2026-01-20 02:34:57 ✅ [CONTROLLER] Solicitud respondida exitosamente
+2026-01-20 14:04:28 [INSERT] id_solicitud recibido: 'NO_EXISTE'
+2026-01-20 14:04:28 [INSERT] Cantidad a insertar: 80 | tipo_movimiento: 'entrada'
+2026-01-20 14:04:28 [INSERT] Movimiento insertado con ID: 1
+2026-01-20 14:44:53 [CONTROLLER] responder() invocado: {"id_solicitud":1,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-20 14:44:53 [RESPONDER] Iniciando responderSolicitud(1, aprobada, 1)
+2026-01-20 14:44:53 ✅ Solicitud 1 actualizada a Aprobada. Filas: 1
+2026-01-20 14:44:53 🔵 Llamando crearMovimientoSalidaDeSolicitud(1, 1)
+2026-01-20 14:44:53 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(1, 1)
+2026-01-20 14:44:53 📋 [SALIDA] Solicitud: {"id_solicitud":1,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":1,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-20 09:44:31","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 09:44:53","observaciones":"Registro mediante el cual un usuario autorizado realiza la petici\u00f3n formal de materiales de formaci\u00f3n necesarios para desarrollar una actividad, pr\u00e1ctica o proyecto.\nIncluye informaci\u00f3n como ficha, programa, actividad\/RAE, cantidad requerida y observaciones, permitiendo gestionar el control, entrega y trazabilidad de los materiales solicitados.","materiales":[{"id_solicitud_detalle":1,"id_material":1,"material":"Cemento","cantidad":10,"unidad_medida":"KG","clasificacion":"Consumible"}]}
+2026-01-20 14:44:53 📦 [SALIDA] 1 materiales encontrados
+2026-01-20 14:44:53 🏪 [SALIDA] Bodega obtenida: 2
+2026-01-20 14:44:53   📌 Cemento (ID: 1, Cant: 10)
+2026-01-20 14:44:53 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"Registro mediante el cual un usuario autorizado realiza la petici\u00f3n formal de materiales de formaci\u00f3n necesarios para desarrollar una actividad, pr\u00e1ctica o proyecto.\nIncluye informaci\u00f3n como ficha, programa, actividad\/RAE, cantidad requerida y observaciones, permitiendo gestionar el control, entrega y trazabilidad de los materiales solicitados.","id_solicitud":1,"materiales":[{"id_material":1,"nombre":"Cemento","cantidad":10,"unidad":"KG"}]}
+2026-01-20 14:44:53 [INSERT] id_solicitud recibido: 1
+2026-01-20 14:44:53 [INSERT] Cantidad a insertar: 10 | tipo_movimiento: 'Salida'
+2026-01-20 14:44:53 [INSERT] Movimiento insertado con ID: 2
+2026-01-20 14:44:53 ✅ [SALIDA] Movimiento creado: MOV-2026-00002
+2026-01-20 14:44:53 ✅ [CONTROLLER] Solicitud respondida exitosamente
+2026-01-20 14:51:49 [INSERT] id_solicitud recibido: 'NO_EXISTE'
+2026-01-20 14:51:49 [INSERT] Cantidad a insertar: 15 | tipo_movimiento: 'entrada'
+2026-01-20 14:51:49 [INSERT] Movimiento insertado con ID: 3
+2026-01-20 14:55:35 [CONTROLLER] responder() invocado: {"id_solicitud":2,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-20 14:55:35 [RESPONDER] Iniciando responderSolicitud(2, aprobada, 1)
+2026-01-20 14:55:35 ✅ Solicitud 2 actualizada a Aprobada. Filas: 1
+2026-01-20 14:55:35 🔵 Llamando crearMovimientoSalidaDeSolicitud(2, 1)
+2026-01-20 14:55:35 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(2, 1)
+2026-01-20 14:55:35 📋 [SALIDA] Solicitud: {"id_solicitud":2,"id_usuario_solicitante":1,"id_ficha":2,"id_actividad":2,"id_rae":2,"id_programa":2,"fecha_solicitud":"2026-01-20 09:55:29","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 09:55:35","observaciones":"","materiales":[{"id_solicitud_detalle":3,"id_material":1,"material":"Cemento","cantidad":10,"unidad_medida":"KG","clasificacion":"Consumible"},{"id_solicitud_detalle":2,"id_material":2,"material":"Ladrillos","cantidad":90,"unidad_medida":"CM3","clasificacion":"Consumible"}]}
+2026-01-20 14:55:35 📦 [SALIDA] 2 materiales encontrados
+2026-01-20 14:55:35 🏪 [SALIDA] Bodega obtenida: 2
+2026-01-20 14:55:35   📌 Cemento (ID: 1, Cant: 10)
+2026-01-20 14:55:35   📌 Ladrillos (ID: 2, Cant: 90)
+2026-01-20 14:55:35 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":2,"id_ficha":2,"id_rae":2,"observaciones":"","id_solicitud":2,"materiales":[{"id_material":1,"nombre":"Cemento","cantidad":10,"unidad":"KG"},{"id_material":2,"nombre":"Ladrillos","cantidad":90,"unidad":"CM3"}]}
+2026-01-20 14:55:35 [INSERT] id_solicitud recibido: 2
+2026-01-20 14:55:35 [INSERT] Cantidad a insertar: 10 | tipo_movimiento: 'Salida'
+2026-01-20 14:55:35 [INSERT] Movimiento insertado con ID: 4
+2026-01-20 14:55:35 ✅ [SALIDA] Movimiento creado: MOV-2026-00004
+2026-01-20 14:55:35 ✅ [CONTROLLER] Solicitud respondida exitosamente
+2026-01-20 15:13:39 [CONTROLLER] responder() invocado: {"id_solicitud":3,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-20 15:13:39 [RESPONDER] Iniciando responderSolicitud(3, aprobada, 1)
+2026-01-20 15:13:39 ✅ Solicitud 3 actualizada a Aprobada. Filas: 1
+2026-01-20 15:13:39 🔵 Llamando crearMovimientoSalidaDeSolicitud(3, 1)
+2026-01-20 15:13:39 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(3, 1)
+2026-01-20 15:13:39 📋 [SALIDA] Solicitud: {"id_solicitud":3,"id_usuario_solicitante":1,"id_ficha":2,"id_actividad":2,"id_rae":2,"id_programa":2,"fecha_solicitud":"2026-01-20 10:13:36","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 10:13:39","observaciones":"","materiales":[{"id_solicitud_detalle":4,"id_material":2,"material":"Ladrillos","cantidad":90,"unidad_medida":"CM3","clasificacion":"Consumible"}]}
+2026-01-20 15:13:39 📦 [SALIDA] 1 materiales encontrados
+2026-01-20 15:13:39 🏪 [SALIDA] Bodega obtenida: 2
+2026-01-20 15:13:39   📌 Ladrillos (ID: 2, Cant: 90)
+2026-01-20 15:13:39 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":2,"id_ficha":2,"id_rae":2,"observaciones":"","id_solicitud":3,"materiales":[{"id_material":2,"nombre":"Ladrillos","cantidad":90,"unidad":"CM3"}]}
+2026-01-20 15:13:39 [INSERT] id_solicitud recibido: 3
+2026-01-20 15:13:39 [INSERT] Cantidad a insertar: 90 | tipo_movimiento: 'Salida'
+2026-01-20 15:13:39 ❌ [SALIDA] Exception (rethrow): Error al registrar movimiento: SQLSTATE[45000]: <<Unknown error>>: 1644 ERROR: No hay suficiente stock para realizar la salida.
+2026-01-20 15:13:39 ❌ Excepción en responderSolicitud: Error al registrar movimiento: SQLSTATE[45000]: <<Unknown error>>: 1644 ERROR: No hay suficiente stock para realizar la salida.
+2026-01-20 15:13:39 ❌ [CONTROLLER] responderSolicitud retornó false
+2026-01-20 15:14:29 [CONTROLLER] responder() invocado: {"id_solicitud":4,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-20 15:14:29 [RESPONDER] Iniciando responderSolicitud(4, aprobada, 1)
+2026-01-20 15:14:29 ✅ Solicitud 4 actualizada a Aprobada. Filas: 1
+2026-01-20 15:14:29 🔵 Llamando crearMovimientoSalidaDeSolicitud(4, 1)
+2026-01-20 15:14:29 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(4, 1)
+2026-01-20 15:14:29 📋 [SALIDA] Solicitud: {"id_solicitud":4,"id_usuario_solicitante":1,"id_ficha":2,"id_actividad":2,"id_rae":2,"id_programa":2,"fecha_solicitud":"2026-01-20 10:14:25","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 10:14:29","observaciones":"","materiales":[{"id_solicitud_detalle":5,"id_material":2,"material":"Ladrillos","cantidad":10,"unidad_medida":"CM3","clasificacion":"Consumible"}]}
+2026-01-20 15:14:29 📦 [SALIDA] 1 materiales encontrados
+2026-01-20 15:14:29 🏪 [SALIDA] Bodega obtenida: 2
+2026-01-20 15:14:29   📌 Ladrillos (ID: 2, Cant: 10)
+2026-01-20 15:14:29 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":2,"id_ficha":2,"id_rae":2,"observaciones":"","id_solicitud":4,"materiales":[{"id_material":2,"nombre":"Ladrillos","cantidad":10,"unidad":"CM3"}]}
+2026-01-20 15:14:29 [INSERT] id_solicitud recibido: 4
+2026-01-20 15:14:29 [INSERT] Cantidad a insertar: 10 | tipo_movimiento: 'Salida'
+2026-01-20 15:14:29 [INSERT] Movimiento insertado con ID: 5
+2026-01-20 15:14:29 ✅ [SALIDA] Movimiento creado: MOV-2026-00005
+2026-01-20 15:14:29 ✅ [CONTROLLER] Solicitud respondida exitosamente
+2026-01-20 15:15:22 [CONTROLLER] responder() invocado: {"id_solicitud":5,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-20 15:15:22 [RESPONDER] Iniciando responderSolicitud(5, aprobada, 1)
+2026-01-20 15:15:22 ✅ Solicitud 5 actualizada a Aprobada. Filas: 1
+2026-01-20 15:15:22 🔵 Llamando crearMovimientoSalidaDeSolicitud(5, 1)
+2026-01-20 15:15:22 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(5, 1)
+2026-01-20 15:15:22 📋 [SALIDA] Solicitud: {"id_solicitud":5,"id_usuario_solicitante":1,"id_ficha":2,"id_actividad":2,"id_rae":2,"id_programa":2,"fecha_solicitud":"2026-01-20 10:15:21","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 10:15:22","observaciones":"","materiales":[{"id_solicitud_detalle":6,"id_material":2,"material":"Ladrillos","cantidad":1,"unidad_medida":"CM3","clasificacion":"Consumible"}]}
+2026-01-20 15:15:22 📦 [SALIDA] 1 materiales encontrados
+2026-01-20 15:15:22 🏪 [SALIDA] Bodega obtenida: 2
+2026-01-20 15:15:22   📌 Ladrillos (ID: 2, Cant: 1)
+2026-01-20 15:15:22 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":2,"id_ficha":2,"id_rae":2,"observaciones":"","id_solicitud":5,"materiales":[{"id_material":2,"nombre":"Ladrillos","cantidad":1,"unidad":"CM3"}]}
+2026-01-20 15:15:22 [INSERT] id_solicitud recibido: 5
+2026-01-20 15:15:22 [INSERT] Cantidad a insertar: 1 | tipo_movimiento: 'Salida'
+2026-01-20 15:15:22 [INSERT] Movimiento insertado con ID: 6
+2026-01-20 15:15:22 ✅ [SALIDA] Movimiento creado: MOV-2026-00006
+2026-01-20 15:15:22 ✅ [CONTROLLER] Solicitud respondida exitosamente
