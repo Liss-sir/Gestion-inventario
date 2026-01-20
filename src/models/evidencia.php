@@ -17,19 +17,31 @@ class EvidenciaModel {
                     e.descripcion_obra,
                     COALESCE(m.fecha_hora, NOW()) as fecha,
                     u.nombre_completo as usuario,
-                    mat.nombre as material,
-                    mat.unidad_medida,
-                    m.cantidad,
-                    f.numero_ficha as ficha
+                    f.numero_ficha as ficha,
+                    COALESCE(sol_det.materiales,
+                        CONCAT(mat_single.nombre, ' (', m.cantidad, ' ', mat_single.unidad_medida, ')')
+                    ) as materiales
                 FROM {$this->table} e
                 LEFT JOIN movimientos_material m 
                     ON e.id_movimiento_salida = m.id_movimiento
+                LEFT JOIN (
+                    SELECT 
+                        sd.id_solicitud,
+                        GROUP_CONCAT(
+                            DISTINCT CONCAT(mat.nombre, ' (', sd.cantidad_solicitada, ' ', mat.unidad_medida, ')')
+                            ORDER BY mat.nombre
+                            SEPARATOR ', '
+                        ) AS materiales
+                    FROM solicitudes_detalle sd
+                    INNER JOIN material_formacion mat ON sd.id_material = mat.id_material
+                    GROUP BY sd.id_solicitud
+                ) sol_det ON m.id_solicitud = sol_det.id_solicitud
                 LEFT JOIN usuarios u 
                     ON e.id_usuario = u.id_usuario
-                LEFT JOIN material_formacion mat 
-                    ON m.id_material = mat.id_material
                 LEFT JOIN fichas f
                     ON m.id_ficha = f.id_ficha
+                LEFT JOIN material_formacion mat_single
+                    ON m.id_material = mat_single.id_material
                 ORDER BY m.fecha_hora DESC";
 
         $stmt = $this->conn->prepare($sql);

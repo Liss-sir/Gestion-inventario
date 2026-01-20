@@ -169,38 +169,53 @@
 2026-01-20 15:07:26 [INSERT] Movimiento insertado con ID: 17
 2026-01-20 15:07:26 ✅ [SALIDA] Movimiento creado: MOV-2026-00017
 2026-01-20 15:07:26 ✅ [CONTROLLER] Solicitud respondida exitosamente
-2026-01-20 17:07:27 [INSERT] id_solicitud recibido: 'NO_EXISTE'
-2026-01-20 17:07:27 [INSERT] Cantidad a insertar: 100 | tipo_movimiento: 'entrada'
-2026-01-20 17:07:27 [INSERT] Movimiento insertado con ID: 13
-2026-01-20 17:08:35 [CONTROLLER] responder() invocado: {"id_solicitud":5,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
-2026-01-20 17:08:35 [RESPONDER] Iniciando responderSolicitud(5, aprobada, 1)
-2026-01-20 17:08:35 ✅ Solicitud 5 actualizada a Aprobada. Filas: 1
-2026-01-20 17:08:35 🔵 Llamando crearMovimientoSalidaDeSolicitud(5, 1)
-2026-01-20 17:08:35 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(5, 1)
-2026-01-20 17:08:35 📋 [SALIDA] Solicitud: {"id_solicitud":5,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":1,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-20 12:08:33","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 12:08:35","observaciones":"jeje","materiales":[{"id_solicitud_detalle":5,"id_material":2,"material":"ARENA","cantidad":10,"unidad_medida":"KG","clasificacion":"Consumible"},{"id_solicitud_detalle":6,"id_material":1,"material":"CEMENTO","cantidad":10,"unidad_medida":"BULTO","clasificacion":"Consumible"}]}
-2026-01-20 17:08:35 📦 [SALIDA] 2 materiales encontrados
-2026-01-20 17:08:35 🏪 [SALIDA] Bodega obtenida: 2
-2026-01-20 17:08:35   📌 ARENA (ID: 2, Cant: 10)
-2026-01-20 17:08:35   📌 CEMENTO (ID: 1, Cant: 10)
-2026-01-20 17:08:35 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"jeje","id_solicitud":5,"materiales":[{"id_material":2,"nombre":"ARENA","cantidad":10,"unidad":"KG"},{"id_material":1,"nombre":"CEMENTO","cantidad":10,"unidad":"BULTO"}]}
-2026-01-20 17:08:35 [INSERT] id_solicitud recibido: 5
-2026-01-20 17:08:35 [INSERT] Cantidad a insertar: 10 | tipo_movimiento: 'Salida'
-2026-01-20 17:08:35 [INSERT] Movimiento insertado con ID: 14
-2026-01-20 17:08:35 ✅ [SALIDA] Movimiento creado: MOV-2026-00014
-2026-01-20 17:08:35 ✅ [CONTROLLER] Solicitud respondida exitosamente
-2026-01-20 17:13:53 [CONTROLLER] responder() invocado: {"id_solicitud":6,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
-2026-01-20 17:13:53 [RESPONDER] Iniciando responderSolicitud(6, aprobada, 1)
-2026-01-20 17:13:53 ✅ Solicitud 6 actualizada a Aprobada. Filas: 1
-2026-01-20 17:13:53 🔵 Llamando crearMovimientoSalidaDeSolicitud(6, 1)
-2026-01-20 17:13:53 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(6, 1)
-2026-01-20 17:13:53 📋 [SALIDA] Solicitud: {"id_solicitud":6,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":1,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-20 12:13:51","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 12:13:53","observaciones":"kjhgfds","materiales":[{"id_solicitud_detalle":7,"id_material":2,"material":"ARENA","cantidad":10,"unidad_medida":"KG","clasificacion":"Consumible"},{"id_solicitud_detalle":8,"id_material":1,"material":"CEMENTO","cantidad":1,"unidad_medida":"BULTO","clasificacion":"Consumible"}]}
-2026-01-20 17:13:53 📦 [SALIDA] 2 materiales encontrados
-2026-01-20 17:13:53 🏪 [SALIDA] Bodega obtenida: 2
-2026-01-20 17:13:53   📌 ARENA (ID: 2, Cant: 10)
-2026-01-20 17:13:53   📌 CEMENTO (ID: 1, Cant: 1)
-2026-01-20 17:13:53 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"kjhgfds","id_solicitud":6,"materiales":[{"id_material":2,"nombre":"ARENA","cantidad":10,"unidad":"KG"},{"id_material":1,"nombre":"CEMENTO","cantidad":1,"unidad":"BULTO"}]}
-2026-01-20 17:13:53 [INSERT] id_solicitud recibido: 6
-2026-01-20 17:13:53 [INSERT] Cantidad a insertar: 10 | tipo_movimiento: 'Salida'
-2026-01-20 17:13:53 [INSERT] Movimiento insertado con ID: 15
-2026-01-20 17:13:53 ✅ [SALIDA] Movimiento creado: MOV-2026-00015
-2026-01-20 17:13:53 ✅ [CONTROLLER] Solicitud respondida exitosamente
+2026-01-20 17:20:05 [CONTROLLER] responder() invocado: {"id_solicitud":11,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-20 17:20:05 [RESPONDER] Iniciando responderSolicitud(11, aprobada, 1)
+2026-01-20 17:20:05 ✅ Solicitud 11 actualizada a Aprobada. Filas: 1
+2026-01-20 17:20:05 🔵 Llamando crearMovimientoSalidaDeSolicitud(11, 1)
+2026-01-20 17:20:05 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(11, 1)
+2026-01-20 17:20:05 📋 [SALIDA] Solicitud: {"id_solicitud":11,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":9,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-20 12:20:02","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 12:20:05","observaciones":"asdfghjklop","materiales":[{"id_solicitud_detalle":11,"id_material":1,"material":"Jorges","cantidad":1,"unidad_medida":"KG","clasificacion":"Inventariado"},{"id_solicitud_detalle":12,"id_material":2,"material":"lola878798","cantidad":1,"unidad_medida":"GL","clasificacion":"Consumible"}]}
+2026-01-20 17:20:05 📦 [SALIDA] 2 materiales encontrados
+2026-01-20 17:20:05 🏪 [SALIDA] Bodega obtenida: 2
+2026-01-20 17:20:05   📌 Jorges (ID: 1, Cant: 1)
+2026-01-20 17:20:05   📌 lola878798 (ID: 2, Cant: 1)
+2026-01-20 17:20:05 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"asdfghjklop","id_solicitud":11,"materiales":[{"id_material":1,"nombre":"Jorges","cantidad":1,"unidad":"KG"},{"id_material":2,"nombre":"lola878798","cantidad":1,"unidad":"GL"}]}
+2026-01-20 17:20:05 [INSERT] id_solicitud recibido: 11
+2026-01-20 17:20:05 [INSERT] Cantidad a insertar: 1 | tipo_movimiento: 'Salida'
+2026-01-20 17:20:05 [INSERT] Movimiento insertado con ID: 18
+2026-01-20 17:20:05 ✅ [SALIDA] Movimiento creado: MOV-2026-00018
+2026-01-20 17:20:05 ✅ [CONTROLLER] Solicitud respondida exitosamente
+2026-01-20 17:26:32 [INSERT] id_solicitud recibido: 'NO_EXISTE'
+2026-01-20 17:26:32 [INSERT] Cantidad a insertar: 5455565665 | tipo_movimiento: 'entrada'
+2026-01-20 17:26:32 [INSERT] Movimiento insertado con ID: 19
+2026-01-20 17:27:44 [CONTROLLER] responder() invocado: {"id_solicitud":12,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-20 17:27:44 [RESPONDER] Iniciando responderSolicitud(12, aprobada, 1)
+2026-01-20 17:27:44 ✅ Solicitud 12 actualizada a Aprobada. Filas: 1
+2026-01-20 17:27:44 🔵 Llamando crearMovimientoSalidaDeSolicitud(12, 1)
+2026-01-20 17:27:44 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(12, 1)
+2026-01-20 17:27:44 📋 [SALIDA] Solicitud: {"id_solicitud":12,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":8,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-20 12:27:40","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 12:27:44","observaciones":"fnwefwekmfkmewfkm","materiales":[{"id_solicitud_detalle":13,"id_material":3,"material":"Cemento Gris","cantidad":85,"unidad_medida":"JGO","clasificacion":"Consumible"},{"id_solicitud_detalle":14,"id_material":1,"material":"Jorges","cantidad":8,"unidad_medida":"KG","clasificacion":"Inventariado"}]}
+2026-01-20 17:27:44 📦 [SALIDA] 2 materiales encontrados
+2026-01-20 17:27:44 🏪 [SALIDA] Bodega obtenida: 2
+2026-01-20 17:27:44   📌 Cemento Gris (ID: 3, Cant: 85)
+2026-01-20 17:27:44   📌 Jorges (ID: 1, Cant: 8)
+2026-01-20 17:27:44 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"fnwefwekmfkmewfkm","id_solicitud":12,"materiales":[{"id_material":3,"nombre":"Cemento Gris","cantidad":85,"unidad":"JGO"},{"id_material":1,"nombre":"Jorges","cantidad":8,"unidad":"KG"}]}
+2026-01-20 17:27:44 [INSERT] id_solicitud recibido: 12
+2026-01-20 17:27:44 [INSERT] Cantidad a insertar: 85 | tipo_movimiento: 'Salida'
+2026-01-20 17:27:44 [INSERT] Movimiento insertado con ID: 20
+2026-01-20 17:27:44 ✅ [SALIDA] Movimiento creado: MOV-2026-00020
+2026-01-20 17:27:44 ✅ [CONTROLLER] Solicitud respondida exitosamente
+2026-01-20 17:49:52 [CONTROLLER] responder() invocado: {"id_solicitud":13,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-20 17:49:52 [RESPONDER] Iniciando responderSolicitud(13, aprobada, 1)
+2026-01-20 17:49:52 ✅ Solicitud 13 actualizada a Aprobada. Filas: 1
+2026-01-20 17:49:52 🔵 Llamando crearMovimientoSalidaDeSolicitud(13, 1)
+2026-01-20 17:49:52 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(13, 1)
+2026-01-20 17:49:52 📋 [SALIDA] Solicitud: {"id_solicitud":13,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":9,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-20 12:49:50","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 12:49:52","observaciones":"sdfghjkldfds","materiales":[{"id_solicitud_detalle":15,"id_material":3,"material":"Cemento Gris","cantidad":1,"unidad_medida":"JGO","clasificacion":"Consumible"}]}
+2026-01-20 17:49:52 📦 [SALIDA] 1 materiales encontrados
+2026-01-20 17:49:52 🏪 [SALIDA] Bodega obtenida: 2
+2026-01-20 17:49:52   📌 Cemento Gris (ID: 3, Cant: 1)
+2026-01-20 17:49:52 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"sdfghjkldfds","id_solicitud":13,"materiales":[{"id_material":3,"nombre":"Cemento Gris","cantidad":1,"unidad":"JGO"}]}
+2026-01-20 17:49:52 [INSERT] id_solicitud recibido: 13
+2026-01-20 17:49:52 [INSERT] Cantidad a insertar: 1 | tipo_movimiento: 'Salida'
+2026-01-20 17:49:52 [INSERT] Movimiento insertado con ID: 21
+2026-01-20 17:49:52 ✅ [SALIDA] Movimiento creado: MOV-2026-00021
+2026-01-20 17:49:52 ✅ [CONTROLLER] Solicitud respondida exitosamente

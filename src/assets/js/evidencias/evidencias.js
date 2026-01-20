@@ -47,10 +47,11 @@ async function fetchAndRenderEvidences() {
       // Formatear fecha
       const fecha = row.fecha ? new Date(row.fecha).toLocaleDateString("es-CO") : "-"
       
-      // Crear array de materiales
+      // Crear array de materiales desde el GROUP_CONCAT
       const materiales = []
-      if (row.material) {
-        materiales.push(`${row.material} (${row.cantidad} ${row.unidad_medida})`)
+      if (row.materiales) {
+        // materiales ya viene como string: "Cemento (10 KG), Arena (20 KG)"
+        materiales.push(...row.materiales.split(', '))
       }
       
       return {
@@ -344,10 +345,11 @@ async function loadPendingSalidas() {
       const option = document.createElement("option")
       option.value = salida.id_movimiento
       option.dataset.salida = JSON.stringify(salida)
-      
-      // Construir el texto: Ficha - Material (Cantidad)
-      const optionText = `${salida.ficha || 'S/N'} - ${salida.material} (${salida.cantidad} ${salida.unidad_medida})`
-      
+
+      // Construir el texto: Ficha - Material - Fecha
+      const fecha = salida.fecha_hora ? new Date(salida.fecha_hora).toLocaleDateString("es-CO") : "-"
+      const optionText = `${salida.ficha || 'S/N'} - ${salida.material} - ${fecha}`
+
       option.textContent = optionText
       select.appendChild(option)
     })
