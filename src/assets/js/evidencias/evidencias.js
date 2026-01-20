@@ -9,7 +9,7 @@ let evidencesData = []
    Inicialización
    ========================= */
 document.addEventListener("DOMContentLoaded", () => {
-  // Cargar evidencias desde backend y renderizar
+  // Cargar evidencias
   fetchAndRenderEvidences()
   setupUploadArea()
   setupButtonListeners()
@@ -40,17 +40,30 @@ async function fetchAndRenderEvidences() {
   try {
     const res = await fetch(EVIDENCIAS_API_URL, { method: "GET" })
     if (!res.ok) throw new Error("Error al cargar evidencias")
+    
     const data = await res.json()
 
-    evidencesData = (Array.isArray(data) ? data : []).map((row) => ({
-      id: Number.parseInt(row.id_evidencia ?? row.id ?? Math.floor(Math.random() * 1e9)),
-      fecha: row.fecha ?? row.created_at ?? "-",
-      ficha: row.ficha ?? "-",
-      imagen: getEvidenceImageUrl(row.foto ?? row.imagen ?? ""),
-      titulo: row.titulo ?? "Evidencia",
-      descripcion: row.descripcion_obra ?? row.descripcion ?? "",
-      materiales: [],
-    }))
+    evidencesData = (Array.isArray(data) ? data : []).map((row) => {
+      // Formatear fecha
+      const fecha = row.fecha ? new Date(row.fecha).toLocaleDateString("es-CO") : "-"
+      
+      // Crear array de materiales
+      const materiales = []
+      if (row.material) {
+        materiales.push(`${row.material} (${row.cantidad} ${row.unidad_medida})`)
+      }
+      
+      return {
+        id: Number.parseInt(row.id_evidencia ?? row.id ?? Math.floor(Math.random() * 1e9)),
+        fecha: fecha,
+        ficha: row.ficha ?? "-",
+        imagen: getEvidenceImageUrl(row.foto ?? row.imagen ?? ""),
+        titulo: row.titulo ?? "Evidencia",
+        descripcion: row.descripcion_obra ?? row.descripcion ?? "",
+        materiales: materiales,
+        usuario: row.usuario ?? "-"
+      }
+    })
 
     renderEvidenceCards()
   } catch (err) {
@@ -184,6 +197,22 @@ function closeDetailsModal() {
 /* =========================
    Modal de Registro
    ========================= */
+function openCreateModalForSalida(idMovimiento, material, bodega, cantidad, unidad) {
+  // Setear ID de movimiento
+  document.getElementById("id_movimiento_salida").value = idMovimiento
+  
+  // Mostrar info de la salida
+  const salidaInfo = document.getElementById("salidaInfo")
+  salidaInfo.innerHTML = `
+    <p class="font-medium text-foreground">Salida #${idMovimiento}</p>
+    <p><strong>Material:</strong> ${material}</p>
+    <p><strong>Bodega:</strong> ${bodega}</p>
+    <p><strong>Cantidad:</strong> ${cantidad} ${unidad}</p>
+  `
+  
+  openCreateModal()
+}
+
 function openCreateModal() {
   const modal = document.getElementById("createModal")
   modal.classList.add("active")
@@ -201,6 +230,7 @@ function closeCreateModal() {
   document.getElementById("imagePreview").classList.add("hidden")
   document.getElementById("uploadArea").style.display = "flex"
 }
+
 
 /* =========================
    Upload de Imagen
@@ -279,7 +309,7 @@ function removeImage() {
 /* =========================
    Crear evidencia
    ========================= */
-function createEvidence() {
+async function createEvidence() {
   const descripcion = document.getElementById("descripcion").value
   const photoInput = document.getElementById("photoInput")
 
@@ -289,27 +319,34 @@ function createEvidence() {
     return
   }
 
-  // Obtener la imagen
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    // Simulación de creación
-    const newEvidence = {
-      id: evidencesData.length + 1,
-      fecha: new Date().toISOString().split('T')[0],
-      ficha: "2896441", // Por defecto
-      imagen: e.target.result,
-      titulo: `Evidencia ${new Date().toLocaleDateString()}`,
-      descripcion: descripcion,
-      materiales: ["Material"],
+  try {
+    // Crear FormData para enviar la imagen
+    const formData = new FormData()
+    formData.append("id_usuario", 1) // Cambiar por el ID del usuario logueado
+    formData.append("foto", photoInput.files[0])
+    formData.append("descripcion_obra", descripcion)
+
+    // Enviar al backend
+    const res = await fetch(EVIDENCIAS_API_URL, {
+      method: "POST",
+      body: formData
+    })
+
+    const result = await res.json()
+
+    if (res.ok && res.status === 201) {
+      showFlowbiteAlert("success", "Evidencia creada exitosamente")
+      closeCreateModal()
+      
+      // Recargar evidencias
+      await fetchAndRenderEvidences()
+    } else {
+      showFlowbiteAlert("error", result.mensaje || "Error al crear la evidencia")
     }
-
-    evidencesData.push(newEvidence)
-    renderEvidenceCards()
-    closeCreateModal()
-
-    showFlowbiteAlert("success", "Evidencia creada exitosamente")
+  } catch (error) {
+    console.error("Error creando evidencia:", error)
+    showFlowbiteAlert("error", "Error de conexión al crear la evidencia")
   }
-  reader.readAsDataURL(photoInput.files[0])
 }
 
 /* =========================
@@ -323,24 +360,10 @@ function setupButtonListeners() {
 }
 
 /* =========================
-   Helper: Alertas (Flowbite style)
+   Flowbite-style Alerts
    ========================= */
-function getOrCreateFlowbiteContainer() {
-  let container = document.getElementById("flowbite-alert-container")
-
-  if (!container) {
-    container = document.createElement("div")
-    container.id = "flowbite-alert-container"
-    container.className =
-      "fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-3 w-full max-w-md px-4 pointer-events-none"
-    document.body.appendChild(container)
-  }
-
-  return container
-}
-
 function showFlowbiteAlert(type, message) {
-  const container = getOrCreateFlowbiteContainer()
+  const container = document.getElementById("flowbite-alert-container") || createAlertContainer()
   const wrapper = document.createElement("div")
 
   let borderColor = "border-amber-500"
@@ -371,23 +394,20 @@ function showFlowbiteAlert(type, message) {
     titleText = "Error"
     iconSVG = `
       <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-        <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm3.707 12.293-1.414 1.414L10 11.414l-2.293 2.293-1.414-1.414L8.586 10 6.293 7.707l1.414-1.414L10 8.586l2.293-2.293 1.414 1.414-2.293 2.293 2.293 2.293z"/>
+        <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm1 15H9v-2h2Zm0-4H9V5h2Z"/>
       </svg>
     `
   }
 
   wrapper.className = `
-    relative flex items-center w-full mx-auto pointer-events-auto
+    relative flex items-center w-full pointer-events-auto
     rounded-2xl border-l-4 ${borderColor} bg-white shadow-md
     px-4 py-3 text-sm ${textColor}
-    opacity-0 -translate-y-2
-    transition-all duration-300 ease-out
+    opacity-0 -translate-y-2 transition-all duration-300 ease-out
   `
 
   wrapper.innerHTML = `
-    <div class="flex-shrink-0 mr-3 text-current">
-      ${iconSVG}
-    </div>
+    <div class="flex-shrink-0 mr-3 text-current">${iconSVG}</div>
     <div class="flex-1 min-w-0">
       <p class="font-semibold">${titleText}</p>
       <p class="mt-0.5 text-sm">${message}</p>
@@ -406,6 +426,14 @@ function showFlowbiteAlert(type, message) {
     wrapper.classList.remove("opacity-100", "translate-y-0")
     setTimeout(() => wrapper.remove(), 250)
   }, 4000)
+}
+
+function createAlertContainer() {
+  const container = document.createElement("div")
+  container.id = "flowbite-alert-container"
+  container.className = "fixed top-6 right-6 z-[9999] flex flex-col gap-3 w-full max-w-md px-4 pointer-events-none"
+  document.body.appendChild(container)
+  return container
 }
 
 /* =========================

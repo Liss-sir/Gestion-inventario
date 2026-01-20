@@ -421,3 +421,63 @@
 [19-Jan-2026 21:44:42 UTC] ✓ Movimiento registrado exitosamente: MOV-2026-00010
 [19-Jan-2026 21:44:42 UTC] ======================
 
+[19-Jan-2026 21:59:25 UTC] === REGISTRAR ENTRADA ===
+[19-Jan-2026 21:59:25 UTC] Datos recibidos: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"dcsdcsdcdscdsc","id_solicitud":1,"materiales":[{"id_material":1,"nombre":"Jorges","cantidad":1,"unidad":"KG"}]}
+[19-Jan-2026 21:59:25 UTC] Total materiales: 1
+[19-Jan-2026 21:59:25 UTC] ⚙️ Usando transacción existente en registrarEntrada()
+[19-Jan-2026 21:59:25 UTC] Primer material: {"id_material":1,"nombre":"Jorges","cantidad":1,"unidad":"KG"}
+[19-Jan-2026 21:59:25 UTC] ID movimiento creado: 2
+[19-Jan-2026 21:59:25 UTC] ⚠ Solo 1 material, no se usa movimientos_detalle
+[19-Jan-2026 21:59:25 UTC] [STOCK_BODEGA] UPDATE OK -> Bodega=2 Material=1 +-1
+[19-Jan-2026 21:59:25 UTC] ✓ Stock actualizado correctamente
+[19-Jan-2026 21:59:25 UTC] ✓ Movimiento registrado exitosamente: MOV-2026-00002
+[19-Jan-2026 21:59:25 UTC] ======================
+
+[20-Jan-2026 01:29:08 UTC] === REGISTRAR ENTRADA ===
+[20-Jan-2026 01:29:08 UTC] Datos recibidos: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"bgfdbdbssdbd","id_solicitud":2,"materiales":[{"id_material":1,"nombre":"Jorges","cantidad":10,"unidad":"KG"}]}
+[20-Jan-2026 01:29:08 UTC] Total materiales: 1
+[20-Jan-2026 01:29:08 UTC] ⚙️ Usando transacción existente en registrarEntrada()
+[20-Jan-2026 01:29:08 UTC] Primer material: {"id_material":1,"nombre":"Jorges","cantidad":10,"unidad":"KG"}
+[20-Jan-2026 01:29:08 UTC] ID movimiento creado: 4
+[20-Jan-2026 01:29:08 UTC] ⚠ Solo 1 material, no se usa movimientos_detalle
+[20-Jan-2026 01:29:08 UTC] [STOCK_BODEGA] UPDATE OK -> Bodega=2 Material=1 +-10
+[20-Jan-2026 01:29:08 UTC] ✓ Stock actualizado correctamente
+[20-Jan-2026 01:29:08 UTC] ✓ Movimiento registrado exitosamente: MOV-2026-00004
+[20-Jan-2026 01:29:08 UTC] ======================
+
+[20-Jan-2026 01:38:19 UTC] === REGISTRAR ENTRADA ===
+[20-Jan-2026 01:38:19 UTC] Datos recibidos: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"EFGEGERGERG","id_solicitud":3,"materiales":[{"id_material":1,"nombre":"Jorges","cantidad":30,"unidad":"KG"}]}
+[20-Jan-2026 01:38:19 UTC] Total materiales: 1
+[20-Jan-2026 01:38:19 UTC] ⚙️ Usando transacción existente en registrarEntrada()
+[20-Jan-2026 01:38:19 UTC] Primer material: {"id_material":1,"nombre":"Jorges","cantidad":30,"unidad":"KG"}
+[20-Jan-2026 01:38:19 UTC] ID movimiento creado: 6
+[20-Jan-2026 01:38:19 UTC] ⚠ Solo 1 material, no se usa movimientos_detalle
+[20-Jan-2026 01:38:19 UTC] [STOCK_BODEGA] UPDATE OK -> Bodega=2 Material=1 +-30
+[20-Jan-2026 01:38:19 UTC] ✓ Stock actualizado correctamente
+[20-Jan-2026 01:38:19 UTC] ✓ Movimiento registrado exitosamente: MOV-2026-00006
+[20-Jan-2026 01:38:19 UTC] ======================
+
+[20-Jan-2026 02:00:42 UTC] === REGISTRAR ENTRADA ===
+[20-Jan-2026 02:00:42 UTC] Datos recibidos: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"EWFWEFEWFEWFWEF","id_solicitud":4,"materiales":[{"id_material":1,"nombre":"Jorges","cantidad":12,"unidad":"KG"}]}
+[20-Jan-2026 02:00:42 UTC] Total materiales: 1
+[20-Jan-2026 02:00:42 UTC] ⚙️ Usando transacción existente en registrarEntrada()
+[20-Jan-2026 02:00:42 UTC] Primer material: {"id_material":1,"nombre":"Jorges","cantidad":12,"unidad":"KG"}
+[20-Jan-2026 02:00:42 UTC] ID movimiento creado: 8
+[20-Jan-2026 02:00:42 UTC] ⚠ Solo 1 material, no se usa movimientos_detalle
+[20-Jan-2026 02:00:42 UTC] [STOCK_BODEGA] UPDATE OK -> Bodega=2 Material=1 +-12
+[20-Jan-2026 02:00:42 UTC] ✓ Stock actualizado correctamente
+[20-Jan-2026 02:00:42 UTC] ✓ Movimiento registrado exitosamente: MOV-2026-00008
+[20-Jan-2026 02:00:42 UTC] ======================
+
+[20-Jan-2026 02:18:36 UTC] === REGISTRAR ENTRADA ===
+[20-Jan-2026 02:18:36 UTC] Datos recibidos: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"qwarestdytfuyhjk\u00f1l","id_solicitud":5,"materiales":[{"id_material":1,"nombre":"Jorges","cantidad":123,"unidad":"KG"}]}
+[20-Jan-2026 02:18:36 UTC] Total materiales: 1
+[20-Jan-2026 02:18:36 UTC] ⚙️ Usando transacción existente en registrarEntrada()
+[20-Jan-2026 02:18:36 UTC] Primer material: {"id_material":1,"nombre":"Jorges","cantidad":123,"unidad":"KG"}
+[20-Jan-2026 02:18:36 UTC] ID movimiento creado: 10
+[20-Jan-2026 02:18:36 UTC] ⚠ Solo 1 material, no se usa movimientos_detalle
+[20-Jan-2026 02:18:36 UTC] [STOCK_BODEGA] UPDATE OK -> Bodega=2 Material=1 +-123
+[20-Jan-2026 02:18:36 UTC] ✓ Stock actualizado correctamente
+[20-Jan-2026 02:18:36 UTC] ✓ Movimiento registrado exitosamente: MOV-2026-00010
+[20-Jan-2026 02:18:36 UTC] ======================
+

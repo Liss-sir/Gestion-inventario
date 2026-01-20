@@ -133,7 +133,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                     class="rounded-full p-1 hover:bg-muted flex-shrink-0"
                 >
                     <span class="sr-only">Cerrar</span>
-                    <svg class="h-4 w-4" xm lns="http://www.w3.org/2000/svg" fill="none"
+                    <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
                          viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M6 18L18 6M6 6l12 12"/>
