@@ -260,6 +260,7 @@ class MovimientoModel {
 
     public function listarMovimientos()
     {
+        // Combinar movimientos regulares con devoluciones usando UNION
         $sql = "
             SELECT 
                 m.id_movimiento,
@@ -274,60 +275,113 @@ class MovimientoModel {
                 m.id_ficha,
                 m.id_rae,
                 m.id_usuario,
-                m.id_solicitud
+                m.id_solicitud,
+                m.id_material
             FROM movimientos_material m
             LEFT JOIN bodegas b ON b.id_bodega = m.id_bodega
             LEFT JOIN subbodegas sb ON sb.id_subbodega = m.id_subbodega
-            ORDER BY m.fecha_hora DESC
+            
+            UNION ALL
+            
+            SELECT 
+                CONCAT('DEV-', d.id_devolucion) as id_movimiento,
+                'devolucion' as tipo_movimiento,
+                d.fecha_hora,
+                CONCAT('Devolución - ', d.estado_material, 
+                       CASE WHEN d.observaciones != '' THEN CONCAT(' - ', d.observaciones) ELSE '' END) as observaciones,
+                d.id_bodega,
+                b.nombre AS bodega,
+                d.id_subbodega,
+                sb.nombre_subbodega AS subbodega,
+                NULL as id_programa,
+                NULL as id_ficha,
+                NULL as id_rae,
+                d.id_usuario,
+                mm.id_solicitud,
+                d.id_material
+            FROM devoluciones_material d
+            LEFT JOIN bodegas b ON b.id_bodega = d.id_bodega
+            LEFT JOIN subbodegas sb ON sb.id_subbodega = d.id_subbodega
+            LEFT JOIN movimientos_material mm ON mm.id_movimiento = d.id_movimiento_salida
+            
+            ORDER BY fecha_hora DESC
         ";
 
         $stmt = $this->conn->prepare($sql);
         $stmt->execute();
         $movimientos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Agregar materiales a cada movimiento (incluyendo el material principal)
+        // Agregar materiales a cada movimiento
         foreach ($movimientos as &$mov) {
             $materiales = [];
 
-            // El material principal está en movimientos_material
-            $sqlPrincipal = "
-                SELECT id_material, id_material as id_material, cantidad
-                FROM movimientos_material
-                WHERE id_movimiento = ?
-            ";
-            $stmtPrincipal = $this->conn->prepare($sqlPrincipal);
-            $stmtPrincipal->execute([$mov['id_movimiento']]);
-            $principal = $stmtPrincipal->fetch(PDO::FETCH_ASSOC);
+            // Si es una devolución (id empieza con DEV-)
+            if (strpos($mov['id_movimiento'], 'DEV-') === 0) {
+                // Para devoluciones, el material ya está en id_material
+                if ($mov['id_material']) {
+                    $sqlMat = "SELECT nombre, unidad_medida FROM material_formacion WHERE id_material = ?";
+                    $stmtMat = $this->conn->prepare($sqlMat);
+                    $stmtMat->execute([$mov['id_material']]);
+                    $matInfo = $stmtMat->fetch(PDO::FETCH_ASSOC);
 
-            if ($principal) {
-                // Obtener info del material
-                $sqlMat = "SELECT nombre, unidad_medida FROM material_formacion WHERE id_material = ?";
-                $stmtMat = $this->conn->prepare($sqlMat);
-                $stmtMat->execute([$principal['id_material']]);
-                $matInfo = $stmtMat->fetch(PDO::FETCH_ASSOC);
+                    if ($matInfo) {
+                        // Obtener cantidad de la devolución
+                        $idDev = str_replace('DEV-', '', $mov['id_movimiento']);
+                        $sqlCant = "SELECT cantidad_devuelta FROM devoluciones_material WHERE id_devolucion = ?";
+                        $stmtCant = $this->conn->prepare($sqlCant);
+                        $stmtCant->execute([$idDev]);
+                        $cantidad = $stmtCant->fetchColumn() ?: 0;
 
-                if ($matInfo) {
-                    $materiales[] = [
-                        'id_material' => $principal['id_material'],
-                        'nombre' => $matInfo['nombre'],
-                        'cantidad' => $principal['cantidad'],
-                        'unidad_medida' => $matInfo['unidad_medida']
-                    ];
+                        $materiales[] = [
+                            'id_material' => $mov['id_material'],
+                            'nombre' => $matInfo['nombre'],
+                            'cantidad' => $cantidad,
+                            'unidad_medida' => $matInfo['unidad_medida']
+                        ];
+                    }
                 }
+            } else {
+                // Para movimientos regulares, el material principal está en movimientos_material
+                $sqlPrincipal = "
+                    SELECT id_material, cantidad
+                    FROM movimientos_material
+                    WHERE id_movimiento = ?
+                ";
+                $stmtPrincipal = $this->conn->prepare($sqlPrincipal);
+                $stmtPrincipal->execute([$mov['id_movimiento']]);
+                $principal = $stmtPrincipal->fetch(PDO::FETCH_ASSOC);
+
+                if ($principal) {
+                    // Obtener info del material
+                    $sqlMat = "SELECT nombre, unidad_medida FROM material_formacion WHERE id_material = ?";
+                    $stmtMat = $this->conn->prepare($sqlMat);
+                    $stmtMat->execute([$principal['id_material']]);
+                    $matInfo = $stmtMat->fetch(PDO::FETCH_ASSOC);
+
+                    if ($matInfo) {
+                        $materiales[] = [
+                            'id_material' => $principal['id_material'],
+                            'nombre' => $matInfo['nombre'],
+                            'cantidad' => $principal['cantidad'],
+                            'unidad_medida' => $matInfo['unidad_medida']
+                        ];
+                    }
+                }
+
+                // Los materiales adicionales están en movimientos_detalle
+                $sqlMat = "
+                    SELECT md.id_material, mf.nombre, md.cantidad, mf.unidad_medida
+                    FROM movimientos_detalle md
+                    INNER JOIN material_formacion mf ON mf.id_material = md.id_material
+                    WHERE md.id_movimiento = ?
+                ";
+                $stmtMat = $this->conn->prepare($sqlMat);
+                $stmtMat->execute([$mov['id_movimiento']]);
+                $detalles = $stmtMat->fetchAll(PDO::FETCH_ASSOC);
+
+                $materiales = array_merge($materiales, $detalles);
             }
 
-            // Los materiales adicionales están en movimientos_detalle
-            $sqlMat = "
-                SELECT md.id_material, mf.nombre, md.cantidad, mf.unidad_medida
-                FROM movimientos_detalle md
-                INNER JOIN material_formacion mf ON mf.id_material = md.id_material
-                WHERE md.id_movimiento = ?
-            ";
-            $stmtMat = $this->conn->prepare($sqlMat);
-            $stmtMat->execute([$mov['id_movimiento']]);
-            $detalles = $stmtMat->fetchAll(PDO::FETCH_ASSOC);
-
-            $materiales = array_merge($materiales, $detalles);
             $mov['materiales'] = $materiales;
         }
 

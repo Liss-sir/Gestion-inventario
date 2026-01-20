@@ -57,71 +57,58 @@ class devolucion {
     }
 
     /**
-     * Registrar devolución y actualizar stock
+     * Registrar devolución (el trigger actualiza el stock automáticamente)
+     * 
+     * IMPORTANTE: La base de datos tiene triggers AFTER INSERT que actualizan
+     * el stock automáticamente:
+     * - trg_actualizar_stock_devoluciones
+     * - trg_devolucion_after_insert
+     * 
+     * NO actualizar manualmente el stock desde PHP para evitar duplicaciones.
      */
     public function registrar($data) {
         try {
-            $this->conn->beginTransaction();
-
+            // Log de datos recibidos
+            error_log("Devolucion::registrar - Datos recibidos: " . json_encode($data));
+            
             // Insertar devolución (sin id_devolucion, es autoincremental)
+            // Los triggers se encargan de actualizar stock_bodega y stock_subbodega
             $sql = "INSERT INTO {$this->table}
             (id_movimiento_salida, id_usuario, id_material, id_bodega, id_subbodega, cantidad_devuelta, estado_material, fecha_hora, observaciones)
             VALUES (:id_movimiento_salida, :id_usuario, :id_material, :id_bodega, :id_subbodega, :cantidad_devuelta, :estado_material, NOW(), :observaciones)";
 
             $stmt = $this->conn->prepare($sql);
+            
+            // Validar que id_subbodega no esté vacío como string
+            $subbodega = $data['id_subbodega'];
+            if ($subbodega === '' || $subbodega === null) {
+                $subbodega = null;
+            }
+            
             $stmt->bindParam(":id_movimiento_salida", $data['id_movimiento_salida']);
             $stmt->bindParam(":id_usuario", $data['id_usuario']);
             $stmt->bindParam(":id_material", $data['id_material']);
             $stmt->bindParam(":id_bodega", $data['id_bodega']);
-            $stmt->bindParam(":id_subbodega", $data['id_subbodega']);
+            $stmt->bindParam(":id_subbodega", $subbodega);
             $stmt->bindParam(":cantidad_devuelta", $data['cantidad_devuelta']);
             $stmt->bindParam(":estado_material", $data['estado_material']);
             $stmt->bindParam(":observaciones", $data['observaciones']);
 
-            if (!$stmt->execute()) {
-                throw new Exception("Error al insertar devolución");
+            $resultado = $stmt->execute();
+            
+            if ($resultado) {
+                error_log("Devolucion::registrar - Registro exitoso para material ID: " . $data['id_material']);
+            } else {
+                error_log("Devolucion::registrar - Execute retornó FALSE");
+                error_log("Devolucion::registrar - Error info: " . json_encode($stmt->errorInfo()));
             }
-
-            // Actualizar stock en bodega
-            $this->actualizarStock(
-                $data['id_bodega'],
-                $data['id_subbodega'] ?? null,
-                $data['id_material'],
-                $data['cantidad_devuelta']
-            );
-
-            $this->conn->commit();
-            return true;
+            
+            return $resultado;
 
         } catch (Exception $e) {
-            if ($this->conn->inTransaction()) {
-                $this->conn->rollBack();
-            }
-            error_log("Error registrar devolución: " . $e->getMessage());
+            error_log("Devolucion::registrar - EXCEPCIÓN: " . $e->getMessage());
+            error_log("Devolucion::registrar - Archivo: " . $e->getFile() . " Línea: " . $e->getLine());
             return false;
-        }
-    }
-
-    /**
-     * Actualizar stock al devolver material
-     */
-    private function actualizarStock($idBodega, $idSubbodega, $idMaterial, $cantidad) {
-        // Actualizar en bodega
-        $sqlBodega = "INSERT INTO stock_bodega (id_bodega, id_material, stock_actual)
-                      VALUES (?, ?, ?)
-                      ON DUPLICATE KEY UPDATE stock_actual = stock_actual + ?";
-        
-        $stmtBodega = $this->conn->prepare($sqlBodega);
-        $stmtBodega->execute([$idBodega, $idMaterial, $cantidad, $cantidad]);
-
-        // Si hay subbodega, también actualizar ahí
-        if ($idSubbodega && $idSubbodega > 0) {
-            $sqlSub = "INSERT INTO stock_subbodega (id_subbodega, id_material, stock_actual)
-                       VALUES (?, ?, ?)
-                       ON DUPLICATE KEY UPDATE stock_actual = stock_actual + ?";
-            
-            $stmtSub = $this->conn->prepare($sqlSub);
-            $stmtSub->execute([$idSubbodega, $idMaterial, $cantidad, $cantidad]);
         }
     }
 

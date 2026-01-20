@@ -84,13 +84,16 @@ if ($method === 'POST') {
 
     if ($action === 'registrar') {
         $id_movimiento_salida = $_POST['id_movimiento_salida'] ?? null;
-        $id_usuario = $_SESSION['id_usuario'] ?? null;
+        $id_usuario = $_SESSION['id_usuario'] ?? 1; // Usar 1 si no hay sesión (para testing)
         $id_material = $_POST['id_material'] ?? null;
         $id_bodega = $_POST['id_bodega'] ?? null;
         $id_subbodega = $_POST['id_subbodega'] ?? null;
         $cantidad_devuelta = $_POST['cantidad_devuelta'] ?? null;
         $estado_material = $_POST['estado_material'] ?? null;
         $observaciones = $_POST['observaciones'] ?? '';
+
+        // Log para debugging
+        error_log("Devolución - Datos recibidos: " . json_encode($_POST));
 
         // Validaciones
         if (!$id_movimiento_salida || !$id_material || !$id_bodega || !$cantidad_devuelta || !$estado_material) {
@@ -104,42 +107,47 @@ if ($method === 'POST') {
         }
 
         // Validar que no se devuelva más de lo prestado
-        $materiales = $devolucion->getMaterialesMovimiento($id_movimiento_salida);
-        $materialEncontrado = false;
-        foreach ($materiales as $mat) {
-            if ($mat['id_material'] == $id_material) {
-                $materialEncontrado = true;
-                if ($cantidad_devuelta > $mat['cantidad_pendiente']) {
-                    echo json_encode([
-                        'success' => false, 
-                        'message' => "No puede devolver más de lo pendiente ({$mat['cantidad_pendiente']} {$mat['unidad_medida']})"
-                    ]);
-                    exit;
+        try {
+            $materiales = $devolucion->getMaterialesMovimiento($id_movimiento_salida);
+            $materialEncontrado = false;
+            foreach ($materiales as $mat) {
+                if ($mat['id_material'] == $id_material) {
+                    $materialEncontrado = true;
+                    if ($cantidad_devuelta > $mat['cantidad_pendiente']) {
+                        echo json_encode([
+                            'success' => false, 
+                            'message' => "No puede devolver más de lo pendiente ({$mat['cantidad_pendiente']} {$mat['unidad_medida']})"
+                        ]);
+                        exit;
+                    }
+                    break;
                 }
-                break;
             }
-        }
 
-        if (!$materialEncontrado) {
-            echo json_encode(['success' => false, 'message' => 'Material no encontrado en el movimiento o ya fue devuelto completamente']);
-            exit;
-        }
+            if (!$materialEncontrado) {
+                echo json_encode(['success' => false, 'message' => 'Material no encontrado en el movimiento o ya fue devuelto completamente']);
+                exit;
+            }
 
-        $data = [
-            'id_movimiento_salida' => $id_movimiento_salida,
-            'id_usuario' => $id_usuario,
-            'id_material' => $id_material,
-            'id_bodega' => $id_bodega,
-            'id_subbodega' => $id_subbodega,
-            'cantidad_devuelta' => $cantidad_devuelta,
-            'estado_material' => $estado_material,
-            'observaciones' => $observaciones
-        ];
+            $data = [
+                'id_movimiento_salida' => $id_movimiento_salida,
+                'id_usuario' => $id_usuario,
+                'id_material' => $id_material,
+                'id_bodega' => $id_bodega,
+                'id_subbodega' => $id_subbodega,
+                'cantidad_devuelta' => $cantidad_devuelta,
+                'estado_material' => $estado_material,
+                'observaciones' => $observaciones
+            ];
 
-        if ($devolucion->registrar($data)) {
-            echo json_encode(['success' => true, 'message' => 'Devolución registrada correctamente']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Error al registrar la devolución']);
+            if ($devolucion->registrar($data)) {
+                echo json_encode(['success' => true, 'message' => 'Devolución registrada correctamente']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Error al registrar la devolución']);
+            }
+        } catch (Exception $e) {
+            error_log("Error en devolución: " . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Error en el servidor: ' . $e->getMessage()]);
         }
     } else {
         echo json_encode(['success' => false, 'message' => 'Acción no válida']);
