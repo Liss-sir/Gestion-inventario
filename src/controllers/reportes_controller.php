@@ -480,6 +480,185 @@ try {
     }
 
     // =====================================================
+// ✅ REPORTE PERSONALIZADO (GENERATE_CUSTOM)
+// - Respeta tu frontend actual (consumo / movimientos / stock / auditoria)
+// - Formatos: pdf | csv | excel
+// =====================================================
+if ($action === "generate_custom") {
+
+    $tipoRaw   = trim((string)($_GET["tipo_reporte"] ?? "consumo"));
+    $formatRaw = strtolower(trim((string)($_GET["format"] ?? "pdf")));
+
+    // ✅ filtros extra del personalizado
+    $filters["bodega"] = $_GET["bodega"] ?? "all";
+    $incluirGraficas   = strtolower(trim((string)($_GET["incluir_graficas"] ?? "yes")));
+
+    // ✅ Mapear los values del select (SIN TOCAR TU HTML)
+    // consumo   -> consumo-materiales
+    // stock     -> material-faltante
+    // auditoria -> movimientos (por ahora)
+    $tipoMap = [
+        "consumo"   => "consumo-materiales",
+        "movimientos" => "movimientos",
+        "stock"     => "material-faltante",
+        "auditoria" => "movimientos",
+    ];
+
+    $tipo = $tipoMap[$tipoRaw] ?? "consumo-materiales";
+
+    // ✅ Mapear formato (tu HTML manda excel)
+    // excel -> lo descargamos como XLS (tabla HTML compatible con Excel)
+    $format = $formatRaw;
+    if ($format === "xlsx") $format = "excel";
+
+    // =====================================================
+    // ✅ DATA SEGÚN TIPO
+    // =====================================================
+    $rows = [];
+    $title = "Reporte Personalizado";
+    $subtitle = "Reporte generado desde configuración personalizada";
+
+    if ($tipo === "consumo-materiales") {
+        $title = "Reporte: Consumo de Materiales";
+        $subtitle = "Consumo y costo por material";
+
+        // ✅ Necesita el método getConsumoPorMaterial (te lo dejo abajo para pegarlo)
+        $rows = $model->getConsumoPorMaterial($filters);
+    }
+    else if ($tipo === "movimientos") {
+        $title = "Reporte: Movimientos";
+        $subtitle = "Registro de entradas, salidas y devoluciones";
+        $rows = $model->getMovimientosDetalle($filters, 300);
+    }
+    else if ($tipo === "material-faltante") {
+        $title = "Reporte: Estado de Stock";
+        $subtitle = "Materiales con stock bajo o agotado";
+        $threshold = isset($_GET["threshold"]) ? (int)$_GET["threshold"] : 5;
+        $rows = $model->getMaterialFaltante($filters, $threshold);
+    }
+    else {
+        jsonResponse(false, "Tipo no soportado en personalizado: " . $tipo, null, 400);
+    }
+
+    // =====================================================
+    // ✅ CSV
+    // =====================================================
+    if ($format === "csv") {
+        if (ob_get_length()) ob_end_clean();
+
+        header("Content-Type: text/csv; charset=utf-8");
+        header("Content-Disposition: attachment; filename=\"Reporte_" . $tipo . "_" . date("Y-m-d_H-i") . ".csv\"");
+        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+        header("Pragma: no-cache");
+
+        $out = fopen("php://output", "w");
+
+        if (empty($rows)) {
+            fputcsv($out, ["No hay datos con los filtros seleccionados"]);
+            fclose($out);
+            exit;
+        }
+
+        fputcsv($out, array_keys($rows[0]));
+        foreach ($rows as $r) {
+            fputcsv($out, $r);
+        }
+
+        fclose($out);
+        exit;
+    }
+
+    // =====================================================
+    // ✅ EXCEL (SIN LIBRERÍAS): XLS por tabla HTML
+    // =====================================================
+    if ($format === "excel") {
+        if (ob_get_length()) ob_end_clean();
+
+        $filename = "Reporte_" . $tipo . "_" . date("Y-m-d_H-i") . ".xls";
+
+        header("Content-Type: application/vnd.ms-excel; charset=utf-8");
+        header("Content-Disposition: attachment; filename=\"$filename\"");
+        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+        header("Pragma: no-cache");
+
+        echo "<meta charset='UTF-8'>";
+        echo "<h3>" . e($title) . "</h3>";
+        echo "<p>" . e($subtitle) . "</p>";
+
+        if (empty($rows)) {
+            echo "<p>No hay datos con los filtros seleccionados.</p>";
+            exit;
+        }
+
+        echo "<table border='1' cellpadding='6' cellspacing='0'>";
+        echo "<thead><tr>";
+        foreach (array_keys($rows[0]) as $col) {
+            echo "<th>" . e($col) . "</th>";
+        }
+        echo "</tr></thead><tbody>";
+
+        foreach ($rows as $r) {
+            echo "<tr>";
+            foreach ($r as $v) {
+                echo "<td>" . e($v) . "</td>";
+            }
+            echo "</tr>";
+        }
+
+        echo "</tbody></table>";
+        exit;
+    }
+
+    // =====================================================
+    // ✅ PDF (POR DEFECTO)
+    // =====================================================
+    $file = "Reporte_Personalizado_" . $tipo . "_" . date("Y-m-d_H-i") . ".pdf";
+    $header = buildPdfHeaderHtml($title, $subtitle, $filters);
+
+    $html = "<html><head><meta charset='UTF-8'></head><body>$header";
+
+    // ✅ Si activó incluir gráficas (solo aviso por ahora)
+    if ($incluirGraficas === "yes") {
+        $html .= "<p class='muted'>Gráficas: activadas (aún no incrustadas en PDF).</p>";
+    }
+
+    // ✅ Tabla dinámica
+    $html .= "<table><thead><tr>";
+
+    if (!empty($rows)) {
+        foreach (array_keys($rows[0]) as $col) {
+            $align = in_array($col, ["consumo", "costo", "cantidad", "stock", "minimo"], true) ? " class='num'" : "";
+            $html .= "<th$align>" . e(ucfirst($col)) . "</th>";
+        }
+    } else {
+        $html .= "<th>Resultado</th>";
+    }
+
+    $html .= "</tr></thead><tbody>";
+
+    if (empty($rows)) {
+        $html .= "<tr><td>No hay datos con los filtros seleccionados.</td></tr>";
+    } else {
+        foreach ($rows as $r) {
+            $html .= "<tr>";
+            foreach ($r as $k => $v) {
+                $isNum = in_array($k, ["consumo", "costo", "cantidad", "stock", "minimo"], true);
+                $val = ($k === "costo") ? formatCOP((int)$v) : $v;
+
+                $html .= "<td" . ($isNum ? " class='num'" : "") . ">" . e($val) . "</td>";
+            }
+            $html .= "</tr>";
+        }
+    }
+
+    $html .= "</tbody></table>";
+    $html .= "<p class='muted' style='margin-top:8px;'>SIGA - Reporte Personalizado</p></body></html>";
+
+    renderPDF($html, $file);
+}
+
+
+    // =====================================================
     // ✅ PRINT VIEW (ok)
     // =====================================================
     if ($action === "print_view") {

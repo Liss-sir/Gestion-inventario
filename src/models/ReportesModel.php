@@ -600,5 +600,57 @@ public function getConsumoPorRAE(array $filters): array
         ];
     }
 
+    /**
+ * ✅ Consumo REAL por Material (para Reporte Personalizado)
+ * - Solo cuenta SALIDAS
+ * - Calcula costo = cantidad * precio
+ * - Respeta filtros: fechas, programa, ficha
+ * - Aplica filtro de bodega solo si existe columna en movimientos_material
+ */
+public function getConsumoPorMaterial(array $filters): array
+{
+    [$where, $params] = $this->buildFiltersProgramFlexible($filters);
+
+    // ✅ filtro bodega (si existe columna)
+    $bodegaId = $filters["bodega"] ?? "all";
+
+    $bodegaCol = null;
+    if ($this->columnExists("movimientos_material", "id_bodega")) $bodegaCol = "id_bodega";
+    else if ($this->columnExists("movimientos_material", "bodega_id")) $bodegaCol = "bodega_id";
+
+    if ($bodegaCol && $bodegaId !== "all" && $bodegaId !== "" && is_numeric($bodegaId)) {
+        if ($where) $where .= " AND m.$bodegaCol = ?";
+        else $where = "WHERE m.$bodegaCol = ?";
+        $params[] = (int)$bodegaId;
+    }
+
+    $sql = "
+        SELECT
+            mat.nombre AS material,
+            SUM(CASE WHEN m.tipo_movimiento='Salida' THEN m.cantidad ELSE 0 END) AS consumo,
+            SUM(CASE WHEN m.tipo_movimiento='Salida' THEN (m.cantidad * mat.precio) ELSE 0 END) AS costo
+        FROM movimientos_material m
+        INNER JOIN material_formacion mat ON mat.id_material = m.id_material
+        LEFT JOIN fichas f ON f.id_ficha = m.id_ficha
+        $where
+        GROUP BY mat.id_material, mat.nombre
+        HAVING consumo > 0
+        ORDER BY consumo DESC
+    ";
+
+    $st = $this->db->prepare($sql);
+    $st->execute($params);
+
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    foreach ($rows as &$r) {
+        $r["consumo"] = (int)$r["consumo"];
+        $r["costo"]   = (int)$r["costo"];
+    }
+
+    return $rows;
+}
+
+
     
 }

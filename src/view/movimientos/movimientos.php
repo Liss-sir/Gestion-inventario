@@ -402,7 +402,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                     <!-- =====================
                         DATOS DEL MATERIAL
                     ====================== -->
-                    <div class="rounded-xl border border-border p-4 bg-gray-50">
+                    <div data-field="material" class="rounded-xl border border-border p-4 bg-gray-50">
                         <p class="text-xs font-semibold text-gray-500 uppercase mb-3">
                             Datos del material
                         </p>
@@ -471,8 +471,33 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
                     </div>
                     <!-- =====================
-                        DEVOLUCI├ôN (ULTRA COMPACTA)
+                        DEVOLUCIÓN
                     ====================== -->
+
+                    <div data-field="devolucion-container"
+                        class="hidden rounded-xl border border-[#39A900] bg-[#39A90015] p-4">
+
+                        <p class="text-sm font-semibold text-[#2e7d00] mb-3">
+                            📦 Devolución de Material
+                        </p>
+
+                        <!-- Seleccionar solicitud con salida -->
+                        <div class="mb-3">
+                            <label class="text-sm font-medium text-gray-700">Solicitud de Salida</label>
+                            <select id="solicitud_salida_dev" class="w-full border rounded-lg px-3 py-2 text-sm">
+                                <option value="">Seleccione una solicitud...</option>
+                            </select>
+                        </div>
+
+                        <!-- Materiales prestados (se carga dinámicamente) -->
+                        <div id="materiales_prestados_container" class="hidden">
+                            <label class="text-sm font-medium text-gray-700 mb-2 block">Materiales Prestados</label>
+                            <div id="materiales_prestados_lista" class="space-y-2">
+                                <!-- Se llena con JavaScript -->
+                            </div>
+                        </div>
+
+                    </div>
 
                     <div data-field="programa"
                         class="hidden rounded-md border border-[#39A900] bg-[#39A90015] p-2">

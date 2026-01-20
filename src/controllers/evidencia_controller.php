@@ -33,6 +33,7 @@ class EvidenciaController {
             // Validar que venga de FormData (POST)
             if (
                 !isset($_POST["id_usuario"]) ||
+                !isset($_POST["id_movimiento_salida"]) ||
                 !isset($_POST["descripcion_obra"]) ||
                 !isset($_FILES["foto"])
             ) {
@@ -40,15 +41,7 @@ class EvidenciaController {
             }
 
             $id_usuario = $_POST["id_usuario"];
-            
-            // Buscar la salida más reciente del usuario que no tenga evidencia
-            $salida = $this->model->obtenerSalidaPendientePorUsuario($id_usuario);
-            
-            if (!$salida) {
-                sendJSON(["mensaje" => "No hay salidas pendientes de evidencia para este usuario"], 404);
-            }
-            
-            $id_movimiento_salida = $salida['id_movimiento'];
+            $id_movimiento_salida = $_POST["id_movimiento_salida"];
 
             // Procesar upload de imagen
             $foto = $this->savePhoto($_FILES["foto"]);
@@ -127,8 +120,11 @@ $controller = new EvidenciaController($conn);
 /* Routes */
 $method = $_SERVER["REQUEST_METHOD"];
 $accion = $_GET["accion"] ?? null;
+$id_usuario = $_GET["id_usuario"] ?? null;
 
-if ($method === "GET" && $accion === "salidas_pendientes") {
+if ($method === "GET" && $accion === "salidas_pendientes" && $id_usuario) {
+    sendJSON($controller->model->obtenerSalidasPendientesPorUsuario($id_usuario));
+} elseif ($method === "GET" && $accion === "salidas_pendientes") {
     sendJSON($controller->model->obtenerSalidasSinEvidencia());
 } elseif ($method === "GET" && isset($_GET["id"])) {
     $controller->show($_GET["id"]);
