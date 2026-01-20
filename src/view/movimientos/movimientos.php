@@ -478,7 +478,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                         class="hidden rounded-xl border border-[#39A900] bg-[#39A90015] p-4">
 
                         <p class="text-sm font-semibold text-[#2e7d00] mb-3">
-                            📦 Devolución de Material
+                            Devolución de Material
                         </p>
 
                         <!-- Seleccionar solicitud con salida -->

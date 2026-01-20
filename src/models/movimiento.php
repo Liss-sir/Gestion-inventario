@@ -272,14 +272,20 @@ class MovimientoModel {
                 m.id_subbodega,
                 sb.nombre_subbodega AS subbodega,
                 m.id_programa,
+                COALESCE(pr.nombre_programa, 'N/A') AS nombre_programa,
                 m.id_ficha,
+                COALESCE(f.numero_ficha, 'N/A') AS numero_ficha,
                 m.id_rae,
+                COALESCE(r.codigo_rae, 'N/A') AS codigo_rae,
                 m.id_usuario,
                 m.id_solicitud,
                 m.id_material
             FROM movimientos_material m
             LEFT JOIN bodegas b ON b.id_bodega = m.id_bodega
             LEFT JOIN subbodegas sb ON sb.id_subbodega = m.id_subbodega
+            LEFT JOIN programas_formacion pr ON pr.id_programa = m.id_programa
+            LEFT JOIN fichas f ON f.id_ficha = m.id_ficha
+            LEFT JOIN raes r ON r.id_rae = m.id_rae
             
             UNION ALL
             
@@ -294,8 +300,11 @@ class MovimientoModel {
                 d.id_subbodega,
                 sb.nombre_subbodega AS subbodega,
                 NULL as id_programa,
+                'N/A' as nombre_programa,
                 NULL as id_ficha,
+                'N/A' as numero_ficha,
                 NULL as id_rae,
+                'N/A' as codigo_rae,
                 d.id_usuario,
                 mm.id_solicitud,
                 d.id_material
