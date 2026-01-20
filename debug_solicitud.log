@@ -13,3 +13,6 @@
 2026-01-19 19:59:48 [INSERT] Movimiento insertado con ID: 6
 2026-01-19 19:59:48 ✅ [SALIDA] Movimiento creado: MOV-2026-00006
 2026-01-19 19:59:48 ✅ [CONTROLLER] Solicitud respondida exitosamente
+2026-01-19 21:54:00 [INSERT] id_solicitud recibido: 'NO_EXISTE'
+2026-01-19 21:54:00 [INSERT] Cantidad a insertar: 10 | tipo_movimiento: 'entrada'
+2026-01-19 21:54:00 [INSERT] Movimiento insertado con ID: 1
