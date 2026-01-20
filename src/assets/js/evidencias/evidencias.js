@@ -18,15 +18,65 @@ document.addEventListener("DOMContentLoaded", () => {
 /* =========================
    API & Helpers
    ========================= */
-// BASE_URL para JS: usa window.BASE_URL si está definida, si no, asume /Gestion-inventario
+
+/* ============================================================
+   ✅ BASE_URL GLOBAL REAL (SIN HARDCODE)
+   - Si existe window.BASE_URL (recomendado desde PHP), úsala
+   - Si NO existe, detecta automáticamente la raíz del proyecto
+     según la ruta actual:
+       ✅ /.../index.php?page=...
+       ✅ /.../src/view/...
+       ✅ cualquier otra ruta
+============================================================ */
 const EVIDENCIAS_BASE_URL = (function () {
-  if (window.BASE_URL) return window.BASE_URL.endsWith("/") ? window.BASE_URL : window.BASE_URL + "/"
-  const origin = window.location.origin
-  // Ajusta a tu carpeta del proyecto (según test.http)
-  return origin + "/Gestion-inventario/"
+  // ✅ 1) Si el backend ya define BASE_URL global, usarla
+  if (window.BASE_URL) {
+    return window.BASE_URL.endsWith("/") ? window.BASE_URL : window.BASE_URL + "/"
+  }
+
+  // ✅ 2) Detectar desde la URL actual (GLOBAL)
+  const { origin, pathname } = window.location
+
+  // Caso A: estás en index.php?page=...
+  // Ej: /gestion_inventario/Gestion-inventario/index.php
+  if (pathname.includes("/index.php")) {
+    const basePath = pathname.split("/index.php")[0] + "/"
+    return origin + basePath
+  }
+
+  // Caso B: estás dentro de /src/... (ej: /Gestion-inventario/src/view/...)
+  // Recorta desde "/src/"
+  if (pathname.includes("/src/")) {
+    const basePath = pathname.split("/src/")[0] + "/"
+    return origin + basePath
+  }
+
+  // Caso C: fallback -> usa el directorio actual
+  // Ej: /Gestion-inventario/algo/archivo.php  -> /Gestion-inventario/algo/
+  const basePath = pathname.replace(/\/[^/]*$/, "/")
+  return origin + basePath
 })()
 
-const EVIDENCIAS_API_URL = EVIDENCIAS_BASE_URL + "src/controllers/evidencia_controller.php"
+const EVIDENCIAS_API_URL = "src/controllers/evidencia_controller.php"
+
+/* ============================================================
+   ✅ FIX GLOBAL (SIN TOCAR TU BASE)
+   - Convierte "src/controllers/..." en URL absoluta usando la base real del proyecto
+============================================================ */
+function resolveEndpoint(endpoint) {
+  if (!endpoint) return ""
+
+  // ✅ Si ya es absoluto, no tocar
+  if (/^https?:\/\//i.test(endpoint)) return endpoint
+
+  // ✅ Si empieza con "/", se pega directo a la base (sin duplicar)
+  if (endpoint.startsWith("/")) {
+    return EVIDENCIAS_BASE_URL.replace(/\/+$/, "") + endpoint
+  }
+
+  // ✅ Caso normal: "src/controllers/....php"
+  return new URL(endpoint, EVIDENCIAS_BASE_URL).toString()
+}
 
 function getEvidenceImageUrl(foto) {
   if (!foto) return ""
@@ -38,21 +88,26 @@ function getEvidenceImageUrl(foto) {
 
 async function fetchAndRenderEvidences() {
   try {
-    const res = await fetch(EVIDENCIAS_API_URL, { method: "GET" })
+    const res = await fetch(resolveEndpoint(EVIDENCIAS_API_URL), {
+      method: "GET",
+      credentials: "same-origin",
+      cache: "no-store",
+    })
+
     if (!res.ok) throw new Error("Error al cargar evidencias")
-    
+
     const data = await res.json()
 
     evidencesData = (Array.isArray(data) ? data : []).map((row) => {
       // Formatear fecha
       const fecha = row.fecha ? new Date(row.fecha).toLocaleDateString("es-CO") : "-"
-      
+
       // Crear array de materiales
       const materiales = []
       if (row.material) {
         materiales.push(`${row.material} (${row.cantidad} ${row.unidad_medida})`)
       }
-      
+
       return {
         id: Number.parseInt(row.id_evidencia ?? row.id ?? Math.floor(Math.random() * 1e9)),
         fecha: fecha,
@@ -61,14 +116,13 @@ async function fetchAndRenderEvidences() {
         titulo: row.titulo ?? "Evidencia",
         descripcion: row.descripcion_obra ?? row.descripcion ?? "",
         materiales: materiales,
-        usuario: row.usuario ?? "-"
+        usuario: row.usuario ?? "-",
       }
     })
 
     renderEvidenceCards()
   } catch (err) {
     console.warn("[Evidencias] No se pudo cargar desde backend:", err)
-    // Si hay error, mostrar array vacío
     evidencesData = []
     renderEvidenceCards()
   }
@@ -92,7 +146,6 @@ function renderEvidenceCards() {
   const grid = document.getElementById("evidenceGrid")
   grid.innerHTML = ""
 
-  // Si no hay evidencias, mostrar estado vacío
   if (evidencesData.length === 0) {
     grid.className = "col-span-full"
     grid.innerHTML = `
@@ -111,7 +164,6 @@ function renderEvidenceCards() {
     return
   }
 
-  // Restaurar clase del grid cuando hay evidencias
   grid.className = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
 
   evidencesData.forEach((evidence) => {
@@ -143,7 +195,7 @@ function renderEvidenceCards() {
               ${icons.tag}
               ${material}
             </span>
-          `,
+          `
             )
             .join("")}
         </div>
@@ -161,7 +213,6 @@ function openDetailsModal(id) {
   const evidence = evidencesData.find((e) => e.id === id)
   if (!evidence) return
 
-  // Actualizar contenido del modal
   document.getElementById("detailImage").src = evidence.imagen
   document.getElementById("detailFicha").textContent = evidence.ficha
   document.getElementById("detailDate").innerHTML = `
@@ -178,11 +229,10 @@ function openDetailsModal(id) {
       ${icons.tag}
       ${material}
     </span>
-  `,
+  `
     )
     .join("")
 
-  // Mostrar modal
   const modal = document.getElementById("detailsModal")
   modal.classList.add("active")
   document.body.style.overflow = "hidden"
@@ -198,10 +248,8 @@ function closeDetailsModal() {
    Modal de Registro
    ========================= */
 function openCreateModalForSalida(idMovimiento, material, bodega, cantidad, unidad) {
-  // Setear ID de movimiento
   document.getElementById("id_movimiento_salida").value = idMovimiento
-  
-  // Mostrar info de la salida
+
   const salidaInfo = document.getElementById("salidaInfo")
   salidaInfo.innerHTML = `
     <p class="font-medium text-foreground">Salida #${idMovimiento}</p>
@@ -209,7 +257,7 @@ function openCreateModalForSalida(idMovimiento, material, bodega, cantidad, unid
     <p><strong>Bodega:</strong> ${bodega}</p>
     <p><strong>Cantidad:</strong> ${cantidad} ${unidad}</p>
   `
-  
+
   openCreateModal()
 }
 
@@ -224,13 +272,11 @@ function closeCreateModal() {
   modal.classList.remove("active")
   document.body.style.overflow = "auto"
 
-  // Limpiar formulario
   document.getElementById("descripcion").value = ""
   document.getElementById("photoInput").value = ""
   document.getElementById("imagePreview").classList.add("hidden")
   document.getElementById("uploadArea").style.display = "flex"
 }
-
 
 /* =========================
    Upload de Imagen
@@ -241,12 +287,10 @@ function setupUploadArea() {
   const imagePreview = document.getElementById("imagePreview")
   const previewImg = document.getElementById("previewImg")
 
-  // Click en el área de upload
   uploadArea.addEventListener("click", () => {
     photoInput.click()
   })
 
-  // Drag and drop
   uploadArea.addEventListener("dragover", (e) => {
     e.preventDefault()
     uploadArea.style.borderColor = "var(--primary)"
@@ -262,14 +306,13 @@ function setupUploadArea() {
     e.preventDefault()
     uploadArea.style.borderColor = "var(--border)"
     uploadArea.style.backgroundColor = "var(--muted)"
-    
+
     const files = e.dataTransfer.files
     if (files.length > 0) {
       handleImageUpload(files[0])
     }
   })
 
-  // Cambio de archivo
   photoInput.addEventListener("change", (e) => {
     if (e.target.files.length > 0) {
       handleImageUpload(e.target.files[0])
@@ -277,19 +320,16 @@ function setupUploadArea() {
   })
 
   function handleImageUpload(file) {
-    // Validar tipo de archivo
     if (!file.type.match(/image\/(png|jpg|jpeg)/)) {
       showFlowbiteAlert("error", "Solo se permiten archivos PNG, JPG o JPEG")
       return
     }
 
-    // Validar tamaño (5MB)
     if (file.size > 5 * 1024 * 1024) {
       showFlowbiteAlert("error", "La imagen no debe superar los 5MB")
       return
     }
 
-    // Mostrar preview
     const reader = new FileReader()
     reader.onload = (e) => {
       previewImg.src = e.target.result
@@ -313,23 +353,22 @@ async function createEvidence() {
   const descripcion = document.getElementById("descripcion").value
   const photoInput = document.getElementById("photoInput")
 
-  // Validaciones
   if (!descripcion || !photoInput.files.length) {
     showFlowbiteAlert("error", "Por favor complete todos los campos obligatorios")
     return
   }
 
   try {
-    // Crear FormData para enviar la imagen
     const formData = new FormData()
-    formData.append("id_usuario", 1) // Cambiar por el ID del usuario logueado
+    formData.append("id_usuario", 1)
     formData.append("foto", photoInput.files[0])
     formData.append("descripcion_obra", descripcion)
 
-    // Enviar al backend
-    const res = await fetch(EVIDENCIAS_API_URL, {
+    const res = await fetch(resolveEndpoint(EVIDENCIAS_API_URL), {
       method: "POST",
-      body: formData
+      body: formData,
+      credentials: "same-origin",
+      cache: "no-store",
     })
 
     const result = await res.json()
@@ -337,8 +376,6 @@ async function createEvidence() {
     if (res.ok && res.status === 201) {
       showFlowbiteAlert("success", "Evidencia creada exitosamente")
       closeCreateModal()
-      
-      // Recargar evidencias
       await fetchAndRenderEvidences()
     } else {
       showFlowbiteAlert("error", result.mensaje || "Error al crear la evidencia")
@@ -439,7 +476,6 @@ function createAlertContainer() {
 /* =========================
    Event Listeners
    ========================= */
-// Cerrar modales al hacer clic en el overlay
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("detailsModal").addEventListener("click", function (e) {
     if (e.target === this) {
@@ -453,7 +489,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   })
 
-  // Cerrar con tecla Escape
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       closeDetailsModal()

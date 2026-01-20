@@ -88,3 +88,24 @@
 2026-01-20 02:18:36 [INSERT] Movimiento insertado con ID: 10
 2026-01-20 02:18:36 ✅ [SALIDA] Movimiento creado: MOV-2026-00010
 2026-01-20 02:18:36 ✅ [CONTROLLER] Solicitud respondida exitosamente
+2026-01-20 02:33:30 [INSERT] id_solicitud recibido: 'NO_EXISTE'
+2026-01-20 02:33:30 [INSERT] Cantidad a insertar: 10 | tipo_movimiento: 'entrada'
+2026-01-20 02:33:30 [INSERT] Movimiento insertado con ID: 9
+2026-01-20 02:34:10 [INSERT] id_solicitud recibido: 'NO_EXISTE'
+2026-01-20 02:34:10 [INSERT] Cantidad a insertar: 100 | tipo_movimiento: 'entrada'
+2026-01-20 02:34:10 [INSERT] Movimiento insertado con ID: 10
+2026-01-20 02:34:57 [CONTROLLER] responder() invocado: {"id_solicitud":2,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-20 02:34:57 [RESPONDER] Iniciando responderSolicitud(2, aprobada, 1)
+2026-01-20 02:34:57 ✅ Solicitud 2 actualizada a Aprobada. Filas: 1
+2026-01-20 02:34:57 🔵 Llamando crearMovimientoSalidaDeSolicitud(2, 1)
+2026-01-20 02:34:57 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(2, 1)
+2026-01-20 02:34:57 📋 [SALIDA] Solicitud: {"id_solicitud":2,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":1,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-19 21:34:54","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-19 21:34:57","observaciones":"","materiales":[{"id_solicitud_detalle":2,"id_material":1,"material":"Jorges","cantidad":45,"unidad_medida":"KG","clasificacion":"Inventariado"}]}
+2026-01-20 02:34:57 📦 [SALIDA] 1 materiales encontrados
+2026-01-20 02:34:57 🏪 [SALIDA] Bodega obtenida: 2
+2026-01-20 02:34:57   📌 Jorges (ID: 1, Cant: 45)
+2026-01-20 02:34:57 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"","id_solicitud":2,"materiales":[{"id_material":1,"nombre":"Jorges","cantidad":45,"unidad":"KG"}]}
+2026-01-20 02:34:57 [INSERT] id_solicitud recibido: 2
+2026-01-20 02:34:57 [INSERT] Cantidad a insertar: 45 | tipo_movimiento: 'Salida'
+2026-01-20 02:34:57 [INSERT] Movimiento insertado con ID: 11
+2026-01-20 02:34:57 ✅ [SALIDA] Movimiento creado: MOV-2026-00011
+2026-01-20 02:34:57 ✅ [CONTROLLER] Solicitud respondida exitosamente

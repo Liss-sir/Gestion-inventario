@@ -150,6 +150,8 @@ function crearTokenSesionBD(PDO $conn, int $idUsuario): ?string
     }
 }
 
+
+
 /**
  * Valida que la sesión PHP actual siga activa en la BD (token_sesion).
  */
@@ -1995,6 +1997,99 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         }
     break;
 
+    /* =====================================================
+   ✅ CAMBIO DE CONTRASEÑA OBLIGATORIO (FORCE_%)
+   POST: password_actual, password_nueva, password_confirmacion
+   ?accion=cambiar_password_obligatorio
+===================================================== */
+case 'cambiar_password_obligatorio':
+
+    if (!isset($_SESSION['usuario_id'])) {
+        enviarJSON(['ok' => false, 'message' => 'Sesión no válida.'], 401);
+    }
+
+    $uid = (int)$_SESSION['usuario_id'];
+
+    $passwordActual = trim($_POST['password_actual'] ?? '');
+    $passwordNueva  = trim($_POST['password_nueva'] ?? '');
+    $passwordConf   = trim($_POST['password_confirmacion'] ?? '');
+
+    if ($passwordActual === '' || $passwordNueva === '' || $passwordConf === '') {
+        enviarJSON(['ok' => false, 'message' => 'Debes completar todos los campos.'], 400);
+    }
+
+    if (strlen($passwordNueva) < 8) {
+        enviarJSON(['ok' => false, 'message' => 'La nueva contraseña debe tener mínimo 8 caracteres.'], 400);
+    }
+
+    // ✅ Regla fuerte: 1 número, 1 mayúscula, 1 especial
+    $hasUpper   = preg_match('/[A-Z]/', $passwordNueva);
+    $hasNumber  = preg_match('/[0-9]/', $passwordNueva);
+    $hasSpecial = preg_match('/[^A-Za-z0-9]/', $passwordNueva);
+
+    if (!$hasUpper || !$hasNumber || !$hasSpecial) {
+        enviarJSON(['ok' => false, 'message' => 'Debe tener mínimo 1 número, 1 mayúscula y 1 caracter especial.'], 400);
+    }
+
+    if ($passwordNueva !== $passwordConf) {
+        enviarJSON(['ok' => false, 'message' => 'La confirmación no coincide con la nueva contraseña.'], 400);
+    }
+
+    if ($passwordActual === $passwordNueva) {
+        enviarJSON(['ok' => false, 'message' => 'La nueva contraseña no puede ser igual a la actual.'], 400);
+    }
+
+    // 1) traer hash actual
+    $stmt = $conn->prepare("SELECT password FROM usuarios WHERE id_usuario = ? LIMIT 1");
+    $stmt->execute([$uid]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$row) {
+        enviarJSON(['ok' => false, 'message' => 'Usuario no encontrado.'], 404);
+    }
+
+    $hashActual = (string)$row['password'];
+
+    // 2) validar contraseña actual (hash o texto plano legacy)
+    $okActual = false;
+    if (password_verify($passwordActual, $hashActual)) {
+        $okActual = true;
+    } elseif ($passwordActual === $hashActual) {
+        $okActual = true;
+    }
+
+    if (!$okActual) {
+        enviarJSON(['ok' => false, 'message' => 'La contraseña actual no es correcta.'], 401);
+    }
+
+    // 3) actualizar password (hash)
+    $nuevoHash = password_hash($passwordNueva, PASSWORD_DEFAULT);
+    $stmtUp = $conn->prepare("UPDATE usuarios SET password = ? WHERE id_usuario = ? LIMIT 1");
+    $stmtUp->execute([$nuevoHash, $uid]);
+
+    // 4) marcar FORCE_% como usado
+    try {
+        $stmtToken = $conn->prepare("
+            UPDATE tokens_correo
+            SET usado = 1
+            WHERE id_usuario = :uid
+              AND tipo = 'reset_password'
+              AND token LIKE 'FORCE_%'
+              AND usado = 0
+        ");
+        $stmtToken->execute([':uid' => $uid]);
+    } catch (Throwable $e) {
+        // no romper
+    }
+
+    // 5) apagar flag
+    $_SESSION['force_password_change'] = 0;
+
+    enviarJSON(['ok' => true, 'message' => 'Contraseña actualizada correctamente.']);
+break;
+
+
+    
     /* =====================================================
        ✅ DEFAULT
     ===================================================== */
