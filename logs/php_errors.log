@@ -555,3 +555,33 @@
 [20-Jan-2026 15:07:26 UTC] ======================
 >>>>>>> f1689542d371cb5314db5f77da8c73cc25390dcc
 
+[20-Jan-2026 17:08:35 UTC] === REGISTRAR ENTRADA ===
+[20-Jan-2026 17:08:35 UTC] Datos recibidos: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"jeje","id_solicitud":5,"materiales":[{"id_material":2,"nombre":"ARENA","cantidad":10,"unidad":"KG"},{"id_material":1,"nombre":"CEMENTO","cantidad":10,"unidad":"BULTO"}]}
+[20-Jan-2026 17:08:35 UTC] Total materiales: 2
+[20-Jan-2026 17:08:35 UTC] ⚙️ Usando transacción existente en registrarEntrada()
+[20-Jan-2026 17:08:35 UTC] Primer material: {"id_material":2,"nombre":"ARENA","cantidad":10,"unidad":"KG"}
+[20-Jan-2026 17:08:35 UTC] ID movimiento creado: 14
+[20-Jan-2026 17:08:35 UTC] Insertando 1 materiales en movimientos_detalle
+[20-Jan-2026 17:08:35 UTC]   - Material #1: ID=1, Cantidad=10
+[20-Jan-2026 17:08:35 UTC] ✓ Materiales detalle insertados correctamente
+[20-Jan-2026 17:08:35 UTC] [STOCK_BODEGA] UPDATE OK -> Bodega=2 Material=2 +-10
+[20-Jan-2026 17:08:35 UTC] [STOCK_BODEGA] UPDATE OK -> Bodega=2 Material=1 +-10
+[20-Jan-2026 17:08:35 UTC] ✓ Stock actualizado correctamente
+[20-Jan-2026 17:08:35 UTC] ✓ Movimiento registrado exitosamente: MOV-2026-00014
+[20-Jan-2026 17:08:35 UTC] ======================
+
+[20-Jan-2026 17:13:53 UTC] === REGISTRAR ENTRADA ===
+[20-Jan-2026 17:13:53 UTC] Datos recibidos: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"kjhgfds","id_solicitud":6,"materiales":[{"id_material":2,"nombre":"ARENA","cantidad":10,"unidad":"KG"},{"id_material":1,"nombre":"CEMENTO","cantidad":1,"unidad":"BULTO"}]}
+[20-Jan-2026 17:13:53 UTC] Total materiales: 2
+[20-Jan-2026 17:13:53 UTC] ⚙️ Usando transacción existente en registrarEntrada()
+[20-Jan-2026 17:13:53 UTC] Primer material: {"id_material":2,"nombre":"ARENA","cantidad":10,"unidad":"KG"}
+[20-Jan-2026 17:13:53 UTC] ID movimiento creado: 15
+[20-Jan-2026 17:13:53 UTC] Insertando 1 materiales en movimientos_detalle
+[20-Jan-2026 17:13:53 UTC]   - Material #1: ID=1, Cantidad=1
+[20-Jan-2026 17:13:53 UTC] ✓ Materiales detalle insertados correctamente
+[20-Jan-2026 17:13:53 UTC] [STOCK_BODEGA] UPDATE OK -> Bodega=2 Material=2 +-10
+[20-Jan-2026 17:13:53 UTC] [STOCK_BODEGA] UPDATE OK -> Bodega=2 Material=1 +-1
+[20-Jan-2026 17:13:53 UTC] ✓ Stock actualizado correctamente
+[20-Jan-2026 17:13:53 UTC] ✓ Movimiento registrado exitosamente: MOV-2026-00015
+[20-Jan-2026 17:13:53 UTC] ======================
+
