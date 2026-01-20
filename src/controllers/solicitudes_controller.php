@@ -458,23 +458,23 @@ class SolicitudMaterialController {
                         }
                     }
 
-                    $sql = "
-                        SELECT 
-                            mf.id_material,
-                            mf.nombre,
-                            mf.codigo_inventario,
-                            mf.descripcion,
-                            mf.unidad_medida,
-                            mf.clasificacion,
-                            mf.estado,
-                            COALESCE(SUM(ss.stock_actual), 0) AS stock_actual
-                        FROM material_formacion mf
-                        INNER JOIN stock_subbodega ss ON ss.id_material = mf.id_material
-                        WHERE mf.estado = 'Disponible'
-                          AND ss.id_subbodega = ?
-                        GROUP BY mf.id_material
-                        ORDER BY mf.nombre ASC
-                    ";
+                                        $sql = "
+                                                SELECT 
+                                                        mf.id_material,
+                                                        mf.nombre,
+                                                        mf.codigo_inventario,
+                                                        mf.descripcion,
+                                                        mf.unidad_medida,
+                                                        mf.clasificacion,
+                                                        mf.estado,
+                                                        GREATEST(COALESCE(SUM(ss.stock_actual), 0), 0) AS stock_actual
+                                                FROM material_formacion mf
+                                                INNER JOIN stock_subbodega ss ON ss.id_material = mf.id_material
+                                                WHERE mf.estado = 'Disponible'
+                                                    AND ss.id_subbodega = ?
+                                                GROUP BY mf.id_material
+                                                ORDER BY mf.nombre ASC
+                                        ";
 
                     $stmt = $db->prepare($sql);
                     $stmt->execute([$idSubBodega]);
@@ -489,23 +489,23 @@ class SolicitudMaterialController {
             // ✅ Caso solo bodega => stock_bodega
             if ((int)$idBodega > 0 && $this->tableExists("stock_bodega") && $this->tableExists("material_formacion")) {
 
-                $sql = "
-                    SELECT 
-                        mf.id_material,
-                        mf.nombre,
-                        mf.codigo_inventario,
-                        mf.descripcion,
-                        mf.unidad_medida,
-                        mf.clasificacion,
-                        mf.estado,
-                        COALESCE(SUM(sb.stock_actual), 0) AS stock_actual
-                    FROM material_formacion mf
-                    INNER JOIN stock_bodega sb ON sb.id_material = mf.id_material
-                    WHERE mf.estado = 'Disponible'
-                      AND sb.id_bodega = ?
-                    GROUP BY mf.id_material
-                    ORDER BY mf.nombre ASC
-                ";
+                                $sql = "
+                                        SELECT 
+                                                mf.id_material,
+                                                mf.nombre,
+                                                mf.codigo_inventario,
+                                                mf.descripcion,
+                                                mf.unidad_medida,
+                                                mf.clasificacion,
+                                                mf.estado,
+                                                GREATEST(COALESCE(SUM(sb.stock_actual), 0), 0) AS stock_actual
+                                        FROM material_formacion mf
+                                        INNER JOIN stock_bodega sb ON sb.id_material = mf.id_material
+                                        WHERE mf.estado = 'Disponible'
+                                            AND sb.id_bodega = ?
+                                        GROUP BY mf.id_material
+                                        ORDER BY mf.nombre ASC
+                                ";
 
                 $stmt = $db->prepare($sql);
                 $stmt->execute([$idBodega]);

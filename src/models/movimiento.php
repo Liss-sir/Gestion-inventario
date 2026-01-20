@@ -30,7 +30,7 @@ class MovimientoModel {
                 // Existe -> sumar
                 $upd = $this->conn->prepare("
                     UPDATE stock_bodega
-                    SET stock_actual = stock_actual + ?
+                    SET stock_actual = GREATEST(stock_actual + ?, 0)
                     WHERE id_bodega = ? AND id_material = ?
                 ");
                 $upd->execute([$cantidad, $idBodega, $idMaterial]);
@@ -39,7 +39,7 @@ class MovimientoModel {
                 // No existe -> insertar
                 $ins = $this->conn->prepare("
                     INSERT INTO stock_bodega (id_bodega, id_material, stock_actual)
-                    VALUES (?, ?, ?)
+                    VALUES (?, ?, GREATEST(?, 0))
                 ");
                 $ins->execute([$idBodega, $idMaterial, $cantidad]);
                 error_log("[STOCK_BODEGA] INSERT OK -> Bodega=$idBodega Material=$idMaterial = $cantidad");
@@ -73,7 +73,7 @@ class MovimientoModel {
                 // Existe -> sumar
                 $upd = $this->conn->prepare("
                     UPDATE stock_subbodega
-                    SET stock_actual = stock_actual + ?
+                    SET stock_actual = GREATEST(stock_actual + ?, 0)
                     WHERE id_subbodega = ? AND id_material = ?
                 ");
                 $upd->execute([$cantidad, $idSubBodega, $idMaterial]);
@@ -82,7 +82,7 @@ class MovimientoModel {
                 // No existe -> insertar
                 $ins = $this->conn->prepare("
                     INSERT INTO stock_subbodega (id_subbodega, id_material, stock_actual)
-                    VALUES (?, ?, ?)
+                    VALUES (?, ?, GREATEST(?, 0))
                 ");
                 $ins->execute([$idSubBodega, $idMaterial, $cantidad]);
                 error_log("[STOCK_SUBBODEGA] INSERT OK -> Sub=$idSubBodega Material=$idMaterial = $cantidad");
@@ -109,7 +109,7 @@ class MovimientoModel {
 
         // ✅ Calcular el delta (positivo para entrada, negativo para salida)
         $tipo = $data['tipo_movimiento'] ?? 'entrada';
-        $delta = ($tipo === 'Entrada') ? 1 : -1;
+        $delta = (strtolower($tipo) === 'entrada') ? 1 : -1;
 
         foreach ($materiales as $m) {
             $idMaterial = (int)($m['id_material'] ?? 0);

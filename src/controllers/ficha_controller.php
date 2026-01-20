@@ -38,12 +38,20 @@ class FichaController {
             return;
         }
 
-        $ok = $this->model->crear($input);
+        $id = $this->model->crear($input);
 
-        echo json_encode([
-            'success' => $ok,
-            'message' => $ok ? "Ficha creada correctamente" : "Error al crear ficha"
-        ]);
+        if ($id) {
+            echo json_encode([
+                'success' => true,
+                'message' => "Ficha creada correctamente",
+                'id_ficha' => $id
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => "Error al crear ficha"
+            ]);
+        }
     }
 
     /* Update ficha */
@@ -91,6 +99,44 @@ class FichaController {
         ]);
     }
 
+    /* Get aprendices (students) */
+    public function obtenerAprendices() {
+        echo json_encode($this->model->obtenerAprendices());
+    }
+
+    /* Add students to ficha */
+    public function agregarEstudiantes() {
+        $input = json_decode(file_get_contents("php://input"), true);
+
+        if (!isset($input['id_ficha']) || !isset($input['estudiantes'])) {
+            echo json_encode([
+                'success' => false,
+                'error' => 'Datos incompletos'
+            ]);
+            return;
+        }
+
+        $ok = $this->model->agregarEstudiantes(
+            $input['id_ficha'],
+            $input['estudiantes']
+        );
+
+        echo json_encode([
+            'success' => $ok,
+            'message' => $ok ? 'Estudiantes agregados correctamente' : 'Error al agregar estudiantes'
+        ]);
+    }
+
+    /* Get students of a ficha */
+    public function obtenerEstudiantesFicha($id) {
+        if (!$id) {
+            echo json_encode(['error' => 'id_ficha requerido']);
+            return;
+        }
+
+        echo json_encode($this->model->obtenerEstudiantesDeFicha($id));
+    }
+
 }
 
 /* Router */
@@ -129,6 +175,17 @@ switch ($accion) {
         $controller->cambiarEstado($id, "cancelar");
         break;
 
+    case "aprendices":
+        $controller->obtenerAprendices();
+        break;
+
+    case "agregarEstudiantes":
+        $controller->agregarEstudiantes();
+        break;
+
+    case "estudiantesFicha":
+        $controller->obtenerEstudiantesFicha($id);
+        break;
 
     default:
         echo json_encode(["error" => "Acción no válida"]);
