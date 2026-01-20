@@ -84,6 +84,14 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             </div>
             
             <form class="space-y-3" onsubmit="event.preventDefault(); createEvidence();">
+                <!-- Seleccionar Salida Pendiente -->
+                <div class="space-y-1.5">
+                    <label for="salidaSelect" class="text-xs font-medium">Salida de Material *</label>
+                    <select id="salidaSelect" class="w-full rounded-md border border-input px-2.5 py-1.5 text-xs" required>
+                        <option value="">Cargando salidas pendientes...</option>
+                    </select>
+                </div>
+
                 <!-- Fotografía de evidencia -->
                 <div class="space-y-1.5">
                     <label class="text-xs font-medium">Fotografía de evidencia *</label>

@@ -88,18 +88,84 @@
 2026-01-20 02:18:36 [INSERT] Movimiento insertado con ID: 10
 2026-01-20 02:18:36 ✅ [SALIDA] Movimiento creado: MOV-2026-00010
 2026-01-20 02:18:36 ✅ [CONTROLLER] Solicitud respondida exitosamente
-2026-01-20 13:55:42 [CONTROLLER] responder() invocado: {"id_solicitud":4,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
-2026-01-20 13:55:42 [RESPONDER] Iniciando responderSolicitud(4, aprobada, 1)
-2026-01-20 13:55:42 ✅ Solicitud 4 actualizada a Aprobada. Filas: 1
-2026-01-20 13:55:42 🔵 Llamando crearMovimientoSalidaDeSolicitud(4, 1)
-2026-01-20 13:55:42 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(4, 1)
-2026-01-20 13:55:42 📋 [SALIDA] Solicitud: {"id_solicitud":4,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":1,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-20 08:55:40","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 08:55:42","observaciones":"kjhgfdsa","materiales":[{"id_solicitud_detalle":4,"id_material":1,"material":"CEMENTO","cantidad":1,"unidad_medida":"BULTO","clasificacion":"Consumible"}]}
-2026-01-20 13:55:42 📦 [SALIDA] 1 materiales encontrados
-2026-01-20 13:55:42 🏪 [SALIDA] Bodega obtenida: 2
-2026-01-20 13:55:42   📌 CEMENTO (ID: 1, Cant: 1)
-2026-01-20 13:55:42 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"kjhgfdsa","id_solicitud":4,"materiales":[{"id_material":1,"nombre":"CEMENTO","cantidad":1,"unidad":"BULTO"}]}
-2026-01-20 13:55:42 [INSERT] id_solicitud recibido: 4
-2026-01-20 13:55:42 [INSERT] Cantidad a insertar: 1 | tipo_movimiento: 'Salida'
-2026-01-20 13:55:42 [INSERT] Movimiento insertado con ID: 12
-2026-01-20 13:55:42 ✅ [SALIDA] Movimiento creado: MOV-2026-00012
-2026-01-20 13:55:42 ✅ [CONTROLLER] Solicitud respondida exitosamente
+2026-01-20 14:44:18 [CONTROLLER] responder() invocado: {"id_solicitud":6,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-20 14:44:18 [RESPONDER] Iniciando responderSolicitud(6, aprobada, 1)
+2026-01-20 14:44:18 ✅ Solicitud 6 actualizada a Aprobada. Filas: 1
+2026-01-20 14:44:18 🔵 Llamando crearMovimientoSalidaDeSolicitud(6, 1)
+2026-01-20 14:44:18 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(6, 1)
+2026-01-20 14:44:18 📋 [SALIDA] Solicitud: {"id_solicitud":6,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":6,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-20 09:43:48","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 09:44:18","observaciones":"J7JJJJ778J","materiales":[{"id_solicitud_detalle":6,"id_material":1,"material":"Jorges","cantidad":1,"unidad_medida":"KG","clasificacion":"Inventariado"}]}
+2026-01-20 14:44:18 📦 [SALIDA] 1 materiales encontrados
+2026-01-20 14:44:18 🏪 [SALIDA] Bodega obtenida: 2
+2026-01-20 14:44:18   📌 Jorges (ID: 1, Cant: 1)
+2026-01-20 14:44:18 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"J7JJJJ778J","id_solicitud":6,"materiales":[{"id_material":1,"nombre":"Jorges","cantidad":1,"unidad":"KG"}]}
+2026-01-20 14:44:18 [INSERT] id_solicitud recibido: 6
+2026-01-20 14:44:18 [INSERT] Cantidad a insertar: 1 | tipo_movimiento: 'Salida'
+2026-01-20 14:44:18 [INSERT] Movimiento insertado con ID: 11
+2026-01-20 14:44:18 ✅ [SALIDA] Movimiento creado: MOV-2026-00011
+2026-01-20 14:44:18 ✅ [CONTROLLER] Solicitud respondida exitosamente
+2026-01-20 14:44:19 [CONTROLLER] responder() invocado: {"id_solicitud":7,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-20 14:44:19 [RESPONDER] Iniciando responderSolicitud(7, aprobada, 1)
+2026-01-20 14:44:19 ✅ Solicitud 7 actualizada a Aprobada. Filas: 1
+2026-01-20 14:44:19 🔵 Llamando crearMovimientoSalidaDeSolicitud(7, 1)
+2026-01-20 14:44:19 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(7, 1)
+2026-01-20 14:44:19 📋 [SALIDA] Solicitud: {"id_solicitud":7,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":7,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-20 09:44:13","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 09:44:19","observaciones":"KIUJNYHBTGVFC","materiales":[{"id_solicitud_detalle":7,"id_material":1,"material":"Jorges","cantidad":1,"unidad_medida":"KG","clasificacion":"Inventariado"}]}
+2026-01-20 14:44:19 📦 [SALIDA] 1 materiales encontrados
+2026-01-20 14:44:19 🏪 [SALIDA] Bodega obtenida: 2
+2026-01-20 14:44:19   📌 Jorges (ID: 1, Cant: 1)
+2026-01-20 14:44:19 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"KIUJNYHBTGVFC","id_solicitud":7,"materiales":[{"id_material":1,"nombre":"Jorges","cantidad":1,"unidad":"KG"}]}
+2026-01-20 14:44:19 [INSERT] id_solicitud recibido: 7
+2026-01-20 14:44:19 [INSERT] Cantidad a insertar: 1 | tipo_movimiento: 'Salida'
+2026-01-20 14:44:19 [INSERT] Movimiento insertado con ID: 12
+2026-01-20 14:44:19 ✅ [SALIDA] Movimiento creado: MOV-2026-00012
+2026-01-20 14:44:19 ✅ [CONTROLLER] Solicitud respondida exitosamente
+2026-01-20 14:56:45 [INSERT] id_solicitud recibido: 'NO_EXISTE'
+2026-01-20 14:56:45 [INSERT] Cantidad a insertar: 1000 | tipo_movimiento: 'entrada'
+2026-01-20 14:56:45 [INSERT] Movimiento insertado con ID: 13
+2026-01-20 14:57:38 [CONTROLLER] responder() invocado: {"id_solicitud":8,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-20 14:57:38 [RESPONDER] Iniciando responderSolicitud(8, aprobada, 1)
+2026-01-20 14:57:38 ✅ Solicitud 8 actualizada a Aprobada. Filas: 1
+2026-01-20 14:57:38 🔵 Llamando crearMovimientoSalidaDeSolicitud(8, 1)
+2026-01-20 14:57:38 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(8, 1)
+2026-01-20 14:57:38 📋 [SALIDA] Solicitud: {"id_solicitud":8,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":8,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-20 09:57:13","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 09:57:38","observaciones":"","materiales":[{"id_solicitud_detalle":8,"id_material":1,"material":"Jorges","cantidad":12,"unidad_medida":"KG","clasificacion":"Inventariado"}]}
+2026-01-20 14:57:38 📦 [SALIDA] 1 materiales encontrados
+2026-01-20 14:57:38 🏪 [SALIDA] Bodega obtenida: 2
+2026-01-20 14:57:38   📌 Jorges (ID: 1, Cant: 12)
+2026-01-20 14:57:38 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"","id_solicitud":8,"materiales":[{"id_material":1,"nombre":"Jorges","cantidad":12,"unidad":"KG"}]}
+2026-01-20 14:57:38 [INSERT] id_solicitud recibido: 8
+2026-01-20 14:57:38 [INSERT] Cantidad a insertar: 12 | tipo_movimiento: 'Salida'
+2026-01-20 14:57:38 [INSERT] Movimiento insertado con ID: 14
+2026-01-20 14:57:38 ✅ [SALIDA] Movimiento creado: MOV-2026-00014
+2026-01-20 14:57:38 ✅ [CONTROLLER] Solicitud respondida exitosamente
+2026-01-20 14:57:39 [CONTROLLER] responder() invocado: {"id_solicitud":9,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-20 14:57:39 [RESPONDER] Iniciando responderSolicitud(9, aprobada, 1)
+2026-01-20 14:57:39 ✅ Solicitud 9 actualizada a Aprobada. Filas: 1
+2026-01-20 14:57:39 🔵 Llamando crearMovimientoSalidaDeSolicitud(9, 1)
+2026-01-20 14:57:39 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(9, 1)
+2026-01-20 14:57:39 📋 [SALIDA] Solicitud: {"id_solicitud":9,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":9,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-20 09:57:32","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 09:57:39","observaciones":"dfewfewfewfwef","materiales":[{"id_solicitud_detalle":9,"id_material":1,"material":"Jorges","cantidad":121,"unidad_medida":"KG","clasificacion":"Inventariado"}]}
+2026-01-20 14:57:39 📦 [SALIDA] 1 materiales encontrados
+2026-01-20 14:57:39 🏪 [SALIDA] Bodega obtenida: 2
+2026-01-20 14:57:39   📌 Jorges (ID: 1, Cant: 121)
+2026-01-20 14:57:39 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"dfewfewfewfwef","id_solicitud":9,"materiales":[{"id_material":1,"nombre":"Jorges","cantidad":121,"unidad":"KG"}]}
+2026-01-20 14:57:39 [INSERT] id_solicitud recibido: 9
+2026-01-20 14:57:39 [INSERT] Cantidad a insertar: 121 | tipo_movimiento: 'Salida'
+2026-01-20 14:57:39 [INSERT] Movimiento insertado con ID: 15
+2026-01-20 14:57:39 ✅ [SALIDA] Movimiento creado: MOV-2026-00015
+2026-01-20 14:57:39 ✅ [CONTROLLER] Solicitud respondida exitosamente
+2026-01-20 15:06:52 [INSERT] id_solicitud recibido: 'NO_EXISTE'
+2026-01-20 15:06:52 [INSERT] Cantidad a insertar: 1324 | tipo_movimiento: 'entrada'
+2026-01-20 15:06:52 [INSERT] Movimiento insertado con ID: 16
+2026-01-20 15:07:26 [CONTROLLER] responder() invocado: {"id_solicitud":10,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-20 15:07:26 [RESPONDER] Iniciando responderSolicitud(10, aprobada, 1)
+2026-01-20 15:07:26 ✅ Solicitud 10 actualizada a Aprobada. Filas: 1
+2026-01-20 15:07:26 🔵 Llamando crearMovimientoSalidaDeSolicitud(10, 1)
+2026-01-20 15:07:26 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(10, 1)
+2026-01-20 15:07:26 📋 [SALIDA] Solicitud: {"id_solicitud":10,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":10,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-20 10:07:17","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 10:07:26","observaciones":"fwefwefewfewf","materiales":[{"id_solicitud_detalle":10,"id_material":2,"material":"lola878798","cantidad":12,"unidad_medida":"GL","clasificacion":"Consumible"}]}
+2026-01-20 15:07:26 📦 [SALIDA] 1 materiales encontrados
+2026-01-20 15:07:26 🏪 [SALIDA] Bodega obtenida: 2
+2026-01-20 15:07:26   📌 lola878798 (ID: 2, Cant: 12)
+2026-01-20 15:07:26 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"fwefwefewfewf","id_solicitud":10,"materiales":[{"id_material":2,"nombre":"lola878798","cantidad":12,"unidad":"GL"}]}
+2026-01-20 15:07:26 [INSERT] id_solicitud recibido: 10
+2026-01-20 15:07:26 [INSERT] Cantidad a insertar: 12 | tipo_movimiento: 'Salida'
+2026-01-20 15:07:26 [INSERT] Movimiento insertado con ID: 17
+2026-01-20 15:07:26 ✅ [SALIDA] Movimiento creado: MOV-2026-00017
+2026-01-20 15:07:26 ✅ [CONTROLLER] Solicitud respondida exitosamente

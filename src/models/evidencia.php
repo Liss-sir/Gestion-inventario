@@ -146,4 +146,32 @@ class EvidenciaModel {
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
+    /* Get all pending salidas for specific user (for dropdown selection) */
+    public function obtenerSalidasPendientesPorUsuario($id_usuario) {
+        $sql = "SELECT 
+                    m.id_movimiento,
+                    m.fecha_hora,
+                    m.cantidad,
+                    m.observaciones,
+                    mat.nombre as material,
+                    mat.unidad_medida,
+                    f.numero_ficha as ficha
+                FROM movimientos_material m
+                LEFT JOIN material_formacion mat 
+                    ON m.id_material = mat.id_material
+                LEFT JOIN fichas f
+                    ON m.id_ficha = f.id_ficha
+                WHERE m.tipo_movimiento = 'Salida'
+                AND m.id_usuario = :id_usuario
+                AND m.id_movimiento NOT IN (
+                    SELECT id_movimiento_salida FROM {$this->table}
+                )
+                ORDER BY m.fecha_hora DESC";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(":id_usuario", $id_usuario);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }

@@ -217,6 +217,9 @@ function openCreateModal() {
   const modal = document.getElementById("createModal")
   modal.classList.add("active")
   document.body.style.overflow = "hidden"
+  
+  // Cargar salidas pendientes
+  loadPendingSalidas()
 }
 
 function closeCreateModal() {
@@ -225,6 +228,7 @@ function closeCreateModal() {
   document.body.style.overflow = "auto"
 
   // Limpiar formulario
+  document.getElementById("salidaSelect").value = ""
   document.getElementById("descripcion").value = ""
   document.getElementById("photoInput").value = ""
   document.getElementById("imagePreview").classList.add("hidden")
@@ -307,13 +311,69 @@ function removeImage() {
 }
 
 /* =========================
+   Cargar Salidas Pendientes
+   ========================= */
+async function loadPendingSalidas() {
+  const select = document.getElementById("salidaSelect")
+  try {
+    const res = await fetch(`${EVIDENCIAS_API_URL}?accion=salidas_pendientes&id_usuario=1`, {
+      method: "GET"
+    })
+    
+    if (!res.ok) throw new Error("Error al cargar salidas")
+    
+    const salidas = await res.json()
+    
+    // Limpiar select
+    select.innerHTML = ""
+    
+    if (!Array.isArray(salidas) || salidas.length === 0) {
+      select.innerHTML = '<option value="">No hay salidas pendientes</option>'
+      select.disabled = true
+      return
+    }
+    
+    // Agregar opción por defecto
+    const defaultOption = document.createElement("option")
+    defaultOption.value = ""
+    defaultOption.textContent = "Selecciona una salida..."
+    select.appendChild(defaultOption)
+    
+    // Agregar salidas
+    salidas.forEach(salida => {
+      const option = document.createElement("option")
+      option.value = salida.id_movimiento
+      option.dataset.salida = JSON.stringify(salida)
+      
+      // Construir el texto: Ficha - Material (Cantidad)
+      const optionText = `${salida.ficha || 'S/N'} - ${salida.material} (${salida.cantidad} ${salida.unidad_medida})`
+      
+      option.textContent = optionText
+      select.appendChild(option)
+    })
+    
+    select.disabled = false
+  } catch (error) {
+    console.error("Error cargando salidas:", error)
+    select.innerHTML = '<option value="">Error al cargar salidas</option>'
+    select.disabled = true
+  }
+}
+
+/* =========================
    Crear evidencia
    ========================= */
 async function createEvidence() {
+  const salidaSelect = document.getElementById("salidaSelect")
   const descripcion = document.getElementById("descripcion").value
   const photoInput = document.getElementById("photoInput")
 
   // Validaciones
+  if (!salidaSelect.value) {
+    showFlowbiteAlert("error", "Por favor selecciona una salida")
+    return
+  }
+  
   if (!descripcion || !photoInput.files.length) {
     showFlowbiteAlert("error", "Por favor complete todos los campos obligatorios")
     return
@@ -323,6 +383,7 @@ async function createEvidence() {
     // Crear FormData para enviar la imagen
     const formData = new FormData()
     formData.append("id_usuario", 1) // Cambiar por el ID del usuario logueado
+    formData.append("id_movimiento_salida", salidaSelect.value)
     formData.append("foto", photoInput.files[0])
     formData.append("descripcion_obra", descripcion)
 
