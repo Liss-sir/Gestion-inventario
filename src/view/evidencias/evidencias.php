@@ -113,8 +113,11 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 
                 <!-- Descripción -->
                 <div class="space-y-1.5">
-                    <label class="text-xs font-medium">Descripción de la evidencia *</label>
-                    <textarea id="descripcion" placeholder="Describe la evidencia..." class="w-full rounded-md border border-input px-2.5 py-1.5 text-xs h-14 resize-none" required></textarea>
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-medium">Descripción de la evidencia *</label>
+                        <span class="text-xs text-muted-foreground"><span id="charCount">0</span>/250</span>
+                    </div>
+                    <textarea id="descripcion" placeholder="Describe la evidencia..." class="w-full rounded-md border border-input px-2.5 py-1.5 text-xs h-14 resize-none" maxlength="250" required></textarea>
                 </div>
                 
                 <!-- Buttons -->

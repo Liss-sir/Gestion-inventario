@@ -221,6 +221,13 @@ function openCreateModal() {
   
   // Cargar salidas pendientes
   loadPendingSalidas()
+  
+  // Configurar contador de caracteres
+  const descripcionInput = document.getElementById("descripcion")
+  descripcionInput.addEventListener("input", () => {
+    const charCount = document.getElementById("charCount")
+    charCount.textContent = descripcionInput.value.length
+  })
 }
 
 function closeCreateModal() {
@@ -378,6 +385,11 @@ async function createEvidence() {
   
   if (!descripcion || !photoInput.files.length) {
     showFlowbiteAlert("error", "Por favor complete todos los campos obligatorios")
+    return
+  }
+
+  if (descripcion.length > 250) {
+    showFlowbiteAlert("error", "La descripción no puede exceder 250 caracteres")
     return
   }
 
