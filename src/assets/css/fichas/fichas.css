@@ -47,7 +47,7 @@
   transform: scale(1);
 }
 
-/* Evitar cortes en dropdown dentro de tablas */
+/* Avoid dropdown cuts within tables */
 table,
 thead,
 tbody,
