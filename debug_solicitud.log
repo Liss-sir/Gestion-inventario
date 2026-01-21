@@ -648,3 +648,36 @@
 2026-01-20 20:50:36 ❌ [SALIDA] Exception (rethrow): Error al registrar movimiento: SQLSTATE[45000]: <<Unknown error>>: 1644 ERROR: No hay suficiente stock para realizar la salida.
 2026-01-20 20:50:36 ❌ Excepción en responderSolicitud: Error al registrar movimiento: SQLSTATE[45000]: <<Unknown error>>: 1644 ERROR: No hay suficiente stock para realizar la salida.
 2026-01-20 20:50:36 ❌ [CONTROLLER] responderSolicitud retornó false
+2026-01-20 21:13:51 [CONTROLLER] responder() invocado: {"id_solicitud":20,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-20 21:13:51 [RESPONDER] Iniciando responderSolicitud(20, aprobada, 1)
+2026-01-20 21:13:51 ✅ Solicitud 20 actualizada a Aprobada. Filas: 1
+2026-01-20 21:13:51 🔵 Llamando crearMovimientoSalidaDeSolicitud(20, 1)
+2026-01-20 21:13:51 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(20, 1)
+2026-01-20 21:13:51 📋 [SALIDA] Solicitud: {"id_solicitud":20,"id_usuario_solicitante":1,"id_ficha":2,"id_actividad":2,"id_rae":2,"id_programa":2,"fecha_solicitud":"2026-01-20 16:13:49","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 16:13:51","observaciones":"lol","materiales":[{"id_solicitud_detalle":21,"id_material":2,"material":"Ladrillos","cantidad":10,"unidad_medida":"CM3","clasificacion":"Consumible"}]}
+2026-01-20 21:13:51 📦 [SALIDA] 1 materiales encontrados
+2026-01-20 21:13:51 🏪 [SALIDA] Ubicación obtenida: {"id_bodega":2,"id_subbodega":1}
+2026-01-20 21:13:51   📌 Ladrillos (ID: 2, Cant: 10)
+2026-01-20 21:13:51 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":1,"id_programa":2,"id_ficha":2,"id_rae":2,"observaciones":"lol","id_solicitud":20,"materiales":[{"id_material":2,"nombre":"Ladrillos","cantidad":10,"unidad":"CM3"}]}
+2026-01-20 21:13:51 [INSERT] id_solicitud recibido: 20
+2026-01-20 21:13:51 [INSERT] Cantidad a insertar: 10 | tipo_movimiento: 'Salida'
+2026-01-20 21:13:51 [INSERT] Movimiento insertado con ID: 14
+2026-01-20 21:13:51 ✅ [SALIDA] Movimiento creado: MOV-2026-00014
+2026-01-20 21:13:51 ✅ [CONTROLLER] Solicitud respondida exitosamente
+2026-01-20 21:42:07 [INSERT] id_solicitud recibido: 'NO_EXISTE'
+2026-01-20 21:42:07 [INSERT] Cantidad a insertar: 100 | tipo_movimiento: 'entrada'
+2026-01-20 21:42:07 [INSERT] Movimiento insertado con ID: 15
+2026-01-20 21:42:37 [CONTROLLER] responder() invocado: {"id_solicitud":21,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-20 21:42:37 [RESPONDER] Iniciando responderSolicitud(21, aprobada, 1)
+2026-01-20 21:42:37 ✅ Solicitud 21 actualizada a Aprobada. Filas: 1
+2026-01-20 21:42:37 🔵 Llamando crearMovimientoSalidaDeSolicitud(21, 1)
+2026-01-20 21:42:37 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(21, 1)
+2026-01-20 21:42:37 📋 [SALIDA] Solicitud: {"id_solicitud":21,"id_usuario_solicitante":1,"id_ficha":2,"id_actividad":2,"id_rae":2,"id_programa":2,"fecha_solicitud":"2026-01-20 16:42:34","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-20 16:42:37","observaciones":"","materiales":[{"id_solicitud_detalle":22,"id_material":1,"material":"Cemento","cantidad":10,"unidad_medida":"KG","clasificacion":"Consumible"}]}
+2026-01-20 21:42:37 📦 [SALIDA] 1 materiales encontrados
+2026-01-20 21:42:37 🏪 [SALIDA] Ubicación obtenida: {"id_bodega":2,"id_subbodega":null}
+2026-01-20 21:42:37   📌 Cemento (ID: 1, Cant: 10)
+2026-01-20 21:42:37 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":2,"id_ficha":2,"id_rae":2,"observaciones":"","id_solicitud":21,"materiales":[{"id_material":1,"nombre":"Cemento","cantidad":10,"unidad":"KG"}]}
+2026-01-20 21:42:37 [INSERT] id_solicitud recibido: 21
+2026-01-20 21:42:37 [INSERT] Cantidad a insertar: 10 | tipo_movimiento: 'Salida'
+2026-01-20 21:42:37 [INSERT] Movimiento insertado con ID: 16
+2026-01-20 21:42:37 ✅ [SALIDA] Movimiento creado: MOV-2026-00016
+2026-01-20 21:42:37 ✅ [CONTROLLER] Solicitud respondida exitosamente

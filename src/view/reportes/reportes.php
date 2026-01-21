@@ -144,17 +144,29 @@ try {
 
     $modelReportes = new ReportesModel($conn);
 
-    // Capturar filtros desde GET
+    // =====================================================
+    // ✅ Capturar filtros desde GET (FIX: INCLUYE BODEGA / SUBBODEGA)
+    // =====================================================
     $filters = [
         "fecha_inicio" => $_GET["fecha_inicio"] ?? null,
         "fecha_fin"    => $_GET["fecha_fin"] ?? null,
         "programa"     => $_GET["programa"] ?? "all",
         "ficha"        => $_GET["ficha"] ?? "all",
+
+        // ✅ NUEVO (FIX DEFINITIVO)
+        "bodega"       => $_GET["bodega"] ?? "all",
+        "subbodega"    => $_GET["subbodega"] ?? "all",
     ];
 
     // ✅ Combos reales
     $mockProgramas = $modelReportes->getProgramas();
     $mockFichas    = $modelReportes->getFichas();
+
+    // ✅ Bodegas reales (si existe el método, si no, no rompe)
+    $mockBodegas = [];
+    if (method_exists($modelReportes, "getBodegas")) {
+        $mockBodegas = $modelReportes->getBodegas();
+    }
 
     // ✅ Dashboard real
     $dashboard = $modelReportes->getDashboardData($filters);
@@ -211,6 +223,12 @@ try {
     <link rel="stylesheet" href="src/assets/css/reportes/reportes.css">
 </head>
 <body class="min-h-screen">
+
+<!-- ✅ TOASTS FLOWBITE (GLOBAL) -->
+<div id="flowbiteToastRoot"
+     class="fixed top-6 right-6 z-[9999] flex flex-col gap-3 w-full max-w-sm pointer-events-none">
+</div>
+
 
     <!-- ✅ SOLO ADAPTACIÓN: el contenido ahora respeta sidebar colapsado/expandido -->
     <div class="page-with-sidebar w-full px-6 pt-8 pb-8 <?php echo $contentOffsetClass; ?>">
@@ -335,6 +353,7 @@ try {
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
+
                                 </div>
                             </div>
                         </div>
@@ -594,7 +613,7 @@ try {
                                                 </svg>
                                                 Generar PDF
                                             </button>
-                                            <button class="inline-flex items-center justify-center p-2 border border-border rounded-md text-foreground hover:bg-muted transition-colors">
+                                            <button data-print-btn="1" class="inline-flex items-center justify-center p-2 border border-border rounded-md text-foreground hover:bg-muted transition-colors">
                                                 <svg class="w-4 h-4"
                                                      xmlns="http://www.w3.org/2000/svg"
                                                      viewBox="0 0 24 24"
@@ -658,12 +677,13 @@ try {
                                         </select>
                                     </div>
                                 </div>
-                                <div class="grid gap-4 sm:grid-cols-3">
+
+                                <div class="grid gap-4 sm:grid-cols-4">
                                     <div class="space-y-2">
                                         <label class="text-sm font-medium text-foreground">
                                             Programa
                                         </label>
-                                        <select class="input-siga w-full">
+                                        <select id="custom-programa" class="input-siga w-full">
                                             <option value="all">Todos los programas</option>
                                             <?php foreach ($mockProgramas as $p): ?>
                                                 <option value="<?= htmlspecialchars($p['id']) ?>">
@@ -672,27 +692,45 @@ try {
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
+
                                     <div class="space-y-2">
                                         <label class="text-sm font-medium text-foreground">
                                             Bodega
                                         </label>
-                                        <select class="input-siga w-full">
+                                        <select id="custom-bodega" class="input-siga w-full">
                                             <option value="all">Todas las bodegas</option>
-                                            <option value="1">Bodega Principal - Eléctrico</option>
-                                            <option value="2">Bodega Construcción</option>
-                                            <option value="3">Bodega Acabados</option>
+
+                                            <?php if (!empty($mockBodegas) && is_array($mockBodegas)): ?>
+                                                <?php foreach ($mockBodegas as $b): ?>
+                                                    <option value="<?= htmlspecialchars($b['id']) ?>">
+                                                        <?= htmlspecialchars($b['nombre']) ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
                                         </select>
                                     </div>
+
+                                    <!-- ✅ NUEVO: Subbodega -->
+                                    <div class="space-y-2">
+                                        <label class="text-sm font-medium text-foreground">
+                                            Subbodega
+                                        </label>
+                                        <select id="custom-subbodega" class="input-siga w-full" disabled>
+                                            <option value="all">Todas las subbodegas</option>
+                                        </select>
+                                    </div>
+
                                     <div class="space-y-2">
                                         <label class="text-sm font-medium text-foreground">
                                             Incluir gráficas
                                         </label>
-                                        <select class="input-siga w-full">
+                                        <select id="custom-graficas" class="input-siga w-full">
                                             <option value="yes">Sí</option>
                                             <option value="no">No</option>
                                         </select>
                                     </div>
                                 </div>
+
                                 <div class="flex justify-end pt-4">
                                     <button class="inline-flex items-center gap-2 px-6 py-2 text-sm font-medium bg-secondary text-secondary-foreground rounded-md hover:opacity-90 transition-opacity">
                                         <svg class="w-4 h-4"
@@ -717,8 +755,6 @@ try {
             </div>
         </div>
     </div>
-
-    
 
     <script>
 
@@ -847,10 +883,158 @@ try {
         });
         <?php endif; ?>
 
+        // =========================
+        // FLOWBITE-STYLE ALERTS (IGUAL A USUARIOS.JS)
+        // =========================
+        function getOrCreateFlowbiteContainer() {
+          let container = document.getElementById("flowbite-alert-container");
+
+          if (!container) {
+            container = document.createElement("div");
+            container.id = "flowbite-alert-container";
+
+            container.className =
+              "fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-3 w-full max-w-md px-4 pointer-events-none";
+
+            container.style.left = "auto";
+            container.style.right = "1.5rem";
+            container.style.transform = "none";
+
+            document.body.appendChild(container);
+          }
+
+          return container;
+        }
+
+        function showFlowbiteAlert(type, message) {
+          const container = getOrCreateFlowbiteContainer();
+          const wrapper = document.createElement("div");
+
+          let borderColor = "border-amber-500";
+          let textColor = "text-amber-900";
+          let titleText = "Advertencia";
+
+          let iconSVG = `
+            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg"
+                 fill="currentColor" viewBox="0 0 20 20">
+              <path d="M8.257 3.099c.765-1.36 2.72-1.36 3.485 0l6.518 11.59A1.75 1.75 0 0 1 16.768 17H3.232a1.75 1.75 0 0 1-1.492-2.311L8.257 3.1z"/>
+              <path d="M11 13H9V9h2zm0 3H9v-2h2z" fill="#fff"/>
+            </svg>
+          `;
+
+          if (type === "success") {
+            borderColor = "border-emerald-500";
+            textColor = "text-emerald-900";
+            titleText = "Éxito";
+            iconSVG = `
+              <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg"
+                   fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm-1 15-4-4 1.414-1.414L9 12.172l4.586-4.586L15 9z"/>
+              </svg>
+            `;
+          }
+
+          if (type === "info") {
+            borderColor = "border-blue-500";
+            textColor = "text-blue-900";
+            titleText = "Información";
+            iconSVG = `
+              <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg"
+                   fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm1 15H9v-5h2Zm0-7H9V6h2Z"/>
+              </svg>
+            `;
+          }
+
+          wrapper.className = `
+            relative flex items-center w-full mx-auto pointer-events-auto
+            rounded-2xl border-l-4 ${borderColor} bg-white shadow-md
+            px-4 py-3 text-sm ${textColor}
+            opacity-0 -translate-y-2
+            transition-all duration-300 ease-out
+            animate-fade-in-up
+          `;
+
+          wrapper.innerHTML = `
+            <div class="flex-shrink-0 mr-3 text-current">
+              ${iconSVG}
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <p class="font-semibold">${titleText}</p>
+              <p class="mt-0.5 text-sm">${message}</p>
+            </div>
+          `;
+
+          container.appendChild(wrapper);
+
+          requestAnimationFrame(() => {
+            wrapper.classList.remove("opacity-0", "-translate-y-2");
+            wrapper.classList.add("opacity-100", "translate-y-0");
+          });
+
+          setTimeout(() => {
+            wrapper.classList.add("opacity-0", "-translate-y-2");
+            wrapper.classList.remove("opacity-100", "translate-y-0");
+            setTimeout(() => wrapper.remove(), 250);
+          }, 4000);
+        }
+
+        function toastError(message) {
+          showFlowbiteAlert("warning", message);
+        }
+
+        function toastSuccess(message) {
+          showFlowbiteAlert("success", message);
+        }
+
+        function toastInfo(message) {
+          showFlowbiteAlert("info", message);
+        }
+
+        function showFlowbiteToast(type = "info", title = "Información", message = "") {
+          const msgFinal = message ? message : title;
+
+          if (type === "success") return toastSuccess(msgFinal);
+          if (type === "warning") return toastError(msgFinal);
+          if (type === "error") return toastError(msgFinal);
+          return toastInfo(msgFinal);
+        }
+
+        // =====================================================
+        // ✅ SPINNER REUTILIZABLE DENTRO DE BOTONES (SIN ALERTAS)
+        // =====================================================
+        function __setBtnLoading(btn, loading, loadingText = "Generando...") {
+        if (!btn) return;
+
+        if (!btn.dataset.originalHtml) {
+            btn.dataset.originalHtml = btn.innerHTML;
+        }
+
+        if (loading) {
+            btn.disabled = true;
+            btn.classList.add("opacity-80", "cursor-not-allowed");
+            btn.innerHTML = `
+            <svg class="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 0 1 8-8v3.2a4.8 4.8 0 0 0-4.8 4.8H4z"></path>
+            </svg>
+            ${loadingText}
+            `;
+        } else {
+            btn.disabled = false;
+            btn.classList.remove("opacity-80", "cursor-not-allowed");
+            btn.innerHTML = btn.dataset.originalHtml;
+        }
+        }
+
+
         // =====================================================
         // ✅ INTEGRACIÓN DE FILTROS (SIN DAÑAR TU BASE)
         //   - guarda filtros en la URL (GET)
         //   - el backend los lee y devuelve data real
+        //   ✅ FIX: preserva bodega/subbodega si ya existen en URL
         // =====================================================
         (function () {
             const params = new URLSearchParams(window.location.search);
@@ -884,6 +1068,10 @@ try {
                 if (ficha && ficha.value) newParams.set("ficha", ficha.value);
                 else newParams.set("ficha", "all");
 
+                // ✅ FIX: preservar filtros custom si ya están en URL
+                if (params.get("bodega")) newParams.set("bodega", params.get("bodega"));
+                if (params.get("subbodega")) newParams.set("subbodega", params.get("subbodega"));
+
                 // mantener coll si existe
                 if (params.get("coll") === "1") newParams.set("coll", "1");
 
@@ -896,60 +1084,9 @@ try {
             if (ficha)       ficha.addEventListener("change", applyFiltersToURL);
         })();
 
-
         // =====================================================
-        // ✅ EXPORTAR PDF: Consumo por ficha
-        // ✅ MISMA PÁGINA (sin pestaña nueva, sin refresh)
-        //   - Respeta filtros de la URL
-        // =====================================================
-        (function () {
-            const btn = document.getElementById("btnExportConsumoFicha");
-            if (!btn) return;
-
-            // ✅ Descarga el PDF sin salir de la página (iframe invisible)
-            function downloadSamePage(urlPdf) {
-                let iframe = document.getElementById("pdfDownloadFrame");
-                if (!iframe) {
-                    iframe = document.createElement("iframe");
-                    iframe.id = "pdfDownloadFrame";
-                    iframe.style.display = "none";
-                    document.body.appendChild(iframe);
-                }
-
-                // ✅ Cache-buster para que siempre dispare la descarga
-                const sep = urlPdf.includes("?") ? "&" : "?";
-                iframe.src = urlPdf + sep + "t=" + Date.now();
-            }
-
-            btn.addEventListener("click", () => {
-                const params = new URLSearchParams(window.location.search);
-
-                const fecha_inicio = params.get("fecha_inicio") || "";
-                const fecha_fin    = params.get("fecha_fin") || "";
-                const programa     = params.get("programa") || "all";
-                const ficha        = params.get("ficha") || "all";
-
-                const url = `src/controllers/reportes_controller.php?action=export_consumo_ficha`
-                    + `&fecha_inicio=${encodeURIComponent(fecha_inicio)}`
-                    + `&fecha_fin=${encodeURIComponent(fecha_fin)}`
-                    + `&programa=${encodeURIComponent(programa)}`
-                    + `&ficha=${encodeURIComponent(ficha)}`;
-
-                // ✅ Descarga en la misma página (sin refresh, sin pestaña)
-                downloadSamePage(url);
-            });
-        })();
-
-        // =====================================================
-        // ✅ BACKEND PARA TAB "REPORTES PDF" + REPORTE PERSONALIZADO
-        //   - SIN TOCAR TU HTML BASE
-        //   - Usa reportes_controller.php:
-        //       action=generate_pdf&type=...
-        //       action=print_view&type=...
-        //       action=generate_custom
-        // =====================================================
-
         // ✅ Helper global: descarga PDF/CSV/Excel sin recargar (iframe invisible)
+        // =====================================================
         function __downloadSamePage(urlFile) {
             let iframe = document.getElementById("pdfDownloadFrame");
             if (!iframe) {
@@ -963,127 +1100,469 @@ try {
             iframe.src = urlFile + sep + "t=" + Date.now();
         }
 
-        // ✅ Generar PDF por tarjeta (usa filtros actuales de URL si existen)
-        function handleGenerateReport(type) {
-            const params = new URLSearchParams(window.location.search);
+        // =====================================================================
+        // ✅✅✅ FIX CENTRAL: AHORA LOS FILTROS INCLUYEN BODEGA/SUBBODEGA
+        // =====================================================================
+        function __getReportFiltersFromURL() {
+          const params = new URLSearchParams(window.location.search);
 
-            const fecha_inicio = params.get("fecha_inicio") || "";
-            const fecha_fin    = params.get("fecha_fin") || "";
-            const programa     = params.get("programa") || "all";
-            const ficha        = params.get("ficha") || "all";
+          return {
+            fecha_inicio: params.get("fecha_inicio") || "",
+            fecha_fin:    params.get("fecha_fin") || "",
+            programa:     params.get("programa") || "all",
+            ficha:        params.get("ficha") || "all",
 
-            const url =
-                `src/controllers/reportes_controller.php?action=generate_pdf&type=${encodeURIComponent(type)}`
-                + `&fecha_inicio=${encodeURIComponent(fecha_inicio)}`
-                + `&fecha_fin=${encodeURIComponent(fecha_fin)}`
-                + `&programa=${encodeURIComponent(programa)}`
-                + `&ficha=${encodeURIComponent(ficha)}`;
-
-            __downloadSamePage(url);
+            // ✅ NUEVO (FIX)
+            bodega:       params.get("bodega") || "all",
+            subbodega:    params.get("subbodega") || "all",
+          };
         }
 
-        // ✅ Imprimir por tarjeta (abre vista imprimible)
-        function handlePrintReport(type) {
-            const params = new URLSearchParams(window.location.search);
+        async function __checkReportHasData(type) {
+          const f = __getReportFiltersFromURL();
 
-            const fecha_inicio = params.get("fecha_inicio") || "";
-            const fecha_fin    = params.get("fecha_fin") || "";
-            const programa     = params.get("programa") || "all";
-            const ficha        = params.get("ficha") || "all";
+          const url =
+            `src/controllers/reportes_controller.php?action=check_data&type=${encodeURIComponent(type)}`
+            + `&fecha_inicio=${encodeURIComponent(f.fecha_inicio)}`
+            + `&fecha_fin=${encodeURIComponent(f.fecha_fin)}`
+            + `&programa=${encodeURIComponent(f.programa)}`
+            + `&ficha=${encodeURIComponent(f.ficha)}`
+            + `&bodega=${encodeURIComponent(f.bodega)}`
+            + `&subbodega=${encodeURIComponent(f.subbodega)}`;
 
-            const url =
-                `src/controllers/reportes_controller.php?action=print_view&type=${encodeURIComponent(type)}`
-                + `&fecha_inicio=${encodeURIComponent(fecha_inicio)}`
-                + `&fecha_fin=${encodeURIComponent(fecha_fin)}`
-                + `&programa=${encodeURIComponent(programa)}`
-                + `&ficha=${encodeURIComponent(ficha)}`;
-
-            window.open(url, "_blank");
+          const res = await fetch(url, { method: "GET" });
+          const data = await res.json().catch(() => null);
+          return data;
         }
 
-        // ✅ Enlazar automáticamente el botón de impresora de cada card (sin tocar HTML)
-        (function () {
-            // Solo aplica cuando está el tab de reportes activo (si hay cards)
-            const cards = document.querySelectorAll(".grid.md\\:grid-cols-2.lg\\:grid-cols-3 > div.bg-card");
-            if (!cards || !cards.length) return;
+        // =====================================================
+        // ✅ EXPORTAR PDF: Consumo por ficha
+        // ✅ FIX: AHORA VALIDA Y MANDA BODEGA/SUBBODEGA
+        // =====================================================
+        // =====================================================
+// ✅ EXPORTAR PDF: Consumo por ficha (CON SPINNER EN BOTÓN)
+// =====================================================
+(function () {
+  const btn = document.getElementById("btnExportConsumoFicha");
+  if (!btn) return;
 
-            cards.forEach((card) => {
-                const btnGenerate = card.querySelector("button[onclick*=\"handleGenerateReport(\"]");
-                const btnPrint = card.querySelector("button.inline-flex.items-center.justify-center.p-2");
+  btn.addEventListener("click", async () => {
+    try {
+      __setBtnLoading(btn, true, "Exportando...");
 
-                if (!btnGenerate || !btnPrint) return;
+      const check = await __checkReportHasData("consumo-ficha");
 
-                const onclick = btnGenerate.getAttribute("onclick") || "";
-                // Extraer id dentro de handleGenerateReport('...')
-                const match = onclick.match(/handleGenerateReport\\(['"]([^'"]+)['"]\\)/);
-                if (!match || !match[1]) return;
+      if (!check || check.ok === false) {
+        showFlowbiteToast("error", "Validación no disponible", check?.message || "No fue posible validar el reporte.");
+        __setBtnLoading(btn, false);
+        return;
+      }
 
-                const reportId = match[1];
+      if (check.hasData === false) {
+        showFlowbiteToast("info", "Sin resultados", check.message || "No hay datos con los filtros seleccionados.");
+        __setBtnLoading(btn, false);
+        return;
+      }
 
-                btnPrint.addEventListener("click", function (e) {
-                    e.preventDefault();
-                    handlePrintReport(reportId);
-                });
-            });
-        })();
+      // ✅ SI HAY DATA → DESCARGAR
+      const f = __getReportFiltersFromURL();
 
-        // ✅ Reporte personalizado (leer inputs sin IDs, por orden, sin tocar HTML)
-        (function () {
-            // Buscar el bloque "Configurar Reporte Personalizado"
-            const headers = Array.from(document.querySelectorAll("h3"));
-            const titleNode = headers.find(h => (h.textContent || "").trim() === "Configurar Reporte Personalizado");
-            if (!titleNode) return;
+      const url = `src/controllers/reportes_controller.php?action=export_consumo_ficha`
+        + `&fecha_inicio=${encodeURIComponent(f.fecha_inicio)}`
+        + `&fecha_fin=${encodeURIComponent(f.fecha_fin)}`
+        + `&programa=${encodeURIComponent(f.programa)}`
+        + `&ficha=${encodeURIComponent(f.ficha)}`
+        + `&bodega=${encodeURIComponent(f.bodega)}`
+        + `&subbodega=${encodeURIComponent(f.subbodega)}`;
 
-            // Contenedor principal del card
-            const card = titleNode.closest(".bg-card");
-            if (!card) return;
+      __downloadSamePage(url);
 
-            // Obtener todos los selects e inputs dentro del card (en el orden del layout)
-            const selects = Array.from(card.querySelectorAll("select.input-siga"));
-            const inputs  = Array.from(card.querySelectorAll("input[type='date'].input-siga"));
+      // ✅ Quitamos toast de éxito (porque tú NO quieres alertas al descargar)
+      setTimeout(() => __setBtnLoading(btn, false), 1200);
 
-            // Botón "Generar Reporte" (último botón del card)
-            const btns = Array.from(card.querySelectorAll("button"));
-            const btnGenerateCustom = btns.find(b => (b.textContent || "").includes("Generar Reporte"));
-            if (!btnGenerateCustom) return;
+    } catch (err) {
+      console.error(err);
+      __setBtnLoading(btn, false);
+      showFlowbiteToast("error", "Error", "Ocurrió un problema al exportar el PDF.");
+    }
+  });
+})();
 
-            // Layout esperado:
-            // selects[0] = tipo reporte
-            // inputs[0]  = fecha inicio
-            // inputs[1]  = fecha fin
-            // selects[1] = formato
-            // selects[2] = programa
-            // selects[3] = bodega
-            // selects[4] = incluir_graficas
-            function safeVal(el, fallback = "") {
-                return el && typeof el.value !== "undefined" ? el.value : fallback;
+
+        // =====================================================
+        // ✅ Generar PDF por tarjeta (con validación subbodega)
+        // =====================================================
+        // =====================================================
+// ✅ Generar PDF por tarjeta (SPINNER EN EL BOTÓN - SIN TOAST ÉXITO)
+// =====================================================
+async function handleGenerateReport(type) {
+  const btn = (window.event && window.event.currentTarget) ? window.event.currentTarget : null;
+
+  try {
+    __setBtnLoading(btn, true, "Generando...");
+
+    const check = await __checkReportHasData(type);
+
+    if (!check || check.ok === false) {
+      showFlowbiteToast("error", "Validación no disponible", check?.message || "No fue posible validar la información del reporte.");
+      __setBtnLoading(btn, false);
+      return;
+    }
+
+    if (check.hasData === false) {
+      showFlowbiteToast("info", "Sin resultados", check.message || "No se encontraron resultados con estos filtros.");
+      __setBtnLoading(btn, false);
+      return;
+    }
+
+    const f = __getReportFiltersFromURL();
+
+    const url =
+      `src/controllers/reportes_controller.php?action=generate_pdf&type=${encodeURIComponent(type)}`
+      + `&fecha_inicio=${encodeURIComponent(f.fecha_inicio)}`
+      + `&fecha_fin=${encodeURIComponent(f.fecha_fin)}`
+      + `&programa=${encodeURIComponent(f.programa)}`
+      + `&ficha=${encodeURIComponent(f.ficha)}`
+      + `&bodega=${encodeURIComponent(f.bodega)}`
+      + `&subbodega=${encodeURIComponent(f.subbodega)}`;
+
+    __downloadSamePage(url);
+
+    // ✅ SIN TOAST DE ÉXITO
+    setTimeout(() => __setBtnLoading(btn, false), 1200);
+
+  } catch (err) {
+    console.error(err);
+    __setBtnLoading(btn, false);
+    showFlowbiteToast("error", "Error al generar", "Ocurrió un problema al generar el PDF.");
+  }
+}
+
+
+        // =====================================================
+        // ✅ Imprimir por tarjeta (con validación subbodega)
+        // =====================================================
+        async function handlePrintReport(type) {
+          try {
+            const check = await __checkReportHasData(type);
+
+            if (!check || check.ok === false) {
+              showFlowbiteToast("error", "Validación no disponible", check?.message || "No fue posible validar el reporte.");
+              return;
             }
 
-            btnGenerateCustom.addEventListener("click", function (e) {
-                e.preventDefault();
+            if (check.hasData === false) {
+              showFlowbiteToast("info", "Sin resultados", check.message || "No hay datos para imprimir con esos filtros.");
+              return;
+            }
 
-                const tipo_reporte = safeVal(selects[0], "consumo");
-                const fecha_inicio = safeVal(inputs[0], "");
-                const fecha_fin    = safeVal(inputs[1], "");
-                const format       = safeVal(selects[1], "pdf");
-                const programa     = safeVal(selects[2], "all");
-                const bodega       = safeVal(selects[3], "all");
-                const incluir_graficas = safeVal(selects[4], "yes");
+            const f = __getReportFiltersFromURL();
 
-                const url =
-                    `src/controllers/reportes_controller.php?action=generate_custom`
-                    + `&tipo_reporte=${encodeURIComponent(tipo_reporte)}`
-                    + `&format=${encodeURIComponent(format)}`
-                    + `&fecha_inicio=${encodeURIComponent(fecha_inicio)}`
-                    + `&fecha_fin=${encodeURIComponent(fecha_fin)}`
-                    + `&programa=${encodeURIComponent(programa)}`
-                    + `&bodega=${encodeURIComponent(bodega)}`
-                    + `&incluir_graficas=${encodeURIComponent(incluir_graficas)}`;
+            const url =
+              `src/controllers/reportes_controller.php?action=print_view&type=${encodeURIComponent(type)}`
+              + `&fecha_inicio=${encodeURIComponent(f.fecha_inicio)}`
+              + `&fecha_fin=${encodeURIComponent(f.fecha_fin)}`
+              + `&programa=${encodeURIComponent(f.programa)}`
+              + `&ficha=${encodeURIComponent(f.ficha)}`
+              + `&bodega=${encodeURIComponent(f.bodega)}`
+              + `&subbodega=${encodeURIComponent(f.subbodega)}`
+              + `&auto=1`;
 
-                // ✅ Descarga/genera en la misma página
-                __downloadSamePage(url);
-            });
+            const w = 980;
+            const h = 720;
+            const left = Math.max(0, (window.screen.width - w) / 2);
+            const top  = Math.max(0, (window.screen.height - h) / 2);
+
+            const popup = window.open(url, "SIGA_PRINT", `width=${w},height=${h},top=${top},left=${left},resizable=yes,scrollbars=yes`);
+            if (!popup) window.open(url, "_blank");
+
+          } catch (err) {
+            console.error(err);
+            showFlowbiteToast("error", "Error al imprimir", "No fue posible abrir la vista de impresión.");
+          }
+        }
+
+        // ✅ Enlazar impresión (sin tocar HTML)
+        (function () {
+          document.addEventListener("click", function (e) {
+            const btn = e.target.closest("button[data-print-btn='1']");
+            if (!btn) return;
+
+            e.preventDefault();
+
+            const card = btn.closest(".bg-card");
+            if (!card) return;
+
+            const btnGenerate = card.querySelector("button[onclick*=\"handleGenerateReport(\"]");
+            if (!btnGenerate) return;
+
+            const onclick = btnGenerate.getAttribute("onclick") || "";
+            const match = onclick.match(/handleGenerateReport\(['"]([^'"]+)['"]\)/);
+
+            if (!match || !match[1]) return;
+
+            const reportId = match[1];
+            handlePrintReport(reportId);
+          });
         })();
+
+        // =====================================================
+        // ✅ SUBBODEGAS DINÁMICAS (CUSTOM REPORT)
+        // =====================================================
+        (function () {
+          const bodegaSelect = document.getElementById("custom-bodega");
+          const subbodegaSelect = document.getElementById("custom-subbodega");
+
+          if (!bodegaSelect || !subbodegaSelect) return;
+
+          function resetSubbodegas() {
+            subbodegaSelect.innerHTML = "";
+            subbodegaSelect.appendChild(new Option("Todas las subbodegas", "all"));
+            subbodegaSelect.value = "all";
+            subbodegaSelect.disabled = true;
+          }
+
+          async function cargarSubbodegas(idBodega) {
+            if (!idBodega || idBodega === "all") {
+              resetSubbodegas();
+              return;
+            }
+
+            subbodegaSelect.disabled = true;
+            subbodegaSelect.innerHTML = "";
+            subbodegaSelect.appendChild(new Option("Cargando...", "all"));
+
+            try {
+              const url =
+                `src/controllers/reportes_controller.php?action=get_subbodegas&id_bodega=${encodeURIComponent(idBodega)}`;
+
+              const res = await fetch(url, { method: "GET", headers: { "Accept": "application/json" } });
+              const data = await res.json();
+
+              subbodegaSelect.innerHTML = "";
+              subbodegaSelect.appendChild(new Option("Todas las subbodegas", "all"));
+
+              if (!data || data.ok !== true || !Array.isArray(data.items)) {
+                resetSubbodegas();
+                return;
+              }
+
+              if (data.items.length === 0) {
+                subbodegaSelect.appendChild(new Option("No hay subbodegas asociadas", "all"));
+                subbodegaSelect.value = "all";
+                subbodegaSelect.disabled = true;
+                return;
+              }
+
+              data.items.forEach((item) => {
+                const opt = new Option(item.nombre, item.id);
+                subbodegaSelect.appendChild(opt);
+              });
+
+              subbodegaSelect.disabled = false;
+              subbodegaSelect.value = "all";
+            } catch (err) {
+              console.error("❌ Error cargando subbodegas:", err);
+              resetSubbodegas();
+            }
+          }
+
+          bodegaSelect.addEventListener("change", (e) => {
+            cargarSubbodegas(e.target.value);
+          });
+
+          resetSubbodegas();
+          if (bodegaSelect.value && bodegaSelect.value !== "all") {
+            cargarSubbodegas(bodegaSelect.value);
+          }
+        })();
+
+        // =====================================================
+        // ✅ FIX FINAL: GUARDAR BODEGA/SUBBODEGA EN LA URL
+        //   - para que cualquier descarga use subbodega
+        // =====================================================
+        (function () {
+          const programaEl  = document.getElementById("custom-programa");
+          const bodegaEl    = document.getElementById("custom-bodega");
+          const subbodegaEl = document.getElementById("custom-subbodega");
+
+          if (!programaEl || !bodegaEl || !subbodegaEl) return;
+
+          function syncCustomFiltersToURL() {
+            const params = new URLSearchParams(window.location.search);
+
+            params.set("page", "reportes");
+            params.set("tab", params.get("tab") || "reportes");
+
+            // ✅ Guardar los custom como filtros globales
+            params.set("bodega", bodegaEl.value || "all");
+            params.set("subbodega", subbodegaEl.value || "all");
+
+            // ✅ NO recarga la página (solo actualiza la URL)
+            const newUrl = window.location.pathname + "?" + params.toString();
+            window.history.replaceState({}, "", newUrl);
+          }
+
+          bodegaEl.addEventListener("change", () => {
+            // cuando cambia bodega, subbodega se reseteará a all y luego se elegirá
+            setTimeout(syncCustomFiltersToURL, 50);
+          });
+
+          subbodegaEl.addEventListener("change", syncCustomFiltersToURL);
+          programaEl.addEventListener("change", syncCustomFiltersToURL);
+
+          // inicial
+          syncCustomFiltersToURL();
+        })();
+
+        // =====================================================
+// ✅ FIX: BOTÓN "Generar Reporte" (PERSONALIZADO)
+// =====================================================
+(function () {
+  // Buscar la tarjeta del "Configurar Reporte Personalizado"
+  const header = Array.from(document.querySelectorAll("h3"))
+    .find(h => (h.textContent || "").trim() === "Configurar Reporte Personalizado");
+
+  if (!header) return;
+
+  const card = header.closest(".bg-card");
+  if (!card) return;
+
+  // Inputs del primer bloque (Tipo reporte, Fecha inicio, Fecha fin, Formato)
+  const tipoReporteEl = card.querySelector("select.input-siga"); // el primero
+  const inputsDate = card.querySelectorAll("input[type='date'].input-siga");
+  const fechaInicioEl = inputsDate[0] || null;
+  const fechaFinEl = inputsDate[1] || null;
+
+  const selectsAll = card.querySelectorAll("select.input-siga");
+  const formatoEl = selectsAll[1] || null; // el segundo select del bloque (formato)
+
+  // Selects con ID (segundo bloque)
+  const programaEl  = document.getElementById("custom-programa");
+  const bodegaEl    = document.getElementById("custom-bodega");
+  const subbodegaEl = document.getElementById("custom-subbodega");
+  const graficasEl  = document.getElementById("custom-graficas");
+
+  // Botón "Generar Reporte"
+  const btn = Array.from(card.querySelectorAll("button"))
+    .find(b => (b.textContent || "").trim().includes("Generar Reporte"));
+
+  if (!btn) return;
+
+  // Spinner dentro del botón
+  function setBtnLoading(loading) {
+    if (!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML;
+
+    if (loading) {
+      btn.disabled = true;
+      btn.classList.add("opacity-80", "cursor-not-allowed");
+      btn.innerHTML = `
+        <svg class="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor"
+            d="M4 12a8 8 0 0 1 8-8v3.2a4.8 4.8 0 0 0-4.8 4.8H4z"></path>
+        </svg>
+        Generando...
+      `;
+    } else {
+      btn.disabled = false;
+      btn.classList.remove("opacity-80", "cursor-not-allowed");
+      btn.innerHTML = btn.dataset.originalHtml;
+    }
+  }
+
+  // ✅ Convertir tipo UI → tipo real del controller (para check_data)
+  function mapTipoToCheckData(tipoUI) {
+    const map = {
+      consumo: "consumo-materiales",
+      movimientos: "movimientos",
+      stock: "material-faltante",
+      auditoria: "movimientos",
+    };
+    return map[tipoUI] || "consumo-materiales";
+  }
+
+  // Descargar en iframe invisible (TU MISMO MÉTODO)
+  function download(urlFile) {
+    let iframe = document.getElementById("pdfDownloadFrame");
+    if (!iframe) {
+      iframe = document.createElement("iframe");
+      iframe.id = "pdfDownloadFrame";
+      iframe.style.display = "none";
+      document.body.appendChild(iframe);
+    }
+
+    const sep = urlFile.includes("?") ? "&" : "?";
+    iframe.src = urlFile + sep + "t=" + Date.now();
+  }
+
+  btn.addEventListener("click", async () => {
+    try {
+      setBtnLoading(true);
+
+      const tipoUI = (tipoReporteEl?.value || "consumo").trim();    // consumo | movimientos | stock | auditoria
+      const format = (formatoEl?.value || "pdf").trim().toLowerCase(); // pdf | excel | csv
+
+      const fecha_inicio = (fechaInicioEl?.value || "").trim();
+      const fecha_fin    = (fechaFinEl?.value || "").trim();
+
+      const programa = (programaEl?.value || "all").trim();
+      const bodega   = (bodegaEl?.value || "all").trim();
+      const subbodega = (subbodegaEl?.value || "all").trim();
+      const incluir_graficas = (graficasEl?.value || "yes").trim().toLowerCase(); // yes | no
+
+      // ✅ 1) VALIDAR DATA (con tipo real)
+      const typeCheck = mapTipoToCheckData(tipoUI);
+
+      const checkUrl =
+        `src/controllers/reportes_controller.php?action=check_data&type=${encodeURIComponent(typeCheck)}`
+        + `&fecha_inicio=${encodeURIComponent(fecha_inicio)}`
+        + `&fecha_fin=${encodeURIComponent(fecha_fin)}`
+        + `&programa=${encodeURIComponent(programa)}`
+        + `&ficha=all`
+        + `&bodega=${encodeURIComponent(bodega)}`
+        + `&subbodega=${encodeURIComponent(subbodega)}`;
+
+      const res = await fetch(checkUrl, { method: "GET" });
+      const check = await res.json().catch(() => null);
+
+      if (!check || check.ok === false) {
+        showFlowbiteToast("error", "Validación no disponible", check?.message || "No fue posible validar el reporte.");
+        setBtnLoading(false);
+        return;
+      }
+
+      if (check.hasData === false) {
+        showFlowbiteToast("info", "Sin resultados", check.message || "No hay datos con los filtros seleccionados.");
+        setBtnLoading(false);
+        return;
+      }
+
+      // ✅ 2) SI HAY DATA → GENERAR PERSONALIZADO
+      const url =
+        `src/controllers/reportes_controller.php?action=generate_custom`
+        + `&tipo_reporte=${encodeURIComponent(tipoUI)}`
+        + `&format=${encodeURIComponent(format)}`
+        + `&fecha_inicio=${encodeURIComponent(fecha_inicio)}`
+        + `&fecha_fin=${encodeURIComponent(fecha_fin)}`
+        + `&programa=${encodeURIComponent(programa)}`
+        + `&bodega=${encodeURIComponent(bodega)}`
+        + `&subbodega=${encodeURIComponent(subbodega)}`
+        + `&incluir_graficas=${encodeURIComponent(incluir_graficas)}`;
+
+      download(url);
+
+      setTimeout(() => setBtnLoading(false), 900);
+      showFlowbiteToast("success", "Reporte generado", "El reporte personalizado se está descargando.");
+
+    } catch (err) {
+      console.error("❌ Error reporte personalizado:", err);
+      setBtnLoading(false);
+      showFlowbiteToast("error", "Error", "No fue posible generar el reporte personalizado.");
+    }
+  });
+})();
+
 
     </script>
 </body>

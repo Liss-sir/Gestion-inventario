@@ -20,53 +20,6 @@ class ReportesModel
         return $d ? $d->format("Y-m-d") : null;
     }
 
-    /**
-     * ✅ buildFilters mejorado:
-     * Permite controlar qué columna se usa para filtrar programa/ficha.
-     * Esto evita problemas cuando m.id_programa viene NULL pero el programa real está en fichas.
-     */
-    private function buildFilters(array $filters, array $columns = []): array
-    {
-        $fechaInicio = $this->normalizeDate($filters["fecha_inicio"] ?? null);
-        $fechaFin    = $this->normalizeDate($filters["fecha_fin"] ?? null);
-        $programaId  = $filters["programa"] ?? "all";
-        $fichaId     = $filters["ficha"] ?? "all";
-
-        // ✅ Columnas por defecto
-        $dateCol     = $columns["date"] ?? "m.fecha_hora";
-        $programaCol = $columns["programa"] ?? "m.id_programa";
-        $fichaCol    = $columns["ficha"] ?? "m.id_ficha";
-
-        $where = [];
-        $params = [];
-
-        if ($fechaInicio) {
-            $where[] = "DATE($dateCol) >= ?";
-            $params[] = $fechaInicio;
-        }
-        if ($fechaFin) {
-            $where[] = "DATE($dateCol) <= ?";
-            $params[] = $fechaFin;
-        }
-
-        if ($programaId !== "all" && $programaId !== "" && is_numeric($programaId)) {
-            $where[] = "$programaCol = ?";
-            $params[] = (int)$programaId;
-        }
-
-        if ($fichaId !== "all" && $fichaId !== "" && is_numeric($fichaId)) {
-            $where[] = "$fichaCol = ?";
-            $params[] = (int)$fichaId;
-        }
-
-        $sqlWhere = "";
-        if (!empty($where)) {
-            $sqlWhere = "WHERE " . implode(" AND ", $where);
-        }
-
-        return [$sqlWhere, $params];
-    }
-
     // =====================================================
     // ✅ Helpers avanzados (para que TODO funcione aunque cambie tu BD)
     // =====================================================
@@ -106,10 +59,132 @@ class ReportesModel
     }
 
     /**
+     * =====================================================
+     * ✅ RESOLVER COLUMNAS DE UBICACIÓN EN movimientos_material
+     * - Detecta bodega/subbodega aunque tu BD use distintos nombres
+     * - Retorna columnas listas para usar con alias (por defecto m.)
+     * =====================================================
+     */
+    private function resolveMovimientosLocationColumns(string $alias = "m"): array
+    {
+        $table = "movimientos_material";
+
+        $bodegaCol = null;
+        $subCol = null;
+
+        // ✅ Posibles columnas para BODEGA
+        $bodegaCandidates = ["id_bodega", "bodega_id"];
+        foreach ($bodegaCandidates as $c) {
+            if ($this->columnExists($table, $c)) {
+                $bodegaCol = $alias . "." . $c;
+                break;
+            }
+        }
+
+        // ✅ Posibles columnas para SUBBODEGA
+        $subCandidates = ["id_subbodega", "subbodega_id", "id_sub_bodega", "sub_bodega_id"];
+        foreach ($subCandidates as $c) {
+            if ($this->columnExists($table, $c)) {
+                $subCol = $alias . "." . $c;
+                break;
+            }
+        }
+
+        return [$bodegaCol, $subCol];
+    }
+
+    /**
+     * ✅ buildFilters mejorado:
+     * - Permite controlar qué columna se usa para filtrar programa/ficha.
+     * - ✅ Ahora incluye filtros de Bodega/Subbodega con prioridad correcta:
+     *   Si hay subbodega -> ignora bodega
+     */
+    private function buildFilters(array $filters, array $columns = []): array
+    {
+        $fechaInicio = $this->normalizeDate($filters["fecha_inicio"] ?? null);
+        $fechaFin    = $this->normalizeDate($filters["fecha_fin"] ?? null);
+        $programaId  = $filters["programa"] ?? "all";
+        $fichaId     = $filters["ficha"] ?? "all";
+
+        // ✅ Nuevos filtros ubicación
+        $bodegaId    = $filters["bodega"] ?? "all";
+        $subBodegaId = $filters["subbodega"] ?? "all";
+
+        // ✅ Columnas por defecto
+        $dateCol     = $columns["date"] ?? "m.fecha_hora";
+        $programaCol = $columns["programa"] ?? "m.id_programa";
+        $fichaCol    = $columns["ficha"] ?? "m.id_ficha";
+
+        // ✅ Ubicación: si no vienen, intentamos detectar en movimientos_material
+        $bodegaCol   = $columns["bodega"] ?? null;
+        $subBodegaCol = $columns["subbodega"] ?? null;
+
+        if (!$bodegaCol || !$subBodegaCol) {
+            [$autoBodegaCol, $autoSubCol] = $this->resolveMovimientosLocationColumns("m");
+            if (!$bodegaCol) $bodegaCol = $autoBodegaCol;
+            if (!$subBodegaCol) $subBodegaCol = $autoSubCol;
+        }
+
+        $where = [];
+        $params = [];
+
+        if ($fechaInicio) {
+            $where[] = "DATE($dateCol) >= ?";
+            $params[] = $fechaInicio;
+        }
+        if ($fechaFin) {
+            $where[] = "DATE($dateCol) <= ?";
+            $params[] = $fechaFin;
+        }
+
+        if ($programaId !== "all" && $programaId !== "" && is_numeric($programaId)) {
+            $where[] = "$programaCol = ?";
+            $params[] = (int)$programaId;
+        }
+
+        if ($fichaId !== "all" && $fichaId !== "" && is_numeric($fichaId)) {
+            $where[] = "$fichaCol = ?";
+            $params[] = (int)$fichaId;
+        }
+
+        // =====================================================
+        // ✅ UBICACIÓN (BODEGA / SUBBODEGA) CON PRIORIDAD
+        // - Si hay subbodega válida -> filtrar subbodega
+        // - Si no existe columna subbodega pero se solicitó -> 1=0 (sin resultados)
+        // - Si no, si hay bodega -> filtrar bodega
+        // =====================================================
+        $hasBodegaFilter    = ($bodegaId !== "all" && $bodegaId !== "" && is_numeric($bodegaId));
+        $hasSubBodegaFilter = ($subBodegaId !== "all" && $subBodegaId !== "" && is_numeric($subBodegaId));
+
+        // ✅ FIX DEFINITIVO: NO fallback a bodega si user eligió subbodega
+        if ($hasSubBodegaFilter) {
+            if ($subBodegaCol) {
+                $where[] = "$subBodegaCol = ?";
+                $params[] = (int)$subBodegaId;
+            } else {
+                // ✅ si el user filtró subbodega pero la tabla no tiene columna → NO hay resultados
+                $where[] = "1=0";
+            }
+        } elseif ($hasBodegaFilter) {
+            if ($bodegaCol) {
+                $where[] = "$bodegaCol = ?";
+                $params[] = (int)$bodegaId;
+            }
+        }
+
+        $sqlWhere = "";
+        if (!empty($where)) {
+            $sqlWhere = "WHERE " . implode(" AND ", $where);
+        }
+
+        return [$sqlWhere, $params];
+    }
+
+    /**
      * ✅ Filtro robusto para programas:
      * - movimientos puede venir con m.id_programa NULL
      * - entonces tomamos el programa desde fichas: f.id_programa
-     * - si el usuario filtra programa, aplicamos: (f.id_programa = ? OR m.id_programa = ?)
+     * - ✅ Ahora también incluye filtros bodega/subbodega con prioridad
      */
     private function buildFiltersProgramFlexible(array $filters): array
     {
@@ -117,6 +192,10 @@ class ReportesModel
         $fechaFin    = $this->normalizeDate($filters["fecha_fin"] ?? null);
         $programaId  = $filters["programa"] ?? "all";
         $fichaId     = $filters["ficha"] ?? "all";
+
+        // ✅ Ubicación
+        $bodegaId    = $filters["bodega"] ?? "all";
+        $subBodegaId = $filters["subbodega"] ?? "all";
 
         $where = [];
         $params = [];
@@ -139,6 +218,27 @@ class ReportesModel
         if ($fichaId !== "all" && $fichaId !== "" && is_numeric($fichaId)) {
             $where[] = "m.id_ficha = ?";
             $params[] = (int)$fichaId;
+        }
+
+        // ✅ ubicación columnas detectadas automáticamente
+        [$bodegaCol, $subCol] = $this->resolveMovimientosLocationColumns("m");
+
+        $hasBodegaFilter    = ($bodegaId !== "all" && $bodegaId !== "" && is_numeric($bodegaId));
+        $hasSubBodegaFilter = ($subBodegaId !== "all" && $subBodegaId !== "" && is_numeric($subBodegaId));
+
+        // ✅ FIX DEFINITIVO: si hay subbodega y no existe columna → 1=0 (NO fallback a bodega)
+        if ($hasSubBodegaFilter) {
+            if ($subCol) {
+                $where[] = "$subCol = ?";
+                $params[] = (int)$subBodegaId;
+            } else {
+                $where[] = "1=0";
+            }
+        } elseif ($hasBodegaFilter) {
+            if ($bodegaCol) {
+                $where[] = "$bodegaCol = ?";
+                $params[] = (int)$bodegaId;
+            }
         }
 
         $sqlWhere = "";
@@ -174,12 +274,41 @@ class ReportesModel
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
+    /**
+     * ✅ Bodegas (opcional)
+     * - devuelve [] si no existe tabla
+     */
+    public function getBodegas(): array
+    {
+        $candidates = ["bodegas", "bodegas_formacion", "bodega", "bodegas_siga"];
+        $table = null;
+
+        foreach ($candidates as $t) {
+            if ($this->tableExists($t)) {
+                $table = $t;
+                break;
+            }
+        }
+        if (!$table) return [];
+
+        // Buscar columnas comunes
+        $idCol = $this->columnExists($table, "id_bodega") ? "id_bodega" : ($this->columnExists($table, "id") ? "id" : null);
+        $nameCol = $this->columnExists($table, "nombre_bodega") ? "nombre_bodega" : ($this->columnExists($table, "nombre") ? "nombre" : null);
+
+        if (!$idCol || !$nameCol) return [];
+
+        $sql = "SELECT $idCol AS id, $nameCol AS nombre FROM $table ORDER BY $nameCol ASC";
+        $st = $this->db->prepare($sql);
+        $st->execute();
+        return $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
     // ==========================
-    // ✅ Consumo vs “Devoluciones” (Entrada)
-    // FIX ONLY_FULL_GROUP_BY ✅
+    // ✅ Consumo vs Devoluciones por Mes
     // ==========================
     public function getConsumoPorMes(array $filters): array
     {
+        // ✅ Ahora buildFilters incluye bodega/subbodega automáticamente si existen columnas
         [$where, $params] = $this->buildFilters($filters);
 
         $sql = "
@@ -217,27 +346,28 @@ class ReportesModel
     }
 
     // ==========================
-    // ✅ Distribución por Programa (PORCENTAJE)
+    // ✅ Distribución por Programa (PORCENTAJE) - FIX ✅
+    // - funciona si m.id_programa viene NULL
+    // - ✅ ahora también filtra por bodega/subbodega
     // ==========================
     public function getConsumoPorPrograma(array $filters): array
     {
-        [$where, $params] = $this->buildFilters($filters);
+        [$where, $params] = $this->buildFiltersProgramFlexible($filters);
 
-        $extraWhere = "";
-        if ($where) {
-            $extraWhere = $where . " AND m.id_programa IS NOT NULL";
-        } else {
-            $extraWhere = "WHERE m.id_programa IS NOT NULL";
-        }
+        // ✅ Solo salidas para consumo
+        $extra = $where ? " AND m.tipo_movimiento='Salida'" : "WHERE m.tipo_movimiento='Salida'";
 
         $sql = "
             SELECT 
-                p.nombre_programa AS name,
-                SUM(CASE WHEN m.tipo_movimiento = 'Salida' THEN m.cantidad ELSE 0 END) AS total_consumo
+                COALESCE(pf.nombre_programa, pm.nombre_programa, 'Sin programa') AS name,
+                SUM(m.cantidad) AS total_consumo
             FROM movimientos_material m
-            INNER JOIN programas_formacion p ON p.id_programa = m.id_programa
-            $extraWhere
-            GROUP BY p.id_programa, p.nombre_programa
+            LEFT JOIN fichas f ON f.id_ficha = m.id_ficha
+            LEFT JOIN programas_formacion pf ON pf.id_programa = f.id_programa
+            LEFT JOIN programas_formacion pm ON pm.id_programa = m.id_programa
+            $where
+            $extra
+            GROUP BY name
             ORDER BY total_consumo DESC
         ";
 
@@ -349,11 +479,6 @@ class ReportesModel
     // =====================================================
     // ✅ NUEVOS REPORTES (PDF CARDS)
     // =====================================================
-
-    /**
-     * ✅ Consumo REAL por Programa (para PDF)
-     * - usa programa desde fichas si m.id_programa viene null
-     */
     public function getConsumoPorProgramaDetalle(array $filters): array
     {
         [$where, $params] = $this->buildFiltersProgramFlexible($filters);
@@ -386,80 +511,63 @@ class ReportesModel
         return $rows;
     }
 
-    /**
-     * ✅ Consumo REAL por RAE (si existe columna y tabla)
-     * - si no existe, devuelve [] (el controller mostrará “no disponible”)
-     */
+    public function getConsumoPorRAE(array $filters): array
+    {
+        if (!$this->columnExists("movimientos_material", "id_rae")) {
+            return [];
+        }
 
-public function getConsumoPorRAE(array $filters): array
-{
-    // ✅ Si la columna no existe en movimientos => no hay forma de sacar RAE
-    if (!$this->columnExists("movimientos_material", "id_rae")) {
-        return [];
+        $raeTable = "raes";
+        if (!$this->tableExists($raeTable)) {
+            return [];
+        }
+
+        $hasId   = $this->columnExists($raeTable, "id_rae");
+        $hasCod  = $this->columnExists($raeTable, "codigo_rae");
+        $hasDesc = $this->columnExists($raeTable, "descripcion_rae");
+
+        if (!$hasId) return [];
+
+        [$where, $params] = $this->buildFiltersProgramFlexible($filters);
+        $extra = $where ? " AND m.id_rae IS NOT NULL" : "WHERE m.id_rae IS NOT NULL";
+
+        $raeLabelExpr = "r.id_rae";
+        if ($hasCod && $hasDesc) {
+            $raeLabelExpr = "CONCAT(r.codigo_rae, ' - ', r.descripcion_rae)";
+        } elseif ($hasDesc) {
+            $raeLabelExpr = "r.descripcion_rae";
+        } elseif ($hasCod) {
+            $raeLabelExpr = "r.codigo_rae";
+        }
+
+        $sql = "
+            SELECT
+                $raeLabelExpr AS rae,
+                SUM(CASE WHEN m.tipo_movimiento='Salida' THEN m.cantidad ELSE 0 END) AS consumo,
+                SUM(CASE WHEN m.tipo_movimiento='Salida' THEN (m.cantidad * mat.precio) ELSE 0 END) AS costo
+            FROM movimientos_material m
+            INNER JOIN $raeTable r ON r.id_rae = m.id_rae
+            INNER JOIN material_formacion mat ON mat.id_material = m.id_material
+            LEFT JOIN fichas f ON f.id_ficha = m.id_ficha
+            $where
+            $extra
+            GROUP BY r.id_rae
+            HAVING consumo > 0
+            ORDER BY consumo DESC
+        ";
+
+        $st = $this->db->prepare($sql);
+        $st->execute($params);
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        foreach ($rows as &$r) {
+            $r["consumo"] = (int)$r["consumo"];
+            $r["costo"]   = (int)$r["costo"];
+        }
+
+        return $rows;
     }
 
-    // ✅ Tu tabla real (según captura)
-    $raeTable = "raes";
-    if (!$this->tableExists($raeTable)) {
-        return [];
-    }
-
-    // ✅ Confirmar columnas reales
-    $hasId   = $this->columnExists($raeTable, "id_rae");
-    $hasCod  = $this->columnExists($raeTable, "codigo_rae");
-    $hasDesc = $this->columnExists($raeTable, "descripcion_rae");
-
-    if (!$hasId) return [];
-
-    // ✅ Usamos filtros flexibles para que programa funcione aunque m.id_programa venga NULL
-    // (porque tu programa real a veces está en fichas)
-    [$where, $params] = $this->buildFiltersProgramFlexible($filters);
-
-    // ✅ Siempre exige id_rae y consumo real (Salida)
-    $extra = $where ? " AND m.id_rae IS NOT NULL" : "WHERE m.id_rae IS NOT NULL";
-
-    // ✅ Nombre del RAE: "CODIGO - DESCRIPCION" (si existen columnas)
-    $raeLabelExpr = "r.id_rae";
-    if ($hasCod && $hasDesc) {
-        $raeLabelExpr = "CONCAT(r.codigo_rae, ' - ', r.descripcion_rae)";
-    } elseif ($hasDesc) {
-        $raeLabelExpr = "r.descripcion_rae";
-    } elseif ($hasCod) {
-        $raeLabelExpr = "r.codigo_rae";
-    }
-
-    $sql = "
-        SELECT
-            $raeLabelExpr AS rae,
-            SUM(CASE WHEN m.tipo_movimiento='Salida' THEN m.cantidad ELSE 0 END) AS consumo,
-            SUM(CASE WHEN m.tipo_movimiento='Salida' THEN (m.cantidad * mat.precio) ELSE 0 END) AS costo
-        FROM movimientos_material m
-        INNER JOIN $raeTable r ON r.id_rae = m.id_rae
-        INNER JOIN material_formacion mat ON mat.id_material = m.id_material
-        LEFT JOIN fichas f ON f.id_ficha = m.id_ficha
-        $where
-        $extra
-        GROUP BY r.id_rae
-        HAVING consumo > 0
-        ORDER BY consumo DESC
-    ";
-
-    $st = $this->db->prepare($sql);
-    $st->execute($params);
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-    foreach ($rows as &$r) {
-        $r["consumo"] = (int)$r["consumo"];
-        $r["costo"]   = (int)$r["costo"];
-    }
-
-    return $rows;
-}
-
-
-    /**
-     * ✅ Historial REAL de Movimientos
-     */
     public function getMovimientosDetalle(array $filters, int $limit = 300): array
     {
         [$where, $params] = $this->buildFiltersProgramFlexible($filters);
@@ -493,52 +601,241 @@ public function getConsumoPorRAE(array $filters): array
         return $rows;
     }
 
-    /**
-     * ✅ Material faltante (stock bajo / agotado)
-     * - Si tu tabla tiene stock: la usa
-     * - Si NO, calcula stock con entradas - salidas
-     */
     public function getMaterialFaltante(array $filters, int $threshold = 5): array
     {
-        // 1) Si existe stock en material_formacion lo usamos
-        $hasStock = $this->columnExists("material_formacion", "stock") ||
-                    $this->columnExists("material_formacion", "stock_actual") ||
-                    $this->columnExists("material_formacion", "cantidad_disponible");
+        // ==========================
+        // ✅ Filtros del usuario
+        // ==========================
+        $bodegaId    = $filters["bodega"] ?? "all";
+        $subBodegaId = $filters["subbodega"] ?? "all";
 
-        $stockCol = null;
-        if ($this->columnExists("material_formacion", "stock")) $stockCol = "stock";
-        else if ($this->columnExists("material_formacion", "stock_actual")) $stockCol = "stock_actual";
-        else if ($this->columnExists("material_formacion", "cantidad_disponible")) $stockCol = "cantidad_disponible";
+        $hasBodegaFilter    = ($bodegaId !== "all" && $bodegaId !== "" && is_numeric($bodegaId));
+        $hasSubBodegaFilter = ($subBodegaId !== "all" && $subBodegaId !== "" && is_numeric($subBodegaId));
 
+        // ✅ mínimo real (si existe en material_formacion)
         $minCol = null;
         if ($this->columnExists("material_formacion", "stock_minimo")) $minCol = "stock_minimo";
         else if ($this->columnExists("material_formacion", "minimo")) $minCol = "minimo";
 
-        // ✅ Si hay stock directo
-        if ($hasStock && $stockCol) {
+        // ✅ Expr segura: evita mat.0
+        $minExpr = $minCol ? "COALESCE(mat.$minCol, ?)" : "?";
+
+        // =====================================================
+        // ✅ Detectar tablas de stock por ubicación
+        // =====================================================
+        $stockBodegaTableCandidates = ["stock_bodega"];
+        $stockSubTableCandidates    = ["stock_subbodega", "stock_sub_bodega", "stock_sub_bodegas"];
+
+        $stockBodegaTable = null;
+        foreach ($stockBodegaTableCandidates as $t) {
+            if ($this->tableExists($t)) { $stockBodegaTable = $t; break; }
+        }
+
+        $stockSubTable = null;
+        foreach ($stockSubTableCandidates as $t) {
+            if ($this->tableExists($t)) { $stockSubTable = $t; break; }
+        }
+
+        $hasStockBodega = $stockBodegaTable
+            && $this->columnExists($stockBodegaTable, "id_bodega")
+            && $this->columnExists($stockBodegaTable, "id_material")
+            && $this->columnExists($stockBodegaTable, "stock_actual");
+
+        $hasStockSub = $stockSubTable
+            && $this->columnExists($stockSubTable, "id_subbodega")
+            && $this->columnExists($stockSubTable, "id_material")
+            && $this->columnExists($stockSubTable, "stock_actual");
+
+        // =====================================================
+        // ✅ Detectar tabla BODEGAS para nombre real
+        // =====================================================
+        $bodegaTableCandidates = ["bodegas", "bodegas_formacion", "bodega", "bodegas_siga"];
+        $bodegaTable = null;
+
+        foreach ($bodegaTableCandidates as $t) {
+            if ($this->tableExists($t)) { $bodegaTable = $t; break; }
+        }
+
+        $bodegaIdCol   = ($bodegaTable && $this->columnExists($bodegaTable, "id_bodega")) ? "id_bodega" : (($bodegaTable && $this->columnExists($bodegaTable, "id")) ? "id" : null);
+        $bodegaNameCol = ($bodegaTable && $this->columnExists($bodegaTable, "nombre_bodega")) ? "nombre_bodega" : (($bodegaTable && $this->columnExists($bodegaTable, "nombre")) ? "nombre" : null);
+
+        // =====================================================
+        // ✅ Detectar tabla SUBBODEGAS para nombre real
+        // =====================================================
+        $subBodegaTableCandidates = ["subbodegas", "sub_bodegas", "sub_bodega", "subbodega", "subbodegas_formacion"];
+        $subBodegaTable = null;
+
+        foreach ($subBodegaTableCandidates as $t) {
+            if ($this->tableExists($t)) { $subBodegaTable = $t; break; }
+        }
+
+        $subBodegaIdCol = ($subBodegaTable && $this->columnExists($subBodegaTable, "id_subbodega")) ? "id_subbodega"
+            : (($subBodegaTable && $this->columnExists($subBodegaTable, "id")) ? "id" : null);
+
+        $subBodegaNameCol = ($subBodegaTable && $this->columnExists($subBodegaTable, "nombre_subbodega")) ? "nombre_subbodega"
+            : (($subBodegaTable && $this->columnExists($subBodegaTable, "nombre")) ? "nombre" : null);
+
+        // =====================================================
+        // ✅ 1) SUBBODEGA (si viene filtrada)
+        // =====================================================
+        if ($hasSubBodegaFilter && $hasStockSub) {
+
+            $joinSub = "";
+            $ubicacionExpr = "CONCAT('Subbodega #', ss.id_subbodega)";
+
+            if ($subBodegaTable && $subBodegaIdCol && $subBodegaNameCol) {
+                $joinSub = "LEFT JOIN {$subBodegaTable} sbb ON sbb.{$subBodegaIdCol} = ss.id_subbodega";
+                $ubicacionExpr = "COALESCE(sbb.{$subBodegaNameCol}, CONCAT('Subbodega #', ss.id_subbodega))";
+            }
+
             $sql = "
                 SELECT
-                    nombre AS material,
-                    $stockCol AS stock,
-                    " . ($minCol ? $minCol : (int)$threshold) . " AS minimo
-                FROM material_formacion
-                WHERE $stockCol <= " . ($minCol ? $minCol : (int)$threshold) . "
-                ORDER BY $stockCol ASC
+                    mat.nombre AS material,
+                    ss.stock_actual AS stock,
+                    $minExpr AS minimo,
+                    $ubicacionExpr AS ubicacion
+                FROM {$stockSubTable} ss
+                INNER JOIN material_formacion mat ON mat.id_material = ss.id_material
+                $joinSub
+                WHERE ss.id_subbodega = ?
+                  AND ss.stock_actual <= $minExpr
+                ORDER BY ss.stock_actual ASC
                 LIMIT 100
             ";
+
             $st = $this->db->prepare($sql);
-            $st->execute();
+            $st->execute([(int)$threshold, (int)$subBodegaId, (int)$threshold]);
+
             $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
             foreach ($rows as &$r) {
-                $r["stock"] = (int)$r["stock"];
-                $r["minimo"] = (int)$r["minimo"];
+                $r["stock"]     = (int)$r["stock"];
+                $r["minimo"]    = (int)$r["minimo"];
+                $r["ubicacion"] = $r["ubicacion"] ?? "Subbodega";
             }
+
             return $rows;
         }
 
-        // 2) Si NO hay stock directo: lo calculamos desde movimientos
-        // stock = entradas - salidas
+        // =====================================================
+        // ✅ 2) BODEGA (si viene filtrada)
+        // =====================================================
+        if ($hasBodegaFilter && $hasStockBodega) {
+
+            $joinBod = "";
+            $ubicacionExpr = "CONCAT('Bodega #', sb.id_bodega)";
+
+            if ($bodegaTable && $bodegaIdCol && $bodegaNameCol) {
+                $joinBod = "LEFT JOIN {$bodegaTable} b ON b.{$bodegaIdCol} = sb.id_bodega";
+                $ubicacionExpr = "COALESCE(b.{$bodegaNameCol}, CONCAT('Bodega #', sb.id_bodega))";
+            }
+
+            $sql = "
+                SELECT
+                    mat.nombre AS material,
+                    sb.stock_actual AS stock,
+                    $minExpr AS minimo,
+                    $ubicacionExpr AS ubicacion
+                FROM {$stockBodegaTable} sb
+                INNER JOIN material_formacion mat ON mat.id_material = sb.id_material
+                $joinBod
+                WHERE sb.id_bodega = ?
+                  AND sb.stock_actual <= $minExpr
+                ORDER BY sb.stock_actual ASC
+                LIMIT 100
+            ";
+
+            $st = $this->db->prepare($sql);
+            $st->execute([(int)$threshold, (int)$bodegaId, (int)$threshold]);
+
+            $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            foreach ($rows as &$r) {
+                $r["stock"]     = (int)$r["stock"];
+                $r["minimo"]    = (int)$r["minimo"];
+                $r["ubicacion"] = $r["ubicacion"] ?? "Bodega";
+            }
+
+            return $rows;
+        }
+
+        // =====================================================
+        // ✅ 3) Sin filtro → combinar Bodega + Subbodega (UNION)
+        // =====================================================
+        if ($hasStockBodega || $hasStockSub) {
+
+            $parts  = [];
+            $params = [];
+
+            // ✅ BODEGAS
+            if ($hasStockBodega) {
+                $joinBod = "";
+                $ubicacionExpr = "CONCAT('Bodega #', sb.id_bodega)";
+
+                if ($bodegaTable && $bodegaIdCol && $bodegaNameCol) {
+                    $joinBod = "LEFT JOIN {$bodegaTable} b ON b.{$bodegaIdCol} = sb.id_bodega";
+                    $ubicacionExpr = "COALESCE(b.{$bodegaNameCol}, CONCAT('Bodega #', sb.id_bodega))";
+                }
+
+                $parts[] = "
+                    SELECT
+                        mat.nombre AS material,
+                        sb.stock_actual AS stock,
+                        $minExpr AS minimo,
+                        $ubicacionExpr AS ubicacion
+                    FROM {$stockBodegaTable} sb
+                    INNER JOIN material_formacion mat ON mat.id_material = sb.id_material
+                    $joinBod
+                    WHERE sb.stock_actual <= $minExpr
+                ";
+                $params[] = (int)$threshold;
+                $params[] = (int)$threshold;
+            }
+
+            // ✅ SUBBODEGAS
+            if ($hasStockSub) {
+                $joinSub = "";
+                $ubicacionExpr = "CONCAT('Subbodega #', ss.id_subbodega)";
+
+                if ($subBodegaTable && $subBodegaIdCol && $subBodegaNameCol) {
+                    $joinSub = "LEFT JOIN {$subBodegaTable} sbb ON sbb.{$subBodegaIdCol} = ss.id_subbodega";
+                    $ubicacionExpr = "COALESCE(sbb.{$subBodegaNameCol}, CONCAT('Subbodega #', ss.id_subbodega))";
+                }
+
+                $parts[] = "
+                    SELECT
+                        mat.nombre AS material,
+                        ss.stock_actual AS stock,
+                        $minExpr AS minimo,
+                        $ubicacionExpr AS ubicacion
+                    FROM {$stockSubTable} ss
+                    INNER JOIN material_formacion mat ON mat.id_material = ss.id_material
+                    $joinSub
+                    WHERE ss.stock_actual <= $minExpr
+                ";
+                $params[] = (int)$threshold;
+                $params[] = (int)$threshold;
+            }
+
+            $sql = implode(" UNION ALL ", $parts) . " ORDER BY stock ASC LIMIT 150";
+
+            $st = $this->db->prepare($sql);
+            $st->execute($params);
+
+            $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            foreach ($rows as &$r) {
+                $r["stock"]     = (int)$r["stock"];
+                $r["minimo"]    = (int)$r["minimo"];
+                $r["ubicacion"] = $r["ubicacion"] ?? "N/A";
+            }
+
+            return $rows;
+        }
+
+        // =====================================================
+        // ✅ 4) FALLBACK: si no hay tablas stock_xxx → movimientos
+        // =====================================================
         [$where, $params] = $this->buildFiltersProgramFlexible($filters);
 
         $sql = "
@@ -548,9 +845,12 @@ public function getConsumoPorRAE(array $filters): array
                     SUM(CASE WHEN m.tipo_movimiento='Entrada' THEN m.cantidad ELSE 0 END)
                     -
                     SUM(CASE WHEN m.tipo_movimiento='Salida' THEN m.cantidad ELSE 0 END)
-                ) AS stock
+                ) AS stock,
+                ? AS minimo,
+                'Movimientos' AS ubicacion
             FROM movimientos_material m
             INNER JOIN material_formacion mat ON mat.id_material = m.id_material
+            LEFT JOIN fichas f ON f.id_ficha = m.id_ficha
             $where
             GROUP BY mat.id_material, mat.nombre
             HAVING stock <= ?
@@ -558,23 +858,61 @@ public function getConsumoPorRAE(array $filters): array
             LIMIT 100
         ";
 
-        $params[] = (int)$threshold;
+        $params[] = (int)$threshold; // minimo
+        $params[] = (int)$threshold; // HAVING
 
         $st = $this->db->prepare($sql);
         $st->execute($params);
+
         $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         foreach ($rows as &$r) {
-            $r["stock"] = (int)$r["stock"];
-            $r["minimo"] = (int)$threshold;
+            $r["stock"]     = (int)$r["stock"];
+            $r["minimo"]    = (int)$r["minimo"];
+            $r["ubicacion"] = $r["ubicacion"] ?? "Movimientos";
         }
 
         return $rows;
     }
 
-    // ==========================
-    // ✅ Dashboard Data
-    // ==========================
+    /**
+     * ✅ Consumo REAL por Material (para Reporte Personalizado)
+     * ✅ Ahora soporta filtros por Bodega/Subbodega también (prioridad subbodega)
+     */
+    public function getConsumoPorMaterial(array $filters): array
+    {
+        [$where, $params] = $this->buildFiltersProgramFlexible($filters);
+
+        $sql = "
+            SELECT
+                mat.nombre AS material,
+                SUM(CASE WHEN m.tipo_movimiento='Salida' THEN m.cantidad ELSE 0 END) AS consumo,
+                SUM(CASE WHEN m.tipo_movimiento='Salida' THEN (m.cantidad * mat.precio) ELSE 0 END) AS costo
+            FROM movimientos_material m
+            INNER JOIN material_formacion mat ON mat.id_material = m.id_material
+            LEFT JOIN fichas f ON f.id_ficha = m.id_ficha
+            $where
+            GROUP BY mat.id_material, mat.nombre
+            HAVING consumo > 0
+            ORDER BY consumo DESC
+        ";
+
+        $st = $this->db->prepare($sql);
+        $st->execute($params);
+
+        $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        foreach ($rows as &$r) {
+            $r["consumo"] = (int)$r["consumo"];
+            $r["costo"]   = (int)$r["costo"];
+        }
+
+        return $rows;
+    }
+
+    // =====================================================
+    // ✅ DASHBOARD DATA (para Estadísticas)
+    // =====================================================
     public function getDashboardData(array $filters): array
     {
         $consumoPorMes       = $this->getConsumoPorMes($filters);
@@ -583,11 +921,11 @@ public function getConsumoPorRAE(array $filters): array
         $consumoPorFicha     = $this->getConsumoPorFicha($filters);
 
         $totalConsumo = 0;
-        $totalCosto = 0;
+        $totalCosto   = 0;
 
-        foreach ($consumoPorFicha as $row) {
-            $totalConsumo += (int)$row["consumo"];
-            $totalCosto   += (int)$row["costo"];
+        foreach ($consumoPorFicha as $r) {
+            $totalConsumo += (int)($r["consumo"] ?? 0);
+            $totalCosto   += (int)($r["costo"] ?? 0);
         }
 
         return [
@@ -596,61 +934,47 @@ public function getConsumoPorRAE(array $filters): array
             "materialesMasUsados" => $materialesMasUsados,
             "consumoPorFicha"     => $consumoPorFicha,
             "totalConsumo"        => $totalConsumo,
-            "totalCosto"          => $totalCosto,
+            "totalCosto"          => $totalCosto
         ];
     }
 
-    /**
- * ✅ Consumo REAL por Material (para Reporte Personalizado)
- * - Solo cuenta SALIDAS
- * - Calcula costo = cantidad * precio
- * - Respeta filtros: fechas, programa, ficha
- * - Aplica filtro de bodega solo si existe columna en movimientos_material
- */
-public function getConsumoPorMaterial(array $filters): array
-{
-    [$where, $params] = $this->buildFiltersProgramFlexible($filters);
+    // ✅ Obtener subbodegas por bodega (ROBUSTO)
+    public function getSubBodegas($idBodega): array
+    {
+        $candidates = ["subbodegas", "sub_bodegas", "sub_bodega", "subbodega", "subbodegas_formacion"];
+        $table = null;
 
-    // ✅ filtro bodega (si existe columna)
-    $bodegaId = $filters["bodega"] ?? "all";
+        foreach ($candidates as $t) {
+            if ($this->tableExists($t)) {
+                $table = $t;
+                break;
+            }
+        }
 
-    $bodegaCol = null;
-    if ($this->columnExists("movimientos_material", "id_bodega")) $bodegaCol = "id_bodega";
-    else if ($this->columnExists("movimientos_material", "bodega_id")) $bodegaCol = "bodega_id";
+        if (!$table) return [];
 
-    if ($bodegaCol && $bodegaId !== "all" && $bodegaId !== "" && is_numeric($bodegaId)) {
-        if ($where) $where .= " AND m.$bodegaCol = ?";
-        else $where = "WHERE m.$bodegaCol = ?";
-        $params[] = (int)$bodegaId;
+        $idCol = $this->columnExists($table, "id_subbodega") ? "id_subbodega"
+            : ($this->columnExists($table, "id") ? "id" : null);
+
+        $nameCol = $this->columnExists($table, "nombre_subbodega") ? "nombre_subbodega"
+            : ($this->columnExists($table, "nombre") ? "nombre" : null);
+
+        $bodegaCol = $this->columnExists($table, "id_bodega") ? "id_bodega"
+            : ($this->columnExists($table, "bodega_id") ? "bodega_id" : null);
+
+        if (!$idCol || !$nameCol || !$bodegaCol) return [];
+
+        $sql = "
+            SELECT 
+                $idCol AS id,
+                $nameCol AS nombre
+            FROM $table
+            WHERE $bodegaCol = ?
+            ORDER BY $nameCol ASC
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([(int)$idBodega]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
-
-    $sql = "
-        SELECT
-            mat.nombre AS material,
-            SUM(CASE WHEN m.tipo_movimiento='Salida' THEN m.cantidad ELSE 0 END) AS consumo,
-            SUM(CASE WHEN m.tipo_movimiento='Salida' THEN (m.cantidad * mat.precio) ELSE 0 END) AS costo
-        FROM movimientos_material m
-        INNER JOIN material_formacion mat ON mat.id_material = m.id_material
-        LEFT JOIN fichas f ON f.id_ficha = m.id_ficha
-        $where
-        GROUP BY mat.id_material, mat.nombre
-        HAVING consumo > 0
-        ORDER BY consumo DESC
-    ";
-
-    $st = $this->db->prepare($sql);
-    $st->execute($params);
-
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
-    foreach ($rows as &$r) {
-        $r["consumo"] = (int)$r["consumo"];
-        $r["costo"]   = (int)$r["costo"];
-    }
-
-    return $rows;
-}
-
-
-    
 }

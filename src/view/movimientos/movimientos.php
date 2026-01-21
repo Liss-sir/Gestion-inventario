@@ -499,67 +499,10 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
                     </div>
 
-                    <div data-field="programa"
-                        class="hidden rounded-md border border-[#39A900] bg-[#39A90015] p-2">
-
-                        <p class="text-[11px] font-semibold text-[#2e7d00] mb-1">
-                            Devolución académica 
-                        </p>
-
-                        <div class="grid grid-cols-2 gap-1">
-
-                            <!-- PROGRAMA -->
-                            <select id="programa"
-                                class="col-span-2 border rounded px-2 py-1 text-xs">
-                                <option value="">Programa</option>
-                                <?php foreach ($programas as $p): ?>
-                                    <option value="<?= $p["id"] ?>"><?= $p["nombre"] ?></option>
-                                <?php endforeach; ?>
-                            </select>
-
-                            <!-- FICHA -->
-                            <select id="ficha"
-                                class="border rounded px-2 py-1 text-xs">
-                                <option value="">Ficha</option>
-                                <?php foreach ($fichas as $f): ?>
-                                    <option value="<?= $f["id"] ?>"><?= $f["nombre"] ?></option>
-                                <?php endforeach; ?>
-                            </select>
-
-                            <!-- RAE -->
-                            <select id="rae"
-                                class="border rounded px-2 py-1 text-xs">
-                                <option value="">RAE</option>
-                                <?php foreach ($raes as $r): ?>
-                                    <option value="<?= $r["id"] ?>"><?= $r["nombre"] ?></option>
-                                <?php endforeach; ?>
-                            </select>
-
-                            <!-- INSTRUCTOR -->
-                            <select id="instructor"
-                                class="col-span-2 border rounded px-2 py-1 text-xs">
-                                <option value="">Instructor</option>
-                                <?php foreach ($instructores as $i): ?>
-                                    <option value="<?= $i["id"] ?>"><?= $i["nombre"] ?></option>
-                                <?php endforeach; ?>
-                            </select>
-
-                            <!-- SOLICITUD -->
-                            <select id="solicitud"
-                                class="col-span-2 border rounded px-2 py-1 text-xs">
-                                <option value="">Solicitud (opcional)</option>
-                                <?php foreach ($solicitudes as $s): ?>
-                                    <option value="<?= $s["id"] ?>"><?= $s["nombre"] ?></option>
-                                <?php endforeach; ?>
-                            </select>
-
-                        </div>
-                    </div>
-
                     <!-- =====================
                         LISTA MATERIALES
                     ====================== -->
-                    <div>
+                    <div data-field="lista-materiales">
                         <p class="text-sm font-semibold mb-2">Materiales agregados</p>
                         <div id="listaMateriales" class="space-y-2 text-sm text-gray-600">
                             No hay materiales agregados

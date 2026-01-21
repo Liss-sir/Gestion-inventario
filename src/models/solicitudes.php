@@ -208,11 +208,11 @@ class SolicitudMaterialModel {
 
             file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " 📦 [SALIDA] " . count($solicitud['materiales']) . " materiales encontrados\n", FILE_APPEND);
             
-            // ⭐ Obtener la bodega del primer material (todos deben estar en la misma bodega)
-            $idBodega = $this->obtenerBodegaDeMaterial($solicitud['materiales'][0]['id_material']);
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " 🏪 [SALIDA] Bodega obtenida: $idBodega\n", FILE_APPEND);
+            // ⭐ Obtener la bodega Y subbodega del primer material
+            $ubicacion = $this->obtenerBodegaDeMaterial($solicitud['materiales'][0]['id_material']);
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " 🏪 [SALIDA] Ubicación obtenida: " . json_encode($ubicacion) . "\n", FILE_APPEND);
             
-            if (!$idBodega) {
+            if (!$ubicacion || !isset($ubicacion['id_bodega'])) {
                 file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ [SALIDA] No se encontró bodega para el material\n", FILE_APPEND);
                 return false;
             }
@@ -221,8 +221,8 @@ class SolicitudMaterialModel {
             $datosMovimiento = [
                 'tipo_movimiento' => 'Salida',  // ⭐ MAYÚSCULA para coincidir con el trigger
                 'id_usuario' => $idUsuario,
-                'id_bodega' => $idBodega,  // ⭐ USAR LA BODEGA DEL MATERIAL
-                'id_subbodega' => $solicitud['id_subbodega'] ?? null,
+                'id_bodega' => $ubicacion['id_bodega'],  // ⭐ USAR LA BODEGA DEL MATERIAL
+                'id_subbodega' => $ubicacion['id_subbodega'],  // ⭐ USAR LA SUBBODEGA DEL MATERIAL
                 'id_programa' => $solicitud['id_programa'] ?? null,
                 'id_ficha' => $solicitud['id_ficha'] ?? null,
                 'id_rae' => $solicitud['id_rae'] ?? null,
@@ -262,14 +262,15 @@ class SolicitudMaterialModel {
     }
 
     /* ===============================
-       OBTENER BODEGA DE UN MATERIAL
+       OBTENER BODEGA Y SUBBODEGA DE UN MATERIAL
        Busca dónde está almacenado el material
+       Retorna: ['id_bodega' => X, 'id_subbodega' => Y]
     =============================== */
     private function obtenerBodegaDeMaterial($idMaterial)
     {
-        // Buscar en movimientos_material la bodega donde está almacenado este material
+        // Buscar en movimientos_material la bodega Y subbodega donde está almacenado este material
         // (el más reciente)
-        $sql = "SELECT id_bodega 
+        $sql = "SELECT id_bodega, id_subbodega
             FROM movimientos_material 
             WHERE id_material = ? 
             AND tipo_movimiento = 'Entrada'
@@ -281,16 +282,38 @@ class SolicitudMaterialModel {
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($result) {
-            return $result['id_bodega'];
+            return [
+                'id_bodega' => $result['id_bodega'],
+                'id_subbodega' => $result['id_subbodega']
+            ];
         }
 
-        // 🔁 Fallback: buscar en stock_bodega dónde haya stock del material
+        // 🔁 Fallback: buscar en stock_subbodega primero (más específico)
+        $sqlSubStock = "SELECT ss.id_subbodega, sb.id_bodega
+                        FROM stock_subbodega ss
+                        INNER JOIN subbodegas sb ON sb.id_subbodega = ss.id_subbodega
+                        WHERE ss.id_material = ? AND ss.stock_actual > 0 
+                        ORDER BY ss.stock_actual DESC LIMIT 1";
+        $stSubStock = $this->db->prepare($sqlSubStock);
+        $stSubStock->execute([$idMaterial]);
+        $rowSubStock = $stSubStock->fetch(PDO::FETCH_ASSOC);
+        if ($rowSubStock) {
+            return [
+                'id_bodega' => $rowSubStock['id_bodega'],
+                'id_subbodega' => $rowSubStock['id_subbodega']
+            ];
+        }
+
+        // 🔁 Fallback final: buscar en stock_bodega dónde haya stock del material
         $sqlStock = "SELECT id_bodega FROM stock_bodega WHERE id_material = ? AND stock_actual > 0 ORDER BY stock_actual DESC LIMIT 1";
         $stStock = $this->db->prepare($sqlStock);
         $stStock->execute([$idMaterial]);
         $rowStock = $stStock->fetch(PDO::FETCH_ASSOC);
         if ($rowStock) {
-            return $rowStock['id_bodega'];
+            return [
+                'id_bodega' => $rowStock['id_bodega'],
+                'id_subbodega' => null
+            ];
         }
 
         // Si no hay referencia, retorna null

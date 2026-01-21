@@ -1,11 +1,12 @@
 <?php
 // =====================================================
-// ✅ REPORTES CONTROLLER (FUNCIONAL)
-// - consumo-ficha ✅ (ya lo tenías)
-// - consumo-programa ✅ REAL
-// - consumo-rae ✅ REAL si existe en tu BD
-// - movimientos ✅ REAL
-// - material-faltante ✅ REAL (stock real o calculado)
+// ✅ REPORTES CONTROLLER (100% FUNCIONAL + GRÁFICAS PDF)
+// - consumo-ficha ✅
+// - consumo-programa ✅
+// - consumo-rae ✅ (si existe en BD)
+// - movimientos ✅
+// - material-faltante ✅
+// - reporte personalizado ✅ PDF/CSV/EXCEL + gráficas reales
 // =====================================================
 
 ob_start();
@@ -46,6 +47,75 @@ function e($str)
     return htmlspecialchars((string)$str, ENT_QUOTES, "UTF-8");
 }
 
+/**
+ * =====================================================
+ * ✅ PRIORIDAD UBICACIÓN (FIX GLOBAL)
+ * - Si hay subbodega válida => bodega se ignora automáticamente
+ * =====================================================
+ */
+function applyLocationPriority(array &$filters): void
+{
+    if (!empty($filters["subbodega"]) && $filters["subbodega"] !== "all") {
+        $filters["bodega"] = "all";
+    }
+}
+
+/**
+ * =====================================================
+ * ✅ FIX CRÍTICO: Descargar imágenes remotas y volverlas Base64
+ * - Dompdf falla a veces con QuickChart (https remotas)
+ * - Esto hace que SIEMPRE salgan gráficas en el PDF
+ * =====================================================
+ */
+function downloadRemoteImageAsBase64(string $url): ?string
+{
+    $raw = null;
+
+    // 1) CURL (lo más robusto)
+    if (function_exists("curl_init")) {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
+
+        // ✅ Por compatibilidad (algunos hosts fallan con SSL)
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+
+        $raw = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if (!$raw || $httpCode < 200 || $httpCode >= 300) {
+            $raw = null;
+        }
+    }
+
+    // 2) Fallback file_get_contents
+    if ($raw === null) {
+        $context = stream_context_create([
+            "http" => ["timeout" => 15],
+            "ssl" => [
+                "verify_peer" => false,
+                "verify_peer_name" => false,
+            ],
+        ]);
+
+        $raw = @file_get_contents($url, false, $context);
+        if (!$raw) {
+            return null;
+        }
+    }
+
+    // QuickChart devuelve PNG
+    $mime = "image/png";
+    return "data:$mime;base64," . base64_encode($raw);
+}
+
+/**
+ * ✅ PDF renderer
+ */
 function renderPDF($html, $filename = "reporte.pdf")
 {
     $autoload = __DIR__ . "/../../vendor/autoload.php";
@@ -58,6 +128,7 @@ function renderPDF($html, $filename = "reporte.pdf")
     $options = new Dompdf\Options();
     $options->set("isRemoteEnabled", true);
     $options->set("defaultFont", "DejaVu Sans");
+    $options->set("isHtml5ParserEnabled", true);
 
     $dompdf = new Dompdf\Dompdf($options);
     $dompdf->loadHtml($html);
@@ -88,7 +159,24 @@ function renderPrintView($html)
 }
 
 /**
+ * =====================================================
+ * ✅ FOOTER PDF (FIJO ABAJO)
+ * - Personalizado: "GENERADO POR SIGA - Reporte Personalizado"
+ * - Otros: "Reporte generado por SIGA"
+ * =====================================================
+ */
+function buildPdfFooterHtml(bool $isPersonalizado = false): string
+{
+    $text = $isPersonalizado
+        ? "GENERADO POR SIGA - Reporte Personalizado"
+        : "Reporte generado por SIGA";
+
+    return "<div class='pdf-footer'>" . e($text) . "</div>";
+}
+
+/**
  * ✅ Header HTML (bonito y consistente)
+ * - Incluye estilos globales del PDF (incluye footer fijo)
  */
 function buildPdfHeaderHtml($title, $subtitle, $filters)
 {
@@ -126,11 +214,19 @@ function buildPdfHeaderHtml($title, $subtitle, $filters)
         }
     }
 
-    $avoidCache = time();
-
     return "
     <style>
-        body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 12px; color:#0f172a; }
+        /* ✅ Margen inferior extra para que el footer no tape contenido */
+        @page { margin: 18mm 15mm 26mm 15mm; }
+
+        body { 
+            font-family: DejaVu Sans, Arial, sans-serif; 
+            font-size: 12px; 
+            color:#0f172a;
+            margin: 0;
+            padding: 0;
+        }
+
         .header { width: 100%; margin-bottom: 14px; border-bottom: 2px solid #0f172a; padding-bottom: 10px; }
         .header-table { width: 100%; border-collapse: collapse; }
         .header-left { vertical-align: top; }
@@ -146,6 +242,22 @@ function buildPdfHeaderHtml($title, $subtitle, $filters)
         tfoot td { font-weight: 700; background: #f8fafc; }
         .badge { display:inline-block; padding:4px 10px; border:1px solid #cbd5e1; border-radius: 999px; font-size: 11px; }
         .muted { color:#64748b; font-size: 11px; }
+        .chart-title { font-size: 12px; font-weight: 700; margin-top: 14px; }
+        .chart-box { margin: 10px 0 12px 0; padding: 10px; border:1px solid #e2e8f0; border-radius: 10px; background:#ffffff; }
+        .page-break { page-break-before: always; }
+
+        /* ✅ Footer real abajo */
+        .pdf-footer{
+            position: fixed;
+            bottom: -10mm;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 11px;
+            color: #6b7280;
+            padding: 6px 0;
+            border-top: 1px solid #e2e8f0;
+        }
     </style>
 
     <div class='header'>
@@ -156,7 +268,7 @@ function buildPdfHeaderHtml($title, $subtitle, $filters)
                     <div class='subtitle'>" . e($subtitle) . "</div>
                 </td>
                 <td class='header-right'>
-                    " . (!empty($logoBase64) ? "<img class='logo' src='{$logoBase64}?v={$avoidCache}' />" : "") . "
+                    " . (!empty($logoBase64) ? "<img class='logo' src='{$logoBase64}' />" : "") . "
                 </td>
             </tr>
         </table>
@@ -183,6 +295,276 @@ function getActionName()
     return $action;
 }
 
+/**
+ * =====================================================
+ * ✅ GRÁFICAS EN PDF (Dompdf)
+ * - Dompdf NO pinta Canvas/SVG
+ * - Solución: QuickChart => genera PNG con Chart.js
+ * - ✅ FIX: Descargar imagen y usar Base64 (más estable)
+ * =====================================================
+ */
+function buildQuickChartUrl(array $chartConfig, int $width = 900, int $height = 320): string
+{
+    $payload = [
+        "width" => $width,
+        "height" => $height,
+        "format" => "png",
+        "backgroundColor" => "white",
+        "version" => "2.9.4",
+        "c" => json_encode($chartConfig, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+    ];
+
+    return "https://quickchart.io/chart?" . http_build_query($payload);
+}
+
+function chartBlockHtml(string $title, array $chartConfig): string
+{
+    $url = buildQuickChartUrl($chartConfig);
+
+    // ✅ FIX: embed base64 para que SIEMPRE salga en PDF
+    $base64 = downloadRemoteImageAsBase64($url);
+    $imgSrc = $base64 ?: $url;
+
+    return "
+        <div class='chart-box'>
+            <div class='chart-title'>" . e($title) . "</div>
+            <div style='margin-top:8px;'>
+                <img src='" . e($imgSrc) . "' style='width:100%; height:auto;' alt='" . e($title) . "'>
+            </div>
+        </div>
+    ";
+}
+
+/**
+ * ✅ Chart factories from rows
+ */
+function chartFromRowsConsumoMaterial(array $rows): array
+{
+    $rows = array_slice($rows, 0, 10);
+    $labels = [];
+    $data = [];
+
+    foreach ($rows as $r) {
+        $labels[] = (string)($r["material"] ?? "Material");
+        $data[] = (int)($r["consumo"] ?? 0);
+    }
+
+    return [
+        "type" => "horizontalBar",
+        "data" => [
+            "labels" => $labels,
+            "datasets" => [[
+                "label" => "Consumo (uds)",
+                "data" => $data
+            ]]
+        ],
+        "options" => [
+            "legend" => ["display" => false],
+            "scales" => [
+                "xAxes" => [["ticks" => ["beginAtZero" => true]]],
+                "yAxes" => [["ticks" => ["fontSize" => 10]]]
+            ]
+        ]
+    ];
+}
+
+function chartFromRowsConsumoAgrupado(array $rows, string $labelKey, string $valueKey = "consumo"): array
+{
+    $rows = array_slice($rows, 0, 10);
+    $labels = [];
+    $data = [];
+
+    foreach ($rows as $r) {
+        $labels[] = (string)($r[$labelKey] ?? "Item");
+        $data[] = (int)($r[$valueKey] ?? 0);
+    }
+
+    return [
+        "type" => "bar",
+        "data" => [
+            "labels" => $labels,
+            "datasets" => [[
+                "label" => "Consumo (uds)",
+                "data" => $data
+            ]]
+        ],
+        "options" => [
+            "legend" => ["display" => false],
+            "scales" => [
+                "yAxes" => [["ticks" => ["beginAtZero" => true]]],
+                "xAxes" => [["ticks" => ["fontSize" => 9]]]
+            ]
+        ]
+    ];
+}
+
+function chartFromMovimientosTipo(array $rows): array
+{
+    $map = [];
+    foreach ($rows as $r) {
+        $tipo = (string)($r["tipo"] ?? "N/A");
+        $cant = (int)($r["cantidad"] ?? 0);
+        if (!isset($map[$tipo])) $map[$tipo] = 0;
+        $map[$tipo] += $cant;
+    }
+
+    $labels = array_keys($map);
+    $data = array_values($map);
+
+    return [
+        "type" => "pie",
+        "data" => [
+            "labels" => $labels,
+            "datasets" => [[
+                "label" => "Cantidad",
+                "data" => $data
+            ]]
+        ],
+        "options" => [
+            "legend" => ["position" => "bottom"]
+        ]
+    ];
+}
+
+function chartFromStock(array $rows): array
+{
+    $rows = array_slice($rows, 0, 12);
+    $labels = [];
+    $stock = [];
+    $min = [];
+
+    foreach ($rows as $r) {
+        $labels[] = (string)($r["material"] ?? "Material");
+        $stock[] = (int)($r["stock"] ?? 0);
+        $min[] = (int)($r["minimo"] ?? 0);
+    }
+
+    return [
+        "type" => "bar",
+        "data" => [
+            "labels" => $labels,
+            "datasets" => [
+                ["label" => "Stock", "data" => $stock],
+                ["label" => "Mínimo", "data" => $min]
+            ]
+        ],
+        "options" => [
+            "legend" => ["position" => "bottom"],
+            "scales" => [
+                "yAxes" => [["ticks" => ["beginAtZero" => true]]],
+                "xAxes" => [["ticks" => ["fontSize" => 9]]]
+            ]
+        ]
+    ];
+}
+
+// =====================================================
+// ✅ CHECK DATA BEFORE PDF/PRINT/EXPORT (Flowbite support)
+//   action=check_data&type=consumo-ficha
+// =====================================================
+if (isset($_GET["action"]) && $_GET["action"] === "check_data") {
+    header("Content-Type: application/json; charset=utf-8");
+    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+    header("Pragma: no-cache");
+
+    try {
+        $type = $_GET["type"] ?? "";
+        if (!$type) {
+            echo json_encode([
+                "ok" => false,
+                "hasData" => false,
+                "message" => "No se recibió el tipo de reporte."
+            ]);
+            exit;
+        }
+
+        $filters = [
+            "fecha_inicio" => $_GET["fecha_inicio"] ?? null,
+            "fecha_fin"    => $_GET["fecha_fin"] ?? null,
+            "programa"     => $_GET["programa"] ?? "all",
+            "ficha"        => $_GET["ficha"] ?? "all",
+            "bodega"       => $_GET["bodega"] ?? "all",
+            "subbodega"    => $_GET["subbodega"] ?? "all",
+        ];
+
+        // ✅ PRIORIDAD (FIX GLOBAL)
+        applyLocationPriority($filters);
+
+        $model = new ReportesModel($conn);
+
+        // ✅ Determinar si hay data según el tipo solicitado
+        $hasData = true;
+
+        switch ($type) {
+            case "consumo-ficha":
+                $rowsTest = $model->getConsumoPorFicha($filters);
+                $hasData = is_array($rowsTest) && count($rowsTest) > 0;
+                break;
+
+            case "consumo-programa":
+                $rowsTest = $model->getConsumoPorProgramaDetalle($filters);
+                $hasData = is_array($rowsTest) && count($rowsTest) > 0;
+                break;
+
+            case "consumo-rae":
+                $rowsTest = $model->getConsumoPorRAE($filters);
+                $hasData = is_array($rowsTest) && count($rowsTest) > 0;
+                break;
+
+            case "movimientos":
+                $rowsTest = $model->getMovimientosDetalle($filters, 1);
+                $hasData = is_array($rowsTest) && count($rowsTest) > 0;
+                break;
+
+            case "material-faltante":
+                $threshold = isset($_GET["threshold"]) ? (int)$_GET["threshold"] : 5;
+                $rowsTest = $model->getMaterialFaltante($filters, $threshold);
+                $hasData = is_array($rowsTest) && count($rowsTest) > 0;
+                break;
+
+            case "consumo-materiales":
+                $rowsTest = $model->getConsumoPorMaterial($filters);
+                $hasData = is_array($rowsTest) && count($rowsTest) > 0;
+                break;
+
+            default:
+                $hasData = true;
+                break;
+        }
+
+        if (!$hasData) {
+            echo json_encode([
+                "ok" => true,
+                "hasData" => false,
+                "message" =>
+                    "No se encontraron resultados para generar este reporte con los filtros actuales. " .
+                    "Ajusta el rango de fechas o cambia el programa/ficha y vuelve a intentarlo."
+            ]);
+            exit;
+        }
+
+        echo json_encode([
+            "ok" => true,
+            "hasData" => true,
+            "message" => "Datos disponibles para generar el reporte."
+        ]);
+        exit;
+
+    } catch (Throwable $e) {
+        echo json_encode([
+            "ok" => false,
+            "hasData" => false,
+            "message" => "No fue posible validar los datos del reporte. Intenta nuevamente.",
+            "debug" => $e->getMessage()
+        ]);
+        exit;
+    }
+}
+
+
+// ============================
+// ✅ MAIN
+// ============================
 try {
     if (!isset($_SESSION["usuario_id"])) {
         jsonResponse(false, "No autenticado", null, 401);
@@ -202,12 +584,17 @@ try {
         "fecha_fin"    => $_GET["fecha_fin"] ?? null,
         "programa"     => $_GET["programa"] ?? "all",
         "ficha"        => $_GET["ficha"] ?? "all",
+        "bodega"      => $_GET["bodega"] ?? "all",
+        "subbodega"   => $_GET["subbodega"] ?? "all",
     ];
 
     $type = $_GET["type"] ?? ($_GET["report_id"] ?? "");
 
+    // ✅ PRIORIDAD (FIX GLOBAL)
+    applyLocationPriority($filters);
+
     // =====================================================
-    // ✅ EXPORTAR CONSUMO FICHA (ya funciona)
+    // ✅ EXPORTAR CONSUMO FICHA
     // =====================================================
     if ($action === "export_consumo_ficha") {
         $rows = $model->getConsumoPorFicha($filters);
@@ -221,8 +608,15 @@ try {
 
         $file = "Consumo_por_Ficha_" . date("Y-m-d_H-i") . ".pdf";
         $header = buildPdfHeaderHtml("Reporte: Consumo por Ficha", "Detalle de consumo y costos por ficha", $filters);
+        $footer = buildPdfFooterHtml(false);
 
-        $html = "<html><head><meta charset='UTF-8'></head><body>$header
+        $html = "<html><head><meta charset='UTF-8'></head><body>$header";
+
+        if (!empty($rows)) {
+            $html .= chartBlockHtml("Top Fichas por Consumo", chartFromRowsConsumoAgrupado($rows, "ficha", "consumo"));
+        }
+
+        $html .= "
             <table>
                 <thead>
                     <tr>
@@ -257,19 +651,21 @@ try {
                     </tr>
                 </tfoot>
             </table>
+            $footer
         </body></html>";
 
         renderPDF($html, $file);
     }
 
     // =====================================================
-    // ✅ CARDS: GENERATE PDF / GENERAR PDF (FUNCIONALES)
+    // ✅ CARDS: GENERATE PDF / GENERAR PDF
     // =====================================================
     if ($action === "generate_pdf" || $action === "generar_pdf") {
 
         $type = trim((string)$type);
+        $includeCharts = strtolower(trim((string)($_GET["incluir_graficas"] ?? "yes"))) === "yes";
 
-        // ✅ 1) consumo-ficha => reusa export real
+        // ✅ 1) consumo-ficha
         if ($type === "consumo-ficha") {
             $qs = $_GET;
             $qs["action"] = "export_consumo_ficha";
@@ -277,14 +673,21 @@ try {
             exit;
         }
 
-        // ✅ 2) consumo-programa ✅ REAL
+        // ✅ 2) consumo-programa
         if ($type === "consumo-programa") {
             $rows = $model->getConsumoPorProgramaDetalle($filters);
 
             $file = "Consumo_por_Programa_" . date("Y-m-d_H-i") . ".pdf";
             $header = buildPdfHeaderHtml("Reporte: Consumo por Programa", "Consumo y costo agrupado por programa", $filters);
+            $footer = buildPdfFooterHtml(false);
 
-            $html = "<html><head><meta charset='UTF-8'></head><body>$header
+            $html = "<html><head><meta charset='UTF-8'></head><body>$header";
+
+            if ($includeCharts && !empty($rows)) {
+                $html .= chartBlockHtml("Top Programas por Consumo", chartFromRowsConsumoAgrupado($rows, "programa", "consumo"));
+            }
+
+            $html .= "
                 <table>
                     <thead>
                         <tr>
@@ -323,19 +726,27 @@ try {
                     </tr>
                 </tfoot>
                 </table>
+                $footer
             </body></html>";
 
             renderPDF($html, $file);
         }
 
-        // ✅ 3) consumo-rae ✅ REAL si existe id_rae y tabla rae
+        // ✅ 3) consumo-rae
         if ($type === "consumo-rae") {
             $rows = $model->getConsumoPorRAE($filters);
 
             $file = "Consumo_por_RAE_" . date("Y-m-d_H-i") . ".pdf";
             $header = buildPdfHeaderHtml("Reporte: Consumo por RAE", "Consumo y costo agrupado por RAE", $filters);
+            $footer = buildPdfFooterHtml(false);
 
-            $html = "<html><head><meta charset='UTF-8'></head><body>$header
+            $html = "<html><head><meta charset='UTF-8'></head><body>$header";
+
+            if ($includeCharts && !empty($rows)) {
+                $html .= chartBlockHtml("Top RAEs por Consumo", chartFromRowsConsumoAgrupado($rows, "rae", "consumo"));
+            }
+
+            $html .= "
                 <table>
                     <thead>
                         <tr>
@@ -380,19 +791,27 @@ try {
                     </tr>
                 </tfoot>
                 </table>
+                $footer
             </body></html>";
 
             renderPDF($html, $file);
         }
 
-        // ✅ 4) movimientos ✅ REAL
+        // ✅ 4) movimientos
         if ($type === "movimientos") {
             $rows = $model->getMovimientosDetalle($filters, 300);
 
             $file = "Historial_Movimientos_" . date("Y-m-d_H-i") . ".pdf";
             $header = buildPdfHeaderHtml("Reporte: Movimientos", "Historial completo de movimientos", $filters);
+            $footer = buildPdfFooterHtml(false);
 
-            $html = "<html><head><meta charset='UTF-8'></head><body>$header
+            $html = "<html><head><meta charset='UTF-8'></head><body>$header";
+
+            if ($includeCharts && !empty($rows)) {
+                $html .= chartBlockHtml("Distribución por Tipo de Movimiento", chartFromMovimientosTipo($rows));
+            }
+
+            $html .= "
                 <table>
                     <thead>
                         <tr>
@@ -425,20 +844,28 @@ try {
 
             $html .= "</tbody></table>
                 <p class='muted' style='margin-top:8px;'>Mostrando máximo 300 registros (más recientes).</p>
+                $footer
             </body></html>";
 
             renderPDF($html, $file);
         }
 
-        // ✅ 5) material-faltante ✅ REAL
+        // ✅ 5) material-faltante
         if ($type === "material-faltante") {
             $threshold = isset($_GET["threshold"]) ? (int)$_GET["threshold"] : 5;
             $rows = $model->getMaterialFaltante($filters, $threshold);
 
             $file = "Material_Faltante_" . date("Y-m-d_H-i") . ".pdf";
             $header = buildPdfHeaderHtml("Reporte: Material Faltante", "Stock bajo o agotado", $filters);
+            $footer = buildPdfFooterHtml(false);
 
-            $html = "<html><head><meta charset='UTF-8'></head><body>$header
+            $html = "<html><head><meta charset='UTF-8'></head><body>$header";
+
+            if ($includeCharts && !empty($rows)) {
+                $html .= chartBlockHtml("Stock vs Mínimo (Top)", chartFromStock($rows));
+            }
+
+            $html .= "
                 <table>
                     <thead>
                         <tr>
@@ -470,229 +897,416 @@ try {
 
             $html .= "</tbody></table>
                 <p class='muted' style='margin-top:8px;'>Umbral usado: <= " . e($threshold) . "</p>
+                $footer
             </body></html>";
 
             renderPDF($html, $file);
         }
 
-        // ✅ Si llega aquí, el type no existe
         jsonResponse(false, "Tipo de reporte no soportado aún", ["type" => $type], 400);
     }
 
     // =====================================================
-// ✅ REPORTE PERSONALIZADO (GENERATE_CUSTOM)
-// - Respeta tu frontend actual (consumo / movimientos / stock / auditoria)
-// - Formatos: pdf | csv | excel
-// =====================================================
-if ($action === "generate_custom") {
-
-    $tipoRaw   = trim((string)($_GET["tipo_reporte"] ?? "consumo"));
-    $formatRaw = strtolower(trim((string)($_GET["format"] ?? "pdf")));
-
-    // ✅ filtros extra del personalizado
-    $filters["bodega"] = $_GET["bodega"] ?? "all";
-    $incluirGraficas   = strtolower(trim((string)($_GET["incluir_graficas"] ?? "yes")));
-
-    // ✅ Mapear los values del select (SIN TOCAR TU HTML)
-    // consumo   -> consumo-materiales
-    // stock     -> material-faltante
-    // auditoria -> movimientos (por ahora)
-    $tipoMap = [
-        "consumo"   => "consumo-materiales",
-        "movimientos" => "movimientos",
-        "stock"     => "material-faltante",
-        "auditoria" => "movimientos",
-    ];
-
-    $tipo = $tipoMap[$tipoRaw] ?? "consumo-materiales";
-
-    // ✅ Mapear formato (tu HTML manda excel)
-    // excel -> lo descargamos como XLS (tabla HTML compatible con Excel)
-    $format = $formatRaw;
-    if ($format === "xlsx") $format = "excel";
-
+    // ✅ REPORTE PERSONALIZADO (GENERATE_CUSTOM)
+    // - pdf | csv | excel
     // =====================================================
-    // ✅ DATA SEGÚN TIPO
-    // =====================================================
-    $rows = [];
-    $title = "Reporte Personalizado";
-    $subtitle = "Reporte generado desde configuración personalizada";
+    if ($action === "generate_custom") {
 
-    if ($tipo === "consumo-materiales") {
-        $title = "Reporte: Consumo de Materiales";
-        $subtitle = "Consumo y costo por material";
+        $tipoRaw   = trim((string)($_GET["tipo_reporte"] ?? "consumo"));
+        $formatRaw = strtolower(trim((string)($_GET["format"] ?? "pdf")));
 
-        // ✅ Necesita el método getConsumoPorMaterial (te lo dejo abajo para pegarlo)
-        $rows = $model->getConsumoPorMaterial($filters);
-    }
-    else if ($tipo === "movimientos") {
-        $title = "Reporte: Movimientos";
-        $subtitle = "Registro de entradas, salidas y devoluciones";
-        $rows = $model->getMovimientosDetalle($filters, 300);
-    }
-    else if ($tipo === "material-faltante") {
-        $title = "Reporte: Estado de Stock";
-        $subtitle = "Materiales con stock bajo o agotado";
-        $threshold = isset($_GET["threshold"]) ? (int)$_GET["threshold"] : 5;
-        $rows = $model->getMaterialFaltante($filters, $threshold);
-    }
-    else {
-        jsonResponse(false, "Tipo no soportado en personalizado: " . $tipo, null, 400);
-    }
+        $filters["bodega"] = $_GET["bodega"] ?? "all";
+        $filters["subbodega"] = $_GET["subbodega"] ?? "all";
 
-    // =====================================================
-    // ✅ CSV
-    // =====================================================
-    if ($format === "csv") {
-        if (ob_get_length()) ob_end_clean();
+        // ✅ PRIORIDAD (FIX GLOBAL)
+        applyLocationPriority($filters);
 
-        header("Content-Type: text/csv; charset=utf-8");
-        header("Content-Disposition: attachment; filename=\"Reporte_" . $tipo . "_" . date("Y-m-d_H-i") . ".csv\"");
-        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-        header("Pragma: no-cache");
+        $incluirGraficas   = strtolower(trim((string)($_GET["incluir_graficas"] ?? "yes")));
 
-        $out = fopen("php://output", "w");
+        $tipoMap = [
+            "consumo"     => "consumo-materiales",
+            "movimientos" => "movimientos",
+            "stock"       => "material-faltante",
+            "auditoria"   => "movimientos",
+        ];
 
-        if (empty($rows)) {
-            fputcsv($out, ["No hay datos con los filtros seleccionados"]);
+        $tipo = $tipoMap[$tipoRaw] ?? "consumo-materiales";
+
+        $format = $formatRaw;
+        if ($format === "xlsx") $format = "excel";
+
+        $rows = [];
+        $title = "Reporte Personalizado";
+        $subtitle = "Reporte generado desde configuración personalizada";
+
+        if ($tipo === "consumo-materiales") {
+            $title = "Reporte: Consumo de Materiales";
+            $subtitle = "Consumo y costo por material";
+            $rows = $model->getConsumoPorMaterial($filters);
+        }
+        else if ($tipo === "movimientos") {
+            $title = "Reporte: Movimientos";
+            $subtitle = "Registro de entradas, salidas y devoluciones";
+            $rows = $model->getMovimientosDetalle($filters, 300);
+        }
+        else if ($tipo === "material-faltante") {
+            $title = "Reporte: Estado de Stock";
+            $subtitle = "Materiales con stock bajo o agotado";
+            $threshold = isset($_GET["threshold"]) ? (int)$_GET["threshold"] : 5;
+            $rows = $model->getMaterialFaltante($filters, $threshold);
+        }
+        else {
+            jsonResponse(false, "Tipo no soportado en personalizado: " . $tipo, null, 400);
+        }
+
+        // ✅ CSV
+        if ($format === "csv") {
+            if (ob_get_length()) ob_end_clean();
+
+            header("Content-Type: text/csv; charset=utf-8");
+            header("Content-Disposition: attachment; filename=\"Reporte_" . $tipo . "_" . date("Y-m-d_H-i") . ".csv\"");
+            header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+            header("Pragma: no-cache");
+
+            $out = fopen("php://output", "w");
+
+            if (empty($rows)) {
+                fputcsv($out, ["No hay datos con los filtros seleccionados"]);
+                fclose($out);
+                exit;
+            }
+
+            fputcsv($out, array_keys($rows[0]));
+            foreach ($rows as $r) {
+                fputcsv($out, $r);
+            }
+
             fclose($out);
             exit;
         }
 
-        fputcsv($out, array_keys($rows[0]));
-        foreach ($rows as $r) {
-            fputcsv($out, $r);
-        }
+        // ✅ EXCEL
+        if ($format === "excel") {
+            if (ob_get_length()) ob_end_clean();
 
-        fclose($out);
-        exit;
-    }
+            $filename = "Reporte_" . $tipo . "_" . date("Y-m-d_H-i") . ".xls";
 
-    // =====================================================
-    // ✅ EXCEL (SIN LIBRERÍAS): XLS por tabla HTML
-    // =====================================================
-    if ($format === "excel") {
-        if (ob_get_length()) ob_end_clean();
+            header("Content-Type: application/vnd.ms-excel; charset=utf-8");
+            header("Content-Disposition: attachment; filename=\"$filename\"");
+            header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+            header("Pragma: no-cache");
 
-        $filename = "Reporte_" . $tipo . "_" . date("Y-m-d_H-i") . ".xls";
+            echo "<meta charset='UTF-8'>";
+            echo "<h3>" . e($title) . "</h3>";
+            echo "<p>" . e($subtitle) . "</p>";
 
-        header("Content-Type: application/vnd.ms-excel; charset=utf-8");
-        header("Content-Disposition: attachment; filename=\"$filename\"");
-        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-        header("Pragma: no-cache");
+            if (empty($rows)) {
+                echo "<p>No hay datos con los filtros seleccionados.</p>";
+                exit;
+            }
 
-        echo "<meta charset='UTF-8'>";
-        echo "<h3>" . e($title) . "</h3>";
-        echo "<p>" . e($subtitle) . "</p>";
+            echo "<table border='1' cellpadding='6' cellspacing='0'>";
+            echo "<thead><tr>";
+            foreach (array_keys($rows[0]) as $col) {
+                echo "<th>" . e($col) . "</th>";
+            }
+            echo "</tr></thead><tbody>";
 
-        if (empty($rows)) {
-            echo "<p>No hay datos con los filtros seleccionados.</p>";
+            foreach ($rows as $r) {
+                echo "<tr>";
+                foreach ($r as $v) {
+                    echo "<td>" . e($v) . "</td>";
+                }
+                echo "</tr>";
+            }
+
+            echo "</tbody></table>";
             exit;
         }
 
-        echo "<table border='1' cellpadding='6' cellspacing='0'>";
-        echo "<thead><tr>";
-        foreach (array_keys($rows[0]) as $col) {
-            echo "<th>" . e($col) . "</th>";
-        }
-        echo "</tr></thead><tbody>";
+        // ✅ PDF
+        $file = "Reporte_Personalizado_" . $tipo . "_" . date("Y-m-d_H-i") . ".pdf";
+        $header = buildPdfHeaderHtml($title, $subtitle, $filters);
+        $footer = buildPdfFooterHtml(true); // ✅ PERSONALIZADO
 
-        foreach ($rows as $r) {
-            echo "<tr>";
-            foreach ($r as $v) {
-                echo "<td>" . e($v) . "</td>";
+        $html = "<html><head><meta charset='UTF-8'></head><body>$header";
+
+        if ($incluirGraficas === "yes" && !empty($rows)) {
+            if ($tipo === "consumo-materiales") {
+                $html .= chartBlockHtml("Top Materiales Consumidos", chartFromRowsConsumoMaterial($rows));
             }
-            echo "</tr>";
-        }
-
-        echo "</tbody></table>";
-        exit;
-    }
-
-    // =====================================================
-    // ✅ PDF (POR DEFECTO)
-    // =====================================================
-    $file = "Reporte_Personalizado_" . $tipo . "_" . date("Y-m-d_H-i") . ".pdf";
-    $header = buildPdfHeaderHtml($title, $subtitle, $filters);
-
-    $html = "<html><head><meta charset='UTF-8'></head><body>$header";
-
-    // ✅ Si activó incluir gráficas (solo aviso por ahora)
-    if ($incluirGraficas === "yes") {
-        $html .= "<p class='muted'>Gráficas: activadas (aún no incrustadas en PDF).</p>";
-    }
-
-    // ✅ Tabla dinámica
-    $html .= "<table><thead><tr>";
-
-    if (!empty($rows)) {
-        foreach (array_keys($rows[0]) as $col) {
-            $align = in_array($col, ["consumo", "costo", "cantidad", "stock", "minimo"], true) ? " class='num'" : "";
-            $html .= "<th$align>" . e(ucfirst($col)) . "</th>";
-        }
-    } else {
-        $html .= "<th>Resultado</th>";
-    }
-
-    $html .= "</tr></thead><tbody>";
-
-    if (empty($rows)) {
-        $html .= "<tr><td>No hay datos con los filtros seleccionados.</td></tr>";
-    } else {
-        foreach ($rows as $r) {
-            $html .= "<tr>";
-            foreach ($r as $k => $v) {
-                $isNum = in_array($k, ["consumo", "costo", "cantidad", "stock", "minimo"], true);
-                $val = ($k === "costo") ? formatCOP((int)$v) : $v;
-
-                $html .= "<td" . ($isNum ? " class='num'" : "") . ">" . e($val) . "</td>";
+            else if ($tipo === "movimientos") {
+                $html .= chartBlockHtml("Distribución por Tipo de Movimiento", chartFromMovimientosTipo($rows));
             }
-            $html .= "</tr>";
+            else if ($tipo === "material-faltante") {
+                $html .= chartBlockHtml("Stock vs Mínimo", chartFromStock($rows));
+            }
         }
+
+        $html .= "<table><thead><tr>";
+
+        if (!empty($rows)) {
+            foreach (array_keys($rows[0]) as $col) {
+                $align = in_array($col, ["consumo", "costo", "cantidad", "stock", "minimo"], true) ? " class='num'" : "";
+                $html .= "<th$align>" . e(ucfirst($col)) . "</th>";
+            }
+        } else {
+            $html .= "<th>Resultado</th>";
+        }
+
+        $html .= "</tr></thead><tbody>";
+
+        if (empty($rows)) {
+            $html .= "<tr><td>No hay datos con los filtros seleccionados.</td></tr>";
+        } else {
+            foreach ($rows as $r) {
+                $html .= "<tr>";
+                foreach ($r as $k => $v) {
+                    $isNum = in_array($k, ["consumo", "costo", "cantidad", "stock", "minimo"], true);
+                    $val = ($k === "costo") ? formatCOP((int)$v) : $v;
+
+                    $html .= "<td" . ($isNum ? " class='num'" : "") . ">" . e($val) . "</td>";
+                }
+                $html .= "</tr>";
+            }
+        }
+
+        $html .= "</tbody></table>";
+        $html .= $footer . "</body></html>";
+
+        renderPDF($html, $file);
     }
 
-    $html .= "</tbody></table>";
-    $html .= "<p class='muted' style='margin-top:8px;'>SIGA - Reporte Personalizado</p></body></html>";
-
-    renderPDF($html, $file);
-}
-
-
     // =====================================================
-    // ✅ PRINT VIEW (ok)
+    // ✅ PRINT VIEW (IGUAL AL PDF)
     // =====================================================
     if ($action === "print_view") {
-        $type = $type ?: "reporte";
 
-        $html = "
-        <html lang='es'>
-        <head>
-            <meta charset='UTF-8'>
-            <title>Vista Imprimible</title>
-            <style>
-                body { font-family: Arial, sans-serif; padding: 18px; color:#0f172a; }
-                .box { margin-top: 14px; padding: 12px; border:1px solid #e2e8f0; border-radius: 10px; background:#f8fafc; }
-                @media print { .no-print { display: none; } }
-                button { padding: 8px 12px; border-radius: 8px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; }
-            </style>
-        </head>
-        <body>
-            <div class='no-print' style='margin-bottom:10px;'>
-                <button onclick='window.print()'>Imprimir</button>
-            </div>
+        $type = trim((string)($type ?: ($_GET["type"] ?? "consumo-ficha")));
+        $auto = isset($_GET["auto"]) && $_GET["auto"] == "1";
 
-            <h2>Vista Imprimible: " . e($type) . "</h2>
-            <div class='box'>
-                <strong>Filtros</strong><br>
-                Fecha inicio: " . e($filters["fecha_inicio"] ?: "N/A") . "<br>
-                Fecha fin: " . e($filters["fecha_fin"] ?: "N/A") . "<br>
-                Programa: " . e($filters["programa"] ?: "all") . "<br>
-                Ficha: " . e($filters["ficha"] ?: "all") . "
-            </div>
-        </body>
-        </html>";
+        $includeCharts = strtolower(trim((string)($_GET["incluir_graficas"] ?? "yes"))) === "yes";
+
+        $title = "Vista Imprimible";
+        $subtitle = "Reporte generado para impresión";
+        $rows = [];
+
+        // ✅ PRIORIDAD (FIX GLOBAL) por si print_view viene directo con GET bodega/subbodega
+        $filters["bodega"] = $_GET["bodega"] ?? ($filters["bodega"] ?? "all");
+        $filters["subbodega"] = $_GET["subbodega"] ?? ($filters["subbodega"] ?? "all");
+        applyLocationPriority($filters);
+
+        if ($type === "consumo-ficha") {
+            $title = "Reporte: Consumo por Ficha";
+            $subtitle = "Detalle de consumo y costos por ficha";
+            $rows = $model->getConsumoPorFicha($filters);
+        }
+        else if ($type === "consumo-programa") {
+            $title = "Reporte: Consumo por Programa";
+            $subtitle = "Consumo y costo agrupado por programa";
+            $rows = $model->getConsumoPorProgramaDetalle($filters);
+        }
+        else if ($type === "consumo-rae") {
+            $title = "Reporte: Consumo por RAE";
+            $subtitle = "Consumo y costo agrupado por RAE";
+            $rows = $model->getConsumoPorRAE($filters);
+        }
+        else if ($type === "movimientos") {
+            $title = "Reporte: Movimientos";
+            $subtitle = "Historial completo de movimientos";
+            $rows = $model->getMovimientosDetalle($filters, 300);
+        }
+        else if ($type === "material-faltante") {
+            $title = "Reporte: Material Faltante";
+            $subtitle = "Stock bajo o agotado";
+            $threshold = isset($_GET["threshold"]) ? (int)$_GET["threshold"] : 5;
+            $rows = $model->getMaterialFaltante($filters, $threshold);
+        }
+
+        $totalConsumo = 0;
+        $totalCosto   = 0;
+        foreach ($rows as $r) {
+            if (isset($r["consumo"])) $totalConsumo += (int)$r["consumo"];
+            if (isset($r["costo"]))   $totalCosto   += (int)$r["costo"];
+        }
+
+        $header = buildPdfHeaderHtml($title, $subtitle, $filters);
+        $footer = buildPdfFooterHtml(false);
+
+        $html = "<html><head><meta charset='UTF-8'></head><body>";
+
+        $html .= "
+        <style>
+          html, body { background:#fff !important; margin:0; padding:0; }
+          .no-print { display:flex; gap:10px; margin: 0 0 10px 0; }
+          .btn-print {
+              padding: 8px 12px;
+              border-radius: 10px;
+              border: 1px solid #cbd5e1;
+              background: #fff;
+              cursor: pointer;
+              font-size: 12px;
+          }
+          .hint {
+              font-size: 12px;
+              color: #475569;
+              margin-left: 6px;
+              align-self: center;
+          }
+          @media print {
+            .no-print { display: none !important; }
+          }
+        </style>
+        ";
+
+        $html .= "
+        <div class='no-print'>
+            <button class='btn-print' onclick='window.print()'>Imprimir</button>
+            <button class='btn-print' onclick='window.close()'>Cerrar</button>
+            <span class='hint'>Si deseas papel físico, en <b>Destino</b> selecciona tu impresora (no “Guardar como PDF”).</span>
+        </div>
+        ";
+
+        $html .= $header;
+
+        if ($includeCharts && !empty($rows)) {
+            if ($type === "consumo-ficha") {
+                $html .= chartBlockHtml("Top Fichas por Consumo", chartFromRowsConsumoAgrupado($rows, "ficha", "consumo"));
+            }
+            else if ($type === "consumo-programa") {
+                $html .= chartBlockHtml("Top Programas por Consumo", chartFromRowsConsumoAgrupado($rows, "programa", "consumo"));
+            }
+            else if ($type === "consumo-rae") {
+                $html .= chartBlockHtml("Top RAEs por Consumo", chartFromRowsConsumoAgrupado($rows, "rae", "consumo"));
+            }
+            else if ($type === "movimientos") {
+                $html .= chartBlockHtml("Distribución por Tipo de Movimiento", chartFromMovimientosTipo($rows));
+            }
+            else if ($type === "material-faltante") {
+                $html .= chartBlockHtml("Stock vs Mínimo (Top)", chartFromStock($rows));
+            }
+        }
+
+        $html .= "<table><thead><tr>";
+
+        if (!empty($rows)) {
+            foreach (array_keys($rows[0]) as $col) {
+                $align = in_array($col, ["consumo","costo","cantidad","stock","minimo"], true) ? " class='num'" : "";
+                $html .= "<th$align>" . e(ucfirst($col)) . "</th>";
+            }
+        } else {
+            $html .= "<th>Resultado</th>";
+        }
+
+        $html .= "</tr></thead><tbody>";
+
+        if (empty($rows)) {
+            $html .= "<tr><td>No hay datos con los filtros seleccionados.</td></tr>";
+        } else {
+            foreach ($rows as $r) {
+                $html .= "<tr>";
+                foreach ($r as $k => $v) {
+                    $isNum = in_array($k, ["consumo","costo","cantidad","stock","minimo"], true);
+                    $val = ($k === "costo") ? formatCOP((int)$v) : $v;
+                    $html .= "<td" . ($isNum ? " class='num'" : "") . ">" . e($val) . "</td>";
+                }
+                $html .= "</tr>";
+            }
+        }
+
+        $html .= "</tbody>";
+
+        if ($totalConsumo > 0 || $totalCosto > 0) {
+            $html .= "
+            <tfoot>
+                <tr>
+                    <td colspan='2'>Total</td>
+                    <td class='num'>" . e($totalConsumo) . " uds</td>
+                    <td class='num'>" . e(formatCOP($totalCosto)) . "</td>
+                </tr>
+            </tfoot>";
+        }
+
+        $html .= "</table>";
+        $html .= $footer;
+
+        $html .= "
+        <script>
+          window.addEventListener('load', function () {
+            const params = new URLSearchParams(window.location.search);
+            const auto = params.get('auto') === '1';
+
+            let printingStarted = false;
+
+            function closePopupSafe() {
+              try { window.close(); } catch (e) {}
+            }
+
+            if (auto) {
+              setTimeout(() => {
+                printingStarted = true;
+                window.focus();
+                window.print();
+              }, 350);
+            }
+
+            window.addEventListener('afterprint', function () {
+              if (auto) closePopupSafe();
+            });
+
+            window.addEventListener('focus', function () {
+              if (!auto) return;
+              if (!printingStarted) return;
+
+              setTimeout(() => {
+                closePopupSafe();
+              }, 250);
+            });
+          });
+        </script>
+        ";
+
+        $html .= "</body></html>";
 
         renderPrintView($html);
+    }
+
+    // =====================================================
+    // ✅ SUBBODEGAS (JSON)
+    // action=get_subbodegas&id_bodega=ID
+    // =====================================================
+    if ($action === "get_subbodegas") {
+        header("Content-Type: application/json; charset=utf-8");
+        header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+        header("Pragma: no-cache");
+
+        try {
+            $idBodega = $_GET["id_bodega"] ?? "all";
+
+            if ($idBodega === "all" || empty($idBodega)) {
+                echo json_encode([
+                    "ok" => true,
+                    "items" => []
+                ]);
+                exit;
+            }
+
+            $items = $model->getSubBodegas($idBodega);
+
+            echo json_encode([
+                "ok" => true,
+                "items" => $items
+            ]);
+            exit;
+
+        } catch (Throwable $e) {
+            echo json_encode([
+                "ok" => false,
+                "items" => [],
+                "message" => $e->getMessage()
+            ]);
+            exit;
+        }
     }
 
     // =====================================================
@@ -700,6 +1314,7 @@ if ($action === "generate_custom") {
     // =====================================================
     if ($action === "programas") jsonResponse(true, "OK", $model->getProgramas());
     if ($action === "fichas") jsonResponse(true, "OK", $model->getFichas());
+    if ($action === "bodegas") jsonResponse(true, "OK", $model->getBodegas());
     if ($action === "dashboard") jsonResponse(true, "OK", $model->getDashboardData($filters));
 
     jsonResponse(false, "Acción no válida", ["action" => $action, "get" => $_GET], 400);
