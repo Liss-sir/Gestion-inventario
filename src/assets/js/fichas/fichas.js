@@ -31,15 +31,15 @@ let selectedFicha = null;
 let programas = [];
 let programasMap = {};
 
-// Estudiantes (aprendices)
+// Apprentices
 let aprendices = [];
 let estudiantesSeleccionados = [];
 
-// Instructores
+// Instructors
 let instructores = [];
 let instructoresSeleccionados = [];
 
-// Jefe de grupo 
+// Group leader
 let jefeGrupoSeleccionado = null;
 
 // =========================
@@ -185,7 +185,7 @@ const inputModalidad = document.getElementById("modalidad");
 const inputFechaInicio = document.getElementById("fecha_inicio");
 const inputFechaFin = document.getElementById("fecha_fin");
 
-// Pasos del formulario
+// Form steps
 const paso1Ficha = document.getElementById("paso1Ficha");
 const paso2Ficha = document.getElementById("paso2Ficha");
 const paso3Ficha = document.getElementById("paso3Ficha");
@@ -197,12 +197,11 @@ const btnVolverPaso2 = document.getElementById("btnVolverPaso2");
 const btnIrPaso4 = document.getElementById("btnIrPaso4");
 const btnVolverPaso3 = document.getElementById("btnVolverPaso3");
 
-// Estudiantes
+// Apprentices
 const selectEstudiante = document.getElementById("selectEstudiante");
-// const btnAgregarEstudiante = document.getElementById("btnAgregarEstudiante");
 const listaEstudiantesSeleccionados = document.getElementById("listaEstudiantesSeleccionados");
 
-// Instructores
+// Instructors
 const selectInstructor = document.getElementById("selectInstructor");
 const listaInstructoresSeleccionados = document.getElementById("listaInstructoresSeleccionados");
 
@@ -210,7 +209,7 @@ const modalVerFicha = document.getElementById("modalVerFicha")
 const btnCerrarModalVerFicha = document.getElementById("btnCerrarModalVerFicha")
 const detalleFichaContent = document.getElementById("detalleFichaContent")
 
-// Jefe de grupo
+// Group leader
 const listaJefeGrupo = document.getElementById("listaJefeGrupo");
 
 console.log("API_URL:", API_URL);
@@ -348,7 +347,7 @@ async function cargarProgramas() {
 }
 
 // =========================
-// CARGAR APRENDICES
+// LOAD APPRENTICES
 // =========================
 async function cargarAprendices() {
   try {
@@ -374,6 +373,9 @@ async function cargarAprendices() {
   }
 }
 
+// =========================
+// LOAD INSTRUCTORS
+// =========================
 async function cargarInstructores() {
   try {
     console.log("Solicitando instructores desde:", `${API_URL}?accion=instructores`);
@@ -415,32 +417,30 @@ function renderOpcionesAprendices() {
   selectEstudiante.disabled = false
   selectEstudiante.innerHTML = `<option value="">Seleccione un estudiante...</option>`
 
-  // Filtrar solo los aprendices que no están seleccionados
+  // Filter only the apprentices who are not selected yet
   const aprendicesDisponibles = aprendices.filter(a => 
     !estudiantesSeleccionados.some(e => e.id_usuario === a.id_usuario)
   )
 
-  // Agregar opción para seleccionar todos si hay disponibles
+  // Add "Select All" option if there are available apprentices
   if (aprendicesDisponibles.length > 0) {
     const optAll = document.createElement("option")
     optAll.value = "all"
     optAll.textContent = "Seleccionar todos los aprendices"
     selectEstudiante.appendChild(optAll)
   }
-
-  // No agregar opciones individuales de aprendices
 }
 
 function agregarEstudiante() {
   const estudianteId = selectEstudiante.value
   
   if (!estudianteId) {
-    toastError("Seleccione un estudiante")
+    toastError("Seleccione un aprendiz")
     return
   }
 
   if (estudianteId === "all") {
-    // Agregar todos los aprendices disponibles
+    // Add all available apprentices
     const aprendicesDisponibles = aprendices.filter(a => 
       !estudiantesSeleccionados.some(e => e.id_usuario === a.id_usuario)
     )
@@ -466,7 +466,7 @@ function agregarEstudiante() {
 
   selectEstudiante.value = ''
   
-  renderOpcionesAprendices() // Actualizar lista excluyendo los agregados
+  renderOpcionesAprendices() // Update available options
   renderChecklistAprendices()
 }
 
@@ -478,18 +478,18 @@ function seleccionarTodosVisibles() {
     (a.correo && a.correo.toLowerCase().includes(searchTerm))
   )
 
-  // Verificar si todos los filtrados están seleccionados
+  // Verify all filtered are selected
   const todosSeleccionados = aprendicesFiltrados.every(a => 
     estudiantesSeleccionados.some(e => e.id_usuario == a.id_usuario)
   )
 
   if (todosSeleccionados) {
-    // Quitar todos los filtrados de estudiantesSeleccionados
+    // Remove all filters from estudiantesSeleccionados
     estudiantesSeleccionados = estudiantesSeleccionados.filter(e => 
       !aprendicesFiltrados.some(a => a.id_usuario == e.id_usuario)
     )
   } else {
-    // Agregar los que no están
+    // Add the ones that aren't already selected
     aprendicesFiltrados.forEach(a => {
       if (!estudiantesSeleccionados.some(e => e.id_usuario == a.id_usuario)) {
         estudiantesSeleccionados.push({
@@ -513,18 +513,18 @@ function seleccionarTodosInstructoresVisibles() {
     (i.correo && i.correo.toLowerCase().includes(searchTerm))
   )
 
-  // Verificar si todos los filtrados están seleccionados
+  // Verify all filtered are selected
   const todosSeleccionados = instructoresFiltrados.every(i => 
     instructoresSeleccionados.some(e => e.id_usuario == i.id_usuario)
   )
 
   if (todosSeleccionados) {
-    // Quitar todos los filtrados de instructoresSeleccionados
+    // Remove all filters from instructoresSeleccionados
     instructoresSeleccionados = instructoresSeleccionados.filter(e => 
       !instructoresFiltrados.some(i => i.id_usuario == e.id_usuario)
     )
   } else {
-    // Agregar los que no están
+    // Add those that are not there
     instructoresFiltrados.forEach(i => {
       if (!instructoresSeleccionados.some(e => e.id_usuario == i.id_usuario)) {
         instructoresSeleccionados.push({
@@ -555,7 +555,7 @@ function renderChecklistAprendices() {
     return
   }
 
-  // Filtrar por búsqueda
+  // Filter by search 
   const searchTerm = (selectEstudiante && selectEstudiante.value ? selectEstudiante.value.toLowerCase() : '')
   const aprendicesFiltrados = aprendices.filter(a => 
     (a.nombre_completo && a.nombre_completo.toLowerCase().includes(searchTerm)) ||
@@ -563,7 +563,7 @@ function renderChecklistAprendices() {
     (a.correo && a.correo.toLowerCase().includes(searchTerm))
   )
 
-  // Si hay aprendices pero ninguno coincide con la búsqueda, mostrar aviso
+  // If there are apprentices but none match the search, show notice
   if (aprendicesFiltrados.length === 0) {
     listaEstudiantesSeleccionados.innerHTML = `
       <div class="flex flex-col items-center justify-center text-center py-8">
@@ -640,7 +640,7 @@ function renderChecklistInstructores() {
     return
   }
 
-  // Filtrar por búsqueda
+  // Filter by search
   const searchTerm = (selectInstructor && selectInstructor.value ? selectInstructor.value.toLowerCase() : '')
   const instructoresFiltrados = instructores.filter(i => 
     (i.nombre_completo && i.nombre_completo.toLowerCase().includes(searchTerm)) ||
@@ -648,7 +648,7 @@ function renderChecklistInstructores() {
     (i.correo && i.correo.toLowerCase().includes(searchTerm))
   )
 
-  // Si hay instructores pero ninguno coincide con la búsqueda, mostrar aviso
+  // If there are instructors but none match the search, show notice
   if (instructoresFiltrados.length === 0) {
     listaInstructoresSeleccionados.innerHTML = `
       <div class="flex flex-col items-center justify-center text-center py-8">
@@ -710,7 +710,7 @@ function renderChecklistInstructores() {
   listaInstructoresSeleccionados.innerHTML = html
 }
 
-// Toggle selection when checking/unchecking a single estudiante
+// Toggle selection when checking/unchecking a single apprentice
 function toggleEstudiante(id) {
   if (id === undefined || id === null) return
 
@@ -742,7 +742,7 @@ function toggleInstructor(id) {
   const exists = instructoresSeleccionados.some(e => String(e.id_usuario) === idStr);
 
   if (exists) {
-    // Verificar si es el jefe de grupo seleccionado
+    // Verify if he is the selected group leader
     if (jefeGrupoSeleccionado && String(jefeGrupoSeleccionado.id_usuario) === idStr) {
       toastError("No puede quitar al jefe de grupo. Primero seleccione otro jefe.");
       return;
@@ -776,12 +776,12 @@ function openModalFicha(editFicha = null) {
   selectedFicha = editFicha
   modalFicha.classList.add("active")
 
-  // Limpiar estudiantes e instructores seleccionados
+  // Reset selections
   estudiantesSeleccionados = []
   instructoresSeleccionados = []
-  jefeGrupoSeleccionado = null // Limpiar jefe de grupo
+  jefeGrupoSeleccionado = null 
 
-  // Mostrar paso 1 y ocultar paso 2 y paso 3
+  // Show first step and hide others
   if (paso1Ficha) paso1Ficha.classList.remove("hidden")
   if (paso2Ficha) paso2Ficha.classList.add("hidden")
   if (paso3Ficha) paso3Ficha.classList.add("hidden")
@@ -810,7 +810,7 @@ function openModalFicha(editFicha = null) {
       fecha_fin: editFicha.fecha_fin || "",
     }
 
-    // Cargar estudiantes e instructores de esta ficha si está editando
+    // Upload aprentices and instructors to this record if you are editing
     cargarEstudiantesDeFicha(editFicha.id)
     cargarInstructoresDeFicha(editFicha.id)
 
@@ -850,13 +850,13 @@ async function cargarEstudiantesDeFicha(idFicha) {
       renderChecklistAprendices()
     }
   } catch (error) {
-    console.error("Error al cargar estudiantes de la ficha:", error)
+    console.error("Error al cargar aprendices de la ficha:", error)
   }
 }
 
 async function cargarInstructoresDeFicha(idFicha) {
   try {
-    console.log(`Cargando instructores para ficha ID: ${idFicha}`);
+    console.log(`Cargando instructores para ficha: ${idFicha}`);
     
     const res = await fetch(`${API_URL}?accion=instructoresFicha&id_ficha=${idFicha}`)
     
@@ -871,7 +871,7 @@ async function cargarInstructoresDeFicha(idFicha) {
     if (Array.isArray(data) && data.length > 0) {
       instructoresSeleccionados = data;
       
-      // Buscar y establecer jefe de grupo si existe
+      // Search and set the group leader
       const jefe = data.find(instructor => instructor.es_jefe_grupo == 1 || instructor.es_jefe_grupo === true);
       if (jefe) {
         jefeGrupoSeleccionado = {
@@ -885,7 +885,7 @@ async function cargarInstructoresDeFicha(idFicha) {
       
       console.log(`Se cargaron ${data.length} instructores`);
       renderChecklistInstructores();
-      renderOpcionesJefeGrupo(); // Actualizar opciones de jefe de grupo
+      renderOpcionesJefeGrupo(); // Update group leader options
     } else {
       instructoresSeleccionados = [];
       jefeGrupoSeleccionado = null;
@@ -908,7 +908,7 @@ function closeModalFicha() {
   instructoresSeleccionados = []
   jefeGrupoSeleccionado = null
   
-  // Volver al paso anterior
+  // Reset to first step
   if (paso1Ficha) paso1Ficha.classList.remove("hidden")
   if (paso2Ficha) paso2Ficha.classList.add("hidden")
   if (paso3Ficha) paso3Ficha.classList.add("hidden")
@@ -925,7 +925,7 @@ async function openModalVerFicha(ficha) {
 
   const nivelNombre = ficha.nivel || "N/A"
 
-  // Fetch instructors to get the jefe
+  // Fetch instructors to get the group leader
   let jefeNombre = "No asignado"
   try {
     const res = await fetch(`${API_URL}?accion=instructoresFicha&id_ficha=${ficha.id}`)
@@ -1696,10 +1696,17 @@ function attachActionEvents() {
 // GLOBAL EVENT LISTENERS
 // =========================
 
-// Navegación entre pasos
+// Navigation between steps
 if (btnIrPaso2) {
   btnIrPaso2.addEventListener("click", function() {
     if (validarPaso1()) {
+      // Verify if the ficha number already exists
+      const numeroFicha = inputNumeroFicha.value.trim();
+      const fichaExistente = fichas.find(f => f.numero_ficha == numeroFicha);
+      if (fichaExistente) {
+        showFlowbiteAlert("warning", "El número de ficha que se intenta crear ya existe.");
+        return;
+      }
       paso1Ficha.classList.add("hidden")
       paso2Ficha.classList.remove("hidden")
     }
@@ -1747,7 +1754,7 @@ if (btnVolverPaso3) {
   })
 }
 
-// Agregar estudiante con Enter
+// Add student with Enter
 if (selectEstudiante) {
   selectEstudiante.addEventListener("keyup", () => {
     console.log("Filtro activado:", selectEstudiante.value);
@@ -1755,7 +1762,7 @@ if (selectEstudiante) {
   })
 }
 
-// Agregar instructor con Enter
+// Add instructor with Enter
 if (selectInstructor) {
   selectInstructor.addEventListener("keyup", () => {
     console.log("Filtro activado:", selectInstructor.value);
@@ -1854,7 +1861,7 @@ formFicha.addEventListener("submit", async (e) => {
         return
     }
 
-    // Validar que se haya seleccionado un jefe de grupo si hay instructores
+    // Verify that a group leader has been selected if there are instructors
     if (instructoresSeleccionados.length > 0 && !jefeGrupoSeleccionado) {
         toastError("Debe seleccionar un jefe de grupo entre los instructores.");
         return;
@@ -1891,14 +1898,14 @@ formFicha.addEventListener("submit", async (e) => {
             return;
         }
 
-        // Obtener el ID de la ficha (nuevo o existente)
+        // Get the ID of the record (new or existing)
         const idFicha = isEdit ? hiddenFichaId.value : data.id_ficha;
 
-        // Mensaje final consolidado
+        // Final consolidated messsage 
         let mensajeFinal = isEdit ? "Ficha actualizada correctamente." : "Ficha creada correctamente.";
         let errores = [];
 
-        // Si hay estudiantes seleccionados, agregarlos
+        // If there are selected apprentices, add them
         if (estudiantesSeleccionados.length > 0) {
             const estudiantesPayload = {
                 id_ficha: idFicha,
@@ -1916,13 +1923,13 @@ formFicha.addEventListener("submit", async (e) => {
             if (dataEstudiantes.success) {
                 mensajeFinal += ` ${estudiantesSeleccionados.length} estudiante(s) agregado(s).`;
             } else {
-                errores.push("Hubo un problema al agregar estudiantes.");
+                errores.push("Hubo un problema al agregar aprendices.");
             }
         }
 
-        // Si hay instructores seleccionados, agregarlos
+        // If there are selected instructors, add them
         if (instructoresSeleccionados.length > 0) {
-            // PRIMERO: Asignar todos los instructores (sin jefe de grupo)
+            // First assign all instrcutors (without the group leader)
             const instructoresPayload = {
                 id_ficha: idFicha,
                 instructores: instructoresSeleccionados.map(i => i.id_usuario)
@@ -1939,9 +1946,9 @@ formFicha.addEventListener("submit", async (e) => {
             if (dataInstructores.success) {
                 mensajeFinal += ` ${instructoresSeleccionados.length} instructor(es) asignado(s).`;
                 
-                // LUEGO: Asignar jefe de grupo si existe
+                // Assign group leader if one exists
                 if (jefeGrupoSeleccionado) {
-                    // Verificar que el jefe esté en la lista de instructores seleccionados
+                    // Verify that the group leader is on the list of selected instructors
                     const jefeEstaEnLista = instructoresSeleccionados.some(
                         i => i.id_usuario == jefeGrupoSeleccionado.id_usuario
                     );
@@ -1973,7 +1980,7 @@ formFicha.addEventListener("submit", async (e) => {
             }
         }
 
-        // Mostrar mensaje final
+        // Show final message
         if (errores.length > 0) {
             toastInfo(mensajeFinal + " " + errores.join(" "));
         } else {
@@ -2106,7 +2113,7 @@ async function inicializar() {
 // Start
 inicializar();
 
-// Exponer funciones globales necesarias
+// Expose necessary functions to global functions
 window.eliminarEstudiante = eliminarEstudiante;
 window.seleccionarTodosVisibles = seleccionarTodosVisibles;
 window.toggleEstudiante = toggleEstudiante;
