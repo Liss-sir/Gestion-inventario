@@ -56,7 +56,7 @@
 [16-Jan-2026 21:37:39 UTC] ✅ Actividad encontrada: 1
 [16-Jan-2026 21:37:39 UTC] ✅ Actividad asignada/creada: 1
 [16-Jan-2026 21:37:43 UTC] ✅ Solicitud 2 actualizada a Aprobada. Filas afectadas: 1
-[16-Jan-2026 21:37:43 UTC] 📦 Creando movimiento de salida para solicitud: 2
+[16-Jan-2026 21:37:43 UTC]  Creando movimiento de salida para solicitud: 2
 [16-Jan-2026 21:37:43 UTC] === REGISTRAR ENTRADA ===
 [16-Jan-2026 21:37:43 UTC] Datos recibidos: {"tipo_movimiento":"salida","id_usuario":1,"id_bodega":0,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"Salida por solicitud #2","id_solicitud":2,"materiales":[{"id_material":1,"cantidad":2},{"id_material":2,"cantidad":2}]}
 [16-Jan-2026 21:37:43 UTC] Total materiales: 2
@@ -69,7 +69,7 @@
 [16-Jan-2026 21:41:41 UTC] ✅ Solicitud 3 actualizada a Aprobada. Filas afectadas: 1
 [16-Jan-2026 21:41:41 UTC] 🔵 [SOLICITUD] Iniciando crearMovimientoSalidaDeSolicitud para solicitud: 3, usuario: 1
 [16-Jan-2026 21:41:41 UTC] 📋 [SOLICITUD] Solicitud obtenida: {"id_solicitud":3,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":1,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-16 16:41:39","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-16 16:41:41","observaciones":"jhgfdsa","materiales":[{"id_solicitud_detalle":4,"id_material":1,"material":"cemento","cantidad":2,"unidad_medida":"BULTO","clasificacion":"Consumible"},{"id_solicitud_detalle":5,"id_material":2,"material":"ladrillo","cantidad":2,"unidad_medida":"BULTO","clasificacion":"Consumible"}]}
-[16-Jan-2026 21:41:41 UTC] 📦 [SOLICITUD] Creando movimiento de salida para solicitud: 3 con 2 materiales
+[16-Jan-2026 21:41:41 UTC]  [SOLICITUD] Creando movimiento de salida para solicitud: 3 con 2 materiales
 [16-Jan-2026 21:41:41 UTC]   📌 Material agregado: cemento (ID: 1, Cantidad: 2)
 [16-Jan-2026 21:41:41 UTC]   📌 Material agregado: ladrillo (ID: 2, Cantidad: 2)
 [16-Jan-2026 21:41:41 UTC] 🔧 [SOLICITUD] Datos del movimiento a registrar: {"tipo_movimiento":"salida","id_usuario":1,"id_bodega":0,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"Salida por solicitud #3","id_solicitud":3,"materiales":[{"id_material":1,"nombre":"cemento","cantidad":2,"unidad":"BULTO"},{"id_material":2,"nombre":"ladrillo","cantidad":2,"unidad":"BULTO"}]}
@@ -91,7 +91,7 @@
 [16-Jan-2026 21:44:14 UTC] ✅ Solicitud 4 actualizada a Aprobada. Filas afectadas: 1
 [16-Jan-2026 21:44:14 UTC] 🔵 [SOLICITUD] Iniciando crearMovimientoSalidaDeSolicitud para solicitud: 4, usuario: 1
 [16-Jan-2026 21:44:14 UTC] 📋 [SOLICITUD] Solicitud obtenida: {"id_solicitud":4,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":1,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-16 16:44:12","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-16 16:44:14","observaciones":"jhgfdsa","materiales":[{"id_solicitud_detalle":6,"id_material":2,"material":"ladrillo","cantidad":2,"unidad_medida":"BULTO","clasificacion":"Consumible"}]}
-[16-Jan-2026 21:44:14 UTC] 📦 [SOLICITUD] Creando movimiento de salida para solicitud: 4 con 1 materiales
+[16-Jan-2026 21:44:14 UTC]  [SOLICITUD] Creando movimiento de salida para solicitud: 4 con 1 materiales
 [16-Jan-2026 21:44:14 UTC]   📌 Material agregado: ladrillo (ID: 2, Cantidad: 2)
 [16-Jan-2026 21:44:14 UTC] 🔧 [SOLICITUD] Datos del movimiento a registrar: {"tipo_movimiento":"salida","id_usuario":1,"id_bodega":0,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"Salida por solicitud #4","id_solicitud":4,"materiales":[{"id_material":2,"nombre":"ladrillo","cantidad":2,"unidad":"BULTO"}]}
 [16-Jan-2026 21:44:14 UTC] === REGISTRAR ENTRADA ===
@@ -112,7 +112,7 @@
 [16-Jan-2026 21:45:56 UTC] ✅ Solicitud 5 actualizada a Aprobada. Filas afectadas: 1
 [16-Jan-2026 21:45:56 UTC] 🔵 [SOLICITUD] Iniciando crearMovimientoSalidaDeSolicitud para solicitud: 5, usuario: 1
 [16-Jan-2026 21:45:56 UTC] 📋 [SOLICITUD] Solicitud obtenida: {"id_solicitud":5,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":1,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-16 16:45:55","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-16 16:45:56","observaciones":"jhgfdsa","materiales":[{"id_solicitud_detalle":7,"id_material":1,"material":"cemento","cantidad":2,"unidad_medida":"BULTO","clasificacion":"Consumible"}]}
-[16-Jan-2026 21:45:56 UTC] 📦 [SOLICITUD] Creando movimiento de salida para solicitud: 5 con 1 materiales
+[16-Jan-2026 21:45:56 UTC]  [SOLICITUD] Creando movimiento de salida para solicitud: 5 con 1 materiales
 [16-Jan-2026 21:45:56 UTC]   📌 Material agregado: cemento (ID: 1, Cantidad: 2)
 [16-Jan-2026 21:45:56 UTC] 🔧 [SOLICITUD] Datos del movimiento a registrar: {"tipo_movimiento":"salida","id_usuario":1,"id_bodega":0,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"Salida por solicitud #5","id_solicitud":5,"materiales":[{"id_material":1,"nombre":"cemento","cantidad":2,"unidad":"BULTO"}]}
 [16-Jan-2026 21:45:56 UTC] === REGISTRAR ENTRADA ===

@@ -206,7 +206,7 @@ class SolicitudMaterialModel {
                 return false;
             }
 
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " 📦 [SALIDA] " . count($solicitud['materiales']) . " materiales encontrados\n", FILE_APPEND);
+            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . "  [SALIDA] " . count($solicitud['materiales']) . " materiales encontrados\n", FILE_APPEND);
             
             // ⭐ Obtener la bodega Y subbodega del primer material
             $ubicacion = $this->obtenerBodegaDeMaterial($solicitud['materiales'][0]['id_material']);
