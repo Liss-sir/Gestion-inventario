@@ -681,3 +681,85 @@
 2026-01-20 21:42:37 [INSERT] Movimiento insertado con ID: 16
 2026-01-20 21:42:37 ✅ [SALIDA] Movimiento creado: MOV-2026-00016
 2026-01-20 21:42:37 ✅ [CONTROLLER] Solicitud respondida exitosamente
+2026-01-22 14:09:19 [INSERT] id_solicitud recibido: 'NO_EXISTE'
+2026-01-22 14:09:19 [INSERT] Cantidad a insertar: 1 | tipo_movimiento: 'entrada'
+2026-01-22 14:09:19 [INSERT] Movimiento insertado con ID: 2
+2026-01-22 14:09:57 [CONTROLLER] responder() invocado: {"id_solicitud":1,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-22 14:09:57 [RESPONDER] Iniciando responderSolicitud(1, aprobada, 1)
+2026-01-22 14:09:57 ✅ Solicitud 1 actualizada a Aprobada. Filas: 1
+2026-01-22 14:09:57 🔵 Llamando crearMovimientoSalidaDeSolicitud(1, 1)
+2026-01-22 14:09:57 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(1, 1)
+2026-01-22 14:09:57 📋 [SALIDA] Solicitud: {"id_solicitud":1,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":1,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-19 13:09:26","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-22 09:09:57","observaciones":"Esto es una prueba","materiales":[{"id_solicitud_detalle":1,"id_material":1,"material":"tubos","cantidad":1,"unidad_medida":"DISP","clasificacion":"Inventariado"}]}
+2026-01-22 14:09:57  [SALIDA] 1 materiales encontrados
+2026-01-22 14:09:57 🏪 [SALIDA] Ubicación obtenida: {"id_bodega":2,"id_subbodega":null}
+2026-01-22 14:09:57   📌 tubos (ID: 1, Cant: 1)
+2026-01-22 14:09:57 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"Esto es una prueba","id_solicitud":1,"materiales":[{"id_material":1,"nombre":"tubos","cantidad":1,"unidad":"DISP"}]}
+2026-01-22 14:09:57 [INSERT] id_solicitud recibido: 1
+2026-01-22 14:09:57 [INSERT] Cantidad a insertar: 1 | tipo_movimiento: 'Salida'
+2026-01-22 14:09:57 ❌ [SALIDA] Exception (rethrow): Error al registrar movimiento: SQLSTATE[45000]: <<Unknown error>>: 1644 ERROR: No hay suficiente stock para realizar la salida.
+2026-01-22 14:09:57 ❌ Excepción en responderSolicitud: Error al registrar movimiento: SQLSTATE[45000]: <<Unknown error>>: 1644 ERROR: No hay suficiente stock para realizar la salida.
+2026-01-22 14:09:57 ❌ [CONTROLLER] responderSolicitud retornó false
+2026-01-22 14:09:58 [CONTROLLER] responder() invocado: {"id_solicitud":1,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-22 14:09:58 [RESPONDER] Iniciando responderSolicitud(1, aprobada, 1)
+2026-01-22 14:09:58 ✅ Solicitud 1 actualizada a Aprobada. Filas: 1
+2026-01-22 14:09:58 🔵 Llamando crearMovimientoSalidaDeSolicitud(1, 1)
+2026-01-22 14:09:58 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(1, 1)
+2026-01-22 14:09:58 📋 [SALIDA] Solicitud: {"id_solicitud":1,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":1,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-19 13:09:26","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-22 09:09:58","observaciones":"Esto es una prueba","materiales":[{"id_solicitud_detalle":1,"id_material":1,"material":"tubos","cantidad":1,"unidad_medida":"DISP","clasificacion":"Inventariado"}]}
+2026-01-22 14:09:58  [SALIDA] 1 materiales encontrados
+2026-01-22 14:09:58 🏪 [SALIDA] Ubicación obtenida: {"id_bodega":2,"id_subbodega":null}
+2026-01-22 14:09:58   📌 tubos (ID: 1, Cant: 1)
+2026-01-22 14:09:58 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"Esto es una prueba","id_solicitud":1,"materiales":[{"id_material":1,"nombre":"tubos","cantidad":1,"unidad":"DISP"}]}
+2026-01-22 14:09:58 [INSERT] id_solicitud recibido: 1
+2026-01-22 14:09:58 [INSERT] Cantidad a insertar: 1 | tipo_movimiento: 'Salida'
+2026-01-22 14:09:58 ❌ [SALIDA] Exception (rethrow): Error al registrar movimiento: SQLSTATE[45000]: <<Unknown error>>: 1644 ERROR: No hay suficiente stock para realizar la salida.
+2026-01-22 14:09:58 ❌ Excepción en responderSolicitud: Error al registrar movimiento: SQLSTATE[45000]: <<Unknown error>>: 1644 ERROR: No hay suficiente stock para realizar la salida.
+2026-01-22 14:09:58 ❌ [CONTROLLER] responderSolicitud retornó false
+2026-01-22 14:09:58 [CONTROLLER] responder() invocado: {"id_solicitud":1,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-22 14:09:58 [RESPONDER] Iniciando responderSolicitud(1, aprobada, 1)
+2026-01-22 14:09:58 ✅ Solicitud 1 actualizada a Aprobada. Filas: 1
+2026-01-22 14:09:58 🔵 Llamando crearMovimientoSalidaDeSolicitud(1, 1)
+2026-01-22 14:09:58 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(1, 1)
+2026-01-22 14:09:58 📋 [SALIDA] Solicitud: {"id_solicitud":1,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":1,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-19 13:09:26","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-22 09:09:58","observaciones":"Esto es una prueba","materiales":[{"id_solicitud_detalle":1,"id_material":1,"material":"tubos","cantidad":1,"unidad_medida":"DISP","clasificacion":"Inventariado"}]}
+2026-01-22 14:09:58  [SALIDA] 1 materiales encontrados
+2026-01-22 14:09:58 🏪 [SALIDA] Ubicación obtenida: {"id_bodega":2,"id_subbodega":null}
+2026-01-22 14:09:58   📌 tubos (ID: 1, Cant: 1)
+2026-01-22 14:09:58 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"Esto es una prueba","id_solicitud":1,"materiales":[{"id_material":1,"nombre":"tubos","cantidad":1,"unidad":"DISP"}]}
+2026-01-22 14:09:58 [INSERT] id_solicitud recibido: 1
+2026-01-22 14:09:58 [INSERT] Cantidad a insertar: 1 | tipo_movimiento: 'Salida'
+2026-01-22 14:09:59 ❌ [SALIDA] Exception (rethrow): Error al registrar movimiento: SQLSTATE[45000]: <<Unknown error>>: 1644 ERROR: No hay suficiente stock para realizar la salida.
+2026-01-22 14:09:59 ❌ Excepción en responderSolicitud: Error al registrar movimiento: SQLSTATE[45000]: <<Unknown error>>: 1644 ERROR: No hay suficiente stock para realizar la salida.
+2026-01-22 14:09:59 ❌ [CONTROLLER] responderSolicitud retornó false
+2026-01-22 14:09:59 [CONTROLLER] responder() invocado: {"id_solicitud":1,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-22 14:09:59 [RESPONDER] Iniciando responderSolicitud(1, aprobada, 1)
+2026-01-22 14:09:59 ✅ Solicitud 1 actualizada a Aprobada. Filas: 1
+2026-01-22 14:09:59 🔵 Llamando crearMovimientoSalidaDeSolicitud(1, 1)
+2026-01-22 14:09:59 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(1, 1)
+2026-01-22 14:09:59 📋 [SALIDA] Solicitud: {"id_solicitud":1,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":1,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-19 13:09:26","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-22 09:09:59","observaciones":"Esto es una prueba","materiales":[{"id_solicitud_detalle":1,"id_material":1,"material":"tubos","cantidad":1,"unidad_medida":"DISP","clasificacion":"Inventariado"}]}
+2026-01-22 14:09:59  [SALIDA] 1 materiales encontrados
+2026-01-22 14:09:59 🏪 [SALIDA] Ubicación obtenida: {"id_bodega":2,"id_subbodega":null}
+2026-01-22 14:09:59   📌 tubos (ID: 1, Cant: 1)
+2026-01-22 14:09:59 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"Esto es una prueba","id_solicitud":1,"materiales":[{"id_material":1,"nombre":"tubos","cantidad":1,"unidad":"DISP"}]}
+2026-01-22 14:09:59 [INSERT] id_solicitud recibido: 1
+2026-01-22 14:09:59 [INSERT] Cantidad a insertar: 1 | tipo_movimiento: 'Salida'
+2026-01-22 14:09:59 ❌ [SALIDA] Exception (rethrow): Error al registrar movimiento: SQLSTATE[45000]: <<Unknown error>>: 1644 ERROR: No hay suficiente stock para realizar la salida.
+2026-01-22 14:09:59 ❌ Excepción en responderSolicitud: Error al registrar movimiento: SQLSTATE[45000]: <<Unknown error>>: 1644 ERROR: No hay suficiente stock para realizar la salida.
+2026-01-22 14:09:59 ❌ [CONTROLLER] responderSolicitud retornó false
+2026-01-22 14:10:00 [CONTROLLER] responder() invocado: {"id_solicitud":1,"estado":"aprobada","id_usuario_aprobador":1,"observaciones":null}
+2026-01-22 14:10:00 [RESPONDER] Iniciando responderSolicitud(1, aprobada, 1)
+2026-01-22 14:10:00 ✅ Solicitud 1 actualizada a Aprobada. Filas: 1
+2026-01-22 14:10:00 🔵 Llamando crearMovimientoSalidaDeSolicitud(1, 1)
+2026-01-22 14:10:00 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud(1, 1)
+2026-01-22 14:10:00 📋 [SALIDA] Solicitud: {"id_solicitud":1,"id_usuario_solicitante":1,"id_ficha":1,"id_actividad":1,"id_rae":1,"id_programa":1,"fecha_solicitud":"2026-01-19 13:09:26","estado":"Aprobada","id_usuario_aprobador":1,"fecha_respuesta":"2026-01-22 09:10:00","observaciones":"Esto es una prueba","materiales":[{"id_solicitud_detalle":1,"id_material":1,"material":"tubos","cantidad":1,"unidad_medida":"DISP","clasificacion":"Inventariado"}]}
+2026-01-22 14:10:00  [SALIDA] 1 materiales encontrados
+2026-01-22 14:10:00 🏪 [SALIDA] Ubicación obtenida: {"id_bodega":2,"id_subbodega":null}
+2026-01-22 14:10:00   📌 tubos (ID: 1, Cant: 1)
+2026-01-22 14:10:00 🔧 [SALIDA] Datos movimiento: {"tipo_movimiento":"Salida","id_usuario":1,"id_bodega":2,"id_subbodega":null,"id_programa":1,"id_ficha":1,"id_rae":1,"observaciones":"Esto es una prueba","id_solicitud":1,"materiales":[{"id_material":1,"nombre":"tubos","cantidad":1,"unidad":"DISP"}]}
+2026-01-22 14:10:00 [INSERT] id_solicitud recibido: 1
+2026-01-22 14:10:00 [INSERT] Cantidad a insertar: 1 | tipo_movimiento: 'Salida'
+2026-01-22 14:10:00 ❌ [SALIDA] Exception (rethrow): Error al registrar movimiento: SQLSTATE[45000]: <<Unknown error>>: 1644 ERROR: No hay suficiente stock para realizar la salida.
+2026-01-22 14:10:00 ❌ Excepción en responderSolicitud: Error al registrar movimiento: SQLSTATE[45000]: <<Unknown error>>: 1644 ERROR: No hay suficiente stock para realizar la salida.
+2026-01-22 14:10:00 ❌ [CONTROLLER] responderSolicitud retornó false
+2026-01-22 14:10:04 [CONTROLLER] responder() invocado: {"id_solicitud":1,"estado":"rechazada","id_usuario_aprobador":1,"observaciones":"drtyuioiuytfrdes"}
+2026-01-22 14:10:04 [RESPONDER] Iniciando responderSolicitud(1, rechazada, 1)
+2026-01-22 14:10:04 ✅ Solicitud 1 actualizada a Rechazada. Filas: 1
+2026-01-22 14:10:04 ✅ [CONTROLLER] Solicitud respondida exitosamente
