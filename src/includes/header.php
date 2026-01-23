@@ -1,15 +1,22 @@
 <?php
-// ==========================
-// HEADER DASHBOARD – PHP
-// ==========================
-
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// 1. Conexión a la base de datos (asegúrate que la ruta sea correcta)
+require_once __DIR__ . '/../../Config/database.php'; 
+
+require_once __DIR__ . '/auth_guard.php';
+
+
 // Si no hay usuario logueado, redirige al login (ajusta la ruta según tu estructura)
 if (!isset($_SESSION['usuario_id'])) {
-    header('Location: src/view/login/login.php');
+    // ✅ FIX: usar BASE_URL si existe para evitar caer en el index de MAMP
+    if (defined("BASE_URL")) {
+        header('Location: ' . BASE_URL . 'src/view/login/login.php');
+    } else {
+        header('Location: src/view/login/login.php');
+    }
     exit;
 }
 
@@ -146,7 +153,24 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
 
 
 <header class="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card px-6 transition-all duration-300 <?php echo $sidebarMarginClass; ?>">
+<!-- Datos del usuario para JavaScript -->
+<div id="usuario-data" 
+     data-usuario-id="<?php echo $_SESSION['usuario_id']; ?>"
+     data-usuario-nombre="<?php echo htmlspecialchars($currentUser["nombre_completo"], ENT_QUOTES, 'UTF-8'); ?>"
+     data-usuario-cargo="<?php echo $currentUser["cargo"]; ?>"
+     style="display: none;">
+</div>
 
+<script>
+// Variables globales para JavaScript
+window.usuarioId = <?php echo $_SESSION['usuario_id']; ?>;
+window.usuarioNombre = "<?php echo htmlspecialchars($currentUser["nombre_completo"], ENT_QUOTES, 'UTF-8'); ?>";
+window.esCoordinador = <?php
+  $cargo = strtolower(trim($currentUser["cargo"] ?? ""));
+  echo ($cargo === "coordinador" || $cargo === "subcoordinador") ? "true" : "false";
+?>;
+
+</script>
   <!-- Buscador estilo pill -->
   <div class="relative flex-1 max-w-xl">
     <div class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">
@@ -162,45 +186,334 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
 
   <div class="flex items-center gap-4 ml-4">
 
-    <!-- Notificaciones -->
-    <div class="relative group">
-      <button class="relative flex h-9 w-9 items-center justify-center rounded-full hover:bg-muted/70 transition">
-        <i data-lucide="bell" class="h-5 w-5 text-slate-500"></i>
+    <?php
+    require_once 'src/utils/notificaciones_sin_db.php';
 
-        <?php if (count($mockAlerts) > 0): ?>
-          <span class="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-[#ff4b4b] ring-2 ring-card"></span>
-        <?php endif; ?>
+    // Obtener resumen de notificaciones
+    $resumenNotificaciones = NotificacionSesion::obtenerResumen();
+    // ✅ Normalizar rol/cargo del usuario actual
+$cargoActual = strtolower(trim($currentUser["cargo"] ?? ''));
+
+// ✅ Coordinador / Subcoordinador ven TODO
+$esCoordinador = ($cargoActual === 'coordinador' || $cargoActual === 'subcoordinador');
+
+// ✅ Filtrar: coordinador ve todo, los demás ven solo lo suyo
+$notificacionesRecientes = NotificacionSesion::obtenerNotificaciones(
+    $esCoordinador ? null : ($_SESSION['usuario_id'] ?? null),
+    5
+);
+
+    ?>
+
+<!-- Notificaciones -->
+  <!-- Notificaciones -->
+<div class="relative " id="contenedor-notificaciones">
+  <button class="relative flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted/70 transition overflow-visible">
+
+  <!-- Campana mediana -->
+  <span class="relative z-[1] flex items-center justify-center">
+    <i data-lucide="bell" class="h-6 w-6 text-slate-500"></i>
+  </span>
+
+  <?php if ($resumenNotificaciones['no_leidas'] > 0): ?>
+  <span class="absolute top-[2px] right-[2px] z-[2]
+               h-4 w-4 rounded-full bg-[#ff4b4b] ring-2 ring-card
+               flex items-center justify-center text-[9px] font-bold text-white
+               badge-notificaciones pointer-events-none">
+    <?php echo $resumenNotificaciones['no_leidas'] > 9 ? '9+' : $resumenNotificaciones['no_leidas']; ?>
+  </span>
+<?php endif; ?>
+
+
+</button>
+
+
+
+
+
+
+      <div class="absolute right-0 mt-2 hidden w-96 rounded-md border border-border bg-card shadow-md" id="dropdown-notificaciones">
+
+       <div class="flex items-center justify-between px-3 py-2 border-b">
+  <span class="text-sm font-semibold">Notificaciones</span>
+
+  <div class="flex items-center gap-2">
+    <span class="rounded-full bg-muted px-2 py-0.5 text-xs">
+      <?php echo $resumenNotificaciones['total']; ?>
+    </span>
+
+    <?php if ($resumenNotificaciones['total'] > 0): ?>
+
+      <!-- ✅ NUEVO: Marcar todas como leídas -->
+      <?php if ($resumenNotificaciones['no_leidas'] > 0): ?>
+        <button 
+          onclick="marcarTodasLeidas()" 
+          class="text-xs text-blue-600 hover:text-blue-800"
+          title="Marcar todas como leídas"
+        >
+          Marcar todas
+        </button>
+      <?php endif; ?>
+
+      <!-- ✅ NUEVO: Limpiar = ELIMINAR TODAS -->
+      <button 
+        onclick="limpiarNotificaciones()" 
+        class="text-xs text-red-600 hover:text-red-800"
+        title="Eliminar todas las notificaciones"
+      >
+        Limpiar
       </button>
 
-      <div class="absolute right-0 mt-2 hidden w-80 rounded-md border border-border bg-card shadow-md group-hover:block">
-        <div class="flex items-center justify-between px-3 py-2">
-          <span class="text-sm font-semibold">Notificaciones</span>
-          <span class="rounded-full bg-muted px-2 py-0.5 text-xs">
-            <?php echo count($mockAlerts); ?>
-          </span>
-        </div>
-        <hr class="border-border" />
+    <?php endif; ?>
+  </div>
+</div>
 
-        <?php if (count($mockAlerts) === 0): ?>
-          <p class="px-3 py-3 text-xs text-muted-foreground">No hay notificaciones nuevas.</p>
-        <?php else: ?>
-          <div class="<?php echo $manyAlerts ? 'max-h-60 overflow-y-auto' : ''; ?>">
-            <?php foreach ($mockAlerts as $alert): ?>
-              <div class="flex flex-col gap-1 px-3 py-2 hover:bg-muted/50">
-                <div class="flex items-center gap-2">
-                  <span class="h-2 w-2 rounded-full bg-warning"></span>
-                  <span class="text-xs font-medium">Stock bajo</span>
-                </div>
-                <p class="text-xs text-muted-foreground">
-                  <?php echo $alert["material_nombre"]; ?>:
-                  <?php echo $alert["stock_actual"]; ?>/<?php echo $alert["stock_minimo"]; ?> unidades
-                </p>
-              </div>
-            <?php endforeach; ?>
+
+       <?php if (empty($notificacionesRecientes)): ?>
+  <div id="estado-vacio-notificaciones" class="px-3 py-6 text-center">
+    <i data-lucide="bell-off" class="h-8 w-8 text-slate-300 mx-auto mb-2"></i>
+    <p class="text-xs text-muted-foreground">No hay notificaciones nuevas.</p>
+  </div>
+<?php else: ?>
+
+          <div class="max-h-96 overflow-y-auto" id="lista-notificaciones">
+            <?php foreach ($notificacionesRecientes as $notif): ?>
+  <div 
+    class="flex flex-col gap-0.5 px-3 py-2 hover:bg-muted/50 border-b border-border last:border-b-0 transition-all duration-200 
+          <?php echo !$notif['leido'] ? 'bg-blue-50 no-leida border-l-2 border-l-blue-500' : 'leida'; ?>"
+    data-notif-id="<?php echo $notif['id']; ?>"
+  >
+    <!-- FILA 1: Icono + Título + Botón eliminar -->
+    <div class="flex items-start justify-between gap-2">
+      <div class="flex items-start gap-2 flex-1 min-w-0">
+        <div class="h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0
+                  <?php echo match($notif['color']) {
+                    'warning' => 'bg-amber-100 text-amber-600',
+                    'danger' => 'bg-red-100 text-red-600',
+                    'success' => 'bg-emerald-100 text-emerald-600',
+                    default => 'bg-blue-100 text-blue-600'
+                  }; ?>">
+          <i data-lucide="<?php echo $notif['icono']; ?>" class="h-3.5 w-3.5"></i>
+        </div>
+        
+        <div class="flex-1 min-w-0">
+          <!-- Título y hora en la misma línea -->
+          <div class="flex items-baseline justify-between gap-2">
+            <p class="text-xs font-semibold text-slate-800 truncate flex-1">
+              <?php echo htmlspecialchars($notif['titulo']); ?>
+            </p>
+            <p class="text-[10px] text-slate-500 whitespace-nowrap">
+              <?php echo date('d/m H:i', strtotime($notif['fecha'])); ?>
+            </p>
           </div>
+        </div>
+      </div>
+      
+      <!-- Botón eliminar -->
+      <div class="flex items-center gap-1 flex-shrink-0">
+        <?php if (!$notif['leido']): ?>
+          <span class="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+        <?php endif; ?>
+        
+        <button 
+          onclick="eliminarNotificacion('<?php echo $notif['id']; ?>')"
+          class="h-5 w-5 flex items-center justify-center text-slate-400 hover:text-red-500"
+          title="Eliminar"
+        >
+          <i data-lucide="x" class="h-3 w-3"></i>
+        </button>
+      </div>
+    </div>
+    
+    <!-- FILA 2: Usuario y botón Marcar como leído (más compacto) -->
+    <div class="flex items-center justify-between gap-2 text-[10px] pl-9">
+      <span class="text-slate-500 truncate flex-1">
+       Usuario: <?php echo htmlspecialchars(trim($notif['usuario_nombre'] ?? 'Sin nombre')); ?>
+
+      </span>
+      
+      <?php if (!$notif['leido']): ?>
+        <button 
+          onclick="marcarNotificacionLeida('<?php echo $notif['id']; ?>')"
+          class="text-blue-600 hover:text-blue-800 hover:underline whitespace-nowrap"
+        >
+          Marcar leído
+        </button>
+      <?php endif; ?>
+    </div>
+  </div>
+<?php endforeach; ?>
+          </div>
+          
+          <?php if ($resumenNotificaciones['total'] > 5): ?>
+            <div class="px-3 py-2 border-t text-center">
+              <a href="?page=notificaciones" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">
+                Ver todas las notificaciones
+              </a>
+            </div>
+          <?php endif; ?>
         <?php endif; ?>
       </div>
     </div>
+
+    <script>
+    // Funciones JavaScript para manejar notificaciones
+    function marcarNotificacionLeida(notifId) {
+      fetch('src/utils/notificaciones_sesion.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'accion=marcar_leido&notificacion_id=' + notifId
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const notifElement = document.querySelector(`[data-notif-id="${notifId}"]`);
+          if (notifElement) {
+            notifElement.classList.remove('no-leida', 'bg-blue-50', 'border-l-blue-500');
+            notifElement.classList.add('leida');
+            
+            // Actualizar contador
+            actualizarContadorNotificaciones();
+          }
+        }
+      });
+    }
+
+    function marcarTodasLeidas() {
+      fetch('src/utils/notificaciones_sesion.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'accion=marcar_todas_leidas'
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Actualizar todas las notificaciones visualmente
+          document.querySelectorAll('.no-leida').forEach(el => {
+            el.classList.remove('no-leida', 'bg-blue-50', 'border-l-blue-500');
+            el.classList.add('leida');
+          });
+          
+          // Actualizar contador
+          actualizarContadorNotificaciones();
+        }
+      });
+    }
+
+    function mostrarEstadoVacioNotificaciones() {
+  const dropdown = document.getElementById("dropdown-notificaciones");
+  const lista = document.getElementById("lista-notificaciones");
+
+  // ✅ Si existe la lista, la quitamos
+  if (lista) lista.remove();
+
+  // ✅ Si ya existe el estado vacío, lo quitamos para no duplicar
+  const existente = document.getElementById("estado-vacio-notificaciones");
+  if (existente) existente.remove();
+
+  // ✅ ESTE HTML ES IGUAL AL QUE TE RENDERIZA PHP (imagen 1)
+  const emptyHTML = `
+    <div id="estado-vacio-notificaciones" class="px-3 py-6 text-center">
+      <i data-lucide="bell-off" class="h-8 w-8 text-slate-300 mx-auto mb-2"></i>
+      <p class="text-xs text-muted-foreground">No hay notificaciones nuevas.</p>
+    </div>
+  `;
+
+  dropdown.insertAdjacentHTML("beforeend", emptyHTML);
+
+  // ✅ Volver a renderizar los íconos
+  if (window.lucide && typeof window.lucide.createIcons === "function") {
+    window.lucide.createIcons();
+  }
+}
+
+
+
+
+    function eliminarNotificacion(notifId) {
+  fetch('src/utils/notificaciones_sesion.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'accion=eliminar&notificacion_id=' + notifId
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      const notifElement = document.querySelector(`[data-notif-id="${notifId}"]`);
+      if (notifElement) {
+        notifElement.style.opacity = '0';
+        notifElement.style.transform = 'translateX(100%)';
+        setTimeout(() => notifElement.remove(), 300);
+
+        // ✅ Actualizar contador y UI
+        actualizarContadorNotificaciones();
+        verificarListaVacia();
+      }
+    }
+  });
+}
+
+function limpiarNotificaciones() {
+  fetch('src/utils/notificaciones_sesion.php', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'accion=eliminar_todas'
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // ✅ Borra todos los elementos visuales
+      const lista = document.getElementById("lista-notificaciones");
+      if (lista) {
+        lista.innerHTML = "";
+      }
+
+      // ✅ Elimina el badge
+      const badge = document.querySelector('.badge-notificaciones');
+      if (badge) badge.remove();
+
+      // ✅ Mostrar "vacío"
+      mostrarEstadoVacioNotificaciones();
+    }
+  });
+}
+
+
+
+    async function actualizarContadorNotificaciones() {
+      try {
+        const resp = await fetch('src/utils/notificaciones_sesion.php?accion=contar');
+        const data = await resp.json();
+        
+        const badge = document.querySelector('.badge-notificaciones');
+        if (data.no_leidas > 0) {
+          if (!badge) {
+            // Crear badge si no existe
+            const newBadge = document.createElement('span');
+            newBadge.className = 'absolute right-1.5 top-1.5 h-5 w-5 rounded-full bg-[#ff4b4b] ring-2 ring-card flex items-center justify-center text-[10px] font-bold text-white badge-notificaciones';
+            document.querySelector('#contenedor-notificaciones button').appendChild(newBadge);
+          }
+          const badgeElement = badge || document.querySelector('.badge-notificaciones');
+          badgeElement.textContent = data.no_leidas > 9 ? '9+' : data.no_leidas;
+        } else if (badge) {
+          badge.remove();
+        }
+      } catch (error) {
+        console.error('Error actualizando contador:', error);
+      }
+    }
+
+    // Actualizar notificaciones cada 30 segundos
+    setInterval(actualizarContadorNotificaciones, 30000);
+    </script> <!-- FIN DE NOTIFICACIONES -->
 
     <!-- Menú de usuario (CLICK TOGGLE, NO HOVER) -->
     <div class="relative">
@@ -296,6 +609,9 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
 
   </div>
 </header>
+
+<!-- ✅ NUEVO: CONTENEDOR GLOBAL DE TOASTS (FUERA DEL MODAL) - SIN TOCAR TU BASE -->
+<div id="toastGlobalContainer" class="fixed top-5 right-5 z-[9999] space-y-3"></div>
 
 <!-- ===================================================
    MODAL VER PERFIL (SOLO VISUALIZAR, SIN INPUTS)
@@ -453,34 +769,35 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
       <i data-lucide="x" class="h-4 w-4 text-slate-600"></i>
     </button>
 
-    <!-- ✅ NUEVO: MÁS ESPACIO + LÍNEA DEBAJO DE LOS BOTONES (SIN DAÑAR TU BASE) -->
-    <div class="absolute left-0 right-0 top-0 px-6 pt-5 md:px-8 z-10">
-      <div class="flex items-center justify-end gap-2 pr-12">
-        <button
-          id="btnInfoDatosSensibles"
-          type="button"
-          title="Cambiar datos sensibles"
-          class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-        >
-          <i data-lucide="info" class="h-4 w-4"></i>
-          <span class="whitespace-nowrap">Editar datos sensibles</span>
-        </button>
+    <!-- ✅ FIX: QUITAR ABSOLUTE para que la línea NO se atraviese -->
+    <div class="px-6 pt-8 md:px-8">
+  <div class="flex items-center justify-end gap-2 pr-12 mt-1">
+    <button
+      id="btnInfoDatosSensibles"
+      type="button"
+      title="Cambiar datos sensibles"
+      class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+    >
+      <i data-lucide="info" class="h-4 w-4"></i>
+      <span class="whitespace-nowrap">Editar datos sensibles</span>
+    </button>
 
-        <button
-          id="btnAbrirCambiarPassword"
-          type="button"
-          class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-4 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-        >
-          Cambiar contraseña
-        </button>
-      </div>
+    <button
+      id="btnAbrirCambiarPassword"
+      type="button"
+      class="inline-flex items-center justify-center rounded-lg border border-slate-200 px-4 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+    >
+      Cambiar contraseña
+    </button>
+  </div>
 
-      <!-- ✅ Línea debajo de los botones -->
-      <div class="mt-4 border-b border-slate-200"></div>
-    </div>
+  <!-- Línea debajo de los botones -->
+  <div class="mt-5 border-b border-slate-200"></div>
+</div>
 
-    <!-- ✅ Más padding arriba para separar botones de la info del usuario -->
-    <div class="p-6 pt-24 md:p-8 md:pt-28">
+
+    <!-- ✅ FIX: padding normal (ya no necesitamos “pt” gigante) -->
+    <div class="p-6 pt-6 md:p-8 md:pt-8">
       <div class="flex items-center gap-4 mb-6">
         <div class="relative h-16 w-16 cursor-pointer" id="avatarPerfilEditar">
           <div
@@ -548,50 +865,72 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
         class="hidden"
       />
 
-      <form id="formEditarPerfil" method="post" action="#" class="space-y-6">
-        <div>
-          <h3 class="mb-3 text-sm font-semibold text-slate-800">Datos personales</h3>
-          <div class="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+      <?php
+// ... (mantenemos tu lógica de sesión y foto inicial) ...
 
+// ✅ NUEVO: Preparar datos para JS de forma limpia
+$datosParaJS = [
+    "id_usuario"       => $_SESSION['usuario_id'],
+    "nombre_completo"  => $profileData["nombre_completo"],
+    "tipo_documento"   => $profileData["tipo_documento"],
+    "numero_documento" => $profileData["numero_documento"],
+    "correo"           => $profileData["correo"],
+    "telefono"         => $profileData["telefono"],
+    "direccion"        => $profileData["direccion"]
+];
+?>
+
+<!-- Inyectar datos para JS antes de cerrar el header -->
+<script>
+    window.userData = <?php echo json_encode($datosParaJS); ?>;
+</script>
+
+<!-- ... (Tu HTML del header se mantiene igual hasta el modal de editar) ... -->
+
+<!-- MODAL EDITAR PERFIL (Normal: Teléfono, Dirección y Foto) -->
+<form id="formEditarPerfil" method="post" enctype="multipart/form-data" class="space-y-6">
+    <!-- Se añade campo oculto para el ID -->
+    <input type="hidden" name="id_usuario" value="<?php echo $_SESSION['usuario_id']; ?>">
+    
+    <div>
+        <h3 class="mb-3 text-sm font-semibold text-slate-800">Datos personales</h3>
+        <div class="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
             <div>
-              <label class="text-xs font-medium text-slate-400 block mb-1">Teléfono</label>
-              <input
-                type="text"
-                name="telefono"
-                value="<?php echo htmlspecialchars($profileData["telefono"], ENT_QUOTES, 'UTF-8'); ?>"
-                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
+                <label class="text-xs font-medium text-slate-400 block mb-1">Teléfono</label>
+                <input type="text" name="telefono" id="edit_telefono"
+                    value="<?php echo htmlspecialchars($profileData["telefono"]); ?>"
+                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary/40" />
             </div>
-
             <div>
-              <label class="text-xs font-medium text-slate-400 block mb-1">Dirección</label>
-              <input
-                type="text"
-                name="direccion"
-                value="<?php echo htmlspecialchars($profileData["direccion"], ENT_QUOTES, 'UTF-8'); ?>"
-                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
+                <label class="text-xs font-medium text-slate-400 block mb-1">Dirección</label>
+                <input type="text" name="direccion" id="edit_direccion"
+                    value="<?php echo htmlspecialchars($profileData["direccion"]); ?>"
+                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-primary/40" />
             </div>
-          </div>
         </div>
+    </div>
+   <!-- ✅ BOTONES (GUARDAR / CANCELAR) -->
+<div class="mt-6 flex justify-end gap-3 pt-2">
 
-        <div class="flex justify-end pt-2 gap-3">
-          <button
-            type="button"
-            id="btnCancelarPerfilEditar"
-            class="inline-flex items-center justify-center rounded-lg border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            id="btnGuardarPerfil"
-            class="inline-flex items-center justify-center rounded-lg bg-secondary px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-secondary/90 transition"
-          >
-            Guardar cambios
-          </button>
-        </div>
-      </form>
+  <button
+    type="button"
+    id="btnCancelarEditarPerfil"
+    class="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+  >
+    Cancelar
+  </button>
+
+  <button
+    type="submit"
+    id="btnGuardarEditarPerfil"
+    class="inline-flex items-center justify-center rounded-lg bg-secondary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-secondary/90 transition"
+  >
+    Guardar cambios
+  </button>
+
+</div>
+
+</form>
     </div>
   </div>
 </div>
@@ -615,6 +954,9 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
       <p class="text-xs text-slate-500">
         Si requieres cambiar datos sensibles, selecciona cuáles y escribe el dato correcto.
       </p>
+
+      <!-- ✅ NUEVO: CONTENEDOR DE ALERTAS FLOWBITE (SIN TOCAR TU DISEÑO) -->
+      <div id="alertaDatosSensiblesContainer"></div>
 
       <div class="rounded-xl border border-slate-200 p-4">
         <p class="text-xs font-semibold text-slate-700 mb-3">Selecciona los datos a cambiar</p>
@@ -642,20 +984,34 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
         </div>
       </div>
 
-      <form id="formDatosSensibles" class="space-y-3" method="post" action="#">
+      <form id="formDatosSensibles"
+      class="space-y-3"
+      method="post"
+      action="src/controllers/usuario_controller.php?accion=solicitar_cambio_datos_sensibles">
+
+  <input type="hidden" id="datosSensiblesSeleccionados" name="datos_sensibles_seleccionados" value="">
+  <input type="hidden" id="inputDatosCambiadosJSON" name="datos_cambiados" value="">
+
+  <!-- tus fields normales abajo -->
+
+
         <div id="field_nombre" class="hidden">
           <label class="text-xs font-medium text-slate-400 block mb-1">Nombre correcto</label>
           <input
             type="text"
+            id="input_nombre_sensible"
             name="nombre_completo"
             value="<?php echo htmlspecialchars($profileData["nombre_completo"], ENT_QUOTES, 'UTF-8'); ?>"
             class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
+          <!-- ✅ NUEVO: mensaje de error -->
+          <p class="mt-1 text-[11px] text-red-600 hidden" id="error_nombre_sensible"></p>
         </div>
 
         <div id="field_tipo_documento" class="hidden">
           <label class="text-xs font-medium text-slate-400 block mb-1">Tipo de documento correcto</label>
           <select
+            id="select_tipo_documento_sensible"
             name="tipo_documento"
             class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
@@ -668,26 +1024,31 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
               }
             ?>
           </select>
+          <p class="mt-1 text-[11px] text-red-600 hidden" id="error_tipo_documento_sensible"></p>
         </div>
 
         <div id="field_numero_documento" class="hidden">
           <label class="text-xs font-medium text-slate-400 block mb-1">Número de documento correcto</label>
           <input
             type="text"
+            id="input_numero_documento_sensible"
             name="numero_documento"
             value="<?php echo htmlspecialchars($profileData["numero_documento"], ENT_QUOTES, 'UTF-8'); ?>"
             class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
+          <p class="mt-1 text-[11px] text-red-600 hidden" id="error_numero_documento_sensible"></p>
         </div>
 
         <div id="field_correo" class="hidden">
           <label class="text-xs font-medium text-slate-400 block mb-1">Correo correcto</label>
           <input
             type="email"
+            id="input_correo_sensible"
             name="correo"
             value="<?php echo htmlspecialchars($profileData["correo"], ENT_QUOTES, 'UTF-8'); ?>"
             class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
+          <p class="mt-1 text-[11px] text-red-600 hidden" id="error_correo_sensible"></p>
         </div>
 
         <div class="mt-4 flex justify-end gap-3">
@@ -700,6 +1061,7 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
           </button>
           <button
             type="submit"
+            id="btnEnviarDatosSensibles"
             class="inline-flex items-center justify-center rounded-lg bg-secondary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-secondary/90 transition"
           >
             Continuar
@@ -730,38 +1092,87 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
         Por seguridad, ingresa tu contraseña actual y luego la nueva contraseña.
       </p>
 
+      <!-- ✅ Alertas Flowbite para Password -->
+<div id="alertaPasswordContainer" class="mb-4"></div>
+
+
       <form id="formCambiarPassword" method="post" action="#">
         <div class="space-y-4 text-sm">
-          <div>
-            <label class="text-xs font-medium text-slate-400 block mb-1">Contraseña actual</label>
-            <input
-              type="password"
-              name="password_actual"
-              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              placeholder="••••••••"
-            />
-          </div>
 
-          <div>
-            <label class="text-xs font-medium text-slate-400 block mb-1">Nueva contraseña</label>
-            <input
-              type="password"
-              name="password_nueva"
-              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              placeholder="••••••••"
-            />
-          </div>
+  <!-- Contraseña actual -->
+  <div>
+    <label class="text-xs font-medium text-slate-400 block mb-1">Contraseña actual</label>
 
-          <div>
-            <label class="text-xs font-medium text-slate-400 block mb-1">Confirmar nueva contraseña</label>
-            <input
-              type="password"
-              name="password_confirmar"
-              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-              placeholder="••••••••"
-            />
-          </div>
-        </div>
+    <div class="relative">
+      <input
+        type="password"
+        name="password_actual"
+        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+        placeholder="••••••••"
+      />
+
+      <button
+        type="button"
+        data-toggle-password="true"
+        aria-label="Mostrar/Ocultar contraseña actual"
+        class="absolute right-3 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-50"
+      >
+        <i data-lucide="eye" class="h-4 w-4 text-slate-500"></i>
+        <i data-lucide="eye-off" class="h-4 w-4 text-slate-500 hidden"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Nueva contraseña -->
+  <div>
+    <label class="text-xs font-medium text-slate-400 block mb-1">Nueva contraseña</label>
+
+    <div class="relative">
+      <input
+        type="password"
+        name="password_nueva"
+        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+        placeholder="••••••••"
+      />
+
+      <button
+        type="button"
+        data-toggle-password="true"
+        aria-label="Mostrar/Ocultar nueva contraseña"
+        class="absolute right-3 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-50"
+      >
+        <i data-lucide="eye" class="h-4 w-4 text-slate-500"></i>
+        <i data-lucide="eye-off" class="h-4 w-4 text-slate-500 hidden"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Confirmar nueva contraseña -->
+  <div>
+    <label class="text-xs font-medium text-slate-400 block mb-1">Confirmar nueva contraseña</label>
+
+    <div class="relative">
+      <input
+        type="password"
+        name="password_confirmar"
+        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 pr-11 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+        placeholder="••••••••"
+      />
+
+      <button
+        type="button"
+        data-toggle-password="true"
+        aria-label="Mostrar/Ocultar confirmar contraseña"
+        class="absolute right-3 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-50"
+      >
+        <i data-lucide="eye" class="h-4 w-4 text-slate-500"></i>
+        <i data-lucide="eye-off" class="h-4 w-4 text-slate-500 hidden"></i>
+      </button>
+    </div>
+  </div>
+
+</div>
+
 
         <div class="mt-6 flex justify-end gap-3">
           <button
@@ -782,7 +1193,375 @@ $esInstructor = strtolower($profileData["cargo"]) === 'instructor';
     </div>
   </div>
 </div>
+<?php
+// ✅ Detectar si viene forzado por query o por sesión
+$forcePwdQuery = isset($_GET['force_pwd']) && $_GET['force_pwd'] == '1';
+$forcePwdSession = !empty($_SESSION['force_password_change']) && (int)$_SESSION['force_password_change'] === 1;
+
+$mustForcePwd = ($forcePwdQuery || $forcePwdSession);
+?>
+
+<?php if ($mustForcePwd): ?>
+
+  <!-- ✅ Flowbite (si ya lo tienes global, puedes quitarlo) -->
+  <script src="https://unpkg.com/flowbite@2.5.1/dist/flowbite.min.js"></script>
+
+  <!-- ===========================================================
+       ✅ MODAL FLOWBITE — CAMBIO DE CONTRASEÑA OBLIGATORIO
+       =========================================================== -->
+  <div
+    id="forcePwdModal"
+    tabindex="-1"
+    aria-hidden="true"
+    class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-[9999] justify-center items-center w-full inset-0 h-full bg-black/40"
+  >
+    <div class="relative p-4 w-full max-w-lg">
+      <div class="relative bg-white rounded-xl shadow-xl border border-gray-200">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between p-5 border-b border-gray-200">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">
+              Cambio de contraseña obligatorio
+            </h3>
+            <p class="text-sm text-gray-500 mt-1">
+              Por seguridad, debes actualizar tu contraseña para continuar.
+            </p>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div class="p-5 space-y-4">
+
+          <!-- ✅ ALERTAS FLOWBITE (dinámico) -->
+          <div id="forcePwdAlertContainer"></div>
+
+          <!-- CONTRASEÑA ACTUAL -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-gray-700">Contraseña actual</label>
+
+            <div class="relative">
+              <input
+                id="fp_actual"
+                type="password"
+                placeholder="••••••••"
+                class="h-11 w-full border border-gray-300 rounded-lg px-3 pr-11 focus:ring-2 focus:ring-secondary/30 focus:border-secondary"
+              />
+
+              <button
+                type="button"
+                id="fp_actual_eye"
+                class="absolute right-0 top-0 h-11 w-11 flex items-center justify-center text-gray-500 hover:text-gray-700 transition"
+                aria-label="Mostrar/ocultar contraseña actual"
+              >
+                <!-- Eye icon -->
+                <svg id="fp_actual_eye_icon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- NUEVA CONTRASEÑA -->
+          <div class="space-y-1">
+            <label class="text-sm font-medium text-gray-700">Nueva contraseña</label>
+
+            <p class="text-xs text-gray-500">
+              Debe tener mínimo 1 número, 1 letra mayúscula y 1 caracter especial.
+            </p>
+
+            <div class="relative mt-2">
+              <input
+                id="fp_nueva"
+                type="password"
+                placeholder="••••••••"
+                class="h-11 w-full border border-gray-300 rounded-lg px-3 pr-11 focus:ring-2 focus:ring-secondary/30 focus:border-secondary"
+              />
+
+              <button
+                type="button"
+                id="fp_nueva_eye"
+                class="absolute right-0 top-0 h-11 w-11 flex items-center justify-center text-gray-500 hover:text-gray-700 transition"
+                aria-label="Mostrar/ocultar nueva contraseña"
+              >
+                <svg id="fp_nueva_eye_icon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- CONFIRMAR CONTRASEÑA -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-gray-700">Confirmar nueva contraseña</label>
+
+            <div class="relative">
+              <input
+                id="fp_conf"
+                type="password"
+                placeholder="••••••••"
+                class="h-11 w-full border border-gray-300 rounded-lg px-3 pr-11 focus:ring-2 focus:ring-secondary/30 focus:border-secondary"
+              />
+
+              <button
+                type="button"
+                id="fp_conf_eye"
+                class="absolute right-0 top-0 h-11 w-11 flex items-center justify-center text-gray-500 hover:text-gray-700 transition"
+                aria-label="Mostrar/ocultar confirmación"
+              >
+                <svg id="fp_conf_eye_icon" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="flex items-center justify-end gap-3 p-5 border-t border-gray-200">
+          <button
+            id="forcePwdSaveBtn"
+            type="button"
+            class="h-11 px-5 rounded-lg bg-secondary text-white font-medium hover:opacity-95 transition flex items-center justify-center"
+          >
+            <span id="forcePwdBtnText">Guardar contraseña</span>
+
+            <!-- Loader -->
+            <svg
+              id="forcePwdLoader"
+              class="hidden ml-2 h-4 w-4 animate-spin"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <circle cx="12" cy="12" r="10" stroke-opacity="0.25"/>
+              <path d="M4 12a8 8 0 018-8" />
+            </svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ✅ Guard anti-doble ejecución
+    if (!window.__forcePwdFlowbiteLoaded) {
+      window.__forcePwdFlowbiteLoaded = true;
+
+      document.addEventListener("DOMContentLoaded", () => {
+        initForcePwdFlowbiteModal();
+      });
+    }
+
+    function renderFlowbiteAlert(type, message) {
+      // type: "error" | "success" | "info"
+      const container = document.getElementById("forcePwdAlertContainer");
+      if (!container) return;
+
+      const styles = {
+        error:   "text-red-800 bg-red-50 border-red-200",
+        success: "text-emerald-800 bg-emerald-50 border-emerald-200",
+        info:    "text-gray-800 bg-gray-50 border-gray-200",
+      };
+
+      const icon = {
+        error: `
+          <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86l-7.1 12.3A1.5 1.5 0 004.5 18h15a1.5 1.5 0 001.3-2.24l-7.1-12.3a1.5 1.5 0 00-2.6 0z"/>
+          </svg>
+        `,
+        success: `
+          <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+        `,
+        info: `
+          <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"/>
+          </svg>
+        `
+      };
+
+      container.innerHTML = `
+        <div class="flex items-start gap-3 p-4 rounded-lg border ${styles[type] || styles.info}" role="alert">
+          <div class="mt-0.5">${icon[type] || icon.info}</div>
+          <div class="text-sm font-medium leading-relaxed">${message}</div>
+        </div>
+      `;
+    }
+
+    function setForcePwdLoading(isLoading) {
+      const btn = document.getElementById("forcePwdSaveBtn");
+      const loader = document.getElementById("forcePwdLoader");
+      const text = document.getElementById("forcePwdBtnText");
+
+      if (!btn || !loader || !text) return;
+
+      btn.disabled = isLoading;
+      loader.classList.toggle("hidden", !isLoading);
+      text.textContent = isLoading ? "Guardando..." : "Guardar contraseña";
+    }
+
+    function toggleEye(inputId, btnIconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(btnIconId);
+      if (!input || !icon) return;
+
+      const isText = input.type === "text";
+      input.type = isText ? "password" : "text";
+
+      // Cambiar icono a "eye off" cuando está visible
+      icon.innerHTML = isText
+        ? `
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        `
+        : `
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.477 10.48a3 3 0 104.243 4.243"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.88 5.09A10.94 10.94 0 0112 5c4.477 0 8.268 2.943 9.542 7a11.04 11.04 0 01-4.12 5.27"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.23 6.23A11.04 11.04 0 002.458 12c1.274 4.057 5.065 7 9.542 7 1.335 0 2.62-.262 3.812-.74"/>
+        `;
+    }
+
+    function validStrongPassword(pwd) {
+      // ✅ 1 mayúscula, 1 número, 1 especial
+      const hasUpper = /[A-Z]/.test(pwd);
+      const hasNumber = /[0-9]/.test(pwd);
+      const hasSpecial = /[^A-Za-z0-9]/.test(pwd);
+      return hasUpper && hasNumber && hasSpecial;
+    }
+
+    function initForcePwdFlowbiteModal() {
+      const modalEl = document.getElementById("forcePwdModal");
+      if (!modalEl) return;
+
+      const modal = new Modal(modalEl, {
+        backdrop: "static",
+        closable: false,
+        placement: "center"
+      });
+
+      modal.show();
+      renderFlowbiteAlert("info", "Completa los campos para actualizar tu contraseña.");
+
+      // ✅ Ojitos
+      document.getElementById("fp_actual_eye")?.addEventListener("click", () => toggleEye("fp_actual", "fp_actual_eye_icon"));
+      document.getElementById("fp_nueva_eye")?.addEventListener("click", () => toggleEye("fp_nueva", "fp_nueva_eye_icon"));
+      document.getElementById("fp_conf_eye")?.addEventListener("click", () => toggleEye("fp_conf", "fp_conf_eye_icon"));
+
+      const btnSave = document.getElementById("forcePwdSaveBtn");
+      if (!btnSave) return;
+
+      btnSave.addEventListener("click", async () => {
+        // ✅ IMPORTANTE: action por GET + POST para evitar el 400
+        // const API_BASE = "src/controllers/usuario_controller.php";
+        const ENDPOINT = "src/controllers/usuario_controller.php?accion=cambiar_password_obligatorio";
+
+
+        const actual = (document.getElementById("fp_actual")?.value || "").trim();
+        const nueva  = (document.getElementById("fp_nueva")?.value || "").trim();
+        const conf   = (document.getElementById("fp_conf")?.value || "").trim();
+
+        if (!actual || !nueva || !conf) {
+          renderFlowbiteAlert("error", "Debes completar los 3 campos.");
+          return;
+        }
+
+        if (nueva.length < 8) {
+          renderFlowbiteAlert("error", "La nueva contraseña debe tener mínimo 8 caracteres.");
+          return;
+        }
+
+        if (!validStrongPassword(nueva)) {
+          renderFlowbiteAlert("error", "La nueva contraseña debe tener mínimo 1 número, 1 mayúscula y 1 caracter especial.");
+          return;
+        }
+
+        if (nueva !== conf) {
+          renderFlowbiteAlert("error", "La confirmación no coincide con la nueva contraseña.");
+          return;
+        }
+
+        if (actual === nueva) {
+          renderFlowbiteAlert("error", "La nueva contraseña no puede ser igual a la actual.");
+          return;
+        }
+
+        setForcePwdLoading(true);
+
+        try {
+          const fd = new FormData();
+fd.append("accion", "cambiar_password_obligatorio"); // ✅ CLAVE
+fd.append("password_actual", actual);
+fd.append("password_nueva", nueva);
+fd.append("password_confirmacion", conf);
+
+// (Opcional compat)
+fd.append("action", "cambiar_password_obligatorio");
+
+
+          const res = await fetch(ENDPOINT, {
+            method: "POST",
+            body: fd,
+            headers: {
+              "X-Requested-With": "XMLHttpRequest"
+            }
+          });
+
+          // ✅ Intentar parsear seguro (por si el server manda HTML)
+          const raw = await res.text();
+          let data = null;
+
+          try {
+            data = JSON.parse(raw);
+          } catch (e) {
+            // Si no es JSON, mostrar error real
+            renderFlowbiteAlert("error", "El servidor no devolvió JSON. Revisa warnings/errores en usuario_controller.php.");
+            setForcePwdLoading(false);
+            return;
+          }
+
+          if (!data.ok) {
+            renderFlowbiteAlert("error", data.message || "No se pudo cambiar la contraseña.");
+            setForcePwdLoading(false);
+            return;
+          }
+
+          renderFlowbiteAlert("success", "Contraseña actualizada correctamente. Continuando...");
+
+          setTimeout(() => {
+            const url = new URL(window.location.href);
+            url.searchParams.delete("force_pwd");
+            window.location.href = url.toString();
+          }, 900);
+
+        } catch (err) {
+          renderFlowbiteAlert("error", "Error de conexión. Intenta nuevamente.");
+          setForcePwdLoading(false);
+        }
+      });
+    }
+  </script>
+
+<?php endif; ?>
+
+
+
 
 <!-- Lucide -->
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <script src="src/assets/js/perfil/perfil.js"></script>
+
+<style>
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>

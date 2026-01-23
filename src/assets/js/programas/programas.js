@@ -237,19 +237,13 @@ function checkAndShowEmptyStates(currentView) {
   const gridView = document.getElementById("gridView")
   const emptyState = document.getElementById("emptyStateProgramas")
   const emptySearch = document.getElementById("emptySearchProgramas")
+  const tableBtn = document.getElementById("viewTableBtn")
+  const gridBtn = document.getElementById("viewGridBtn")
   
-  // Verificar si hay filas o tarjetas visibles
-  let hasVisibleItems = false
-  
-  if (currentView === "table") {
-    // Contar filas visibles en la tabla
-    const visibleRows = document.querySelectorAll('#tableView tbody tr:not(.hidden)')
-    hasVisibleItems = visibleRows.length > 0
-  } else {
-    // Contar tarjetas visibles en la vista de cuadrícula
-    const visibleCards = document.querySelectorAll('#gridView [data-index]:not(.hidden)')
-    hasVisibleItems = visibleCards.length > 0
-  }
+  // Contar elementos visibles en AMBAS vistas
+  const visibleRows = document.querySelectorAll('#tableView tbody tr[data-index]:not(.hidden)')
+  const visibleCards = document.querySelectorAll('#gridView [data-index]:not(.hidden)')
+  const hasVisibleItems = visibleRows.length > 0 || visibleCards.length > 0
   
   // Verificar si hay programas en total en el sistema
   const totalRows = document.querySelectorAll('#tableView tbody tr[data-index]').length
@@ -258,29 +252,36 @@ function checkAndShowEmptyStates(currentView) {
   
   // Determinar qué mostrar
   if (!hasAnyPrograms) {
-    // No hay programas en el sistema
+    // No hay programas en el sistema - mostrar mensaje vacío
     emptyState?.classList.remove('hidden')
     emptySearch?.classList.add('hidden')
     tableView?.classList.add('hidden')
     gridView?.classList.add('hidden')
   } else if (!hasVisibleItems) {
-    // Hay programas pero no coinciden con los filtros/búsqueda
+    // Hay programas pero NINGUNO coincide con la búsqueda
     emptyState?.classList.add('hidden')
     emptySearch?.classList.remove('hidden')
     tableView?.classList.add('hidden')
     gridView?.classList.add('hidden')
   } else {
-    // Hay programas visibles
+    // ¡¡¡AQUÍ ESTÁ LA SOLUCIÓN!!!
+    // Hay resultados visibles - determinar qué vista mostrar basado en los botones
     emptyState?.classList.add('hidden')
     emptySearch?.classList.add('hidden')
     
-    // Mostrar la vista activa
-    if (currentView === "table") {
-      tableView?.classList.remove('hidden')
-      gridView?.classList.add('hidden')
-    } else {
+    // Mirar qué botón está activo (tiene clase bg-muted)
+    const isTableBtnActive = tableBtn?.classList.contains('bg-muted')
+    const isGridBtnActive = gridBtn?.classList.contains('bg-muted')
+    
+    // Por defecto, si ambos o ninguno está activo, mostrar tabla
+    if (isGridBtnActive && !isTableBtnActive) {
+      // Botón grid está activo → mostrar grid
       tableView?.classList.add('hidden')
       gridView?.classList.remove('hidden')
+    } else {
+      // Botón tabla está activo o estado ambiguo → mostrar tabla
+      tableView?.classList.remove('hidden')
+      gridView?.classList.add('hidden')
     }
   }
 }
@@ -388,7 +389,7 @@ function openEditModal(index) {
     document.getElementById("edit_nombre").value = row.dataset.nombre
     document.getElementById("edit_descripcion").value = row.dataset.descripcion
     document.getElementById("edit_nivel").value = row.dataset.nivel
-    document.getElementById("edit_duracion").value = row.dataset.duracion
+    document.getElementById("edit_duracion").value = row.dataset.duracion.replace(/[^\d]/g, '')
   }
 
   modal.classList.remove("hidden")
@@ -439,6 +440,18 @@ function openViewModal(index) {
         document.getElementById("view_description").textContent = row.dataset.descripcion;
         document.getElementById("view_nivel").textContent = row.dataset.nivel;
         document.getElementById("view_duracion").textContent = row.dataset.duracion;
+
+        // Mostrar instructores o mensaje si no hay
+        const instructores = row.dataset.instructores;
+        const instructorElement = document.getElementById('view_instructor');
+        
+        if (!instructores || instructores === 'No hay instructores vinculados' || instructores.trim() === '') {
+          instructorElement.textContent = 'No hay instructores vinculados a este programa';
+          instructorElement.className = 'text-sm text-muted-foreground';
+        } else {
+            instructorElement.textContent = instructores;
+            instructorElement.className = 'text-sm font-medium text-foreground';
+        }
 
         // Normalize state and display human-friendly badge (Activo / Inactivo)
         const estadoAttrView = String(row.dataset.estado ?? '').trim();
@@ -517,9 +530,60 @@ function closeCreateModal() {
 // =========================
 
 /**
+ * Validates that code contains at least one letter and one number
+ */
+function isValidCodeFormat(codigo) {
+  const hasLetter = /[a-zA-Z]/g.test(codigo);
+  const hasNumber = /[0-9]/g.test(codigo);
+  return hasLetter && hasNumber;
+}
+
+/**
+ * Checks if a code already exists in the current programs table/grid
+ * excludeIndex: if provided, exclude this program from the check
+ */
+function codeAlreadyExists(codigo, excludeIndex = null) {
+  // Get all table rows and grid cards
+  const tableRows = document.querySelectorAll('#tableView tbody tr[data-index]');
+  const gridCards = document.querySelectorAll('#gridView [data-index]');
+  
+  // Check table rows
+  for (let row of tableRows) {
+    const rowIndex = row.dataset.index;
+    const rowCodigo = (row.dataset.codigo || '').trim();
+    
+    // Skip if this is the row being edited
+    if (excludeIndex !== null && rowIndex === excludeIndex) {
+      continue;
+    }
+    
+    if (rowCodigo.toLowerCase() === codigo.toLowerCase()) {
+      return true;
+    }
+  }
+  
+  // Check grid cards
+  for (let card of gridCards) {
+    const cardIndex = card.dataset.index;
+    const cardCodigo = (card.dataset.codigo || '').trim();
+    
+    // Skip if this is the card being edited
+    if (excludeIndex !== null && cardIndex === excludeIndex) {
+      continue;
+    }
+    
+    if (cardCodigo.toLowerCase() === codigo.toLowerCase()) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
  * Validates program data before sending to server
  */
-function validateProgramData(data, isEdit = false) {
+function validateProgramData(data, isEdit = false, excludeIndex = null) {
   // Check required fields
   if (!data.codigo_programa || !data.nombre_programa || !data.nivel_programa || 
       !data.descripcion_programa || !data.duracion_horas) {
@@ -533,9 +597,21 @@ function validateProgramData(data, isEdit = false) {
     return false;
   }
 
-  // Validate code format (optional: can be customized)
+  // Validate code format (at least 3 characters)
   if (data.codigo_programa.trim().length < 3) {
     toastError("El código del programa debe tener al menos 3 caracteres.");
+    return false;
+  }
+
+  // Validate code contains at least one letter and one number
+  if (!isValidCodeFormat(data.codigo_programa)) {
+    toastError("El código debe contener al menos una letra y un número.");
+    return false;
+  }
+
+  // Check if code already exists (excluding current program in edit mode)
+  if (codeAlreadyExists(data.codigo_programa, excludeIndex)) {
+    toastError("Ya hay un programa de formación con el código ingresado");
     return false;
   }
 
@@ -570,7 +646,21 @@ function validateProgramData(data, isEdit = false) {
  * Check if there are any changes between original and current data (for edit mode)
  */
 function hasChanges(originalData, currentData) {
-  return JSON.stringify(originalData) !== JSON.stringify(currentData);
+  // Normalizar datos para comparación
+  const normalize = (obj) => {
+    return {
+      codigo: (obj.codigo || '').trim(),
+      nombre: (obj.nombre || '').trim(),
+      descripcion: (obj.descripcion || '').trim(),
+      nivel: (obj.nivel || '').trim(),
+      duracion: (obj.duracion || '').trim()
+    };
+  };
+
+  const originalNormalized = normalize(originalData);
+  const currentNormalized = normalize(currentData);
+
+  return JSON.stringify(originalNormalized) !== JSON.stringify(currentNormalized);
 }
 
 // ************************************** Programs Creation ***********************************************
@@ -583,9 +673,38 @@ document.addEventListener("DOMContentLoaded", () => {
 
   console.log("[v0] BASE_URL configured as:", BASE_URL)
 
+  // Variable para almacenar datos originales en edición
+  let originalEditData = null;
+
+  // Evento para capturar datos originales al abrir modal de edición
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('button[onclick^="openEditModal"]') || 
+        e.target.closest('button[onclick^="toggleActionMenu"] + [data-action="editar"]') ||
+        e.target.closest('button[data-action="editar"]')) {
+      const row = e.target.closest('tr') || e.target.closest('div[data-index]');
+      if (row) {
+        originalEditData = {
+          codigo: row.dataset.codigo,
+          nombre: row.dataset.nombre,
+          descripcion: row.dataset.descripcion,
+          nivel: row.dataset.nivel,
+          duracion: row.dataset.duracion.replace(/[^\d]/g, '')
+        };
+      }
+    }
+  });
+
   // Create Program Form
   const createForm = document.getElementById("createProgramForm")
   if (createForm) {
+    // Solo permitir números en el campo de duración
+    const duracionInput = document.getElementById("create_duracion");
+    if (duracionInput) {
+      duracionInput.addEventListener("input", function(e) {
+        this.value = this.value.replace(/[^\d]/g, '');
+      });
+    }
+
     createForm.addEventListener("submit", async (e) => {
       e.preventDefault()
 
@@ -610,8 +729,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       console.log("[v0] Creating program with data:", data)
 
-      // Validate data
-      if (!validateProgramData(data, false)) {
+      // Validate data (no excludeIndex for create operation)
+      if (!validateProgramData(data, false, null)) {
         return;
       }
 
@@ -646,24 +765,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // Edit Program Form
   const editForm = document.getElementById("editProgramForm")
   if (editForm) {
-    let originalEditData = null; // Store original data for change detection
-
-    // Store original data when opening edit modal
-    document.addEventListener('click', (e) => {
-      if (e.target.closest('button[onclick^="openEditModal"]') || 
-          e.target.closest('button[onclick^="toggleActionMenu"] + [data-action="editar"]')) {
-        const row = e.target.closest('tr') || e.target.closest('div[data-index]');
-        if (row) {
-          originalEditData = {
-            codigo: row.dataset.codigo,
-            nombre: row.dataset.nombre,
-            descripcion: row.dataset.descripcion,
-            nivel: row.dataset.nivel,
-            duracion: row.dataset.duracion
-          };
-        }
-      }
-    });
+    // Solo permitir números en el campo de duración
+    const editDuracionInput = document.getElementById("edit_duracion");
+    if (editDuracionInput) {
+      editDuracionInput.addEventListener("input", function(e) {
+        this.value = this.value.replace(/[^\d]/g, '');
+      });
+    }
 
     editForm.addEventListener("submit", async (e) => {
       e.preventDefault()
@@ -711,8 +819,8 @@ document.addEventListener("DOMContentLoaded", () => {
         duracion_horas: duracionHoras,
       }
 
-      // Validate data
-      if (!validateProgramData({...currentData, estado: estadoValue}, true)) {
+      // Validate data (pass current index to exclude from duplicate check)
+      if (!validateProgramData({...currentData, estado: estadoValue}, true, index)) {
         return;
       }
 
@@ -783,10 +891,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const nuevoEstado = estadoActual ? 0 : 1
 
       const actionText = nuevoEstado ? "activar" : "desactivar";
-      
-      if (!confirm(`¿Estás seguro de que deseas ${actionText} este programa?`)) {
-        return;
-      }
 
       try {
         const res = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=cambiar_estado`, {
@@ -852,12 +956,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const nuevoEstado = e.target.checked ? 1 : 0
       
       const actionText = nuevoEstado ? "activar" : "desactivar";
-      
-      if (!confirm(`¿Estás seguro de que deseas ${actionText} este programa?`)) {
-        // Revert checkbox if user cancels
-        e.target.checked = !e.target.checked;
-        return;
-      }
 
       try {
         const res = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=cambiar_estado`, {

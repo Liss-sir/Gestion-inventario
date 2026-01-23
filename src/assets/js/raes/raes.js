@@ -9,6 +9,68 @@ let currentRaes = [];
 let originalEditData = null; // Para validación de cambios en edición
 
 // =========================
+// VALIDACIÓN DE ENTRADA SOLO NÚMEROS
+// =========================
+
+/**
+ * Valida que solo se ingresen números en los campos de código
+ */
+function validarSoloNumeros(event) {
+    // Permitir teclas de control: backspace, delete, tab, escape, enter
+    const teclasPermitidas = [
+        'Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
+        'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'
+    ];
+    
+    if (teclasPermitidas.includes(event.key)) {
+        return true;
+    }
+    
+    // Permitir Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+Xx
+    if (event.ctrlKey || event.metaKey) {
+        return true;
+    }
+    
+    // Solo permitir dígitos (0-9)
+    const esNumero = /^[0-9]$/.test(event.key);
+    
+    if (!esNumero) {
+        event.preventDefault();
+        toastError("Solo se permiten números en el código RAE");
+        return false;
+    }
+    
+    return true;
+}
+
+// También prevenir pegar texto no numérico
+document.addEventListener('DOMContentLoaded', () => {
+    // Para el campo de creación
+    const createCodigoInput = document.getElementById('createRaeCodigo');
+    if (createCodigoInput) {
+        createCodigoInput.addEventListener('paste', (e) => {
+            const textoPegado = e.clipboardData.getData('text');
+            if (!/^\d+$/.test(textoPegado)) {
+                e.preventDefault();
+                toastError("No se pueden pegar caracteres no numéricos en el código RAE");
+            }
+        });
+    }
+    
+    // Para el campo de edición
+    const editCodigoInput = document.getElementById('editRaeCodigo');
+    if (editCodigoInput) {
+        editCodigoInput.addEventListener('paste', (e) => {
+            const textoPegado = e.clipboardData.getData('text');
+            if (!/^\d+$/.test(textoPegado)) {
+                e.preventDefault();
+                toastError("No se pueden pegar caracteres no numéricos en el código RAE");
+            }
+        });
+    }
+});
+
+// =========================
 // FLOWBITE-STYLE ALERTS (WHITE BACKGROUND, WARNING, NO PROGRESS BAR)
 // =========================
 
@@ -465,9 +527,10 @@ async function createRae() {
     ).trim();
 
     // Validación de campos obligatorios
-    if (!codigo) {
-        toastError("El código del RAE es obligatorio");
-        document.getElementById("createRaeCodigo").focus();
+    if (!/^\d+$/.test(codigo)) {
+        toastError("El código RAE solo debe contener números (0-9)");
+        codigoInput?.focus();
+        codigoInput?.select();
         return;
     }
 
@@ -529,6 +592,13 @@ async function updateRae() {
     // Validación de campos obligatorios
     if (!id) {
         toastError("ID del RAE faltante");
+        return;
+    }
+
+    if (!/^\d+$/.test(codigo)) {
+        toastError("El código RAE solo debe contener números (0-9)");
+        codigoInput?.focus();
+        codigoInput?.select();
         return;
     }
 

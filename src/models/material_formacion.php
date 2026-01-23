@@ -170,6 +170,61 @@ class MaterialFormacionModel {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    /* =====================================
+    MATERIALES POR BODEGA
+    ===================================== */
+    public function getByBodega(int $id_bodega): array
+    {
+        $sql = "
+            SELECT 
+                m.id_material,
+                m.nombre,
+                m.unidad_medida,
+                m.clasificacion,
+                m.codigo_inventario,
+                sb.stock_actual
+            FROM stock_bodega sb
+            INNER JOIN material_formacion m 
+                ON m.id_material = sb.id_material
+            WHERE sb.id_bodega = ?
+            AND sb.stock_actual > 0
+            ORDER BY m.nombre ASC
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id_bodega]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /* =====================================
+    MATERIALES POR SUBBODEGA
+    ===================================== */
+    public function getBySubBodega(int $id_subbodega): array
+    {
+        $sql = "
+            SELECT 
+                m.id_material,
+                m.nombre,
+                m.unidad_medida,
+                m.clasificacion,
+                m.codigo_inventario,
+                ss.stock_actual
+            FROM stock_subbodega ss
+            INNER JOIN material_formacion m 
+                ON m.id_material = ss.id_material
+            WHERE ss.id_subbodega = ?
+            AND ss.stock_actual > 0
+            ORDER BY m.nombre ASC
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id_subbodega]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
 }
 
 ?>

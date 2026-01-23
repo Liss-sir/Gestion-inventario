@@ -126,19 +126,22 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
       <!-- TABLE VIEW -->
       <div id="vistaTabla"
-        class="rounded-xl border border-border bg-card overflow-hidden">
-        <table class="min-w-full divide-y divide-border text-sm">
-          <thead class="bg-gray-50">
+        class="relative rounded-xl border border-border bg-card p-[1px] overflow-visible">
+        <table class="min-w-full border-separate border-spacing-0 text-sm rounded-[11px] bg-card">
+          <thead>
             <tr>
-              <th class="px-4 py-3 text-left text-xs text-muted-foreground">Número</th>
-              <th class="px-4 py-3 text-left text-xs text-muted-foreground">Programa</th>
-              <th class="px-4 py-3 text-left text-xs text-muted-foreground">Nivel</th>
-              <th class="px-4 py-3 text-left text-xs text-muted-foreground">Jornada</th>
-              <th class="px-4 py-3 text-left text-xs text-muted-foreground">Estado</th>
-              <th class="px-4 py-3 text-right text-xs text-muted-foreground">Acciones</th>
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100 first:rounded-tl-[11px]">Número</th>
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">Programa</th>
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">Nivel</th>
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">Jornada</th>
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">Estado</th>
+              <th class="px-4 py-3 text-right font-medium text-xs text-muted-foreground bg-gray-100 last:rounded-tr-[11px]">Acciones</th>
             </tr>
           </thead>
-          <tbody id="tbodyFichas" class="divide-y divide-border bg-card">
+          <tbody id="tbodyFichas" class="divide-y divide-border bg-card
+                   [&>tr>td]:bg-card
+                   [&>tr:last-child>td:first-child]:rounded-bl-[11px]
+                   [&>tr:last-child>td:last-child]:rounded-br-[11px]">
           </tbody>
         </table>
       </div>
@@ -151,7 +154,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
     </div>
   </main>
 
-  <!-- MODAL CREATE / EDIT -->
+  <!-- MODAL CREATE / EDIT (2 PASOS) -->
   <div id="modalFicha" class="modal-overlay">
     <div class="relative w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
 
@@ -170,8 +173,11 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </button>
       </div>
 
-      <!-- COMPLETED FORM -->
+      <!-- FORM -->
       <form id="formFicha" class="space-y-4" novalidate>
+
+        <!-- PASO 1: DATOS DE LA FICHA -->
+        <div id="paso1Ficha" class="space-y-4">
 
         <!-- id_ficha -->
         <input type="hidden" id="hiddenFichaId">
@@ -233,17 +239,148 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </div>
         </div>
 
-        <!-- FOOTER -->
+        <!-- FOOTER PASO 1 -->
         <div class="flex justify-end gap-2 pt-4">
           <button id="btnCancelarModalFicha" type="button"
             class="inline-flex items-center justify-center rounded-md border border-input px-4 py-2 text-sm hover:bg-muted">
             Cancelar
           </button>
 
-          <button type="submit"
+          <button type="button" id="btnIrPaso2"
             class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm text-white shadow">
-            Guardar Cambios
+            Siguiente
           </button>
+        </div>
+
+        </div>
+
+        <!-- PASO 2: AGREGAR ESTUDIANTES -->
+        <div id="paso2Ficha" class="hidden space-y-4">
+          
+          <div class="space-y-3">
+            <label class="text-sm font-medium">Estudiantes (Aprendices)</label>
+            <p class="text-xs text-muted-foreground">
+              Seleccione los aprendices que pertenecen a esta ficha
+            </p>
+            
+            <!-- Buscador de estudiantes -->
+            <div class="flex gap-2">
+              <input id="selectEstudiante" type="text"
+                placeholder="Buscar aprendices por nombre, documento o correo..."
+                class="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm input-siga">
+              
+              <!-- <button type="button" id="btnAgregarEstudiante"
+                class="inline-flex items-center justify-center rounded-md border border-input px-3 py-2 text-sm hover:bg-muted">
+                <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+              </button> -->
+            </div>
+
+            <!-- Lista de estudiantes seleccionados -->
+            <div id="listaEstudiantesSeleccionados"
+              class="border rounded-xl p-4 min-h-[150px] max-h-[300px] overflow-y-auto">
+              <div class="text-center text-muted-foreground py-8">
+                <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <p class="text-sm">Cargando aprendices...</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- FOOTER PASO 2 -->
+          <div class="flex justify-between gap-2 pt-4">
+            <button type="button" id="btnVolverPaso1"
+              class="inline-flex items-center justify-center rounded-md border border-input px-4 py-2 text-sm hover:bg-muted">
+              Atrás
+            </button>
+
+            <button type="button" id="btnIrPaso3"
+              class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm text-white shadow">
+              Siguiente
+            </button>
+          </div>
+
+        </div>
+
+        <!-- PASO 3: AGREGAR INSTRUCTORES -->
+        <div id="paso3Ficha" class="hidden space-y-4">
+          
+          <div class="space-y-3">
+            <label class="text-sm font-medium">Instructores</label>
+            <p class="text-xs text-muted-foreground">
+              Seleccione los instructores asignados a esta ficha
+            </p>
+            
+            <!-- Buscador de instructores -->
+            <div class="flex gap-2">
+              <input id="selectInstructor" type="text"
+                placeholder="Buscar instructores por nombre, documento o correo..."
+                class="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm input-siga">
+            </div>
+
+            <!-- Lista de instructores seleccionados -->
+            <div id="listaInstructoresSeleccionados"
+              class="border rounded-xl p-4 min-h-[150px] max-h-[300px] overflow-y-auto">
+              <div class="text-center text-muted-foreground py-8">
+                <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <p class="text-sm">Cargando instructores...</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- FOOTER PASO 3 -->
+          <div class="flex justify-between gap-2 pt-4">
+            <button type="button" id="btnVolverPaso2"
+              class="inline-flex items-center justify-center rounded-md border border-input px-4 py-2 text-sm hover:bg-muted">
+              Atrás
+            </button>
+
+            <button type="button" id="btnIrPaso4"
+              class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm text-white shadow">
+              Siguiente
+            </button>
+          </div>
+
+        </div>
+
+        <!-- PASO 4: SELECCIONAR JEFE DE GRUPO -->
+        <div id="paso4Ficha" class="hidden space-y-4">
+          
+          <div class="space-y-3">
+            <label class="text-sm font-medium">Seleccionar Jefe de Grupo</label>
+            <p class="text-xs text-muted-foreground">
+              Seleccione un instructor como jefe de grupo para esta ficha
+            </p>
+
+            <!-- Lista de instructores para seleccionar jefe de grupo -->
+            <div id="listaJefeGrupo"
+              class="border rounded-xl p-4 min-h-[150px] max-h-[300px] overflow-y-auto">
+              <div class="text-center text-muted-foreground py-8">
+                <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <p class="text-sm">Primero seleccione instructores en el paso anterior</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- FOOTER PASO 4 -->
+          <div class="flex justify-between gap-2 pt-4">
+            <button type="button" id="btnVolverPaso3"
+              class="inline-flex items-center justify-center rounded-md border border-input px-4 py-2 text-sm hover:bg-muted">
+              Atrás
+            </button>
+
+            <button type="submit"
+              class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm text-white shadow">
+              Guardar Ficha
+            </button>
+          </div>
+
         </div>
 
       </form>
@@ -273,6 +410,8 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   <!-- ALERT CONTAINER -->
   <div id="flowbite-alert-container"
        class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 w-full max-w-md"></div>
+
+  
 
   <!-- JS MODULE -->
   <script src="src/assets/js/fichas/fichas.js"></script>

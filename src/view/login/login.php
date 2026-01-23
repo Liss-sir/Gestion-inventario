@@ -26,6 +26,24 @@ if (isset($_SESSION['usuario_id'])) {
 
 $loginError = "";
 
+// ===============================
+// ✅ NUEVO: Mostrar mensaje si viene por reason (timeout, revoked, etc.)
+// (SIN alterar tu lógica base: solo pre-cargamos el mensaje)
+// ===============================
+$reason = $_GET['reason'] ?? '';
+
+if ($reason === 'idle_timeout') {
+    $loginError = "Tu sesión expiró por inactividad. Inicia sesión nuevamente.";
+} elseif ($reason === 'session_revoked') {
+    $loginError = "Tu sesión fue cerrada porque se inició sesión desde otro dispositivo.";
+} elseif ($reason === 'disabled') {
+    $loginError = "Tu cuenta está desactivada. Contacta al administrador.";
+} elseif ($reason === 'no_session') {
+    $loginError = "Debes iniciar sesión para continuar.";
+} elseif ($reason === 'no_token') {
+    $loginError = "Tu sesión no es válida. Inicia sesión nuevamente.";
+}
+
 // ------------------------
 // PROCESAR LOGIN (POST)
 // ------------------------
@@ -76,55 +94,109 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if ($passwordOk) {
 
-                    // ============================
-                    // 🔥 GUARDAR TODOS LOS DATOS EN SESIÓN
-                    // ============================
-                    $_SESSION['usuario_id']                = $user['id_usuario'];
-                    $_SESSION['usuario_nombre']            = $user['nombre_completo'];
-                    $_SESSION['usuario_cargo']             = $user['cargo'];
-
-                    $_SESSION['usuario_tipo_documento']    = $user['tipo_documento'];
-                    $_SESSION['usuario_numero_documento']  = $user['numero_documento'];
-                    $_SESSION['usuario_telefono']          = $user['telefono'];
-                    $_SESSION['usuario_correo']            = $user['correo'];
-                    $_SESSION['usuario_estado']            = $user['estado'];
-
-                    // 🔥 AGREGAMOS ESTOS DOS CAMPOS QUE FALTABAN
-                    $_SESSION['usuario_direccion']         = $user['direccion'];
-                    $_SESSION['usuario_fecha_creacion']    = $user['fecha_creacion'];
-
-                    // ✅ CLAVE: guardar la foto en sesión para que persista tras volver a iniciar sesión
-                    $_SESSION['usuario_foto']              = $user['foto_perfil'] ?? null;
-
                     // =========================================================
-                    // ✅ DETECTAR "CAMBIO OBLIGATORIO" (FORCE_%)
-                    // Sin tocar DB:
-                    // - tipo = 'reset_password'
-                    // - token LIKE 'FORCE_%'
+                    // ✅ NUEVO: BLOQUEAR LOGIN SI EL USUARIO ESTÁ INACTIVO
+                    // (NO TOCA TU DB, solo valida el campo estado)
                     // =========================================================
-                    try {
-                        $stmtForce = $conn->prepare("
-                            SELECT id_token
-                            FROM tokens_correo
-                            WHERE id_usuario = :uid
-                              AND tipo = 'reset_password'
-                              AND token LIKE 'FORCE_%'
-                              AND usado = 0
-                              AND fecha_expiracion >= NOW()
-                            ORDER BY id_token DESC
-                            LIMIT 1
+                    $rawEstado = $user['estado'] ?? null;
+                    $valEstado = strtolower(trim((string)$rawEstado));
+                    $estadoActivo = ($valEstado === 'activo' || $valEstado === '1' || $valEstado === 'true');
+
+                    if (!$estadoActivo) {
+                        $loginError = "Tu cuenta está desactivada. Contacta al administrador.";
+                    } else {
+
+                        // =========================================================
+                        // ✅ SOLUCIÓN: CERRAR SESIONES PEGADAS SIN TOCAR LA DB
+                        // =========================================================
+                        try {
+                            $stmtCloseOld = $conn->prepare("
+                                UPDATE sesiones_usuarios
+                                SET activa = 0
+                                WHERE id_usuario = :id
+                                  AND activa = 1
+                            ");
+                            $stmtCloseOld->execute([
+                                ':id' => (int)$user['id_usuario']
+                            ]);
+                        } catch (Throwable $e) {
+                            // No romper el login si falla el cierre
+                        }
+
+                        // CREAR SESIÓN ÚNICA EN BD
+                        $tokenSesion = bin2hex(random_bytes(32));
+
+                        $stmtCreate = $conn->prepare("
+                            INSERT INTO sesiones_usuarios (id_usuario, token_sesion)
+                            VALUES (:id_usuario, :token)
                         ");
-                        $stmtForce->execute([':uid' => (int)$user['id_usuario']]);
-                        $rowForce = $stmtForce->fetch(PDO::FETCH_ASSOC);
+                        $stmtCreate->execute([
+                            ':id_usuario' => (int)$user['id_usuario'],
+                            ':token'      => $tokenSesion
+                        ]);
 
-                        $_SESSION['force_password_change'] = $rowForce ? 1 : 0;
-                    } catch (Exception $e) {
-                        // Si por algo falla, no rompemos el login
-                        $_SESSION['force_password_change'] = 0;
-                    }
+                        $_SESSION['token_sesion'] = $tokenSesion;
 
-                    header('Location: ' . BASE_URL . '../../../index.php?page=dashboard');
-                    exit;
+                        // ============================
+                        // 🔥 GUARDAR TODOS LOS DATOS EN SESIÓN
+                        // ============================
+                        $_SESSION['usuario_id']                = $user['id_usuario'];
+                        $_SESSION['usuario_nombre']            = $user['nombre_completo'];
+                        $_SESSION['usuario_cargo']             = $user['cargo'];
+
+                        $_SESSION['usuario_tipo_documento']    = $user['tipo_documento'];
+                        $_SESSION['usuario_numero_documento']  = $user['numero_documento'];
+                        $_SESSION['usuario_telefono']          = $user['telefono'];
+                        $_SESSION['usuario_correo']            = $user['correo'];
+                        $_SESSION['usuario_estado']            = $user['estado'];
+
+                        // 🔥 AGREGAMOS ESTOS DOS CAMPOS QUE FALTABAN
+                        $_SESSION['usuario_direccion']         = $user['direccion'];
+                        $_SESSION['usuario_fecha_creacion']    = $user['fecha_creacion'];
+
+                        // ✅ CLAVE: guardar la foto en sesión para que persista tras volver a iniciar sesión
+                        $_SESSION['usuario_foto']              = $user['foto_perfil'] ?? null;
+
+                        // =========================================================
+                        // ✅ NUEVO: MARCAR ACTIVIDAD INICIAL PARA TIMEOUT (15 min)
+                        // =========================================================
+                        $_SESSION['LAST_ACTIVITY'] = time();
+
+                        // =========================================================
+                        // ✅ DETECTAR "CAMBIO OBLIGATORIO" (FORCE_%)
+                        // =========================================================
+                        try {
+                            $stmtForce = $conn->prepare("
+                                SELECT id_token
+                                FROM tokens_correo
+                                WHERE id_usuario = :uid
+                                  AND tipo = 'reset_password'
+                                  AND token LIKE 'FORCE_%'
+                                  AND usado = 0
+                                  AND fecha_expiracion >= NOW()
+                                ORDER BY id_token DESC
+                                LIMIT 1
+                            ");
+                            $stmtForce->execute([':uid' => (int)$user['id_usuario']]);
+                            $rowForce = $stmtForce->fetch(PDO::FETCH_ASSOC);
+
+                            $_SESSION['force_password_change'] = $rowForce ? 1 : 0;
+                        } catch (Exception $e) {
+                            $_SESSION['force_password_change'] = 0;
+                        }
+
+                        // =========================================================
+                        // ✅ NUEVO: si es obligatorio -> manda al dashboard con force_pwd=1
+                        // =========================================================
+                        if (!empty($_SESSION['force_password_change']) && (int)$_SESSION['force_password_change'] === 1) {
+                            header('Location: ' . BASE_URL . '../../../index.php?page=dashboard&force_pwd=1');
+                            exit;
+                        }
+
+                        header('Location: ' . BASE_URL . '../../../index.php?page=dashboard');
+                        exit;
+
+                    } // ✅ fin else (estado activo)
 
                 } else {
                     $loginError = "Credenciales incorrectas. Verifica tu correo y contraseña.";

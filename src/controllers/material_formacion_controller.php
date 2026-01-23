@@ -166,6 +166,19 @@ class MaterialFormacionController {
 
         return $this->model->getStockTotal($id);
     }
+
+    public function porBodega($id)
+    {
+        if (!$id) return [];
+        return $this->model->getByBodega((int)$id);
+    }
+
+    public function porSubBodega($id)
+    {
+        if (!$id) return [];
+        return $this->model->getBySubBodega((int)$id);
+    }
+
 }
 
 /* =====================================
@@ -216,6 +229,15 @@ switch ($accion) {
         $data = $_POST;
         sendJSON($controller->actualizar($id, $data));
         break;
+
+    case "porBodega":
+        sendJSON($controller->porBodega($_GET['id'] ?? null));
+        break;
+
+    case "porSubBodega":
+        sendJSON($controller->porSubBodega($_GET['id'] ?? null));
+        break;
+
 
     // case "eliminar":
     //     sendJSON($controller->eliminar($_GET['id'] ?? null));

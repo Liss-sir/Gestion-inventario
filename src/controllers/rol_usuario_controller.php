@@ -22,8 +22,8 @@ switch ($accion) {
         $data = json_decode($raw, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            echo json_encode(["error"=>"JSON inválido"]);
-            exit;
+            echo json_encode(["error"=>"JSON inválido:  " . json_last_error_msg()]);
+            return;
         }
 
         if (!isset($data["id_usuario"], $data["id_rol"], $data["asignado_por"])) {

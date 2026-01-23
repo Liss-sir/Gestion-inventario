@@ -11,8 +11,6 @@ const itemsPerPage = 10
 const cardsPerPage = 9
 let currentView = "table"
 
-
-
 // API endpoints
 const API_URL = `${window.BASE_URL}src/controllers/material_formacion_controller.php`;
 
@@ -79,13 +77,23 @@ function attachCurrencyMask(inputId) {
   })
 
   input.addEventListener("blur", () => {
-    const num = parsePriceValue(input.value)
+    const rawTyped = (input.value ?? "").toString().trim()
+
+    // ✅ PRIMERO: no permitir puntos ni comas (ALERTA TIPO INFO)
+    if (rawTyped && /[.,]/.test(rawTyped)) {
+      input.dataset.rawPrice = ""
+      input.value = ""
+      showAlert("No se admiten puntos ni comas en el precio. Escríbelo sin separadores (ej: 2000).", "info")
+      return
+    }
+
+    const num = parsePriceValue(rawTyped)
     if (num === "") {
       input.dataset.rawPrice = ""
       input.value = ""
       return
     }
-    
+
     // Validar mínimo de 100
     if (num < 100) {
       input.dataset.rawPrice = ""
@@ -93,7 +101,7 @@ function attachCurrencyMask(inputId) {
       showAlert("El precio debe ser mínimo 100", "error")
       return
     }
-    
+
     input.dataset.rawPrice = num.toString()
     input.value = formatCOPValue(num)
   })
@@ -158,16 +166,127 @@ async function updateMaterialAPI(id, formData) {
   }
 }
 
+/* ✅ CORREGIDA PARA TU BACKEND:
+   - TU CONTROLLER NO TIENE accion=toggleEstado
+   - Se debe hacer toggle usando accion=actualizar&id=...
+   - El modelo update() exige TODOS los campos (nombre, descripcion, unidad_medida, clasificacion, codigo_inventario, precio, foto, estado)
+   - Aquí enviamos TODO desde materialsData (sin subir foto nueva)
+*/
 async function toggleMaterialStatusAPI(id) {
+  const safeReadJson = async (res) => {
+    const txt = await res.text()
+    try {
+      return { ok: res.ok, status: res.status, data: JSON.parse(txt), raw: txt }
+    } catch {
+      return { ok: res.ok, status: res.status, data: null, raw: txt }
+    }
+  }
+
+  // ✅ construye una URL REAL del controller (evita undefined, dobles rutas, etc.)
+  const resolveControllerUrl = () => {
+    const fromWindow = (window.BASE_URL || window.MATERIALES_BASE_URL || "").toString().trim()
+
+    // si BASE_URL existe, asegurar slash final
+    if (fromWindow) {
+      const base = fromWindow.endsWith("/") ? fromWindow : fromWindow + "/"
+      return `${base}src/controllers/material_formacion_controller.php`
+    }
+
+    // fallback: inferir desde la URL actual
+    const origin = window.location.origin
+    const pathname = window.location.pathname // ej: /gestion_inventario/Gestion-inventario/src/view/...
+    const idx = pathname.toLowerCase().indexOf("/src/")
+    const root = idx !== -1 ? pathname.slice(0, idx + 1) : pathname.replace(/\/[^/]*$/, "/")
+    return `${origin}${root}src/controllers/material_formacion_controller.php`
+  }
+
   try {
-    const response = await fetch(`${API_URL}?accion=toggleEstado&id=${id}`, {
-      method: "GET",
+    const controllerUrl = resolveControllerUrl()
+
+    // ✅ material desde memoria (ya está cargado por fetchMaterials)
+    let mat = materialsData.find((m) => Number(m.id) === Number(id))
+
+    // fallback (solo si por alguna razón no está en memoria)
+    if (!mat) {
+      const getUrl = `${controllerUrl}?accion=obtener&id=${encodeURIComponent(String(id))}`
+      const resGet = await fetch(getUrl, { method: "GET", credentials: "include", cache: "no-store" })
+      const parsedGet = await safeReadJson(resGet)
+      if (parsedGet.data && parsedGet.ok) {
+        mat = {
+          id: Number.parseInt(parsedGet.data.id_material),
+          name: parsedGet.data.nombre,
+          description: parsedGet.data.descripcion,
+          clasificacion: parsedGet.data.clasificacion,
+          codigo: parsedGet.data.codigo_inventario,
+          unit: parsedGet.data.unidad_medida,
+          precio: parsedGet.data.precio,
+          foto: parsedGet.data.foto,
+          enabled: parsedGet.data.estado === "Disponible",
+        }
+      }
+    }
+
+    if (!mat) {
+      return { status: "error", success: false, message: "No se encontró el material para cambiar estado." }
+    }
+
+    const currentEstado = mat.enabled ? "Disponible" : "Agotado"
+    const nextEstado = currentEstado === "Disponible" ? "Agotado" : "Disponible"
+
+    // ✅ TU CONTROLLER: case "actualizar" -> $data = $_POST; sendJSON($controller->actualizar($id, $data));
+    const postUrl = `${controllerUrl}?accion=actualizar&id=${encodeURIComponent(String(id))}`
+
+    // ✅ enviar TODOS los campos que tu modelo update() espera
+    const fd = new FormData()
+    fd.append("nombre", (mat.name ?? "").toString())
+    fd.append("descripcion", (mat.description ?? "").toString())
+    fd.append("clasificacion", (mat.clasificacion ?? "").toString())
+    fd.append("codigo_inventario", (mat.codigo ?? "").toString())
+    fd.append("unidad_medida", (mat.unit ?? "").toString())
+
+    // precio: tu modelo lo requiere, enviamos num limpio
+    const precioNum = parsePriceValue(mat.precio)
+    fd.append("precio", precioNum === "" ? "" : String(precioNum))
+
+    // estado nuevo
+    fd.append("estado", nextEstado)
+
+    // ❌ NO enviamos foto: tu controller conservará la actual (porque ya hace getById y la mantiene)
+    const res = await fetch(postUrl, {
+      method: "POST",
+      body: fd,
+      credentials: "include",
+      cache: "no-store",
+      redirect: "follow",
     })
-    const result = await response.json()
-    return result
+
+    const parsed = await safeReadJson(res)
+    if (parsed.data) return parsed.data
+
+    return {
+      success: false,
+      status: "error",
+      message:
+        parsed.status === 400
+          ? "Bad Request (400). El backend rechazó los parámetros en actualizar."
+          : "El servidor devolvió una respuesta inválida (no JSON).",
+      http_status: parsed.status,
+      raw: parsed.raw,
+      debug: { controllerUrl, postUrl, id: String(id), nextEstado },
+    }
   } catch (error) {
-    console.error("Error:", error)
-    return { success: false, message: "Error de conexión" }
+    console.error("toggleEstado via actualizar error:", error)
+    return {
+      success: false,
+      status: "error",
+      message: "No se pudo conectar con el controller (fetch falló).",
+      debug: {
+        id: String(id),
+        API_URL,
+        BASE_URL: window.BASE_URL,
+        MATERIALES_BASE_URL: window.MATERIALES_BASE_URL,
+      },
+    }
   }
 }
 
@@ -321,7 +440,7 @@ function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
       return false
     }
     if (!codeRegex.test(data.codigo_inventario)) {
-      showAlert("Código inválido: 3-30 caracteres alfanuméricos, guion o guion bajo", "error")
+      showAlert("Código inválido: solo números (3-30 dígitos)", "warning")
       document.getElementById(isEdit ? "editCodigo" : "codigo")?.focus()
       return false
     }
@@ -492,7 +611,6 @@ function renderTable() {
   const paginationEl = document.getElementById("pagination")
 
   if (!dataToRender.length) {
-    // Hide table and pagination
     if (tableWrapper) tableWrapper.classList.add("hidden")
     if (tableEl) tableEl.classList.add("hidden")
     if (paginationEl) {
@@ -500,7 +618,6 @@ function renderTable() {
       paginationEl.parentElement?.classList.add("hidden")
     }
 
-    // Show proper empty container
     const hasFilters = Boolean(searchTerm || filterValue)
     if (hasFilters) {
       if (emptySearchTable) emptySearchTable.classList.remove("hidden")
@@ -512,7 +629,6 @@ function renderTable() {
 
     return
   } else {
-    // Show table, hide empty containers
     if (tableWrapper) tableWrapper.classList.remove("hidden")
     if (tableEl) tableEl.classList.remove("hidden")
     if (emptyStateTable) emptyStateTable.classList.add("hidden")
@@ -522,9 +638,9 @@ function renderTable() {
 
   paginatedData.forEach((material) => {
     const statusText = material.enabled ? "Disponible" : "Agotado"
-    const codigoDisplay = material.codigo || "-"
+    const codigoDisplay = material.codigo || (material.clasificacion === "Consumible" ? "N/C" : "-")
 
-    const row = document.createElement("tr")
+    const row = document.createElement("tr")            
     row.className = "hover:bg-muted/40"
     row.dataset.materialId = material.id
 
@@ -599,10 +715,9 @@ function renderTable() {
   })
 
   renderPagination()
-    // Initialize Lucide icons in newly rendered table rows
-    if (window.lucide && typeof lucide.createIcons === "function") {
-      lucide.createIcons(tableBody)
-    }
+  if (window.lucide && typeof lucide.createIcons === "function") {
+    lucide.createIcons(tableBody)
+  }
 }
 
 function renderCards() {
@@ -618,14 +733,12 @@ function renderCards() {
   const cardPaginationEl = document.getElementById("cardPagination")
 
   if (!dataToRender.length) {
-    // Hide cards and pagination
     cardsContainer.classList.add("hidden")
     if (cardPaginationEl) {
       cardPaginationEl.innerHTML = ""
       cardPaginationEl.parentElement?.classList.add("hidden")
     }
 
-    // Show proper empty container
     const hasFilters = Boolean(searchTerm || filterValue)
     if (hasFilters) {
       if (emptySearchCards) emptySearchCards.classList.remove("hidden")
@@ -636,7 +749,6 @@ function renderCards() {
     }
     return
   } else {
-    // Show cards, hide empty containers
     cardsContainer.classList.remove("hidden")
     if (emptyStateCards) emptyStateCards.classList.add("hidden")
     if (emptySearchCards) emptySearchCards.classList.add("hidden")
@@ -645,7 +757,7 @@ function renderCards() {
 
   paginatedData.forEach((material) => {
     const statusText = material.enabled ? "Disponible" : "Agotado"
-    const codigoDisplay = material.codigo || "Sin código"
+    const codigoDisplay = material.codigo || (material.clasificacion === "Consumible" ? "N/C" : "Sin código")
 
     const card = document.createElement("div")
     card.className = "rounded-2xl border border-border bg-card p-2.5 shadow-sm flex flex-col gap-1.5"
@@ -854,8 +966,7 @@ function closeCreateModal() {
   if (precioInput) precioInput.dataset.rawPrice = ""
   document.getElementById("imagen").value = ""
   document.getElementById("codigoContainer").style.display = "none"
-  
-  // Limpiar vista previa de imagen
+
   const previewImagen = document.getElementById("previewImagen")
   if (previewImagen) {
     previewImagen.src = ""
@@ -867,28 +978,19 @@ function openDetailsModal(id) {
   const material = materialsData.find((m) => m.id === id)
   if (!material) return
 
-  // Obtener iniciales del nombre del material
-  const getInitials = (name) => {
-    return name
-      .split(" ")
-      .filter(Boolean)
-      .map((n) => n[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase()
-  }
-
   const estadoBadgeClass = material.enabled ? "badge-estado-activo" : "badge-estado-inactivo"
-  const clasificacionBadgeClass = material.clasificacion === "Inventariado" ? "badge-clasificacion-inventariado" : "badge-clasificacion-consumible"
+  const clasificacionBadgeClass =
+    material.clasificacion === "Inventariado" ? "badge-clasificacion-inventariado" : "badge-clasificacion-consumible"
   const fotoUrl = getMaterialImageUrl(material.foto)
 
   const detailsContent = document.getElementById("detailsContent")
   detailsContent.innerHTML = `
     <div class="flex items-start gap-4 pb-4 border-b border-border">
       <div class="flex h-20 w-20 items-center justify-center rounded-xl overflow-hidden bg-avatar-secondary-39 text-secondary flex-shrink-0">
-        ${fotoUrl 
-          ? `<img src="${fotoUrl}" alt="${material.name}" class="h-full w-full object-cover" />`
-          : `<i data-lucide="box" class="lucide lucide-box h-8 w-8 text-[#007832]"></i>`
+        ${
+          fotoUrl
+            ? `<img src="${fotoUrl}" alt="${material.name}" class="h-full w-full object-cover" />`
+            : `<i data-lucide="box" class="lucide lucide-box h-8 w-8 text-[#007832]"></i>`
         }
       </div>
       <div class="flex-1">
@@ -907,7 +1009,7 @@ function openDetailsModal(id) {
     <div class="grid gap-3 text-sm">
       <div class="grid grid-cols-3 gap-2">
         <span class="text-muted-foreground">Código:</span>
-        <span class="col-span-2 font-medium">${material.codigo || "Sin código"}</span>
+        <span class="col-span-2 font-medium">${material.codigo || (material.clasificacion === "Consumible" ? "N/C" : "Sin código")}</span>
       </div>
       <div class="grid grid-cols-3 gap-2">
         <span class="text-muted-foreground">Descripción:</span>
@@ -950,7 +1052,6 @@ function openEditModal(id) {
     editPrecioInput.value = material.precio ? formatCOPValue(material.precio) : ""
   }
 
-  // Resetear input y pintar vista previa con la foto actual si existe
   const editImagenInput = document.getElementById("editImagen")
   if (editImagenInput) editImagenInput.value = ""
 
@@ -997,37 +1098,44 @@ function toggleCodigoField() {
     codigoContainer.style.display = "block"
     codigoHelpText.style.display = "block"
     codigoInput.required = true
-    // Mostrar grid de 2 columnas
     precioCodigoGrid.style.gridTemplateColumns = "1fr 1fr"
   } else {
     codigoContainer.style.display = "none"
     codigoHelpText.style.display = "none"
     codigoInput.required = false
     codigoInput.value = ""
-    // Cambiar a 1 columna para que el precio ocupe todo el ancho
     precioCodigoGrid.style.gridTemplateColumns = "1fr"
   }
 }
 
+/* ✅ CORREGIDA: no rompe si falta el grid o algún id (evita classList of null) */
 function toggleEditCodigoField() {
-  const clasificacion = document.getElementById("editClasificacion").value
+  const clasificacionEl = document.getElementById("editClasificacion")
   const codigoContainer = document.getElementById("editCodigoContainer")
   const codigoInput = document.getElementById("editCodigo")
   const editPrecioCodigoGrid = document.getElementById("editPrecioCodigoGrid")
 
+  if (!clasificacionEl || !codigoContainer || !codigoInput) return
+
+  const clasificacion = clasificacionEl.value
+
   if (clasificacion === "Inventariado") {
     codigoContainer.style.display = "block"
     codigoInput.required = true
-    // Mantener grid de 2 columnas
-    editPrecioCodigoGrid.classList.remove("grid-cols-1")
-    editPrecioCodigoGrid.classList.add("grid-cols-2")
+
+    if (editPrecioCodigoGrid && editPrecioCodigoGrid.classList) {
+      editPrecioCodigoGrid.classList.remove("grid-cols-1")
+      editPrecioCodigoGrid.classList.add("grid-cols-2")
+    }
   } else {
     codigoContainer.style.display = "none"
     codigoInput.required = false
     codigoInput.value = ""
-    // Cambiar a 1 columna para que el precio ocupe todo el ancho
-    editPrecioCodigoGrid.classList.remove("grid-cols-2")
-    editPrecioCodigoGrid.classList.add("grid-cols-1")
+
+    if (editPrecioCodigoGrid && editPrecioCodigoGrid.classList) {
+      editPrecioCodigoGrid.classList.remove("grid-cols-2")
+      editPrecioCodigoGrid.classList.add("grid-cols-1")
+    }
   }
 }
 
@@ -1035,18 +1143,27 @@ function toggleEditCodigoField() {
    CRUD OPERATIONS
    ========================= */
 async function createMaterial() {
+  const precioEl = document.getElementById("precio")
+  const precioTyped = (precioEl?.value ?? "").toString().trim()
+  const precioRaw = (precioEl?.dataset.rawPrice ?? "").toString().trim()
+
+  if (!precioRaw && precioTyped && /[.,]/.test(precioTyped)) {
+    showAlert("No se admiten puntos ni comas en el precio. Escríbelo sin separadores (ej: 2000).", "error")
+    precioEl?.focus()
+    return
+  }
+
   const materialData = {
     nombre: document.getElementById("nombre").value.trim(),
     descripcion: document.getElementById("descripcion").value.trim(),
     clasificacion: document.getElementById("clasificacion").value,
     codigo_inventario: document.getElementById("codigo").value.trim() || null,
     unidad_medida: document.getElementById("unidad").value,
-    precio: parsePriceValue(document.getElementById("precio")?.dataset.rawPrice ?? document.getElementById("precio")?.value),
+    precio: parsePriceValue(precioRaw || precioTyped),
   }
 
   if (!validateMaterialPayload(materialData)) return
 
-  // Crear FormData (igual que en usuario_controller)
   const formData = new FormData()
   formData.append("nombre", materialData.nombre)
   formData.append("descripcion", materialData.descripcion)
@@ -1054,8 +1171,7 @@ async function createMaterial() {
   formData.append("codigo_inventario", materialData.codigo_inventario || "")
   formData.append("unidad_medida", materialData.unidad_medida)
   formData.append("precio", materialData.precio)
-  
-  // Agregar la imagen
+
   const imagenInput = document.getElementById("imagen")
   if (imagenInput.files.length > 0) {
     formData.append("foto", imagenInput.files[0])
@@ -1074,20 +1190,30 @@ async function createMaterial() {
 
 async function updateMaterial() {
   const id = Number.parseInt(document.getElementById("editId").value)
+
+  const editPrecioEl = document.getElementById("editPrecio")
+  const precioTyped = (editPrecioEl?.value ?? "").toString().trim()
+  const precioRaw = (editPrecioEl?.dataset.rawPrice ?? "").toString().trim()
+
+  if (!precioRaw && precioTyped && /[.,]/.test(precioTyped)) {
+    showAlert("No se admiten puntos ni comas en el precio. Escríbelo sin separadores (ej: 2000).", "error")
+    editPrecioEl?.focus()
+    return
+  }
+
   const materialData = {
     nombre: document.getElementById("editNombre").value.trim(),
     descripcion: document.getElementById("editDescripcion").value.trim(),
     clasificacion: document.getElementById("editClasificacion").value,
     codigo_inventario: document.getElementById("editCodigo").value.trim() || null,
     unidad_medida: document.getElementById("editUnidad").value,
-    precio: parsePriceValue(document.getElementById("editPrecio")?.dataset.rawPrice ?? document.getElementById("editPrecio")?.value),
+    precio: parsePriceValue(precioRaw || precioTyped),
     estado: materialsData.find((m) => m.id === id)?.enabled ? "Disponible" : "Agotado",
   }
 
   const editImagenInput = document.getElementById("editImagen")
   const hasNewPhoto = editImagenInput && editImagenInput.files.length > 0
 
-  // Bloquear envío si no hay cambios respecto al original
   const original = materialsData.find((m) => m.id === id)
   if (original) {
     const norm = (v) => (v ?? "").toString().trim()
@@ -1110,7 +1236,6 @@ async function updateMaterial() {
 
   if (!validateMaterialPayload(materialData, { isEdit: true, id })) return
 
-  // FormData para permitir actualizar foto opcionalmente
   const formData = new FormData()
   formData.append("nombre", materialData.nombre)
   formData.append("descripcion", materialData.descripcion)
@@ -1135,16 +1260,19 @@ async function updateMaterial() {
   }
 }
 
+/* ✅ CORREGIDA: ahora usa actualizar (porque tu backend no tiene toggleEstado) */
 async function toggleMaterialStatus(id, event) {
   event?.stopPropagation()
 
   const result = await toggleMaterialStatusAPI(id)
+  const ok = result?.success === true || result?.status === "success"
 
-  if (result.success) {
+  if (ok) {
     showAlert(result.message || "Estado actualizado", "success")
     await fetchMaterials()
   } else {
-    showAlert(result.message || "Error al cambiar el estado", "error")
+    showAlert(result?.message || "Error al cambiar el estado", "error")
+    // console.log("toggleEstado RAW:", result?.raw)
   }
 }
 
@@ -1263,7 +1391,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initEmptyStates()
   await fetchMaterials()
   setupEventListeners()
-  // await cargarProgramas() // This line seems to be from another module and might be a leftover
+  // await cargarProgramas()
 })
 
 function setupEventListeners() {
@@ -1272,33 +1400,29 @@ function setupEventListeners() {
 
   attachCurrencyMask("precio")
   attachCurrencyMask("editPrecio")
-  
-  // Vista previa de imagen en el modal de crear
+
   const imagenInput = document.getElementById("imagen")
   const dropzoneImagen = document.getElementById("dropzoneImagen")
   const previewImagen = document.getElementById("previewImagen")
-  
+
   if (imagenInput && dropzoneImagen && previewImagen) {
-    // Click en el dropzone abre el selector de archivos
     dropzoneImagen.addEventListener("click", () => {
       imagenInput.click()
     })
-    
-    // Prevenir comportamiento por defecto en drag & drop
+
     dropzoneImagen.addEventListener("dragover", (e) => {
       e.preventDefault()
       dropzoneImagen.classList.add("bg-muted")
     })
-    
+
     dropzoneImagen.addEventListener("dragleave", () => {
       dropzoneImagen.classList.remove("bg-muted")
     })
-    
-    // Manejar drop de archivos
+
     dropzoneImagen.addEventListener("drop", (e) => {
       e.preventDefault()
       dropzoneImagen.classList.remove("bg-muted")
-      
+
       const files = e.dataTransfer.files
       if (files.length > 0) {
         if (validarImagen(files[0])) {
@@ -1307,8 +1431,7 @@ function setupEventListeners() {
         }
       }
     })
-    
-    // Manejar selección de archivo
+
     imagenInput.addEventListener("change", (e) => {
       if (e.target.files.length > 0) {
         if (validarImagen(e.target.files[0])) {
@@ -1320,7 +1443,6 @@ function setupEventListeners() {
     })
   }
 
-  // Vista previa en el modal de editar
   const editImagenInput = document.getElementById("editImagen")
   const editDropzoneImagen = document.getElementById("editDropzoneImagen")
   const editPreviewImagen = document.getElementById("editPreviewImagen")
@@ -1365,7 +1487,7 @@ function setupEventListeners() {
 }
 
 function validarImagen(file) {
-  const maxSize = 2 * 1024 * 1024 // 2MB
+  const maxSize = 2 * 1024 * 1024
   const allowedTypes = ["image/jpeg", "image/jpg", "image/png"]
 
   if (!file) {

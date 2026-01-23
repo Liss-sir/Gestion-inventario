@@ -1,8 +1,14 @@
 <?php
-// =====================================
-// USER MANAGEMENT – PHP VIEW
-// =====================================
+// =====================================================
+// USER MANAGEMENT — PHP VIEW
+// =====================================================
 
+// Session is required to access authenticated user data (e.g., $_SESSION variables)
+if (session_status() === PHP_SESSION_NONE) {
+  session_start();
+}
+
+// UI layout configuration based on the sidebar collapse state
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 ?>
@@ -23,9 +29,9 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   <!-- Custom styles for the Users management module -->
   <link rel="stylesheet" href="src/assets/css/usuarios/usuarios.css" />
 
-  <!-- Expose authenticated user ID to JavaScript logic -->
+  <!-- Provide the authenticated user ID to the client-side script -->
   <script>
-    const AUTH_USER_ID = <?= $_SESSION['usuario_id']; ?>;
+    const AUTH_USER_ID = <?= (int)($_SESSION['usuario_id'] ?? 0); ?>;
   </script>
 </head>
 
@@ -47,15 +53,15 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </p>
         </div>
 
-        <!-- Right-side controls: view switch and "New User" button -->
+        <!-- Right-side actions: view mode toggle and "New User" button -->
         <div class="flex items-center gap-3">
-          <!-- View switch: table / cards -->
+          <!-- View mode toggle: table / cards -->
           <div class="inline-flex rounded-lg border border-border bg-card shadow-sm overflow-hidden">
             <!-- Table view button -->
             <button
               type="button"
               id="btnVistaTabla"
-              class="px-3 py-2 text-xs sm:text-sm flex items-center gap-1 bg-muted text-foreground"
+              class="px-3 py-2 text-xs sm:text-sm flex items-center gap-1 bg-muted text-foreground "
             >
               <!-- List icon -->
               <svg
@@ -97,7 +103,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             </button>
           </div>
 
-          <!-- "New User" primary action -->
+          <!-- Primary action: open create-user modal -->
           <button
             id="btnNuevoUsuario"
             class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2"
@@ -128,97 +134,101 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       <!-- ================================== -->
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between my-6">
 
-  <!-- SEARCH -->
-  <div class="relative w-full sm:max-w-xs">
-    <!-- Lupa dentro -->
-    <svg
-      class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      stroke-width="2"
-    >
-      <circle cx="11" cy="11" r="8"></circle>
-      <path d="m21 21-4.35-4.35"></path>
-    </svg>
+        <!-- Search input -->
+        <div class="relative w-full sm:max-w-xs">
+          <!-- Search icon inside the input -->
+          <svg
+            class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
 
-    <input
-      id="inputBuscar"
-      type="text"
-      placeholder="Buscar por nombre..."
-      class="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm"
-    />
-  </div>
+          <input
+            id="inputBuscar"
+            type="text"
+            placeholder="Buscar por nombre..."
+            class="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm"
+          />
+        </div>
 
-  <!-- ROLE FILTER -->
-  <div class="flex items-center gap-2">
-    <svg
-      class="h-4 w-4"
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-    >
-      <path
-        d="M5 5h14a1 1 0 0 1 .8 1.6L15 12v4.5a1 1 0 0 1-.553.894l-3 1.5A1 1 0 0 1 10 18v-6L4.2 6.6A1 1 0 0 1 5 5z"
-        stroke="currentColor"
-        stroke-width="1.8"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      />
-    </svg>
+        <!-- Role filter dropdown -->
+        <div class="flex items-center gap-2">
+          <svg
+            class="h-4 w-4"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
+            <path
+              d="M5 5h14a1 1 0 0 1 .8 1.6L15 12v4.5a1 1 0 0 1-.553.894l-3 1.5A1 1 0 0 1 10 18v-6L4.2 6.6A1 1 0 0 1 5 5z"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
 
-    <select
-      id="selectFiltroRol"
-      class="rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm"
-    >
-      <option value="">Todos</option>
-      <option value="Coordinador">Coordinador</option>
-      <option value="Subcoordinador">Subcoordinador</option>
-      <option value="Instructor">Instructor</option>
-      <option value="Pasante">Pasante</option>
-      <option value="Aprendiz">Aprendiz</option>
-    </select>
-  </div>
+          <select
+            id="selectFiltroRol"
+            class="rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm"
+          >
+            <option value="">Todos</option>
+            <option value="Coordinador">Coordinador</option>
+            <option value="Subcoordinador">Subcoordinador</option>
+            <option value="Instructor">Instructor</option>
+            <option value="Pasante">Pasante</option>
+            <option value="Aprendiz">Aprendiz</option>
+          </select>
+        </div>
 
-</div>
+      </div>
 
       <!-- ================================== -->
       <!-- TABLE VIEW CONTAINER               -->
       <!-- ================================== -->
-      <!-- overflow-visible + relative: avoids cutting dropdown menus from actions -->
+      <!-- Table wrapper configured to prevent dropdown clipping and preserve border radius -->
       <div
         id="vistaTabla"
-        class="overflow-visible rounded-xl border border-border bg-card relative"
+        class="relative rounded-xl border border-border bg-card p-[1px] overflow-visible"
       >
-        <table class="min-w-full divide-y divide-border text-sm">
-          <thead class="bg-gray-100">
+        <table class="min-w-full border-separate border-spacing-0 text-sm rounded-[11px] bg-card">
+          <thead>
             <tr>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100 first:rounded-tl-[11px]">
                 Usuario
               </th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">
                 Documento
               </th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">
                 Rol
               </th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">
                 Teléfono
               </th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">
+              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">
                 Estado
               </th>
-              <th class="px-4 py-3 text-right font-medium text-xs text-muted-foreground">
+              <th class="px-4 py-3 text-right font-medium text-xs text-muted-foreground bg-gray-100 last:rounded-tr-[11px]">
                 Acciones
               </th>
             </tr>
           </thead>
+
           <tbody
             id="tbodyUsuarios"
-            class="divide-y divide-border bg-card"
+            class="divide-y divide-border bg-card
+                   [&>tr>td]:bg-card
+                   [&>tr:last-child>td:first-child]:rounded-bl-[11px]
+                   [&>tr:last-child>td:last-child]:rounded-br-[11px]"
           >
-            <!-- Rows are rendered dynamically via JavaScript -->
+            <!-- Table rows are injected dynamically via JavaScript -->
           </tbody>
         </table>
       </div>
@@ -231,7 +241,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           id="cardsContainer"
           class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
         >
-          <!-- Cards are rendered dynamically via JavaScript -->
+          <!-- User cards are injected dynamically via JavaScript -->
         </div>
       </div>
     </div>
@@ -252,7 +262,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             Complete los datos para registrar un nuevo usuario
           </p>
         </div>
-        <!-- Close button -->
+        <!-- Close modal button -->
         <button
           type="button"
           id="btnCerrarModalUsuario"
@@ -278,7 +288,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
       <!-- Modal form body -->
       <form id="formUsuario" class="space-y-4" novalidate>
-        <!-- Hidden field used to distinguish between create and edit -->
+        <!-- Hidden field used to distinguish between create and edit mode -->
         <input type="hidden" id="hiddenUserId" value="">
 
         <div class="grid gap-4 sm:grid-cols-2">
@@ -310,7 +320,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               id="tipo_documento"
               class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input-siga"
             >
-              <!-- Document types must match database values -->
+              <!-- The values below must match the database enum values -->
               <option value="CC">CC</option>
               <option value="TI">TI</option>
               <option value="CE">CE</option>
@@ -361,7 +371,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               id="cargo"
               class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input-siga"
             >
-              <!-- Role values must be consistent with the database -->
+              <!-- Role values must be consistent with the database records -->
               <option value="Coordinador">Coordinador</option>
               <option value="Subcoordinador">Subcoordinador</option>
               <option value="Instructor">Instructor</option>
@@ -370,7 +380,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             </select>
           </div>
 
-          <!-- Training program (only visible for specific roles, e.g. Instructor) -->
+          <!-- Training program selector (visible only for specific roles, such as Instructor) -->
           <div class="space-y-2 sm:col-span-2 hidden" id="wrapper_programa">
             <label
               for="id_programa"
@@ -403,53 +413,52 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </div>
 
           <!-- Password (full width) -->
-<div class="space-y-2 sm:col-span-2">
-  <label for="password" class="text-sm font-medium">
-    Contraseña *
-  </label>
+          <div class="space-y-2 sm:col-span-2">
+            <label for="password" class="text-sm font-medium">
+              Contraseña *
+            </label>
 
-  <div class="relative">
-    <input
-      id="password"
-      type="password"
-      readonly
-      class="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm input-siga"
-      placeholder="Ingrese una contraseña segura"
-    />
+            <div class="relative">
+              <input
+                id="password"
+                type="password"
+                readonly
+                class="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm input-siga"
+                placeholder="Ingrese una contraseña segura"
+              />
 
-    <!-- Ojito -->
-    <button
-      id="btnTogglePassword"
-      type="button"
-      class="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
-      title="Ver contraseña"
-      aria-label="Ver contraseña"
-    >
-      <!-- eye -->
-      <svg id="iconEye" class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-           viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-        <path stroke-linecap="round" stroke-linejoin="round"
-              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-        <path stroke-linecap="round" stroke-linejoin="round"
-              d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
-      </svg>
+              <!-- Password visibility toggle button -->
+              <button
+                id="btnTogglePassword"
+                type="button"
+                class="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+                title="Ver contraseña"
+                aria-label="Ver contraseña"
+              >
+                <!-- eye -->
+                <svg id="iconEye" class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+                </svg>
 
-      <!-- eye-off -->
-      <svg id="iconEyeOff" class="h-4 w-4 hidden" xmlns="http://www.w3.org/2000/svg" fill="none"
-           viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-        <path stroke-linecap="round" stroke-linejoin="round"
-              d="M3 3l18 18"/>
-        <path stroke-linecap="round" stroke-linejoin="round"
-              d="M10.5 10.677A2.5 2.5 0 0 0 13.323 13.5"/>
-        <path stroke-linecap="round" stroke-linejoin="round"
-              d="M7.362 7.561C5.274 8.74 3.772 10.6 3 12c1.274 4.057 5.064 7 9.542 7 1.46 0 2.85-.313 4.107-.88"/>
-        <path stroke-linecap="round" stroke-linejoin="round"
-              d="M9.88 5.12A9.67 9.67 0 0 1 12 5c4.478 0 8.268 2.943 9.542 7-.448 1.427-1.23 2.72-2.25 3.77"/>
-      </svg>
-    </button>
-  </div>
-</div>
-
+                <!-- eye-off -->
+                <svg id="iconEyeOff" class="h-4 w-4 hidden" xmlns="http://www.w3.org/2000/svg" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M3 3l18 18"/>
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M10.5 10.677A2.5 2.5 0 0 0 13.323 13.5"/>
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M7.362 7.561C5.274 8.74 3.772 10.6 3 12c1.274 4.057 5.064 7 9.542 7 1.46 0 2.85-.313 4.107-.88"/>
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M9.88 5.12A9.67 9.67 0 0 1 12 5c4.478 0 8.268 2.943 9.542 7-.448 1.427-1.23 2.72-2.25 3.77"/>
+                </svg>
+              </button>
+            </div>
+          </div>
 
           <!-- Address (full width) -->
           <div class="space-y-2 sm:col-span-2">
@@ -496,7 +505,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       <!-- Modal header -->
       <div class="flex items-start justify-between gap-4 mb-4">
         <h2 class="text-lg font-semibold">Detalles del Usuario</h2>
-        <!-- Close button -->
+        <!-- Close modal button -->
         <button
           type="button"
           id="btnCerrarModalVerUsuario"
@@ -520,9 +529,9 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </button>
       </div>
 
-      <!-- User details content, populated dynamically via JavaScript -->
+      <!-- User details section populated dynamically via JavaScript -->
       <div id="detalleUsuarioContent" class="space-y-4">
-        <!-- Filled when a user is selected -->
+        <!-- Content is injected when a user is selected -->
       </div>
     </div>
   </div>
@@ -542,4 +551,3 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
 </body>
 </html>
- 
