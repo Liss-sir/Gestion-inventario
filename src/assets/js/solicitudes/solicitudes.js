@@ -243,7 +243,7 @@ function pedirMotivoRechazo() {
           </button>
 
           <button type="button" data-motivo-ok
-            class="px-4 py-2 rounded-xl bg-error text-error-foreground hover:opacity-95">
+            class="px-4 py-2 rounded-xl bg-[#dc2626] text-white hover:bg-[#b91c1c]">
             Rechazar
           </button>
         </div>
