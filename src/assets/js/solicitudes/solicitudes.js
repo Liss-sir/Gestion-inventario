@@ -954,22 +954,21 @@ const render = {
           </div>
           <span class="sol-badge ${st}">${label}</span>
         </div>
-
-        <div class="sol-card-body">
-          <div class="sol-card-row">
-            <i data-lucide="hash" class="sol-icon-muted"></i>
-            <span>Ficha: ${s.ficha}</span>
-          </div>
+  
+        <div class="sol-card-row">
+          <i data-lucide="folder-kanban" class="sol-icon-muted"></i>
+          <span>Ficha: ${s.ficha}</span>
+        </div>
 
           ${s.programa ? `
           <div class="sol-card-row">
-            <i data-lucide="book-open" class="sol-icon-muted"></i>
+            <i data-lucide="graduation-cap" class="sol-icon-muted"></i>
             <span>Programa: ${s.programa}</span>
           </div>` : ""}
 
           ${s.rae ? `
           <div class="sol-card-row">
-            <i data-lucide="target" class="sol-icon-muted"></i>
+            <i data-lucide="book-open-text" class="sol-icon-muted"></i>
             <span>RAE: ${s.rae}</span>
           </div>` : ""}
 
