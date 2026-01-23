@@ -6,127 +6,204 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/../../includes/auth_guard.php';
+require_once __DIR__ . '/../../../Config/database.php';
 
+// database.php define $conn (PDO). Si no está, crea fallback.
+if (!isset($conn) || !($conn instanceof PDO)) {
+  $host = 'localhost';
+  $dbname = 'gestion_inventario';
+  $user = 'root';
+  $pass = '123456';
+  $conn = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $user, $pass, [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+  ]);
+}
 
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
+
 // ===============================
-//  Mock data equivalente a mock-data.ts
-//  (puedes luego conectarlo a tu DB)
+//  Datos en vivo desde la BD
 // ===============================
 
-$mockMateriales = [
-    ["id" => 1, "nombre" => "Cemento gris", "estado" => "disponible"],
-    ["id" => 2, "nombre" => "Cable eléctrico", "estado" => "disponible"],
-    ["id" => 3, "nombre" => "Pintura blanca", "estado" => "agotado"],
+// Totales de materiales
+$sqlMat = "SELECT COUNT(*) AS total, SUM(CASE WHEN estado IN ('Activo','Activa','activo','activa',1) THEN 1 ELSE 0 END) AS activos FROM material_formacion";
+$materialRow = $conn->query($sqlMat)->fetch(PDO::FETCH_ASSOC);
+$totalMateriales = (int)($materialRow['total'] ?? 0);
+$materialesActivos = (int)($materialRow['activos'] ?? 0);
+
+// Bodegas activas
+$sqlBod = "SELECT COUNT(*) AS total, SUM(CASE WHEN estado IS NULL OR estado IN ('Activo','Activa',1) THEN 1 ELSE 0 END) AS activas FROM bodegas";
+$bodRow = $conn->query($sqlBod)->fetch(PDO::FETCH_ASSOC);
+$totalBodegas = (int)($bodRow['total'] ?? 0);
+$bodegasActivas = (int)($bodRow['activas'] ?? 0);
+
+// Movimientos de hoy (entrada/salida + devoluciones)
+$sqlMovHoy = "SELECT SUM(cnt) AS total FROM (
+  SELECT COUNT(*) AS cnt FROM movimientos_material WHERE DATE(fecha_hora) = CURDATE()
+  UNION ALL
+  SELECT COUNT(*) AS cnt FROM devoluciones_material WHERE DATE(fecha_hora) = CURDATE()
+) t";
+$movimientosHoy = (int)($conn->query($sqlMovHoy)->fetchColumn() ?: 0);
+
+// Alertas de stock (<=20 unidades) - top 4
+$sqlAlerts = "
+  SELECT 
+    m.id_material,
+    m.nombre AS material_nombre,
+    COALESCE(sb.stock_bodega,0) + COALESCE(ss.stock_subbodega,0) AS stock_actual,
+    20 AS stock_minimo
+  FROM material_formacion m
+  LEFT JOIN (
+    SELECT id_material, SUM(stock_actual) AS stock_bodega
+    FROM stock_bodega
+    GROUP BY id_material
+  ) sb ON sb.id_material = m.id_material
+  LEFT JOIN (
+    SELECT id_material, SUM(stock_actual) AS stock_subbodega
+    FROM stock_subbodega
+    GROUP BY id_material
+  ) ss ON ss.id_material = m.id_material
+  WHERE (COALESCE(sb.stock_bodega,0) + COALESCE(ss.stock_subbodega,0)) <= 20
+  ORDER BY stock_actual ASC
+  LIMIT 4
+";
+$stockAlerts = $conn->query($sqlAlerts)->fetchAll(PDO::FETCH_ASSOC);
+
+// ===== Tendencias vs. última visita (se guardan en sesión) =====
+// La primera vez muestra "—"; después calcula % vs. la visita anterior.
+$prevSnapshot = $_SESSION['dashboard_prev'] ?? [];
+
+$metricsNow = [
+  'total_materiales'   => $totalMateriales,
+  'bodegas_activas'    => $bodegasActivas,
+  'movimientos_hoy'    => $movimientosHoy,
+  'alertas_stock'      => count($stockAlerts),
 ];
 
-$mockBodegas = [
-    ["id" => 1, "nombre" => "Bodega Principal", "estado" => true],
-    ["id" => 2, "nombre" => "Bodega Secundaria", "estado" => true],
-    ["id" => 3, "nombre" => "Bodega Antigua", "estado" => false],
-];
+function calcTrend($current, $previous)
+{
+  if ($previous === null) {
+    return ['text' => '—', 'class' => 'text-muted-foreground', 'icon' => 'help-circle'];
+  }
 
-$mockMovimientos = [
-    ["id" => 1, "tipo" => "entrada", "material_nombre" => "Cemento gris", "cantidad" => 20, "fecha" => "2024-11-27", "hora" => "08:15"],
-    ["id" => 2, "tipo" => "salida",  "material_nombre" => "Cable eléctrico", "cantidad" => 10, "fecha" => "2024-11-27", "hora" => "10:30"],
-    ["id" => 3, "tipo" => "entrada", "material_nombre" => "Pintura blanca", "cantidad" => 5, "fecha" => "2024-11-26", "hora" => "16:10"],
-    ["id" => 4, "tipo" => "salida",  "material_nombre" => "Cemento gris", "cantidad" => 8, "fecha" => "2024-11-27", "hora" => "17:45"],
-];
+  // Evita divisiones por cero; si no había dato previo y ahora sí, lo consideramos +100%
+  if ($previous <= 0) {
+    if ($current <= 0) {
+      return ['text' => '0%', 'class' => 'text-muted-foreground', 'icon' => 'minus'];
+    }
+    return ['text' => '+100%', 'class' => 'text-[#39A900]', 'icon' => 'trending-up'];
+  }
 
-$mockSolicitudes = [
-    ["id" => 1, "instructor_nombre" => "Juan Pérez",  "ficha_numero" => "2567890", "estado" => "pendiente"],
-    ["id" => 2, "instructor_nombre" => "Ana Gómez",   "ficha_numero" => "2456789", "estado" => "aprobada"],
-    ["id" => 3, "instructor_nombre" => "Carlos Ruiz", "ficha_numero" => "2345678", "estado" => "rechazada"],
-    ["id" => 4, "instructor_nombre" => "Laura Díaz",  "ficha_numero" => "2678901", "estado" => "pendiente"],
-];
+  $diff = $current - $previous;
+  $percent = ($diff / $previous) * 100;
+  $percentTxt = ($percent >= 0 ? '+' : '') . number_format($percent, 1) . '%';
 
-$mockAlerts = [
-    ["material_id" => 1, "material_nombre" => "Cemento gris",   "stock_actual" => 5,  "stock_minimo" => 20],
-    ["material_id" => 2, "material_nombre" => "Cable eléctrico","stock_actual" => 3,  "stock_minimo" => 15],
-];
+  if (abs($percent) < 0.05) {
+    return ['text' => 'Sin cambios', 'class' => 'text-muted-foreground', 'icon' => 'minus'];
+  }
 
-$consumoData = [
-    [ "name" => "Ene", "consumo" => 120 ],
-    [ "name" => "Feb", "consumo" => 98 ],
-    [ "name" => "Mar", "consumo" => 145 ],
-    [ "name" => "Abr", "consumo" => 87 ],
-    [ "name" => "May", "consumo" => 156 ],
-    [ "name" => "Jun", "consumo" => 134 ],
-];
+  if ($percent > 0) {
+    return ['text' => $percentTxt, 'class' => 'text-[#39A900]', 'icon' => 'trending-up'];
+  }
+  return ['text' => $percentTxt, 'class' => 'text-[#EF4444]', 'icon' => 'trending-down'];
+}
 
-$categoriaData = [
-    [ "name" => "Construcción", "value" => 45, "color" => "var(--chart-1)" ],
-    [ "name" => "Eléctrico",    "value" => 25, "color" => "var(--chart-2)" ],
-    [ "name" => "Herramientas", "value" => 20, "color" => "var(--chart-3)" ],
-    [ "name" => "Pinturas",     "value" => 10, "color" => "var(--chart-4)" ],
-];
+$trends = [];
+foreach ($metricsNow as $key => $value) {
+  $prev = $prevSnapshot[$key] ?? null;
+  $trends[$key] = calcTrend($value, $prev);
+}
 
-// CATEGORÍAS (sin color aún, solo nombre + valor)
-$categoriaDataRaw = [
-    [ "name" => "Construcción", "value" => 45 ],
-    [ "name" => "Eléctrico",    "value" => 25 ],
-    [ "name" => "Herramientas", "value" => 20 ],
-    [ "name" => "Pinturas",     "value" => 10 ],
-];
+// Guarda el snapshot actual para la próxima carga
+$_SESSION['dashboard_prev'] = $metricsNow;
+
+// Solicitudes recientes (máx 4)
+$sqlSol = "
+  SELECT sm.id_solicitud, sm.estado, sm.fecha_solicitud,
+       COALESCE(u.nombre_completo, 'Sin instructor') AS instructor_nombre,
+       COALESCE(f.numero_ficha, 'N/A') AS ficha_numero
+  FROM solicitudes_material sm
+  LEFT JOIN usuarios u ON u.id_usuario = sm.id_usuario_solicitante
+  LEFT JOIN fichas f ON f.id_ficha = sm.id_ficha
+  ORDER BY sm.fecha_solicitud DESC
+  LIMIT 4
+";
+$recentSolicitudes = $conn->query($sqlSol)->fetchAll(PDO::FETCH_ASSOC);
+
+// Solicitudes pendientes
+$solicitudesPendientes = (int)($conn->query("SELECT COUNT(*) FROM solicitudes_material WHERE estado = 'Pendiente'")->fetchColumn() ?: 0);
+
+// Movimientos recientes (entrada/salida/devolución) máx 4
+$sqlRecentMov = "
+  SELECT * FROM (
+    SELECT m.fecha_hora, m.tipo_movimiento AS tipo, mf.nombre AS material_nombre, m.cantidad,
+         DATE_FORMAT(m.fecha_hora, '%H:%i') AS hora
+    FROM movimientos_material m
+    LEFT JOIN material_formacion mf ON mf.id_material = m.id_material
+        
+    UNION ALL
+    SELECT d.fecha_hora, 'devolucion' AS tipo, mf.nombre AS material_nombre, d.cantidad_devuelta AS cantidad,
+         DATE_FORMAT(d.fecha_hora, '%H:%i') AS hora
+    FROM devoluciones_material d
+    LEFT JOIN material_formacion mf ON mf.id_material = d.id_material
+  ) x
+  ORDER BY fecha_hora DESC
+  LIMIT 4
+";
+$recentMovimientos = $conn->query($sqlRecentMov)->fetchAll(PDO::FETCH_ASSOC);
+
+// Consumo mensual (salidas) Enero-Diciembre
+$consumoData = [];
+for ($m = 1; $m <= 12; $m++) {
+  $sqlConsumo = "SELECT COALESCE(SUM(cantidad),0) FROM movimientos_material WHERE tipo_movimiento = 'Salida' AND YEAR(fecha_hora) = YEAR(CURDATE()) AND MONTH(fecha_hora) = :m";
+  $stmtC = $conn->prepare($sqlConsumo);
+  $stmtC->execute([':m' => $m]);
+  $totalMes = (int)$stmtC->fetchColumn();
+  $consumoData[] = [
+    'name' => date('M', mktime(0,0,0,$m,1)),
+    'consumo' => $totalMes
+  ];
+}
+
+// Distribución por obra (usa el nombre_actividad como título de obra)
+$sqlCat = "
+  SELECT COALESCE(af.nombre_actividad, 'Sin obra') AS categoria, COUNT(*) AS total
+  FROM actividades_formacion af
+  GROUP BY COALESCE(af.nombre_actividad, 'Sin obra')
+";
+$catRows = $conn->query($sqlCat)->fetchAll(PDO::FETCH_ASSOC);
 
 // Paleta de colores reutilizable
 $palette = [
-    "#39A900", // Verde principal
-    "#007832", // Verde secundario (oscuro)
-    "#00304D", // Azul oscuro
-    "#71277A", // Morado
-    "#50E5F9", // Cian
-    "#FDC300", // Amarillo
-    "#F6F6F6", // Gris claro
-    "#FFFFFF", // Blanco
-    "#000000", // Negro
+  "#39A900", "#007832", "#00304D", "#71277A",
+  "#50E5F9", "#FDC300", "#F6F6F6", "#FFFFFF", "#000000",
 ];
 
-// Construimos $categoriaData con color dinámico
 $categoriaData = [];
-foreach ($categoriaDataRaw as $index => $cat) {
-    $color = $palette[$index % count($palette)];
-    $categoriaData[] = [
-        "name"  => $cat["name"],
-        "value" => $cat["value"],
-        "color" => $color,
-    ];
+foreach ($catRows as $idx => $cat) {
+  $categoriaData[] = [
+    'name'  => $cat['categoria'] ?? 'Sin categoría',
+    'value' => (int)$cat['total'],
+    'color' => $palette[$idx % count($palette)]
+  ];
 }
 
-// ===============================
-//  Cálculos equivalentes a los de React
-//  ✅ CORREGIDO: sin fn() => (compatibilidad PHP < 7.4)
-// ===============================
-$solicitudesPendientes = count(array_filter($mockSolicitudes, function($s){
-    return $s["estado"] === "pendiente";
-}));
-
-$materialesActivos = count(array_filter($mockMateriales, function($m){
-    return $m["estado"] === "disponible";
-}));
-
-$bodegasActivas = count(array_filter($mockBodegas, function($b){
-    return !empty($b["estado"]);
-}));
-
-$movimientosHoy = count(array_filter($mockMovimientos, function($m){
-    return $m["fecha"] === "2024-11-27";
-}));
-
-$maxConsumo = max(array_column($consumoData, "consumo"));
-
-$totalCategorias = array_sum(array_column($categoriaData, "value"));
+// Gradiente para el donut
+$totalCategorias = array_sum(array_column($categoriaData, 'value')) ?: 1;
 $currentAngle = 0;
 $gradientParts = [];
 foreach ($categoriaData as $cat) {
-    $angle = ($cat["value"] / $totalCategorias) * 360;
-    $start = $currentAngle;
-    $end   = $currentAngle + $angle;
-    $gradientParts[] = $cat["color"] . " " . $start . "deg " . $end . "deg";
-    $currentAngle = $end;
+  $angle = ($cat['value'] / $totalCategorias) * 360;
+  $start = $currentAngle;
+  $end   = $currentAngle + $angle;
+  $gradientParts[] = $cat['color'] . " " . $start . "deg " . $end . "deg";
+  $currentAngle = $end;
 }
 $pieGradient = implode(", ", $gradientParts);
+
+// Máximo consumo para la escala de la gráfica
+$maxConsumo = max(array_column($consumoData, 'consumo')) ?: 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -199,8 +276,12 @@ $pieGradient = implode(", ", $gradientParts);
 
     </div>
     <div class="flex items-center gap-2 mt-2">
-        <p class="mt-2 text-2xl font-bold"><?php echo count($mockMateriales); ?></p>
-        <span class="text-xs text-success flex items-center">+12%<i data-lucide="trending-up" class="ml-2 h-4 w-4 text-[#39A900]"></i></span>
+      <p class="mt-2 text-2xl font-bold"><?php echo $totalMateriales; ?></p>
+      <?php $trend = $trends['total_materiales'] ?? ['text' => '—', 'class' => 'text-muted-foreground', 'icon' => 'minus']; ?>
+      <span class="text-xs flex items-center <?php echo $trend['class']; ?>">
+        <?php echo htmlspecialchars($trend['text']); ?>
+        <i data-lucide="<?php echo $trend['icon']; ?>" class="ml-2 h-4 w-4"></i>
+      </span>
     </div>
 
     <p class="text-xs text-success flex items-center"><?php echo $materialesActivos; ?> disponibles</p>
@@ -219,10 +300,14 @@ $pieGradient = implode(", ", $gradientParts);
 
     </div>
     <div class="flex items-center gap-2 mt-2">
-        <p class="mt-2 text-2xl font-bold"><?php echo $bodegasActivas; ?></p>
-        <span class="text-xs text-success flex items-center">Sin cambios</span>
+      <p class="mt-2 text-2xl font-bold"><?php echo $bodegasActivas; ?></p>
+      <?php $trend = $trends['bodegas_activas'] ?? ['text' => '—', 'class' => 'text-muted-foreground', 'icon' => 'minus']; ?>
+      <span class="text-xs flex items-center <?php echo $trend['class']; ?>">
+        <?php echo htmlspecialchars($trend['text']); ?>
+        <i data-lucide="<?php echo $trend['icon']; ?>" class="ml-2 h-4 w-4"></i>
+      </span>
     </div>
-    <p class="text-xs text-muted-foreground">de <?php echo count($mockBodegas); ?> registradas</p>
+    <p class="text-xs text-muted-foreground">de <?php echo $totalBodegas; ?> registradas</p>
     </div>
 
     <!-- StatCard: Movimientos Hoy -->
@@ -237,8 +322,12 @@ $pieGradient = implode(", ", $gradientParts);
 
     </div>
     <div class="flex items-center gap-2 mt-2">
-        <p class="mt-2 text-2xl font-bold"><?php echo $movimientosHoy; ?></p>
-        <span class="text-xs text-success flex items-center">+8%<i data-lucide="trending-up" class="ml-2 h-4 w-4 text-[#39A900]"></i></span>
+      <p class="mt-2 text-2xl font-bold"><?php echo $movimientosHoy; ?></p>
+      <?php $trend = $trends['movimientos_hoy'] ?? ['text' => '—', 'class' => 'text-muted-foreground', 'icon' => 'minus']; ?>
+      <span class="text-xs flex items-center <?php echo $trend['class']; ?>">
+        <?php echo htmlspecialchars($trend['text']); ?>
+        <i data-lucide="<?php echo $trend['icon']; ?>" class="ml-2 h-4 w-4"></i>
+      </span>
     </div>
     <p class="text-xs text-muted-foreground">Entradas y salidas</p>
     </div>
@@ -255,8 +344,12 @@ $pieGradient = implode(", ", $gradientParts);
 
     </div>
     <div class="flex items-center gap-2 mt-2">
-        <p class="mt-2 text-2xl font-bold"><?php echo count($mockAlerts); ?></p>
-        <span class="text-xs text-success flex items-center">+8%<i data-lucide="trending-down" class="ml-2 h-4 w-4 text-[#EF4444]"></i></span>
+      <p class="mt-2 text-2xl font-bold"><?php echo count($stockAlerts); ?></p>
+      <?php $trend = $trends['alertas_stock'] ?? ['text' => '—', 'class' => 'text-muted-foreground', 'icon' => 'minus']; ?>
+      <span class="text-xs flex items-center <?php echo $trend['class']; ?>">
+        <?php echo htmlspecialchars($trend['text']); ?>
+        <i data-lucide="<?php echo $trend['icon']; ?>" class="ml-2 h-4 w-4"></i>
+      </span>
     </div>
     <p class="text-xs text-muted-foreground">Materiales en riesgo</p>
     </div>
@@ -286,8 +379,8 @@ $pieGradient = implode(", ", $gradientParts);
     <div class="rounded-xl border border-border bg-card">
         <div class="flex items-center justify-between px-6 pt-4 pb-2">
             <div>
-                <h2 class="text-base font-semibold">Distribución por Categoría</h2>
-                <p class="text-sm text-muted-foreground">Materiales activos</p>
+                <h2 class="text-base font-semibold">Distribución por Obra</h2>
+                <p class="text-sm text-muted-foreground">Actividades por nombre de obra</p>
             </div>
         </div>
         <div class="px-6 pb-6">
@@ -331,10 +424,10 @@ $pieGradient = implode(", ", $gradientParts);
         </a>
     </div>
     <div class="px-6 pb-4 space-y-4">
-        <?php if (count($mockAlerts) === 0): ?>
+        <?php if (count($stockAlerts) === 0): ?>
         <p class="text-center text-sm text-muted-foreground py-4">No hay alertas de stock</p>
         <?php else: ?>
-        <?php foreach ($mockAlerts as $alert):
+        <?php foreach ($stockAlerts as $alert):
             $percent = ($alert["stock_actual"] / $alert["stock_minimo"]) * 100;
             if ($percent > 100) $percent = 100;
         ?>
@@ -373,8 +466,8 @@ $pieGradient = implode(", ", $gradientParts);
         </a>
     </div>
     <div class="px-6 pb-4 space-y-4">
-        <?php foreach (array_slice($mockSolicitudes, 0, 3) as $solicitud):
-        $estado = $solicitud["estado"];
+        <?php foreach (array_slice($recentSolicitudes, 0, 4) as $solicitud):
+        $estado = strtolower($solicitud["estado"] ?? '');
         if ($estado === "pendiente") {
             $badgeClasses = "bg-[#FDC30040] text-[#FDC300]";
             $icon = "clock";
@@ -395,7 +488,7 @@ $pieGradient = implode(", ", $gradientParts);
             <p class="text-xs text-muted-foreground">Ficha <?php echo htmlspecialchars($solicitud["ficha_numero"]); ?></p>
             </div>
             <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs  <?php echo $badgeClasses; ?>">
-            <?php echo htmlspecialchars($estado); ?>
+            <?php echo htmlspecialchars(ucfirst($solicitud["estado"])); ?>
             </span>
         </div>
         <?php endforeach; ?>
@@ -414,14 +507,14 @@ $pieGradient = implode(", ", $gradientParts);
         </a>
     </div>
     <div class="px-6 pb-4 space-y-4">
-        <?php foreach (array_slice($mockMovimientos, 0, 4) as $mov):
-        // ✅ Estilo como la foto: bolita perfecta + verde suave
-        if ($mov["tipo"] === "entrada") {
-            $movClasses = "bg-[#39A9001A] text-[#39A900]";
-        } elseif ($mov["tipo"] === "salida") {
-            $movClasses = "bg-[#39A9001A] text-[#39A900]";
+        <?php foreach (array_slice($recentMovimientos, 0, 4) as $mov):
+        $tipoMov = strtolower($mov["tipo"] ?? '');
+        if ($tipoMov === "entrada") {
+          $movClasses = "bg-[#39A9001A] text-[#39A900]";
+        } elseif ($tipoMov === "salida") {
+          $movClasses = "bg-[#39A9001A] text-[#39A900]";
         } else {
-            $movClasses = "bg-[#FDC3001A] text-[#FDC300]";
+          $movClasses = "bg-[#FDC3001A] text-[#FDC300]";
         }
         ?>
         <div class="flex items-start gap-3 pb-3 border-b border-border last:border-0 last:pb-0">
@@ -430,12 +523,12 @@ $pieGradient = implode(", ", $gradientParts);
             <i data-lucide="arrow-down-up" class="h-4 w-4"></i>
             </div>
             <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium capitalize"><?php echo htmlspecialchars($mov["tipo"]); ?></p>
-            <p class="text-xs text-muted-foreground truncate">
-                <?php echo htmlspecialchars($mov["material_nombre"]); ?> (<?php echo $mov["cantidad"]; ?>)
+          <p class="text-sm font-medium capitalize"><?php echo htmlspecialchars($tipoMov); ?></p>
+          <p class="text-xs text-muted-foreground truncate">
+            <?php echo htmlspecialchars($mov["material_nombre"] ?? ''); ?> (<?php echo $mov["cantidad"] ?? 0; ?>)
             </p>
             </div>
-            <span class="text-xs text-muted-foreground"><?php echo htmlspecialchars($mov["hora"]); ?></span>
+          <span class="text-xs text-muted-foreground"><?php echo htmlspecialchars($mov["hora"] ?? ''); ?></span>
         </div>
         <?php endforeach; ?>
     </div>
@@ -770,18 +863,124 @@ $pieGradient = implode(", ", $gradientParts);
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    if (window.lucide && typeof lucide.createIcons === "function") {
-        lucide.createIcons();
+  // ... (tus funciones de toast y modales se mantienen) ...
+
+  // =====================================================
+  // ✅ REEMPLAZO: LÓGICA DE DATOS ACTUALES
+  // =====================================================
+  function inicializarValoresActuales() {
+    // Usamos el objeto global window.userData que inyectamos desde PHP
+    const data = window.userData;
+    
+    const mapping = {
+      'nombre': data.nombre_completo,
+      'tipo_documento': data.tipo_documento,
+      'numero_documento': data.numero_documento,
+      'correo': data.correo
+    };
+
+    for (const [campo, valor] of Object.entries(mapping)) {
+      const fieldWrap = document.getElementById(`field_${campo}`);
+      if (fieldWrap) {
+        const input = fieldWrap.querySelector("input, select");
+        if (input) {
+          input.setAttribute('data-valor-actual', valor || "");
+          if (input.tagName === 'INPUT') input.placeholder = "Actual: " + (valor || "No registrado");
+        }
+      }
     }
+  }
 
     // ✅ Toasts Flowbite (siguen sirviendo para otras cosas tuyas)
     initFlowbiteToasts();
 
-    // ✅ Ojitos (toggle show/hide password)
-    initPasswordToggles();
+        const resp = await fetch("src/controllers/usuario_controller.php?accion=editar_perfil_usuario", {
+          method: "POST",
+          body: formData
+        });
 
-    // ✅ Ejecutar el flujo del modal ya con DOM cargado
-    forcePasswordFlow();
+        const data = await resp.json();
+        if (data.success) {
+          toastSuccess("Perfil actualizado correctamente");
+          setTimeout(() => location.reload(), 1000);
+        } else {
+          toastError(data.error || "Error al actualizar");
+        }
+      } catch (err) {
+        toastError("Error de comunicación con el servidor");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Guardar cambios';
+      }
+    });
+  }
+
+  // =====================================================
+  // ✅ EVENTO: SOLICITAR CAMBIO SENSIBLE
+  // =====================================================
+  if (formDatosSensibles) {
+    formDatosSensibles.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const selected = Array.from(document.querySelectorAll('input[data-sensible]:checked'));
+
+      if (selected.length === 0) {
+        toastError("Selecciona al menos un campo para modificar.");
+        return;
+      }
+
+      const datosCambiados = {};
+      for (const chk of selected) {
+        const key = chk.getAttribute("data-sensible");
+        const input = document.getElementById(`field_${key}`).querySelector("input, select");
+        const nuevoValor = input.value.trim();
+        const valorAnterior = input.getAttribute("data-valor-actual");
+
+        if (!nuevoValor) {
+          toastError(`El campo ${key} no puede estar vacío.`);
+          return;
+        }
+
+        // Estructura exacta que espera tu notificaciones.php
+        datosCambiados[key] = {
+          anterior: valorAnterior,
+          nuevo: nuevoValor,
+          campo_nombre: obtenerNombreCampo(key)
+        };
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append("id_usuario", window.userData.id_usuario);
+        formData.append("datos_cambiados", JSON.stringify(datosCambiados));
+
+        const resp = await fetch("src/controllers/usuario_controller.php?accion=solicitar_cambio_datos_sensibles", {
+          method: "POST",
+          body: formData
+        });
+
+        const res = await resp.json();
+        if (res.success) {
+          toastSuccess("Solicitud enviada a coordinación.");
+          closeModal(modalDatosSensibles);
+        } else {
+          toastError(res.error || "No se pudo enviar la solicitud.");
+        }
+      } catch (error) {
+        toastError("Error de conexión.");
+      }
+    });
+  }
+  
+  // Helper simple para los nombres de los campos
+  function obtenerNombreCampo(key) {
+    const nombres = {
+      'nombre': 'Nombre Completo',
+      'tipo_documento': 'Tipo de Documento',
+      'numero_documento': 'Número de Documento',
+      'correo': 'Correo Electrónico'
+    };
+    return nombres[key] || key;
+  }
 });
 
 // =========================

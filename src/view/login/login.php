@@ -108,9 +108,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         // =========================================================
                         // ✅ SOLUCIÓN: CERRAR SESIONES PEGADAS SIN TOCAR LA DB
-                        // Objetivo:
-                        // - Evitar que el usuario quede bloqueado por "sesión activa"
-                        // - Mantener el concepto de sesión única (último login gana)
                         // =========================================================
                         try {
                             $stmtCloseOld = $conn->prepare("
@@ -167,9 +164,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         // =========================================================
                         // ✅ DETECTAR "CAMBIO OBLIGATORIO" (FORCE_%)
-                        // Sin tocar DB:
-                        // - tipo = 'reset_password'
-                        // - token LIKE 'FORCE_%'
                         // =========================================================
                         try {
                             $stmtForce = $conn->prepare("
@@ -188,8 +182,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             $_SESSION['force_password_change'] = $rowForce ? 1 : 0;
                         } catch (Exception $e) {
-                            // Si por algo falla, no rompemos el login
                             $_SESSION['force_password_change'] = 0;
+                        }
+
+                        // =========================================================
+                        // ✅ NUEVO: si es obligatorio -> manda al dashboard con force_pwd=1
+                        // =========================================================
+                        if (!empty($_SESSION['force_password_change']) && (int)$_SESSION['force_password_change'] === 1) {
+                            header('Location: ' . BASE_URL . '../../../index.php?page=dashboard&force_pwd=1');
+                            exit;
                         }
 
                         header('Location: ' . BASE_URL . '../../../index.php?page=dashboard');

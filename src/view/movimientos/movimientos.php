@@ -402,7 +402,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                     <!-- =====================
                         DATOS DEL MATERIAL
                     ====================== -->
-                    <div class="rounded-xl border border-border p-4 bg-gray-50">
+                    <div data-field="material" class="rounded-xl border border-border p-4 bg-gray-50">
                         <p class="text-xs font-semibold text-gray-500 uppercase mb-3">
                             Datos del material
                         </p>
@@ -471,70 +471,38 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
                     </div>
                     <!-- =====================
-                        DEVOLUCI├ôN (ULTRA COMPACTA)
+                        DEVOLUCIÓN
                     ====================== -->
 
-                    <div data-field="programa"
-                        class="hidden rounded-md border border-[#39A900] bg-[#39A90015] p-2">
+                    <div data-field="devolucion-container"
+                        class="hidden rounded-xl border border-[#39A900] bg-[#39A90015] p-4">
 
-                        <p class="text-[11px] font-semibold text-[#2e7d00] mb-1">
-                            Devolución académica 
+                        <p class="text-sm font-semibold text-[#2e7d00] mb-3">
+                            Devolución de Material
                         </p>
 
-                        <div class="grid grid-cols-2 gap-1">
-
-                            <!-- PROGRAMA -->
-                            <select id="programa"
-                                class="col-span-2 border rounded px-2 py-1 text-xs">
-                                <option value="">Programa</option>
-                                <?php foreach ($programas as $p): ?>
-                                    <option value="<?= $p["id"] ?>"><?= $p["nombre"] ?></option>
-                                <?php endforeach; ?>
+                        <!-- Seleccionar solicitud con salida -->
+                        <div class="mb-3">
+                            <label class="text-sm font-medium text-gray-700">Solicitud de Salida</label>
+                            <select id="solicitud_salida_dev" class="w-full border rounded-lg px-3 py-2 text-sm">
+                                <option value="">Seleccione una solicitud...</option>
                             </select>
-
-                            <!-- FICHA -->
-                            <select id="ficha"
-                                class="border rounded px-2 py-1 text-xs">
-                                <option value="">Ficha</option>
-                                <?php foreach ($fichas as $f): ?>
-                                    <option value="<?= $f["id"] ?>"><?= $f["nombre"] ?></option>
-                                <?php endforeach; ?>
-                            </select>
-
-                            <!-- RAE -->
-                            <select id="rae"
-                                class="border rounded px-2 py-1 text-xs">
-                                <option value="">RAE</option>
-                                <?php foreach ($raes as $r): ?>
-                                    <option value="<?= $r["id"] ?>"><?= $r["nombre"] ?></option>
-                                <?php endforeach; ?>
-                            </select>
-
-                            <!-- INSTRUCTOR -->
-                            <select id="instructor"
-                                class="col-span-2 border rounded px-2 py-1 text-xs">
-                                <option value="">Instructor</option>
-                                <?php foreach ($instructores as $i): ?>
-                                    <option value="<?= $i["id"] ?>"><?= $i["nombre"] ?></option>
-                                <?php endforeach; ?>
-                            </select>
-
-                            <!-- SOLICITUD -->
-                            <select id="solicitud"
-                                class="col-span-2 border rounded px-2 py-1 text-xs">
-                                <option value="">Solicitud (opcional)</option>
-                                <?php foreach ($solicitudes as $s): ?>
-                                    <option value="<?= $s["id"] ?>"><?= $s["nombre"] ?></option>
-                                <?php endforeach; ?>
-                            </select>
-
                         </div>
+
+                        <!-- Materiales prestados (se carga dinámicamente) -->
+                        <div id="materiales_prestados_container" class="hidden">
+                            <label class="text-sm font-medium text-gray-700 mb-2 block">Materiales Prestados</label>
+                            <div id="materiales_prestados_lista" class="space-y-2">
+                                <!-- Se llena con JavaScript -->
+                            </div>
+                        </div>
+
                     </div>
 
                     <!-- =====================
                         LISTA MATERIALES
                     ====================== -->
-                    <div>
+                    <div data-field="lista-materiales">
                         <p class="text-sm font-semibold mb-2">Materiales agregados</p>
                         <div id="listaMateriales" class="space-y-2 text-sm text-gray-600">
                             No hay materiales agregados

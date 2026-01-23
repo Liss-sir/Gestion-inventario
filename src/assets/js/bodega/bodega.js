@@ -1,6 +1,5 @@
-/* =========================================================
-   CONFIGURACIÓN GENERAL
-========================================================= */
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("[BODEGAS.JS] cargado v2025-12-18_flowbite-alerts+toggle-no-reload+empty-icons-fixed");
 
   const API_MATERIALES = new URL(
   "src/controllers/material_formacion_controller.php",
@@ -82,262 +81,128 @@ let subBodegasCountByBodega = {};
 
   const $ = (id) => document.getElementById(id);
 
-let vistaActual = "tabla";
-
-/* ELEMENTOS DEL DOM */
-const tbody = document.getElementById("tbodyBodegas");
-const contCards = document.getElementById("cardsBodegasContainer");
-
-const emptyState = document.getElementById("emptyStateBodegas");
-
-const inputBuscar = document.getElementById("inputBuscarBodega");
-const filtroTipo = document.getElementById("selectFiltroTipo");
-const filtroEstado = document.getElementById("selectFiltroEstado");
-
-const modal = document.getElementById("modalBodega");
-const btnNueva = document.getElementById("btnNuevaBodega");
-const btnCerrar = document.getElementById("btnCerrarModalBodega");
-const btnCancelar = document.getElementById("btnCancelarModalBodega");
-const form = document.getElementById("formBodega");
-
-const modalTitulo = document.getElementById("modalBodegaTitulo");
-const hiddenId = document.getElementById("hiddenRegistroId");
-
-const tipoRegistro = document.getElementById("tipo_registro");
-const wrapperPadre = document.getElementById("wrapper_bodega_padre");
-const idPadre = document.getElementById("id_bodega_padre");
-
-const inputCodigo = document.getElementById("codigo_registro");
-const inputNombre = document.getElementById("nombre_registro");
-const wrapperUbicacion = document.getElementById("wrapper_ubicacion");
-const inputUbicacion = document.getElementById("ubicacion_registro");
-
-const wrapperClasificacion = document.getElementById("wrapper_clasificacion");
-const inputClasificacion = document.getElementById("clasificacion_registro");
-
-const wrapperDescripcion = document.getElementById("wrapper_descripcion");
-const inputDescripcion = document.getElementById("descripcion_registro");
-
-const wrapperEstado = document.getElementById("wrapper_estado_registro");
-const inputEstado = document.getElementById("estado_registro");
-
-/* =========================================================
-   OBTENER DATOS API
-========================================================= */
-async function cargarDatos() {
-  try {
-    // ------- BODEGAS -------
-    const resB = await fetch(`${API_BODEGA}?accion=listar`);
-    if (!resB.ok) {
-      const txt = await resB.text();
-      console.error("Error HTTP bodegas:", resB.status, txt);
-      throw new Error(`Error HTTP bodegas ${resB.status}`);
+  const safeIcons = () => {
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      window.lucide.createIcons();
     }
-    listaBodegas = await resB.json();
+  };
 
-    // ------- SUBBODEGAS -------
-    const resS = await fetch(`${API_SUB}?accion=listar`);
-    if (!resS.ok) {
-      const txt = await resS.text();
-      console.error("Error HTTP subbodegas:", resS.status, txt);
-      throw new Error(`Error HTTP subbodegas ${resS.status}`);
+  const safeJson = async (res) => {
+    const txt = await res.text();
+    try {
+      return { ok: res.ok, data: JSON.parse(txt), raw: txt };
+    } catch (_) {
+      return { ok: res.ok, data: null, raw: txt };
     }
-    listaSubbodegas = await resS.json();
+  };
 
-    // Unificar
-    listaTotal = [
-      ...listaBodegas.map(b => ({ ...b, tipo: "bodega" })),
-      ...listaSubbodegas.map(s => ({ ...s, tipo: "subbodega" }))
-    ];
+  const openModal = (modal) => {
+    if (!modal) return;
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+    document.body.classList.add("overflow-hidden");
+    safeIcons();
+  };
 
-    render();
-    cargarBodegasPadre();
+  const closeModal = (modal) => {
+    if (!modal) return;
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+    document.body.classList.remove("overflow-hidden");
+  };
 
-  } catch (e) {
-    console.error("ERROR al cargar datos:", e);
-  }
-}
+  const normalize = (s) => String(s || "").toLowerCase().trim();
 
-/* =========================================================
-   RENDERIZAR LISTA
-========================================================= */
-function render() {
-  const termino = inputBuscar.value.toLowerCase().trim();
+  // ============================
+  // ✅ FLOWBITE-STYLE ALERTS (MISMO ESTILO QUE USUARIOS)
+  // ============================
+  function getOrCreateFlowbiteContainer() {
+    let container = document.getElementById("flowbite-alert-container");
 
-  let filtrado = listaTotal.filter(item => {
-    const coincideTexto =
-      (item.nombre && item.nombre.toLowerCase().includes(termino)) ||
-      (item.nombre_subbodega && item.nombre_subbodega.toLowerCase().includes(termino)) ||
-      (item.codigo_bodega && item.codigo_bodega.toLowerCase().includes(termino)) ||
-      (item.codigo_subbodega && item.codigo_subbodega.toLowerCase().includes(termino));
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "flowbite-alert-container";
+      container.className =
+  "fixed top-6 right-3 sm:right-6 z-[9999] flex flex-col gap-3 w-full max-w-md px-4 pointer-events-none";
 
-    let coincideTipo =
-      filtroTipo.value === "todos" || filtroTipo.value === item.tipo;
+      document.body.appendChild(container);
+    }
 
-    let coincideEstado =
-      filtroEstado.value === "todos" || filtroEstado.value === item.estado;
-
-    return coincideTexto && coincideTipo && coincideEstado;
-  });
-
-  if (filtrado.length === 0) {
-    emptyState.classList.remove("hidden");
-  } else {
-    emptyState.classList.add("hidden");
+    return container;
   }
 
-  renderTabla(filtrado);
-  renderTarjetas(filtrado);
+  function showFlowbiteAlert(type, message) {
+    const container = getOrCreateFlowbiteContainer();
+    const wrapper = document.createElement("div");
 
-  // Re-generar iconos Lucide después de inyectar HTML
-  lucide.createIcons();
-}
+    let borderColor = "border-amber-500";
+    let textColor = "text-amber-900";
+    let titleText = "Advertencia";
 
-/* =========================================================
-   TABLA
-========================================================= */
-function renderTabla(data) {
-  tbody.innerHTML = "";
-
-  data.forEach(item => {
-    const fila = document.createElement("tr");
-
-    fila.innerHTML = `
-      <td class="px-4 py-3">${item.id_bodega || item.id_subbodega}</td>
-      <td class="px-4 py-3">${item.nombre || item.nombre_subbodega}</td>
-      <td class="px-4 py-3">${item.codigo_bodega || item.codigo_subbodega}</td>
-      <td class="px-4 py-3">${item.ubicacion || "-"}</td>
-      <td class="px-4 py-3">${item.tipo === "bodega" ? "Bodega" : "Sub-bodega"}</td>
-      <td class="px-4 py-3">
-        <span class="px-2 py-1 rounded text-xs ${
-          item.estado === "Activo"
-            ? "bg-green-200 text-green-700"
-            : "bg-red-200 text-red-700"
-        }">
-          ${item.estado}
-        </span>
-      </td>
-      <td class="px-4 py-3">
-        <div class="flex gap-2 justify-end">
-
-          <button class="btn-secondary" onclick="verDetalles('${item.tipo}', ${item.id_bodega || item.id_subbodega})">
-            <i data-lucide="eye" class="w-4 h-4"></i>
-          </button>
-
-          <button class="btn-primary" onclick="editar('${item.tipo}', ${item.id_bodega || item.id_subbodega})">
-            <i data-lucide="pencil" class="w-4 h-4"></i>
-          </button>
-
-          <button class="btn-danger" onclick="cambiarEstado('${item.tipo}', ${item.id_bodega || item.id_subbodega}, '${item.estado}')">
-            <i data-lucide="toggle-left" class="w-4 h-4"></i>
-          </button>
-
-        </div>
-      </td>
+    let iconSVG = `
+      <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg"
+           fill="currentColor" viewBox="0 0 20 20">
+        <path d="M8.257 3.099c.765-1.36 2.72-1.36 3.485 0l6.518 11.59A1.75 1.75 0 0 1 16.768 17H3.232a1.75 1.75 0 0 1-1.492-2.311L8.257 3.1z"/>
+        <path d="M11 13H9V9h2zm0 3H9v-2h2z" fill="#fff"/>
+      </svg>
     `;
 
-    tbody.appendChild(fila);
-  });
-}
+    if (type === "success") {
+      borderColor = "border-emerald-500";
+      textColor = "text-emerald-900";
+      titleText = "Éxito";
+      iconSVG = `
+        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg"
+             fill="currentColor" viewBox="0 0 20 20">
+          <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm-1 15-4-4 1.414-1.414L9 12.172l4.586-4.586L15 9z"/>
+        </svg>
+      `;
+    }
 
-/* =========================================================
-   TARJETAS
-========================================================= */
-function renderTarjetas(data) {
-  contCards.innerHTML = "";
+    if (type === "info") {
+      borderColor = "border-blue-500";
+      textColor = "text-blue-900";
+      titleText = "Información";
+      iconSVG = `
+        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg"
+             fill="currentColor" viewBox="0 0 20 20">
+          <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm1 15H9v-5h2Zm0-7H9V6h2Z"/>
+        </svg>
+      `;
+    }
 
-  data.forEach(item => {
-    const div = document.createElement("div");
-    div.className = "card-bodega";
+    wrapper.className = `
+      relative flex items-center w-full mx-auto pointer-events-auto
+      rounded-2xl border-l-4 ${borderColor} bg-white shadow-md
+      px-4 py-3 text-sm ${textColor}
+      opacity-0 -translate-y-2
+      transition-all duration-300 ease-out
+      animate-fade-in-up
+    `;
 
-    div.innerHTML = `
-      <div class="flex justify-between items-start">
-        <h3 class="font-semibold">${item.nombre || item.nombre_subbodega}</h3>
-        <span class="text-xs ${item.estado === "Activo" ? "text-green-600" : "text-red-600"}">
-          ${item.estado}
-        </span>
+    wrapper.innerHTML = `
+      <div class="flex-shrink-0 mr-3 text-current">
+        ${iconSVG}
       </div>
 
-      <p class="text-sm text-muted">${item.tipo === "bodega" ? "Bodega" : "Sub-bodega"}</p>
-
-      <p class="mt-1 text-sm">Código: <strong>${item.codigo_bodega || item.codigo_subbodega}</strong></p>
-
-      <div class="mt-3 flex gap-2">
-        <button class="btn-secondary" onclick="verDetalles('${item.tipo}', ${item.id_bodega || item.id_subbodega})">
-          <i data-lucide="eye" class="w-4 h-4"></i>
-        </button>
-
-        <button class="btn-primary" onclick="editar('${item.tipo}', ${item.id_bodega || item.id_subbodega})">
-          <i data-lucide="pencil" class="w-4 h-4"></i>
-        </button>
+      <div class="flex-1 min-w-0">
+        <p class="font-semibold">${titleText}</p>
+        <p class="mt-0.5 text-sm">${message}</p>
       </div>
     `;
 
-    contCards.appendChild(div);
-  });
-}
+    container.appendChild(wrapper);
 
-/* =========================================================
-   FORMULARIO / MODAL
-========================================================= */
+    requestAnimationFrame(() => {
+      wrapper.classList.remove("opacity-0", "-translate-y-2");
+      wrapper.classList.add("opacity-100", "translate-y-0");
+    });
 
-function abrirModal() {
-  modal.classList.add("active");
-}
-
-function cerrarModal() {
-  modal.classList.remove("active");
-  form.reset();
-  hiddenId.value = "";
-  wrapperEstado.classList.add("hidden");
-}
-
-btnNueva.onclick = () => {
-  modalTitulo.textContent = "Crear Nueva Bodega";
-  abrirModal();
-};
-
-btnCerrar.onclick = cerrarModal;
-btnCancelar.onclick = cerrarModal;
-
-/* Control dependiente del tipo */
-tipoRegistro.onchange = () => {
-  const tipo = tipoRegistro.value;
-
-  if (tipo === "bodega") {
-    wrapperPadre.classList.add("hidden");
-    wrapperUbicacion.classList.remove("hidden");
-    wrapperClasificacion.classList.add("hidden");
-    wrapperDescripcion.classList.add("hidden");
-  } else {
-    wrapperPadre.classList.remove("hidden");
-    wrapperUbicacion.classList.add("hidden");
-    wrapperClasificacion.classList.remove("hidden");
-    wrapperDescripcion.classList.remove("hidden");
-  }
-};
-
-/* =========================================================
-   CARGAR LISTA DE BODEGAS COMO PADRES PARA SUBBODEGA
-========================================================= */
-function cargarBodegasPadre() {
-  idPadre.innerHTML = `<option value="">Seleccione una bodega</option>`;
-
-  listaBodegas.forEach(b => {
-    idPadre.innerHTML += `<option value="${b.id_bodega}">${b.nombre}</option>`;
-  });
-}
-
-/* =========================================================
-   VER DETALLES (solo lectura)
-========================================================= */
-function verDetalles(tipo, id) {
-  let data;
-
-  if (tipo === "bodega") {
-    data = listaBodegas.find(b => b.id_bodega == id);
-  } else {
-    data = listaSubbodegas.find(s => s.id_subbodega == id);
+    setTimeout(() => {
+      wrapper.classList.add("opacity-0", "-translate-y-2");
+      wrapper.classList.remove("opacity-100", "translate-y-0");
+      setTimeout(() => wrapper.remove(), 250);
+    }, 4000);
   }
 
   const toastError = (msg) => showFlowbiteAlert("warning", msg);
@@ -1198,107 +1063,176 @@ const fillDetalleSub = (data) => {
         clasificacion_bodega: clasificacion,
       };
 
-      /* EDITAR */
-      if (id) {
-        body.estado = inputEstado.value;
+      const actions = ["actualizar", "editar", "update", "actualizarBodega"];
+      const result = await tryPostActions(actions, payload);
 
-        await fetch(`${API_BODEGA}?accion=actualizar&id=${id}`, {
-          method: "PUT",
-          body: JSON.stringify(body)
-        });
+      if (!result.ok) {
+        console.error("[guardarEditar] fallo", result);
+        toastError(result?.last?.parsed?.data?.error || "No se pudo guardar. Revisa la acción en tu controller.");
+        return;
+      }
 
-      } else {
-        /* CREAR */
-        await fetch(`${API_BODEGA}?accion=crear`, {
-          method: "POST",
-          body: JSON.stringify(body)
-        });
+      closeModal(modalEditar);
+      toastSuccess(result?.parsed?.data?.mensaje || "Bodega actualizada correctamente.");
+      setTimeout(() => location.reload(), 650);
+    } catch (err) {
+      console.error(err);
+      toastError("No se pudo guardar los cambios.");
+    }
+  });
+
+  // ============================
+  // SWITCH estado (cards) - SIN RELOAD
+  // ============================
+  document.addEventListener("change", async (e) => {
+    const sw = e.target.closest(".estado-switch");
+    if (!sw) return;
+
+    const id = sw.dataset.id || "";
+    const codigo = sw.dataset.codigo || "";
+    const estadoActual = sw.dataset.estado || (sw.checked ? "Inactivo" : "Activo");
+
+    const { ok, next } = await toggleEstadoBodega({ id, codigo, estadoActual });
+
+    if (ok) {
+      updateEstadoBadgesAndDatasets(codigo, next);
+      applyFilters();
+    } else {
+      // revierte si falló
+      sw.checked = !sw.checked;
+    }
+  });
+
+  // ============================
+  // BUSQUEDA + FILTRO (EMPTY states reales)
+  // ============================
+  const inputBuscar = $("inputBuscarBodega");
+  const selectEstado = $("bodegasFilter");
+
+  const emptyTabla = $("emptyTabla");
+  const emptyGrid = $("emptyGrid");
+  const tableWrapperList = $("tableWrapperList");
+
+  // ✅ ahora los IDs son WRAPPERS
+  const iconNoDataListWrap = $("emptyIconNoDataListWrap");
+  const iconNoResultsListWrap = $("emptyIconNoResultsListWrap");
+
+  const emptyListTitle = $("emptyListTitle");
+  const emptyListDesc = $("emptyListDesc");
+
+  const iconNoDataGridWrap = $("emptyIconNoDataGridWrap");
+  const iconNoResultsGridWrap = $("emptyIconNoResultsGridWrap");
+
+  const emptyGridTitle = $("emptyGridTitle");
+  const emptyGridDesc = $("emptyGridDesc");
+
+  const getRows = () => Array.from(document.querySelectorAll("#tbodyBodegas tr"));
+  const getCards = () => Array.from(document.querySelectorAll("#gridBodegas .bodegas-card"));
+
+  const setEmptyModeList = (mode) => {
+    if (!emptyTabla) return;
+
+    if (mode === "noresults") {
+      iconNoDataListWrap?.classList.add("hidden");
+      iconNoResultsListWrap?.classList.remove("hidden");
+      if (emptyListTitle) emptyListTitle.textContent = "No se encontraron resultados";
+      if (emptyListDesc) emptyListDesc.textContent = "No hay bodegas que coincidan con tu búsqueda o filtro.";
+    } else {
+      iconNoResultsListWrap?.classList.add("hidden");
+      iconNoDataListWrap?.classList.remove("hidden");
+      if (emptyListTitle) emptyListTitle.textContent = "No hay bodegas registradas";
+      if (emptyListDesc) {
+        emptyListDesc.innerHTML = `Una vez agregues bodegas desde el botón <strong>"Crear bodega"</strong>, aparecerán listadas en esta vista.`;
       }
     }
+    safeIcons();
+  };
 
-    /* -------------------------
-       SUBBODEGA
-    ------------------------- */
-    if (tipo === "subbodega") {
-      const body = {
-        id_bodega: idPadre.value,
-        codigo_subbodega: inputCodigo.value,
-        nombre_subbodega: inputNombre.value,
-        clasificacion_subbodegas: inputClasificacion.value,
-        descripcion: inputDescripcion.value
-      };
+  const setEmptyModeGrid = (mode) => {
+    if (!emptyGrid) return;
 
-      /* EDITAR */
-      if (id) {
-        body.estado = inputEstado.value;
-
-        await fetch(`${API_SUB}?accion=actualizar&id=${id}`, {
-          method: "PUT",
-          body: JSON.stringify(body)
-        });
-      } else {
-        /* CREAR */
-        await fetch(`${API_SUB}?accion=crear`, {
-          method: "POST",
-          body: JSON.stringify(body)
-        });
+    if (mode === "noresults") {
+      iconNoDataGridWrap?.classList.add("hidden");
+      iconNoResultsGridWrap?.classList.remove("hidden");
+      if (emptyGridTitle) emptyGridTitle.textContent = "No se encontraron resultados";
+      if (emptyGridDesc) emptyGridDesc.textContent = "No hay bodegas que coincidan con tu búsqueda o filtro.";
+    } else {
+      iconNoResultsGridWrap?.classList.add("hidden");
+      iconNoDataGridWrap?.classList.remove("hidden");
+      if (emptyGridTitle) emptyGridTitle.textContent = "No hay bodegas registradas";
+      if (emptyGridDesc) {
+        emptyGridDesc.innerHTML = `Una vez agregues bodegas desde el botón <strong>"Crear bodega"</strong>, aparecerán listadas en esta vista.`;
       }
     }
+    safeIcons();
+  };
 
-    cerrarModal();
-    cargarDatos();
+  const applyFilters = () => {
+    const q = normalize(inputBuscar?.value || "");
+    const estadoFiltro = normalize(selectEstado?.value || "todos");
+    const filtering = q.length > 0 || (estadoFiltro && estadoFiltro !== "todos");
 
-  } catch (err) {
-    console.error("Error al guardar:", err);
-    alert("Ocurrió un error al guardar la bodega.");
-  }
-};
+    const rows = getRows();
+    const cards = getCards();
 
-/* =========================================================
-   CAMBIAR ESTADO
-========================================================= */
-async function cambiarEstado(tipo, id, estadoActual) {
-  const nuevo = estadoActual === "Activo" ? "Inactivo" : "Activo";
-
-  try {
-    if (tipo === "bodega") {
-      await fetch(`${API_BODEGA}?accion=cambiar_estado`, {
-        method: "PUT",
-        body: JSON.stringify({ id_bodega: id, estado: nuevo })
-      });
+    // Si no hay data real, respeta el empty original (no-data)
+    if (rows.length === 0 && cards.length === 0) {
+      setEmptyModeList("nodata");
+      setEmptyModeGrid("nodata");
+      return;
     }
 
-    if (tipo === "subbodega") {
-      await fetch(`${API_SUB}?accion=estado&id=${id}`, {
-        method: "POST",
-        body: JSON.stringify({ estado: nuevo })
-      });
+    // -------- TABLE
+    let visibleRows = 0;
+    rows.forEach((tr) => {
+      const dots = tr.querySelector(".bodegas-btn-dots");
+      const codigo = normalize(dots?.dataset?.codigo || "");
+      const nombre = normalize(dots?.dataset?.nombre || "");
+      const estado = normalize(dots?.dataset?.estado || "");
+
+      const matchText = q ? (codigo.includes(q) || nombre.includes(q)) : true;
+      const matchEstado = estadoFiltro === "todos" ? true : estado === estadoFiltro;
+      const show = matchText && matchEstado;
+
+      tr.classList.toggle("hidden", !show);
+      if (show) visibleRows++;
+    });
+
+    if (filtering && visibleRows === 0) {
+      setEmptyModeList("noresults");
+      emptyTabla?.classList.remove("hidden");
+      tableWrapperList?.classList.add("hidden");
+    } else {
+      if (rows.length > 0) {
+        emptyTabla?.classList.add("hidden");
+        tableWrapperList?.classList.remove("hidden");
+      }
+      if (!filtering && rows.length === 0) setEmptyModeList("nodata");
     }
 
-    cargarDatos();
-  } catch (err) {
-    console.error("Error al cambiar estado:", err);
-    alert("No se pudo cambiar el estado.");
-  }
-}
+    // -------- GRID
+    let visibleCards = 0;
+    cards.forEach((card) => {
+      const dots = card.querySelector(".bodegas-btn-dots");
+      const nombre = normalize(dots?.dataset?.nombre || "");
+      const codigo = normalize(dots?.dataset?.codigo || "");
+      const estado = normalize(dots?.dataset?.estado || "");
 
-/* =========================================================
-   EVENTOS
-========================================================= */
-inputBuscar.oninput = render;
-filtroTipo.onchange = render;
-filtroEstado.onchange = render;
+      const matchText = q ? (nombre.includes(q) || codigo.includes(q)) : true;
+      const matchEstado = estadoFiltro === "todos" ? true : estado === estadoFiltro;
+      const show = matchText && matchEstado;
 
-/* Cambio vistas */
-document.getElementById("btnVistaTablaBodega").onclick = () => {
-  document.getElementById("vistaTablaBodegas").classList.remove("hidden");
-  document.getElementById("vistaTarjetasBodegas").classList.add("hidden");
-};
+      card.classList.toggle("hidden", !show);
+      if (show) visibleCards++;
+    });
 
-document.getElementById("btnVistaTarjetasBodega").onclick = () => {
-  document.getElementById("vistaTablaBodegas").classList.add("hidden");
-  document.getElementById("vistaTarjetasBodegas").classList.remove("hidden");
-};
+    if (filtering && visibleCards === 0) {
+      setEmptyModeGrid("noresults");
+      emptyGrid?.classList.remove("hidden");
+    } else {
+      if (cards.length > 0) emptyGrid?.classList.add("hidden");
+      if (!filtering && cards.length === 0) setEmptyModeGrid("nodata");
+    }
 
     safeIcons();
   };

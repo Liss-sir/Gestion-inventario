@@ -31,9 +31,16 @@ let selectedFicha = null;
 let programas = [];
 let programasMap = {};
 
-// Estudiantes (aprendices)
+// Apprentices
 let aprendices = [];
 let estudiantesSeleccionados = [];
+
+// Instructors
+let instructores = [];
+let instructoresSeleccionados = [];
+
+// Group leader
+let jefeGrupoSeleccionado = null;
 
 // =========================
 // PAGINATION
@@ -178,20 +185,35 @@ const inputModalidad = document.getElementById("modalidad");
 const inputFechaInicio = document.getElementById("fecha_inicio");
 const inputFechaFin = document.getElementById("fecha_fin");
 
-// Pasos del formulario
+// Form steps
 const paso1Ficha = document.getElementById("paso1Ficha");
 const paso2Ficha = document.getElementById("paso2Ficha");
+const paso3Ficha = document.getElementById("paso3Ficha");
+const paso4Ficha = document.getElementById("paso4Ficha");
 const btnIrPaso2 = document.getElementById("btnIrPaso2");
 const btnVolverPaso1 = document.getElementById("btnVolverPaso1");
+const btnIrPaso3 = document.getElementById("btnIrPaso3");
+const btnVolverPaso2 = document.getElementById("btnVolverPaso2");
+const btnIrPaso4 = document.getElementById("btnIrPaso4");
+const btnVolverPaso3 = document.getElementById("btnVolverPaso3");
 
-// Estudiantes
+// Apprentices
 const selectEstudiante = document.getElementById("selectEstudiante");
-// const btnAgregarEstudiante = document.getElementById("btnAgregarEstudiante");
 const listaEstudiantesSeleccionados = document.getElementById("listaEstudiantesSeleccionados");
+
+// Instructors
+const selectInstructor = document.getElementById("selectInstructor");
+const listaInstructoresSeleccionados = document.getElementById("listaInstructoresSeleccionados");
 
 const modalVerFicha = document.getElementById("modalVerFicha")
 const btnCerrarModalVerFicha = document.getElementById("btnCerrarModalVerFicha")
 const detalleFichaContent = document.getElementById("detalleFichaContent")
+
+// Group leader
+const listaJefeGrupo = document.getElementById("listaJefeGrupo");
+
+console.log("API_URL:", API_URL);
+console.log("PROGRAMAS_API_URL:", PROGRAMAS_API_URL);
 
 // =========================
 // SINGLE PAGINATION CONTAINER
@@ -325,7 +347,7 @@ async function cargarProgramas() {
 }
 
 // =========================
-// CARGAR APRENDICES
+// LOAD APPRENTICES
 // =========================
 async function cargarAprendices() {
   try {
@@ -351,6 +373,36 @@ async function cargarAprendices() {
   }
 }
 
+// =========================
+// LOAD INSTRUCTORS
+// =========================
+async function cargarInstructores() {
+  try {
+    console.log("Solicitando instructores desde:", `${API_URL}?accion=instructores`);
+    const res = await fetch(`${API_URL}?accion=instructores`)
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+    }
+    
+    const data = await res.json()
+    console.log("Instructores recibidos:", data);
+    
+    if (Array.isArray(data)) {
+      instructores = data
+      console.log(`Se cargaron ${data.length} instructores`);
+    } else {
+      instructores = []
+      console.error("La respuesta de instructores no es un array:", data)
+    }
+
+    renderChecklistInstructores()
+  } catch (error) {
+    console.error("Error al cargar instructores:", error)
+    instructores = []
+    renderChecklistInstructores()
+  }
+}
+
 function renderOpcionesAprendices() {
   if (!selectEstudiante) return
 
@@ -365,32 +417,30 @@ function renderOpcionesAprendices() {
   selectEstudiante.disabled = false
   selectEstudiante.innerHTML = `<option value="">Seleccione un estudiante...</option>`
 
-  // Filtrar solo los aprendices que no están seleccionados
+  // Filter only the apprentices who are not selected yet
   const aprendicesDisponibles = aprendices.filter(a => 
     !estudiantesSeleccionados.some(e => e.id_usuario === a.id_usuario)
   )
 
-  // Agregar opción para seleccionar todos si hay disponibles
+  // Add "Select All" option if there are available apprentices
   if (aprendicesDisponibles.length > 0) {
     const optAll = document.createElement("option")
     optAll.value = "all"
     optAll.textContent = "Seleccionar todos los aprendices"
     selectEstudiante.appendChild(optAll)
   }
-
-  // No agregar opciones individuales de aprendices
 }
 
 function agregarEstudiante() {
   const estudianteId = selectEstudiante.value
   
   if (!estudianteId) {
-    toastError("Seleccione un estudiante")
+    toastError("Seleccione un aprendiz")
     return
   }
 
   if (estudianteId === "all") {
-    // Agregar todos los aprendices disponibles
+    // Add all available apprentices
     const aprendicesDisponibles = aprendices.filter(a => 
       !estudiantesSeleccionados.some(e => e.id_usuario === a.id_usuario)
     )
@@ -416,7 +466,7 @@ function agregarEstudiante() {
 
   selectEstudiante.value = ''
   
-  renderOpcionesAprendices() // Actualizar lista excluyendo los agregados
+  renderOpcionesAprendices() // Update available options
   renderChecklistAprendices()
 }
 
@@ -428,18 +478,18 @@ function seleccionarTodosVisibles() {
     (a.correo && a.correo.toLowerCase().includes(searchTerm))
   )
 
-  // Verificar si todos los filtrados están seleccionados
+  // Verify all filtered are selected
   const todosSeleccionados = aprendicesFiltrados.every(a => 
     estudiantesSeleccionados.some(e => e.id_usuario == a.id_usuario)
   )
 
   if (todosSeleccionados) {
-    // Quitar todos los filtrados de estudiantesSeleccionados
+    // Remove all filters from estudiantesSeleccionados
     estudiantesSeleccionados = estudiantesSeleccionados.filter(e => 
       !aprendicesFiltrados.some(a => a.id_usuario == e.id_usuario)
     )
   } else {
-    // Agregar los que no están
+    // Add the ones that aren't already selected
     aprendicesFiltrados.forEach(a => {
       if (!estudiantesSeleccionados.some(e => e.id_usuario == a.id_usuario)) {
         estudiantesSeleccionados.push({
@@ -453,6 +503,41 @@ function seleccionarTodosVisibles() {
   }
 
   renderChecklistAprendices()
+}
+
+function seleccionarTodosInstructoresVisibles() {
+  const searchTerm = (selectInstructor && selectInstructor.value ? selectInstructor.value.toLowerCase() : '')
+  const instructoresFiltrados = instructores.filter(i => 
+    (i.nombre_completo && i.nombre_completo.toLowerCase().includes(searchTerm)) ||
+    (i.numero_documento && i.numero_documento.toString().toLowerCase().includes(searchTerm)) ||
+    (i.correo && i.correo.toLowerCase().includes(searchTerm))
+  )
+
+  // Verify all filtered are selected
+  const todosSeleccionados = instructoresFiltrados.every(i => 
+    instructoresSeleccionados.some(e => e.id_usuario == i.id_usuario)
+  )
+
+  if (todosSeleccionados) {
+    // Remove all filters from instructoresSeleccionados
+    instructoresSeleccionados = instructoresSeleccionados.filter(e => 
+      !instructoresFiltrados.some(i => i.id_usuario == e.id_usuario)
+    )
+  } else {
+    // Add those that are not there
+    instructoresFiltrados.forEach(i => {
+      if (!instructoresSeleccionados.some(e => e.id_usuario == i.id_usuario)) {
+        instructoresSeleccionados.push({
+          id_usuario: i.id_usuario,
+          nombre_completo: i.nombre_completo,
+          numero_documento: i.numero_documento,
+          correo: i.correo || ''
+        })
+      }
+    })
+  }
+
+  renderChecklistInstructores()
 }
 
 function renderChecklistAprendices() {
@@ -470,13 +555,31 @@ function renderChecklistAprendices() {
     return
   }
 
-  // Filtrar por búsqueda
+  // Filter by search 
   const searchTerm = (selectEstudiante && selectEstudiante.value ? selectEstudiante.value.toLowerCase() : '')
   const aprendicesFiltrados = aprendices.filter(a => 
     (a.nombre_completo && a.nombre_completo.toLowerCase().includes(searchTerm)) ||
     (a.numero_documento && a.numero_documento.toString().toLowerCase().includes(searchTerm)) ||
     (a.correo && a.correo.toLowerCase().includes(searchTerm))
   )
+
+  // If there are apprentices but none match the search, show notice
+  if (aprendicesFiltrados.length === 0) {
+    listaEstudiantesSeleccionados.innerHTML = `
+      <div class="flex flex-col items-center justify-center text-center py-8">
+        <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
+          <svg class="h-7 w-7 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <circle cx="11" cy="11" r="6" stroke-linecap="round" stroke-linejoin="round"></circle>
+            <line x1="16" y1="16" x2="20" y2="20" stroke-linecap="round" stroke-linejoin="round"></line>
+          </svg>
+        </div>
+        <h3 class="text-lg font-semibold mt-4">No se encontraron resultados</h3>
+        <p class="text-sm text-muted-foreground mt-1 max-w-md">No se encontraron aprendices que coincidan con los criterios de búsqueda actuales.</p>
+      </div>
+    `
+    return
+  }
 
   let html = `
     <div class="space-y-2">
@@ -522,16 +625,167 @@ function renderChecklistAprendices() {
   listaEstudiantesSeleccionados.innerHTML = html
 }
 
+function renderChecklistInstructores() {
+  if (!listaInstructoresSeleccionados) return
+
+  if (!Array.isArray(instructores) || instructores.length === 0) {
+    listaInstructoresSeleccionados.innerHTML = `
+      <div class="text-center text-muted-foreground py-8">
+        <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <p class="text-sm">No hay instructores disponibles</p>
+      </div>
+    `
+    return
+  }
+
+  // Filter by search
+  const searchTerm = (selectInstructor && selectInstructor.value ? selectInstructor.value.toLowerCase() : '')
+  const instructoresFiltrados = instructores.filter(i => 
+    (i.nombre_completo && i.nombre_completo.toLowerCase().includes(searchTerm)) ||
+    (i.numero_documento && i.numero_documento.toString().toLowerCase().includes(searchTerm)) ||
+    (i.correo && i.correo.toLowerCase().includes(searchTerm))
+  )
+
+  // If there are instructors but none match the search, show notice
+  if (instructoresFiltrados.length === 0) {
+    listaInstructoresSeleccionados.innerHTML = `
+      <div class="flex flex-col items-center justify-center text-center py-8">
+        <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
+          <svg class="h-7 w-7 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <circle cx="11" cy="11" r="6" stroke-linecap="round" stroke-linejoin="round"></circle>
+            <line x1="16" y1="16" x2="20" y2="20" stroke-linecap="round" stroke-linejoin="round"></line>
+          </svg>
+        </div>
+        <h3 class="text-lg font-semibold mt-4">No se encontraron resultados</h3>
+        <p class="text-sm text-muted-foreground mt-1 max-w-md">No se encontraron instructores que coincidan con los criterios de búsqueda actuales.</p>
+      </div>
+    `
+    return
+  }
+
+  let html = `
+    <div class="space-y-2">
+      <div class="flex justify-between text-xs font-medium text-gray-500 pb-2 border-b">
+        <span class="flex-1">Instructor</span>
+        <span class="w-32 text-center">Documento</span>
+        <span class="w-16 text-center">Seleccionar</span>
+      </div>
+  `
+
+  instructoresFiltrados.forEach((instructor) => {
+    const isSelected = instructoresSeleccionados.some(e => e.id_usuario == instructor.id_usuario)
+    html += `
+      <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+        <div class="flex-1">
+          <div class="font-medium text-sm">${instructor.nombre_completo}</div>
+          ${instructor.correo ? `<div class="text-xs text-gray-500">${instructor.correo}</div>` : ''}
+        </div>
+        <div class="w-32 text-center text-sm">${instructor.numero_documento}</div>
+        <div class="w-16 text-center">
+          <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleInstructor(${instructor.id_usuario})" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+        </div>
+      </div>
+    `
+  })
+
+  const totalSeleccionados = instructoresSeleccionados.length
+  html += `
+      <div class="pt-2 border-t">
+        <div class="flex justify-between font-medium text-gray-700 text-sm">
+          <span>Total seleccionados:</span>
+          <span>${totalSeleccionados}</span>
+        </div>
+        <div class="mt-2 text-center">
+          <a href="#" onclick="seleccionarTodosInstructoresVisibles(); return false;" class="text-blue-600 hover:text-blue-800 underline text-sm">
+            Seleccionar todos los visibles
+          </a>
+        </div>
+      </div>
+    </div>
+  `
+
+  listaInstructoresSeleccionados.innerHTML = html
+}
+
+// Toggle selection when checking/unchecking a single apprentice
+function toggleEstudiante(id) {
+  if (id === undefined || id === null) return
+
+  const idStr = String(id)
+  const exists = estudiantesSeleccionados.some(e => String(e.id_usuario) === idStr)
+
+  if (exists) {
+    estudiantesSeleccionados = estudiantesSeleccionados.filter(e => String(e.id_usuario) !== idStr)
+  } else {
+    const aprendiz = aprendices.find(a => String(a.id_usuario) === idStr)
+    if (!aprendiz) return
+
+    estudiantesSeleccionados.push({
+      id_usuario: aprendiz.id_usuario,
+      nombre_completo: aprendiz.nombre_completo,
+      numero_documento: aprendiz.numero_documento,
+      correo: aprendiz.correo || ''
+    })
+  }
+
+  renderOpcionesAprendices()
+  renderChecklistAprendices()
+}
+
+function toggleInstructor(id) {
+  if (id === undefined || id === null) return;
+
+  const idStr = String(id);
+  const exists = instructoresSeleccionados.some(e => String(e.id_usuario) === idStr);
+
+  if (exists) {
+    // Verify if he is the selected group leader
+    if (jefeGrupoSeleccionado && String(jefeGrupoSeleccionado.id_usuario) === idStr) {
+      toastError("No puede quitar al jefe de grupo. Primero seleccione otro jefe.");
+      return;
+    }
+    
+    instructoresSeleccionados = instructoresSeleccionados.filter(e => String(e.id_usuario) !== idStr);
+  } else {
+    const instructor = instructores.find(i => String(i.id_usuario) === idStr);
+    if (!instructor) return;
+
+    instructoresSeleccionados.push({
+      id_usuario: instructor.id_usuario,
+      nombre_completo: instructor.nombre_completo,
+      numero_documento: instructor.numero_documento,
+      correo: instructor.correo || ''
+    });
+  }
+
+  renderChecklistInstructores();
+}
+
+function eliminarEstudiante(id) {
+  if (id === undefined || id === null) return
+  const idStr = String(id)
+  estudiantesSeleccionados = estudiantesSeleccionados.filter(e => String(e.id_usuario) !== idStr)
+  renderOpcionesAprendices()
+  renderChecklistAprendices()
+}
+
 function openModalFicha(editFicha = null) {
   selectedFicha = editFicha
   modalFicha.classList.add("active")
 
-  // Limpiar estudiantes seleccionados
+  // Reset selections
   estudiantesSeleccionados = []
+  instructoresSeleccionados = []
+  jefeGrupoSeleccionado = null 
 
-  // Mostrar paso 1 y ocultar paso 2
+  // Show first step and hide others
   if (paso1Ficha) paso1Ficha.classList.remove("hidden")
   if (paso2Ficha) paso2Ficha.classList.add("hidden")
+  if (paso3Ficha) paso3Ficha.classList.add("hidden")
+  if (paso4Ficha) paso4Ficha.classList.add("hidden")
 
   if (editFicha) {
     modalFichaTitulo.textContent = "Editar Ficha"
@@ -556,8 +810,9 @@ function openModalFicha(editFicha = null) {
       fecha_fin: editFicha.fecha_fin || "",
     }
 
-    // Cargar estudiantes de esta ficha si está editando
+    // Upload aprentices and instructors to this record if you are editing
     cargarEstudiantesDeFicha(editFicha.id)
+    cargarInstructoresDeFicha(editFicha.id)
 
   } else {
     modalFichaTitulo.textContent = "Crear Nueva Ficha"
@@ -578,6 +833,8 @@ function openModalFicha(editFicha = null) {
   renderOpcionesPrograma()
   renderOpcionesAprendices()
   renderChecklistAprendices()
+  renderChecklistInstructores()
+  renderOpcionesJefeGrupo()
 }
 
 async function cargarEstudiantesDeFicha(idFicha) {
@@ -593,7 +850,52 @@ async function cargarEstudiantesDeFicha(idFicha) {
       renderChecklistAprendices()
     }
   } catch (error) {
-    console.error("Error al cargar estudiantes de la ficha:", error)
+    console.error("Error al cargar aprendices de la ficha:", error)
+  }
+}
+
+async function cargarInstructoresDeFicha(idFicha) {
+  try {
+    console.log(`Cargando instructores para ficha: ${idFicha}`);
+    
+    const res = await fetch(`${API_URL}?accion=instructoresFicha&id_ficha=${idFicha}`)
+    
+    if (!res.ok) {
+      console.error(`Error HTTP: ${res.status}`);
+      return;
+    }
+
+    const data = await res.json();
+    console.log('Datos recibidos de instructores:', data);
+    
+    if (Array.isArray(data) && data.length > 0) {
+      instructoresSeleccionados = data;
+      
+      // Search and set the group leader
+      const jefe = data.find(instructor => instructor.es_jefe_grupo == 1 || instructor.es_jefe_grupo === true);
+      if (jefe) {
+        jefeGrupoSeleccionado = {
+          id_usuario: jefe.id_usuario,
+          nombre_completo: jefe.nombre_completo,
+          numero_documento: jefe.numero_documento,
+          correo: jefe.correo || ''
+        };
+        console.log(`Jefe de grupo establecido: ${jefeGrupoSeleccionado.nombre_completo}`);
+      }
+      
+      console.log(`Se cargaron ${data.length} instructores`);
+      renderChecklistInstructores();
+      renderOpcionesJefeGrupo(); // Update group leader options
+    } else {
+      instructoresSeleccionados = [];
+      jefeGrupoSeleccionado = null;
+      console.log('No se encontraron instructores para esta ficha');
+      renderChecklistInstructores();
+    }
+  } catch (error) {
+    console.error("Error al cargar instructores de la ficha:", error);
+    instructoresSeleccionados = [];
+    jefeGrupoSeleccionado = null;
   }
 }
 
@@ -603,13 +905,17 @@ function closeModalFicha() {
   hiddenFichaId.value = ""
   originalEditData = null
   estudiantesSeleccionados = []
+  instructoresSeleccionados = []
+  jefeGrupoSeleccionado = null
   
-  // Volver al paso 1
+  // Reset to first step
   if (paso1Ficha) paso1Ficha.classList.remove("hidden")
   if (paso2Ficha) paso2Ficha.classList.add("hidden")
+  if (paso3Ficha) paso3Ficha.classList.add("hidden")
+  if (paso4Ficha) paso4Ficha.classList.add("hidden")
 }
 
-function openModalVerFicha(ficha) {
+async function openModalVerFicha(ficha) {
   selectedFicha = ficha
   modalVerFicha.classList.add("active")
 
@@ -618,6 +924,21 @@ function openModalVerFicha(ficha) {
     : "Sin programa asignado"
 
   const nivelNombre = ficha.nivel || "N/A"
+
+  // Fetch instructors to get the group leader
+  let jefeNombre = "No asignado"
+  try {
+    const res = await fetch(`${API_URL}?accion=instructoresFicha&id_ficha=${ficha.id}`)
+    if (res.ok) {
+      const instructores = await res.json()
+      const jefe = instructores.find(inst => inst.es_jefe_grupo == 1 || inst.es_jefe_grupo === true)
+      if (jefe) {
+        jefeNombre = jefe.nombre_completo || "Sin nombre"
+      }
+    }
+  } catch (error) {
+    console.error("Error al cargar jefe de ficha:", error)
+  }
 
   detalleFichaContent.innerHTML = `
     <div class="flex items-center gap-4">
@@ -645,6 +966,10 @@ function openModalVerFicha(ficha) {
       </div>
     </div>
     <div class="space-y-3 text-sm mt-4">
+      <div class="flex items-start gap-3">
+        <span class="text-muted-foreground min-w-[80px]">Jefe de Ficha:</span>
+        <span class="font-medium">${jefeNombre}</span>
+      </div>
       <div class="flex items-start gap-3">
         <span class="text-muted-foreground min-w-[80px]">Programa:</span>
         <span class="font-medium">${programaNombre}</span>
@@ -1355,7 +1680,7 @@ function attachActionEvents() {
       // Manage different actions
       if (action === "ver") {
         const ficha = fichas.find((f) => String(f.id) === String(id))
-        if (ficha) openModalVerFicha(ficha)
+        if (ficha) await openModalVerFicha(ficha)
       } else if (action === "editar") {
         const ficha = fichas.find((f) => String(f.id) === String(id))
         if (ficha) openModalFicha(ficha)
@@ -1371,10 +1696,17 @@ function attachActionEvents() {
 // GLOBAL EVENT LISTENERS
 // =========================
 
-// Navegación entre pasos
+// Navigation between steps
 if (btnIrPaso2) {
   btnIrPaso2.addEventListener("click", function() {
     if (validarPaso1()) {
+      // Verify if the ficha number already exists
+      const numeroFicha = inputNumeroFicha.value.trim();
+      const fichaExistente = fichas.find(f => f.numero_ficha == numeroFicha);
+      if (fichaExistente) {
+        showFlowbiteAlert("warning", "El número de ficha que se intenta crear ya existe.");
+        return;
+      }
       paso1Ficha.classList.add("hidden")
       paso2Ficha.classList.remove("hidden")
     }
@@ -1388,16 +1720,53 @@ if (btnVolverPaso1) {
   })
 }
 
-// Agregar estudiante
-// if (btnAgregarEstudiante) {
-//   btnAgregarEstudiante.addEventListener("click", agregarEstudiante)
-// }
+if (btnIrPaso3) {
+  btnIrPaso3.addEventListener("click", function() {
+    paso2Ficha.classList.add("hidden")
+    paso3Ficha.classList.remove("hidden")
+  })
+}
 
-// Agregar estudiante con Enter
+if (btnVolverPaso2) {
+  btnVolverPaso2.addEventListener("click", function() {
+    paso3Ficha.classList.add("hidden")
+    paso2Ficha.classList.remove("hidden")
+  })
+}
+
+if (btnIrPaso4) {
+  btnIrPaso4.addEventListener("click", function() {
+    if (instructoresSeleccionados.length === 0) {
+      toastError("Debe seleccionar al menos un instructor antes de continuar.");
+      return;
+    }
+    
+    paso3Ficha.classList.add("hidden");
+    paso4Ficha.classList.remove("hidden");
+    renderOpcionesJefeGrupo();
+  })
+}
+
+if (btnVolverPaso3) {
+  btnVolverPaso3.addEventListener("click", function() {
+    paso4Ficha.classList.add("hidden");
+    paso3Ficha.classList.remove("hidden");
+  })
+}
+
+// Add student with Enter
 if (selectEstudiante) {
   selectEstudiante.addEventListener("keyup", () => {
     console.log("Filtro activado:", selectEstudiante.value);
     renderChecklistAprendices()
+  })
+}
+
+// Add instructor with Enter
+if (selectInstructor) {
+  selectInstructor.addEventListener("keyup", () => {
+    console.log("Filtro activado:", selectInstructor.value);
+    renderChecklistInstructores()
   })
 }
 
@@ -1480,12 +1849,22 @@ function validarPaso1() {
   return true
 }
 
+// ================================
+// FORM VALIDATION AND SUBMISSION
+// ================================
+
 formFicha.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     // Validar paso 1
     if (!validarPaso1()) {
         return
+    }
+
+    // Verify that a group leader has been selected if there are instructors
+    if (instructoresSeleccionados.length > 0 && !jefeGrupoSeleccionado) {
+        toastError("Debe seleccionar un jefe de grupo entre los instructores.");
+        return;
     }
 
     // Determine if it is editing or creation
@@ -1519,34 +1898,95 @@ formFicha.addEventListener("submit", async (e) => {
             return;
         }
 
-        // Si hay estudiantes seleccionados, agregarlos
+        // Get the ID of the record (new or existing)
+        const idFicha = isEdit ? hiddenFichaId.value : data.id_ficha;
+
+        // Final consolidated messsage 
+        let mensajeFinal = isEdit ? "Ficha actualizada correctamente." : "Ficha creada correctamente.";
+        let errores = [];
+
+        // If there are selected apprentices, add them
         if (estudiantesSeleccionados.length > 0) {
-            const idFicha = isEdit ? hiddenFichaId.value : data.id_ficha
-
-            if (idFicha) {
-                const estudiantesPayload = {
-                    id_ficha: idFicha,
-                    estudiantes: estudiantesSeleccionados.map(e => e.id_usuario)
-                }
-
-                const resEstudiantes = await fetch(`${API_URL}?accion=agregarEstudiantes`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(estudiantesPayload)
-                })
-
-                const dataEstudiantes = await resEstudiantes.json()
-                
-                if (dataEstudiantes.success) {
-                    toastSuccess(data.message + ". Estudiantes agregados correctamente.");
-                } else {
-                    toastInfo(data.message + ". Pero hubo un problema al agregar estudiantes.");
-                }
+            const estudiantesPayload = {
+                id_ficha: idFicha,
+                estudiantes: estudiantesSeleccionados.map(e => e.id_usuario)
             }
-        } else {
-            toastSuccess(data.message || (isEdit ? "Ficha actualizada correctamente." : "Ficha creada correctamente."));
+
+            const resEstudiantes = await fetch(`${API_URL}?accion=agregarEstudiantes`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(estudiantesPayload)
+            })
+
+            const dataEstudiantes = await resEstudiantes.json();
+            
+            if (dataEstudiantes.success) {
+                mensajeFinal += ` ${estudiantesSeleccionados.length} estudiante(s) agregado(s).`;
+            } else {
+                errores.push("Hubo un problema al agregar aprendices.");
+            }
         }
 
+        // If there are selected instructors, add them
+        if (instructoresSeleccionados.length > 0) {
+            // First assign all instrcutors (without the group leader)
+            const instructoresPayload = {
+                id_ficha: idFicha,
+                instructores: instructoresSeleccionados.map(i => i.id_usuario)
+            }
+
+            const resInstructores = await fetch(`${API_URL}?accion=asignarInstructores`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(instructoresPayload)
+            })
+
+            const dataInstructores = await resInstructores.json();
+            
+            if (dataInstructores.success) {
+                mensajeFinal += ` ${instructoresSeleccionados.length} instructor(es) asignado(s).`;
+                
+                // Assign group leader if one exists
+                if (jefeGrupoSeleccionado) {
+                    // Verify that the group leader is on the list of selected instructors
+                    const jefeEstaEnLista = instructoresSeleccionados.some(
+                        i => i.id_usuario == jefeGrupoSeleccionado.id_usuario
+                    );
+                    
+                    if (jefeEstaEnLista) {
+                        const jefePayload = {
+                            id_ficha: idFicha,
+                            id_usuario: jefeGrupoSeleccionado.id_usuario
+                        };
+                        
+                        const resJefe = await fetch(`${API_URL}?accion=asignarJefeFicha`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(jefePayload)
+                        });
+                        
+                        const dataJefe = await resJefe.json();
+                        if (dataJefe.success) {
+                            mensajeFinal += ` Jefe de grupo: ${jefeGrupoSeleccionado.nombre_completo}`;
+                        } else {
+                            errores.push("Instructores asignados, pero hubo problema asignando el jefe de grupo.");
+                        }
+                    } else {
+                        errores.push("El jefe de grupo seleccionado no está en la lista de instructores.");
+                    }
+                }
+            } else {
+                errores.push("Hubo un problema al asignar instructores.");
+            }
+        }
+
+        // Show final message
+        if (errores.length > 0) {
+            toastInfo(mensajeFinal + " " + errores.join(" "));
+        } else {
+            toastSuccess(mensajeFinal);
+        }
+        
         closeModalFicha();
         await cargarFichas();
     } catch (error) {
@@ -1570,20 +2010,113 @@ document.addEventListener("keydown", (e) => {
   }
 })
 
+// =========================
+function renderOpcionesJefeGrupo() {
+  if (!listaJefeGrupo) return;
+
+  if (instructoresSeleccionados.length === 0) {
+    listaJefeGrupo.innerHTML = `
+      <div class="text-center text-muted-foreground py-8">
+        <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <p class="text-sm">Primero debe seleccionar instructores en el paso anterior</p>
+      </div>
+    `;
+    return;
+  }
+
+  let html = `
+    <div class="space-y-3">
+      <div class="text-xs font-medium text-gray-500 pb-2 border-b">
+        Seleccione un instructor como jefe de grupo:
+      </div>
+  `;
+
+  instructoresSeleccionados.forEach((instructor, index) => {
+    const isSelected = jefeGrupoSeleccionado && jefeGrupoSeleccionado.id_usuario == instructor.id_usuario;
+    html += `
+      <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer ${isSelected ? 'ring-2 ring-blue-500' : ''}"
+           onclick="seleccionarJefeGrupo(${index})">
+        <div class="flex-shrink-0">
+          <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+            <span class="text-blue-600 font-semibold">${instructor.nombre_completo.charAt(0)}</span>
+          </div>
+        </div>
+        <div class="flex-1">
+          <div class="font-medium text-sm">${instructor.nombre_completo}</div>
+          <div class="text-xs text-gray-500">${instructor.numero_documento}</div>
+          ${instructor.correo ? `<div class="text-xs text-gray-500">${instructor.correo}</div>` : ''}
+        </div>
+        <div class="flex-shrink-0">
+          <input type="radio" name="jefeGrupo" ${isSelected ? 'checked' : ''} 
+                 class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                 onclick="seleccionarJefeGrupo(${index})">
+        </div>
+      </div>
+    `;
+  });
+
+  html += `
+      <div class="pt-3 border-t">
+        <div class="text-sm text-gray-600">
+          <p><strong>Nota:</strong> Solo puede seleccionar un instructor como jefe de grupo.</p>
+        </div>
+        ${jefeGrupoSeleccionado ? `
+        <div class="mt-2 p-2 bg-blue-50 rounded-lg border border-blue-100">
+          <div class="text-sm font-medium text-blue-800">Jefe de grupo seleccionado:</div>
+          <div class="text-sm text-blue-600">${jefeGrupoSeleccionado.nombre_completo}</div>
+        </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+
+  listaJefeGrupo.innerHTML = html;
+}
+
+function seleccionarJefeGrupo(index) {
+  if (index >= 0 && index < instructoresSeleccionados.length) {
+    jefeGrupoSeleccionado = { ...instructoresSeleccionados[index] };
+    renderOpcionesJefeGrupo();
+  }
+}
+
 /*INITIAL LOAD*/
 
 async function inicializar() {
-  await Promise.all([
-      cargarProgramas(),  // Load programs first
-      cargarAprendices(), // Load aprendices
-      cargarFichas()      // Load chips in parallel
-  ]);
-  setVistaTabla();        // Render after both have loaded
+  try {
+    console.log("Iniciando carga de datos...");
+    
+    console.log("Cargando programas...");
+    await cargarProgramas();
+    
+    console.log("Cargando aprendices e instructores...");
+    await Promise.all([
+        cargarAprendices(),
+        cargarInstructores()
+    ]);
+    
+    console.log("Cargando fichas...");
+    await cargarFichas();
+    
+    console.log("Renderizando vista...");
+    setVistaTabla();
+    
+    console.log("Inicialización completada");
+  } catch (error) {
+    console.error("Error en inicialización:", error);
+    toastError("Error al cargar los datos iniciales");
+  }
 }
 
 // Start
 inicializar();
 
-// Exponer funciones globales necesarias
+// Expose necessary functions to global functions
 window.eliminarEstudiante = eliminarEstudiante;
 window.seleccionarTodosVisibles = seleccionarTodosVisibles;
+window.toggleEstudiante = toggleEstudiante;
+window.seleccionarTodosInstructoresVisibles = seleccionarTodosInstructoresVisibles;
+window.toggleInstructor = toggleInstructor;
+window.seleccionarJefeGrupo = seleccionarJefeGrupo;
