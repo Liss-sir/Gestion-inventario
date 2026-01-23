@@ -444,7 +444,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   </div>
 
   <div id="modalAsignarAprendices" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
-    <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+    <div class="bg-card rounded-xl border border-border shadow-xl w-[68vh] max-w-3xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between p-6 pb-0">
           <div class="flex flex-col items-start justify-between p-0">
               <h3 class="text-xl font-semibold text-foreground">Asignar Aprendices</h3>
@@ -457,9 +457,9 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
       <div class="p-6 space-y-4">
           <!-- Information about the created work -->
-          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-              <h4 class="font-semibold text-blue-800 mb-2">Obra Creada:</h4>
-              <p id="infoObraCreada" class="text-sm text-blue-700"></p>
+          <div class="bg-[#002f4d34] border border-[#00304D] rounded-lg p-4 mb-4">
+              <h4 class="font-semibold text-[#00304D] mb-2">Obra Creada:</h4>
+              <p id="infoObraCreada" class="text-sm text-[#00304D]"></p>
           </div>
 
           <!-- Learner search -->

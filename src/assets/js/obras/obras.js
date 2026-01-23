@@ -320,7 +320,7 @@ function renderObras(obrasData) {
                             <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-icon lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg> Tipo *
                             </p>
-                            <span class="inline-block px-2 py-1 bg-secondary text-white text-xs font-semibold rounded-full">${obra.tipo_trabajo}</span>
+                            <span class="inline-block px-2 py-1 ${obra.tipo_trabajo === 'Grupal' ? 'bg-[#00304d]' : 'bg-secondary'} text-white text-xs font-semibold rounded-full">${obra.tipo_trabajo}</span>
                         </div>
                         <div>
                             <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
@@ -813,7 +813,12 @@ async function openDetailsModal(id) {
             : 'inline-block px-3 py-1 bg-gray-500 text-white text-xs font-semibold rounded-full';
         document.getElementById('details_descripcion').textContent = obra.descripcion || 'Sin descripción';
         document.getElementById('details_ficha').textContent = obra.numero_ficha || 'N/A';
-        document.getElementById('details_tipo').textContent = obra.tipo_trabajo;
+        const tipoElement = document.getElementById('details_tipo');
+        tipoElement.textContent = obra.tipo_trabajo;
+        tipoElement.className = obra.tipo_trabajo === 'Grupal' 
+            ? 'inline-block px-2 py-1 bg-[#00304d] text-white text-xs font-semibold rounded-full'
+            : 'inline-block px-2 py-1 bg-secondary text-white text-xs font-semibold rounded-full';
+
         document.getElementById('details_instructor').textContent = obra.nombre_instructor || 'No asignado';
         document.getElementById('details_rae').textContent = obra.descripcion_rae || 'No asignado';
         document.getElementById('details_fecha_inicio').textContent = formatFullDate(obra.fecha_inicio);
