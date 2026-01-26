@@ -9,6 +9,17 @@ if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 
+// ✅ FIX PERMISOS (SIN ROMPER TU BASE)
+require_once __DIR__ . "/../../utils/permisos_helper.php";
+
+// ✅ PROTECCIÓN: Si NO puede listar obras, NO entra
+requirePermiso("obras.listar");
+
+// ✅ Flags de acciones (Aprendiz NO tendrá estos permisos)
+$canCrearObra        = canPermiso("obras.crear") || canPermiso("obras.gestionar");
+$canEditarObra       = canPermiso("obras.editar") || canPermiso("obras.gestionar");
+$canCambiarEstadoObra = canPermiso("obras.activar_desactivar") || canPermiso("obras.gestionar");
+
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 ?>
@@ -37,9 +48,6 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 </head>
 
 <body class="bg-background p-6">
-
-  <!-- Si tienes header/sidebar global, lo puedes incluir aquí (igual que en Usuarios) -->
-  <!-- <?php include '../partials/dashboard-header.php'; ?> -->
 
   <main
     class="p-6 transition-all duration-300"
@@ -118,13 +126,16 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               <p class="text-sm text-muted-foreground mt-1">Administra las obras y actividades formativas</p>
             </div>
 
-            <button
-              onclick="openCreateModal()"
-              class="inline-flex items-center justify-center whitespace-nowrap rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2"
-            >
-              <i class="fas fa-plus"></i>
-              Nueva Obra
-            </button>
+            <!-- ✅ SI ES APRENDIZ: NO VE "NUEVA OBRA" -->
+            <?php if ($canCrearObra): ?>
+              <button
+                onclick="openCreateModal()"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2"
+              >
+                <i class="fas fa-plus"></i>
+                Nueva Obra
+              </button>
+            <?php endif; ?>
           </div>
 
           <!-- Buscador (estilo tipo Usuarios) -->
@@ -157,8 +168,9 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   </main>
 
   <!-- ========================================= -->
-  <!-- MODAL NUEVA OBRA                          -->
+  <!-- MODAL NUEVA OBRA (SOLO SI PUEDE CREAR)    -->
   <!-- ========================================= -->
+  <?php if ($canCrearObra): ?>
   <div id="modalCreate" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between p-6 pb-0">
@@ -253,10 +265,12 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       </form>
     </div>
   </div>
+  <?php endif; ?>
 
   <!-- ========================================= -->
-  <!-- MODAL EDITAR OBRA                         -->
+  <!-- MODAL EDITAR OBRA (SOLO SI PUEDE EDITAR)  -->
   <!-- ========================================= -->
+  <?php if ($canEditarObra): ?>
   <div id="modalEdit" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between p-6 pb-0">
@@ -371,9 +385,10 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       </form>
     </div>
   </div>
+  <?php endif; ?>
 
   <!-- ========================================= -->
-  <!-- MODAL DETALLES                            -->
+  <!-- MODAL DETALLES (SIEMPRE VISIBLE)         -->
   <!-- ========================================= -->
   <div id="modalDetails" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
@@ -440,6 +455,15 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   <!-- ALERT CONTAINER (FLOWBITE-LIKE TOASTS)    -->
   <!-- ========================================= -->
   <div id="flowbite-alert-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 w-full max-w-md"></div>
+
+  <!-- ✅ PASAMOS PERMISOS A JS (IMPORTANTÍSIMO) -->
+  <script>
+    window.OBRAS_PERMS = {
+      canCrear: <?= json_encode($canCrearObra) ?>,
+      canEditar: <?= json_encode($canEditarObra) ?>,
+      canCambiarEstado: <?= json_encode($canCambiarEstadoObra) ?>,
+    };
+  </script>
 
   <script src="<?= ASSETS_URL ?>js/obras/obras.js"></script>
 </body>

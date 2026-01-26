@@ -277,6 +277,7 @@ if (!window.__perfilJSLoaded) {
       if (container) container.innerHTML = "";
     }
 
+
     /**
      * ✅ Compatibilidad total con tu base:
      * - Si lo llamas con 2 params: showAlertDatosSensibles(type, message)

@@ -194,44 +194,38 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       <!-- ================================== -->
       <!-- Table wrapper configured to prevent dropdown clipping and preserve border radius -->
       <div
-        id="vistaTabla"
-        class="relative rounded-xl border border-border bg-card p-[1px] overflow-visible"
-      >
-        <table class="min-w-full border-separate border-spacing-0 text-sm rounded-[11px] bg-card">
-          <thead>
-            <tr>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100 first:rounded-tl-[11px]">
-                Usuario
-              </th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">
-                Documento
-              </th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">
-                Rol
-              </th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">
-                Teléfono
-              </th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">
-                Estado
-              </th>
-              <th class="px-4 py-3 text-right font-medium text-xs text-muted-foreground bg-gray-100 last:rounded-tr-[11px]">
-                Acciones
-              </th>
-            </tr>
-          </thead>
+  id="vistaTabla"
+  class="relative rounded-[14px] border border-border bg-card overflow-x-hidden overflow-y-visible"
+>
+  <table class="min-w-full border-separate border-spacing-0 text-sm bg-card">
 
-          <tbody
-            id="tbodyUsuarios"
-            class="divide-y divide-border bg-card
-                   [&>tr>td]:bg-card
-                   [&>tr:last-child>td:first-child]:rounded-bl-[11px]
-                   [&>tr:last-child>td:last-child]:rounded-br-[11px]"
-          >
-            <!-- Table rows are injected dynamically via JavaScript -->
-          </tbody>
-        </table>
-      </div>
+    <thead class="bg-[#f3f4f6]">
+  <tr>
+    <th class="px-4 py-3 text-left font-normal rounded-tl-[14px]">Usuario</th>
+    <th class="px-4 py-3 text-left font-normal">Documento</th>
+    <th class="px-4 py-3 text-left font-normal">Cargo</th>
+    <th class="px-4 py-3 text-left font-normal">Rol funcional</th>
+    <th class="px-4 py-3 text-left font-normal">Teléfono</th>
+    <th class="px-4 py-3 text-left font-normal">Estado</th>
+    <th class="px-4 py-3 text-right font-normal rounded-tr-[14px]">Acciones</th>
+  </tr>
+</thead>
+
+
+    <tbody
+      id="tbodyUsuarios"
+      class="divide-y divide-border bg-card
+             [&>tr:last-child>td:first-child]:rounded-bl-[14px]
+             [&>tr:last-child>td:last-child]:rounded-br-[14px]"
+    ></tbody>
+
+  </table>
+</div>
+
+
+
+
+      
 
       <!-- ================================== -->
       <!-- CARDS VIEW CONTAINER               -->
@@ -535,6 +529,109 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       </div>
     </div>
   </div>
+
+  <!-- ========================================= -->
+<!-- MODAL: ASIGNAR ROL                        -->
+<!-- ========================================= -->
+<div id="modalAsignarRol" class="modal-overlay hidden">
+  <div class="relative w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
+    
+    <!-- Header -->
+    <div class="flex items-start justify-between gap-4 mb-4">
+      <div>
+        <h2 class="text-lg font-semibold">Asignar Rol</h2>
+        <p class="text-sm text-muted-foreground">
+          Selecciona el rol que deseas asignar a este usuario
+        </p>
+      </div>
+
+      <button
+        type="button"
+        id="btnCerrarModalAsignarRol"
+        class="rounded-full p-1 hover:bg-muted"
+      >
+        <span class="sr-only">Cerrar</span>
+        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="space-y-4">
+      
+      <!-- Hidden user id -->
+      <input type="hidden" id="hiddenAsignarRolUserId" value="" />
+
+      <!-- Nombre usuario -->
+      <div class="rounded-lg border border-border bg-muted/40 p-3">
+        <p class="text-xs text-muted-foreground">Usuario:</p>
+        <p id="asignarRolNombreUsuario" class="text-sm font-semibold text-foreground">
+          --
+        </p>
+      </div>
+
+      <!-- Cargo visual (solo lectura) -->
+<div class="rounded-lg border border-border bg-muted/40 p-3">
+  <p class="text-xs text-muted-foreground">Cargo actual:</p>
+  <p id="asignarRolCargoUsuario" class="text-sm font-semibold text-foreground">
+    --
+  </p>
+</div>
+
+
+      <!-- Select Rol -->
+      <div class="space-y-2">
+        <label for="selectAsignarRol" class="text-sm font-medium">
+          Rol / Cargo *
+        </label>
+        <select
+          id="selectAsignarRol"
+          class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input-siga"
+        >
+          <option value="">Cargando roles...</option>
+        </select>
+
+      </div>
+
+      <!-- Programa (solo si Instructor) -->
+      <div class="space-y-2 hidden" id="wrapper_programa_asignar_rol">
+        <label for="selectProgramaAsignarRol" class="text-sm font-medium">
+          Programa de formación *
+        </label>
+        <select
+          id="selectProgramaAsignarRol"
+          class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input-siga"
+        >
+          <option value="">Seleccione un programa</option>
+        </select>
+      </div>
+
+      <!-- Footer -->
+      <div class="flex justify-end gap-2 pt-2">
+        <button
+          type="button"
+          id="btnCancelarModalAsignarRol"
+          class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          id="btnGuardarAsignarRol"
+          class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:opacity-90"
+        >
+          Guardar Rol
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 
   <!-- ========================================= -->
   <!-- ALERT CONTAINER (FLOWBITE-LIKE TOASTS)    -->

@@ -5,7 +5,11 @@
 
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
+
+
 ?>
+
+
 
 <!DOCTYPE html>
 <html lang="es">
@@ -258,6 +262,16 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </form>
     </div>
 </div>
+
+<script>
+  window.SIGA_SOL_PERMS = {
+    crear: <?= json_encode(canPermiso("solicitudes.crear")) ?>,
+    aceptar: <?= json_encode(canPermiso("solicitudes.aceptar")) ?>,
+    rechazar: <?= json_encode(canPermiso("solicitudes.rechazar")) ?>,
+    entregar: <?= json_encode(canPermiso("solicitudes.entregar")) ?>,
+  };
+</script>
+
 
 <!-- JS -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

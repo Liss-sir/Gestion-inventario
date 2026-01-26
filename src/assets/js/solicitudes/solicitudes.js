@@ -39,6 +39,20 @@ let estadoApp = {
   },
 };
 
+// ============================================================
+// ✅ PERMISOS (inyectados desde PHP)
+// ============================================================
+const PERMS = (() => {
+  const p = window.SIGA_SOL_PERMS || {};
+  return {
+    crear: !!p.crear,
+    aceptar: !!p.aceptar,
+    rechazar: !!p.rechazar,
+    entregar: !!p.entregar,
+  };
+})();
+
+
 const selectores = {
   btnNueva: document.getElementById("sol-btn-nueva"),
   modal: document.getElementById("sol-modal"),
@@ -882,8 +896,14 @@ const render = {
       const icon = CONFIG.ICONS[st] || "clock";
       const label = CONFIG.LABELS[st] || st;
 
-      const mostrarAccionesPendiente = st === "pendiente";
-      const mostrarAccionEntregar = st === "aprobada";
+      const mostrarAccionesPendiente =
+        st === "pendiente" && (PERMS.aceptar || PERMS.rechazar);
+
+      const mostrarBtnAceptar = st === "pendiente" && PERMS.aceptar;
+      const mostrarBtnRechazar = st === "pendiente" && PERMS.rechazar;
+
+      const mostrarAccionEntregar = st === "aprobada" && PERMS.entregar;
+
 
       const card = document.createElement("div");
       card.className = "sol-card";
@@ -935,20 +955,29 @@ const render = {
         </div>
 
         ${mostrarAccionesPendiente ? `
-        <div class="sol-card-footer mt-4 pt-4 border-t border-gray-200">
-          <div class="flex gap-2">
-            <button class="sol-btn-aceptar flex-1 py-2 px-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-                    data-id="${s.id}">
-              <i data-lucide="check-circle" class="w-4 h-4"></i>
-              Aceptar
-            </button>
-            <button class="sol-btn-rechazar flex-1 py-2 px-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
-                    data-id="${s.id}">
-              <i data-lucide="x-circle" class="w-4 h-4"></i>
-              Rechazar
-            </button>
+          <div class="sol-card-footer mt-4 pt-4 border-t border-gray-200">
+            <div class="flex gap-2">
+              
+              ${mostrarBtnAceptar ? `
+                <button class="sol-btn-aceptar flex-1 py-2 px-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                        data-id="${s.id}">
+                  <i data-lucide="check-circle" class="w-4 h-4"></i>
+                  Aceptar
+                </button>
+              ` : ""}
+
+              ${mostrarBtnRechazar ? `
+                <button class="sol-btn-rechazar flex-1 py-2 px-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                        data-id="${s.id}">
+                  <i data-lucide="x-circle" class="w-4 h-4"></i>
+                  Rechazar
+                </button>
+              ` : ""}
+
+            </div>
           </div>
-        </div>` : ""}
+        ` : ""}
+
 
         ${mostrarAccionEntregar ? `
         <div class="sol-card-footer mt-4 pt-4 border-t border-gray-200">
@@ -1133,45 +1162,51 @@ const paginacion = {
 //  ✅ CORRECCIÓN: evitar duplicar eventos con data-bound
 // ============================================================
 function agregarEventosBotonesAccion() {
-  document.querySelectorAll(".sol-btn-aceptar").forEach((btn) => {
-    if (btn.dataset.bound === "1") return;
-    btn.dataset.bound = "1";
+  if (PERMS.aceptar) {
+    document.querySelectorAll(".sol-btn-aceptar").forEach((btn) => {
+      if (btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
 
-    btn.addEventListener("click", async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const idSolicitud = btn.dataset.id;
-      await cambiarEstadoSolicitud(idSolicitud, "aprobada");
+      btn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const idSolicitud = btn.dataset.id;
+        await cambiarEstadoSolicitud(idSolicitud, "aprobada");
+      });
     });
-  });
+  }
 
-  document.querySelectorAll(".sol-btn-rechazar").forEach((btn) => {
-    if (btn.dataset.bound === "1") return;
-    btn.dataset.bound = "1";
+  if (PERMS.rechazar) {
+    document.querySelectorAll(".sol-btn-rechazar").forEach((btn) => {
+      if (btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
 
-    btn.addEventListener("click", async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const idSolicitud = btn.dataset.id;
+      btn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const idSolicitud = btn.dataset.id;
 
-      const motivo = await pedirMotivoRechazo();
-      if (motivo === null) return;
+        const motivo = await pedirMotivoRechazo();
+        if (motivo === null) return;
 
-      await cambiarEstadoSolicitud(idSolicitud, "rechazada", motivo);
+        await cambiarEstadoSolicitud(idSolicitud, "rechazada", motivo);
+      });
     });
-  });
+  }
 
-  document.querySelectorAll(".sol-btn-entregar").forEach((btn) => {
-    if (btn.dataset.bound === "1") return;
-    btn.dataset.bound = "1";
+  if (PERMS.entregar) {
+    document.querySelectorAll(".sol-btn-entregar").forEach((btn) => {
+      if (btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
 
-    btn.addEventListener("click", async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const idSolicitud = btn.dataset.id;
-      await marcarEntregada(idSolicitud);
+      btn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const idSolicitud = btn.dataset.id;
+        await marcarEntregada(idSolicitud);
+      });
     });
-  });
+  }
 }
 
 async function cambiarEstadoSolicitud(idSolicitud, nuevoEstado, motivo = null) {
@@ -1464,6 +1499,12 @@ document.addEventListener("DOMContentLoaded", () => {
   safeLucideCreateIcons();
   console.log("[SOLICITUDES] API =", API);
   app.inicializar();
+
+  // ✅ Si no tiene permiso para crear, ocultamos el botón
+  if (selectores.btnNueva && !PERMS.crear) {
+    selectores.btnNueva.style.display = "none";
+  }
+
 });
 
 window.paginacion = paginacion;

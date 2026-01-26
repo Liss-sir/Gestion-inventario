@@ -516,6 +516,40 @@ select.no-arrow { background-image: none; padding-right: 0.75rem; }
   color: #475569 !important;
 }
 
+/* =========================================
+   BADGES — ROL FUNCIONAL (MISMO LOOK QUE ROL)
+   ========================================= */
+
+.badge-rolfunc-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0.125rem 0.75rem; /* pill */
+  font-size: 0.75rem;        /* text-xs */
+  font-weight: 500;          /* font-medium */
+  white-space: nowrap;
+}
+
+/* Encargado Inventario — mismo color que tu verde oscuro (chart-2) */
+.badge-rolfunc-inventario {
+  background-color: color-mix(in srgb, var(--chart-2) 29%, transparent);
+  color: var(--chart-2);
+}
+
+/* Encargado Bodega — mismo color que tu verde principal (chart-1) */
+.badge-rolfunc-bodega {
+  background-color: color-mix(in srgb, var(--chart-1) 29%, transparent);
+  color: var(--chart-1);
+}
+
+/* Sin rol asignado — neutro elegante */
+.badge-rolfunc-default {
+  background-color: color-mix(in srgb, #64748b 18%, transparent);
+  color: #64748b;
+}
+
+
 
 
 /* Animación moderna estilo shadcn/iOS */

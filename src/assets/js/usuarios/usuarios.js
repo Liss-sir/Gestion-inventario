@@ -49,6 +49,18 @@ if (!window.__usuariosJSLoaded) {
     };
 
     // =========================
+    // ✅ BADGE STYLES: ROL FUNCIONAL
+    // =========================
+    const rolFuncionalBadgeStyles = {
+      "Encargado Inventario": "badge-rolfunc-inventario",
+      "Encargado Bodega": "badge-rolfunc-bodega",
+      "Sin rol asignado": "badge-rolfunc-default",
+    };
+
+
+
+
+    // =========================
     // VALID VALUES BASED ON DATABASE RULES
     // =========================
     const VALID_TIPOS_DOCUMENTO = ["CC", "TI", "CE"];
@@ -227,6 +239,7 @@ if (!window.__usuariosJSLoaded) {
     const inputCorreo = document.getElementById("correo");
     const inputPassword = document.getElementById("password");
     const inputDireccion = document.getElementById("direccion");
+    
 
     // Training program select and wrapper container
     const inputPrograma = document.getElementById("id_programa");
@@ -235,6 +248,24 @@ if (!window.__usuariosJSLoaded) {
     const modalVerUsuario = document.getElementById("modalVerUsuario");
     const btnCerrarModalVerUsuario = document.getElementById("btnCerrarModalVerUsuario");
     const detalleUsuarioContent = document.getElementById("detalleUsuarioContent");
+
+    // =========================
+// MODAL ASIGNAR ROL FUNCIONAL (roles_funcionales)
+// =========================
+const modalAsignarRol = document.getElementById("modalAsignarRol");
+const btnCerrarModalAsignarRol = document.getElementById("btnCerrarModalAsignarRol");
+const btnCancelarModalAsignarRol = document.getElementById("btnCancelarModalAsignarRol");
+const btnGuardarAsignarRol = document.getElementById("btnGuardarAsignarRol");
+
+const hiddenAsignarRolUserId = document.getElementById("hiddenAsignarRolUserId");
+const asignarRolNombreUsuario = document.getElementById("asignarRolNombreUsuario");
+const selectAsignarRol = document.getElementById("selectAsignarRol");
+const asignarRolCargoUsuario = document.getElementById("asignarRolCargoUsuario");
+
+// Dataset roles funcionales en memoria
+let rolesFuncionales = [];
+let rolesFuncionalesMap = {};
+
 
     // =========================
     // SAFE DOM EVENT BINDING
@@ -344,6 +375,68 @@ if (!window.__usuariosJSLoaded) {
         .join("")
         .toUpperCase();
     }
+
+    // =========================
+// ✅ ROLE LABEL PRETTIFIER (roles_funcionales)
+// =========================
+function formatRolFuncionalLabel(rawName) {
+  return String(rawName || "")
+    .trim()
+    .replace(/[_-]+/g, " ") // quita "_" y "-" si existieran
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+// =========================
+// ✅ GET ROLE FUNCIONAL FROM USER (safe)
+// =========================
+function getRolFuncionalFromUser(user) {
+  if (!user) return "";
+
+  // ✅ Prueba campos típicos (según como venga del backend)
+  const raw =
+    user.rol_funcional ||
+    user.nombre_rol_funcional ||
+    user.rol_funcional_nombre ||
+    user.rol_asignado ||
+    user.rol_asignado_nombre ||
+    "";
+
+  return raw ? formatRolFuncionalLabel(raw) : "";
+}
+
+// =========================
+// ✅ BADGE HTML: ROL FUNCIONAL (MISMO LOOK QUE ROL)
+// =========================
+function renderRolFuncionalBadgeHTML(user) {
+  const rolFuncional = getRolFuncionalFromUser(user);
+
+  // ✅ Siempre mostramos algo
+  const label = rolFuncional ? rolFuncional : "Sin rol asignado";
+
+  // ✅ Estilos según el rol funcional
+  let badgeClass = "badge-rolfunc-default";
+
+  if (label.toLowerCase().includes("inventario")) {
+    badgeClass = "badge-rolfunc-inventario";
+  } else if (label.toLowerCase().includes("bodega")) {
+    badgeClass = "badge-rolfunc-bodega";
+  }
+
+  // ✅ MISMO LOOK que Rol (pill)
+  return `
+    <span class="badge-rolfunc-base ${badgeClass}">
+      ${label}
+    </span>
+  `;
+}
+
+
+
+
+
 
     // =========================
     // PROFILE PHOTO HELPERS (NON-INTRUSIVE)
@@ -578,15 +671,19 @@ if (!window.__usuariosJSLoaded) {
      * - { success: true, data: [...] }
      */
     function normalizeListResponse(parsed) {
-      if (!parsed) return [];
-      if (Array.isArray(parsed)) return parsed;
-      if (typeof parsed === "object") {
-        if (Array.isArray(parsed.data)) return parsed.data;
-        if (Array.isArray(parsed.usuarios)) return parsed.usuarios;
-        if (Array.isArray(parsed.programas)) return parsed.programas;
-      }
-      return [];
-    }
+  if (!parsed) return [];
+  if (Array.isArray(parsed)) return parsed;
+  if (typeof parsed === "object") {
+    if (Array.isArray(parsed.data)) return parsed.data;
+    if (Array.isArray(parsed.usuarios)) return parsed.usuarios;
+    if (Array.isArray(parsed.programas)) return parsed.programas;
+
+    // ✅ FIX: roles funcionales
+    if (Array.isArray(parsed.roles)) return parsed.roles;
+  }
+  return [];
+}
+
 
     /**
      * ✅ ADDED (NO-DELETE): Fetch helper that tolerates extra output
@@ -749,6 +846,198 @@ if (!window.__usuariosJSLoaded) {
     toastError("Ocurrió un error al cargar los programas de formación.");
   }
 }
+
+// =========================
+// ROLES FUNCIONALES (DB: roles_funcionales)
+// =========================
+
+async function cargarRolesFuncionales() {
+  const posiblesAcciones = ["listar_roles_funcionales", "listarRolesFuncionales", "roles_funcionales"];
+
+  try {
+    rolesFuncionales = [];
+    rolesFuncionalesMap = {};
+
+    // Placeholder mientras carga
+    if (selectAsignarRol) {
+      selectAsignarRol.disabled = true;
+      selectAsignarRol.innerHTML = `<option value="">Cargando roles...</option>`;
+    }
+
+    let lista = [];
+
+    for (const accion of posiblesAcciones) {
+      const url = `${API_URL}?accion=${accion}&t=${Date.now()}`;
+      const { parsed, text } = await fetchJSONSafe(url, { method: "GET" });
+
+      console.log(`Respuesta listar roles_funcionales (accion=${accion}) cruda:`, text);
+
+      if (!parsed) continue;
+      if (typeof parsed === "object" && !Array.isArray(parsed) && parsed.error) continue;
+
+      // acepta [...] o {data:[...]}
+      const arr = normalizeListResponse(parsed);
+      if (Array.isArray(arr)) {
+        lista = arr;
+        break;
+      }
+    }
+
+    // Normalización robusta
+    rolesFuncionales = (lista || [])
+      .map((r) => {
+        const id = r.id_rol ?? r.id ?? null;
+        const nombre = r.nombre_rol ?? r.nombre ?? "";
+        return {
+          id_rol: id !== null ? String(id) : null,
+          nombre_rol: String(nombre || "").trim(),
+        };
+      })
+      .filter((r) => r.id_rol && r.nombre_rol);
+
+    rolesFuncionales.forEach((r) => {
+      rolesFuncionalesMap[String(r.id_rol)] = r.nombre_rol;
+    });
+
+    renderOpcionesRolesFuncionales();
+  } catch (e) {
+    console.error("Error cargando roles funcionales:", e);
+
+    if (selectAsignarRol) {
+      selectAsignarRol.disabled = true;
+      selectAsignarRol.innerHTML = `<option value="">No se pudieron cargar roles</option>`;
+    }
+
+    toastError("Ocurrió un error al cargar los roles funcionales.");
+  }
+}
+
+function renderOpcionesRolesFuncionales() {
+  if (!selectAsignarRol) return;
+
+  if (!Array.isArray(rolesFuncionales) || rolesFuncionales.length === 0) {
+    selectAsignarRol.disabled = true;
+    selectAsignarRol.innerHTML = `<option value="">No hay roles disponibles</option>`;
+    return;
+  }
+
+  selectAsignarRol.innerHTML = `<option value="">Seleccione un rol</option>`;
+
+  const frag = document.createDocumentFragment();
+  rolesFuncionales.forEach((r) => {
+    const opt = document.createElement("option");
+    opt.value = String(r.id_rol);
+    opt.textContent = formatRolFuncionalLabel(r.nombre_rol);
+    frag.appendChild(opt);
+  });
+
+  selectAsignarRol.appendChild(frag);
+  selectAsignarRol.disabled = false;
+  selectAsignarRol.removeAttribute("disabled");
+}
+
+function openModalAsignarRol(user) {
+  if (!modalAsignarRol || !hiddenAsignarRolUserId || !asignarRolNombreUsuario || !selectAsignarRol) return;
+
+  // Mostrar modal usando tu patrón
+  modalAsignarRol.classList.add("active");
+  modalAsignarRol.classList.remove("hidden");
+
+  hiddenAsignarRolUserId.value = String(user.id);
+  asignarRolNombreUsuario.textContent = user.nombre_completo || "--";
+
+  if (asignarRolCargoUsuario) {
+  asignarRolCargoUsuario.textContent = roleLabels[user.cargo] || user.cargo || "--";
+}
+
+
+  // Cargar roles si aún no existen
+  if (!Array.isArray(rolesFuncionales) || rolesFuncionales.length === 0) {
+    cargarRolesFuncionales();
+  } else {
+    renderOpcionesRolesFuncionales();
+  }
+
+  // Reset selection
+  selectAsignarRol.value = "";
+
+  // ✅ Cargar rol actual del usuario (si tiene uno)
+setTimeout(async () => {
+  const rolActual = await obtenerRolFuncionalUsuario(user.id);
+  if (rolActual?.id_rol) {
+    selectAsignarRol.value = String(rolActual.id_rol);
+  }
+}, 50);
+
+}
+
+function closeModalAsignarRol() {
+  if (!modalAsignarRol) return;
+  modalAsignarRol.classList.remove("active");
+  modalAsignarRol.classList.add("hidden");
+
+  if (hiddenAsignarRolUserId) hiddenAsignarRolUserId.value = "";
+  if (asignarRolNombreUsuario) asignarRolNombreUsuario.textContent = "--";
+  if (selectAsignarRol) selectAsignarRol.value = "";
+}
+
+async function asignarRolFuncional() {
+  if (!hiddenAsignarRolUserId || !selectAsignarRol) return;
+
+  const id_usuario = String(hiddenAsignarRolUserId.value || "").trim();
+  const id_rol = String(selectAsignarRol.value || "").trim();
+
+  if (!id_usuario) {
+    toastError("No se detectó el usuario para asignar rol.");
+    return;
+  }
+
+  if (!id_rol) {
+    toastError("Debes seleccionar un rol funcional.");
+    return;
+  }
+
+  try {
+    const payload = { id_usuario, id_rol };
+
+    // ✅ Se envía al backend
+    const data = await callApi(`${API_URL}?accion=asignar_rol_funcional`, payload);
+
+    console.log("Respuesta asignar_rol_funcional:", data);
+
+    if (data?.success === false || data?.error) {
+  toastError(data?.error || "No se pudo asignar el rol funcional.");
+  return;
+}
+
+
+    toastSuccess(data?.mensaje || "Rol funcional asignado correctamente");
+
+    closeModalAsignarRol();
+
+    // Recargar tabla (por si quieres reflejar cambios)
+    await cargarUsuarios();
+  } catch (e) {
+    console.error("Error asignando rol funcional:", e);
+    toastError("Error de red/servidor al asignar el rol funcional.");
+  }
+}
+
+async function obtenerRolFuncionalUsuario(id_usuario) {
+  try {
+    const url = `${API_URL}?accion=obtener_rol_funcional_usuario&id_usuario=${id_usuario}&t=${Date.now()}`;
+    const { parsed } = await fetchJSONSafe(url, { method: "GET" });
+
+    if (!parsed) return null;
+    if (parsed.success === false) return null;
+
+    return parsed.rol || null; // {id_rol, nombre_rol}
+  } catch (e) {
+    return null;
+  }
+}
+
+
 
 
     // =========================
@@ -953,6 +1242,7 @@ if (!window.__usuariosJSLoaded) {
           : null;
 
       detalleUsuarioContent.innerHTML = `
+      
         <div class="flex items-center gap-4">
           ${renderAvatarHTML(user, "h-16 w-16", "text-xl")}
           <div>
@@ -965,6 +1255,9 @@ if (!window.__usuariosJSLoaded) {
               }">
                 ${roleLabels[user.cargo] || user.cargo}
               </span>
+
+                <!-- ✅ Rol funcional -->
+  ${renderRolFuncionalBadgeHTML(user)}
 
               <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${estadoBadgeClass}">
                 ${user.estado ? "Activo" : "Inactivo"}
@@ -998,6 +1291,8 @@ if (!window.__usuariosJSLoaded) {
             <span class="text-muted-foreground">Registrado:</span>
             <span class="col-span-2">${user.fecha_creacion || ""}</span>
           </div>
+
+          
 
           ${
             programaNombre
@@ -1128,6 +1423,20 @@ if (!window.__usuariosJSLoaded) {
 
               // Optional profile photo from backend
               foto_perfil: u.foto_perfil ?? null,
+
+              rol_funcional:
+                u.rol_funcional ??
+                u.nombre_rol_funcional ??
+                u.rol_funcional_nombre ??
+                u.rol_asignado ??
+                u.rol_asignado_nombre ??
+                "",
+
+              id_rol_funcional:
+                u.id_rol_funcional ??
+                u.id_rol ??
+                u.rol_id ??
+                null,
             };
           })
           .filter((u) => u.id !== null);
@@ -1457,119 +1766,152 @@ if (!window.__usuariosJSLoaded) {
         tr.className = "hover:bg-muted/40";
 
         const estadoBadgeClass = user.estado ? "badge-estado-activo" : "badge-estado-inactivo";
+tr.innerHTML = `
+  <td class="px-4 py-3 align-middle">
+    <div class="flex items-center gap-3">
+      ${renderAvatarHTML(user, "h-9 w-9", "text-sm")}
+      <div>
+        <p class="font-medium text-sm">${user.nombre_completo}</p>
+        <p class="text-xs text-muted-foreground">${user.correo}</p>
+      </div>
+    </div>
+  </td>
 
-        tr.innerHTML = `
-          <td class="px-4 py-3 align-middle">
-            <div class="flex items-center gap-3">
-              ${renderAvatarHTML(user, "h-9 w-9", "text-sm")}
-              <div>
-                <p class="font-medium text-sm">${user.nombre_completo}</p>
-                <p class="text-xs text-muted-foreground">${user.correo}</p>
-              </div>
-            </div>
-          </td>
-          <td class="px-4 py-3 align-middle">
-            <span class="text-sm">${user.tipo_documento} ${user.numero_documento}</span>
-          </td>
-          <td class="px-4 py-3 align-middle">
-            <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-              roleBadgeStyles[user.cargo] || "badge-role-default"
-            }">
-              ${roleLabels[user.cargo] || user.cargo}
-            </span>
-          </td>
-          <td class="px-4 py-3 align-middle">
-            <span class="text-sm">${user.telefono}</span>
-          </td>
-          <td class="px-4 py-3 align-middle">
-            <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${estadoBadgeClass}">
-              ${user.estado ? "Activo" : "Inactivo"}
-            </span>
-          </td>
-          <td class="px-4 py-3 align-middle text-right">
-            <div class="relative inline-block text-left">
-              <button
-                type="button"
-                class="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted text-slate-800"
-                data-menu-trigger="${user.id}"
-              >
-                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
-                     viewBox="0 0 24 24">
-                  <circle cx="5" cy="12" r="1.5"></circle>
-                  <circle cx="12" cy="12" r="1.5"></circle>
-                  <circle cx="19" cy="12" r="1.5"></circle>
+  <td class="px-4 py-3 align-middle">
+    <span class="text-sm">${user.tipo_documento} ${user.numero_documento}</span>
+  </td>
+
+  <!-- ✅ COLUMNA ROL (CARGO) -->
+  <td class="px-4 py-3 align-middle">
+    <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+      roleBadgeStyles[user.cargo] || "badge-role-default"
+    }">
+      ${roleLabels[user.cargo] || user.cargo}
+    </span>
+  </td>
+
+  <!-- ✅ NUEVA COLUMNA: ROL FUNCIONAL -->
+  <td class="px-4 py-3 align-middle">
+    ${renderRolFuncionalBadgeHTML(user)}
+  </td>
+
+  <td class="px-4 py-3 align-middle">
+    <span class="text-sm">${user.telefono}</span>
+  </td>
+
+  <td class="px-4 py-3 align-middle">
+    <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${estadoBadgeClass}">
+      ${user.estado ? "Activo" : "Inactivo"}
+    </span>
+  </td>
+
+  <td class="px-4 py-3 align-middle text-right">
+    <div class="relative inline-block text-left">
+      <button
+        type="button"
+        class="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted text-slate-800"
+        data-menu-trigger="${user.id}"
+      >
+        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+             viewBox="0 0 24 24">
+          <circle cx="5" cy="12" r="1.5"></circle>
+          <circle cx="12" cy="12" r="1.5"></circle>
+          <circle cx="19" cy="12" r="1.5"></circle>
+        </svg>
+      </button>
+
+      <div
+        class="dropdown-menu hidden absolute right-0 mt-2 w-48 rounded-xl border border-border bg-popover shadow-md py-1"
+        data-menu="${user.id}"
+      >
+        <button
+          type="button"
+          class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
+          data-action="ver"
+          data-id="${user.id}"
+        >
+          <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M1 12S4.5 5 12 5s11 7 11 7-3.5 7-11 7S1 12 1 12z"/>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          Ver detalles
+        </button>
+
+        <button
+          type="button"
+          class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
+          data-action="editar"
+          data-id="${user.id}"
+        >
+          <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M12 20h9"/>
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M16.5 3.5a2.121 2.121 0 0 1 3 3L9 17l-4 1 1-4 10.5-10.5z"/>
+          </svg>
+          Editar
+        </button>
+
+        <button
+          type="button"
+          class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
+          data-action="asignar_rol"
+          data-id="${user.id}"
+        >
+          <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+              viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M20 21v-1a4 4 0 0 0-4-4h-1" />
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M4 21v-1a4 4 0 0 1 4-4h4" />
+          </svg>
+          Asignar rol
+        </button>
+
+        <hr class="border-border my-1">
+
+        <button
+          type="button"
+          class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
+          data-action="toggle"
+          data-id="${user.id}"
+        >
+          ${
+            user.estado
+              ? `
+                <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                  <circle cx="9" cy="7" r="3"></circle>
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M4 21v-1a4 4 0 0 1 4-4h2"/>
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M17 17l4 4m0-4l-4 4"/>
                 </svg>
-              </button>
-              <div
-                class="dropdown-menu hidden absolute right-0 mt-2 w-48 rounded-xl border border-border bg-popover shadow-md py-1"
-                data-menu="${user.id}"
-              >
-                <button
-                  type="button"
-                  class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
-                  data-action="ver"
-                  data-id="${user.id}"
-                >
-                  <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                       viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                          d="M1 12S4.5 5 12 5s11 7 11 7-3.5 7-11 7S1 12 1 12z"/>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
-                  Ver detalles
-                </button>
-                <button
-                  type="button"
-                  class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
-                  data-action="editar"
-                  data-id="${user.id}"
-                >
-                  <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                       viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                          d="M12 20h9"/>
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                          d="M16.5 3.5a2.121 2.121 0 0 1 3 3L9 17l-4 1 1-4 10.5-10.5z"/>
-                  </svg>
-                  Editar
-                </button>
-                <hr class="border-border my-1">
-                <button
-                  type="button"
-                  class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
-                  data-action="toggle"
-                  data-id="${user.id}"
-                >
-                  ${
-                    user.estado
-                      ? `
-                        <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                          <circle cx="9" cy="7" r="3"></circle>
-                          <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M4 21v-1a4 4 0 0 1 4-4h2"/>
-                          <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M17 17l4 4m0-4l-4 4"/>
-                        </svg>
-                        Desactivar
-                      `
-                      : `
-                        <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                          <circle cx="9" cy="7" r="3"></circle>
-                          <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M4 21v-1a4 4 0 0 1 4-4h2"/>
-                          <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M16 19l2 2 4-4"/>
-                        </svg>
-                        Activar
-                      `
-                  }
-                </button>
-              </div>
-            </div>
-          </td>
-        `;
+                Desactivar
+              `
+              : `
+                <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                  <circle cx="9" cy="7" r="3"></circle>
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M4 21v-1a4 4 0 0 1 4-4h2"/>
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M16 19l2 2 4-4"/>
+                </svg>
+                Activar
+              `
+          }
+        </button>
+      </div>
+    </div>
+  </td>
+`;
+
 
         tbodyUsuarios.appendChild(tr);
       });
@@ -1592,6 +1934,8 @@ if (!window.__usuariosJSLoaded) {
                 <p class="text-[11px] sm:text-xs text-muted-foreground">${user.tipo_documento} ${user.numero_documento}</p>
               </div>
             </div>
+
+            
 
             <div class="relative inline-block text-left">
               <button
@@ -1639,6 +1983,24 @@ if (!window.__usuariosJSLoaded) {
                   </svg>
                   Editar
                 </button>
+                <button
+                    type="button"
+                    class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
+                    data-action="asignar_rol"
+                    data-id="${user.id}"
+                  >
+                    <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                      <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                      <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M20 21v-1a4 4 0 0 0-4-4h-1" />
+                      <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M4 21v-1a4 4 0 0 1 4-4h4" />
+                    </svg>
+                    Asignar rol
+                  </button>
+
                 <hr class="border-border my-1">
                 <button
                   type="button"
@@ -1710,6 +2072,8 @@ if (!window.__usuariosJSLoaded) {
             </div>
           </div>
 
+          
+
           <hr class="border-border my-1" />
 
           <div class="flex justify-end">
@@ -1756,92 +2120,177 @@ if (!window.__usuariosJSLoaded) {
      * Uses event delegation to keep a single listener bound for the entire module lifecycle.
      */
     function attachMenuEvents() {
-      if (_menuEventsAttached) return;
-      _menuEventsAttached = true;
+  if (_menuEventsAttached) return;
+  _menuEventsAttached = true;
 
-      const closeAllMenus = () => {
-        document.querySelectorAll("[data-menu]").forEach((el) => {
-          el.classList.add("hidden");
-          el.classList.remove("show");
-        });
-      };
+  // =========================
+  // ✅ PORTAL HELPERS (NO CLIP BY OVERFLOW)
+  // =========================
+  function portalizeMenu(menu, trigger) {
+    if (!menu || !trigger) return;
 
-      document.addEventListener("click", (e) => {
-        const trigger = e.target.closest("[data-menu-trigger]");
-        const actionBtn = e.target.closest("[data-menu] [data-action]");
-        const anyMenu = e.target.closest("[data-menu]");
-
-        // 1) Action item click inside a menu
-        if (actionBtn) {
-          e.stopPropagation();
-
-          const action = actionBtn.getAttribute("data-action");
-          const id = actionBtn.getAttribute("data-id");
-          const user = users.find((u) => String(u.id) === String(id));
-          if (!user) {
-            closeAllMenus();
-            return;
-          }
-
-          if (action === "ver") {
-            openModalVerUsuario(user);
-          } else if (action === "editar") {
-            openModalUsuario(user);
-          } else if (action === "toggle") {
-            toggleStatus(id);
-          }
-
-          // Close the menu after executing the action
-          const menu = actionBtn.closest("[data-menu]");
-          if (menu) {
-            menu.classList.add("hidden");
-            menu.classList.remove("show");
-          }
-
-          return;
-        }
-
-        // 2) Trigger click (three-dot button)
-        if (trigger) {
-          e.stopPropagation();
-
-          const wrapper =
-            trigger.closest(".relative") ||
-            trigger.closest(".inline-block") ||
-            trigger.closest("td") ||
-            trigger.closest("div");
-
-          if (!wrapper) return;
-
-          const menu = wrapper.querySelector("[data-menu]");
-          if (!menu) return;
-
-          const isHidden = menu.classList.contains("hidden");
-
-          // Close other menus first
-          closeAllMenus();
-
-          if (isHidden) {
-            menu.classList.remove("hidden");
-            requestAnimationFrame(() => {
-              menu.classList.add("show");
-            });
-          } else {
-            menu.classList.remove("show");
-            setTimeout(() => {
-              menu.classList.add("hidden");
-            }, 150);
-          }
-
-          return;
-        }
-
-        // 3) Click outside triggers/menus closes everything
-        if (!anyMenu) {
-          closeAllMenus();
-        }
-      });
+    // Si ya está portaleado, solo reposiciona
+    if (menu.dataset.portaled === "1") {
+      positionMenuFixed(menu, trigger);
+      return;
     }
+
+    // Crear placeholder donde estaba el menú
+    const placeholder = document.createElement("span");
+    placeholder.style.display = "none";
+    placeholder.dataset.menuPlaceholder = menu.getAttribute("data-menu") || "";
+
+    // Guardar referencia del placeholder
+    menu._placeholderEl = placeholder;
+
+    // Insertar placeholder antes del menú
+    menu.parentNode.insertBefore(placeholder, menu);
+
+    // Mover el menú al body (ESCAPA overflow-hidden)
+    document.body.appendChild(menu);
+
+    // Marcar como portaleado
+    menu.dataset.portaled = "1";
+
+    // Forzar estilos flotantes
+    menu.style.position = "fixed";
+    menu.style.zIndex = "99999";
+    menu.style.marginTop = "0";
+
+    // Posicionarlo según el botón
+    positionMenuFixed(menu, trigger);
+  }
+
+  function restoreMenu(menu) {
+    if (!menu) return;
+
+    // Si no está portaleado, nada
+    if (menu.dataset.portaled !== "1") return;
+
+    const placeholder = menu._placeholderEl;
+    if (placeholder && placeholder.parentNode) {
+      placeholder.parentNode.insertBefore(menu, placeholder);
+      placeholder.remove();
+    }
+
+    menu.dataset.portaled = "0";
+    menu.style.position = "";
+    menu.style.top = "";
+    menu.style.left = "";
+    menu.style.zIndex = "";
+    menu.style.marginTop = "";
+  }
+
+  function positionMenuFixed(menu, trigger) {
+    if (!menu || !trigger) return;
+
+    // Necesitamos que esté visible para medir ancho/alto
+    menu.classList.remove("hidden");
+
+    const rect = trigger.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+
+    // Preferimos abrir hacia abajo
+    let top = rect.bottom + 8;
+    let left = rect.right - menuRect.width;
+
+    // ✅ Ajuste si se sale por la derecha
+    const maxLeft = window.innerWidth - menuRect.width - 12;
+    if (left > maxLeft) left = maxLeft;
+    if (left < 12) left = 12;
+
+    // ✅ Ajuste si se sale por abajo (abre hacia arriba)
+    const maxTop = window.innerHeight - menuRect.height - 12;
+    if (top > maxTop) {
+      top = rect.top - menuRect.height - 8;
+    }
+    if (top < 12) top = 12;
+
+    menu.style.top = `${top}px`;
+    menu.style.left = `${left}px`;
+  }
+
+  const closeAllMenus = () => {
+    document.querySelectorAll("[data-menu]").forEach((el) => {
+      el.classList.add("hidden");
+      el.classList.remove("show");
+
+      // ✅ devolver a su lugar si estaba portaleado
+      restoreMenu(el);
+    });
+  };
+
+  document.addEventListener("click", (e) => {
+    const trigger = e.target.closest("[data-menu-trigger]");
+    const actionBtn = e.target.closest("[data-menu] [data-action]");
+    const anyMenu = e.target.closest("[data-menu]");
+
+    // 1) Click en opción del menú
+    if (actionBtn) {
+      e.stopPropagation();
+
+      const action = actionBtn.getAttribute("data-action");
+      const id = actionBtn.getAttribute("data-id");
+      const user = users.find((u) => String(u.id) === String(id));
+      if (!user) {
+        closeAllMenus();
+        return;
+      }
+
+      if (action === "ver") openModalVerUsuario(user);
+      else if (action === "editar") openModalUsuario(user);
+      else if (action === "toggle") toggleStatus(id);
+      else if (action === "asignar_rol") openModalAsignarRol(user);
+
+      closeAllMenus();
+      return;
+    }
+
+    // 2) Click en los 3 punticos
+    if (trigger) {
+      e.stopPropagation();
+
+      const wrapper =
+        trigger.closest(".relative") ||
+        trigger.closest(".inline-block") ||
+        trigger.closest("td") ||
+        trigger.closest("div");
+
+      if (!wrapper) return;
+
+      const menu = wrapper.querySelector("[data-menu]");
+      if (!menu) return;
+
+      const isHidden = menu.classList.contains("hidden");
+
+      // Cerrar otros menús
+      closeAllMenus();
+
+      if (isHidden) {
+        // ✅ PORTALIZAR para evitar recorte por overflow
+        portalizeMenu(menu, trigger);
+
+        requestAnimationFrame(() => {
+          menu.classList.add("show");
+        });
+      } else {
+        closeAllMenus();
+      }
+
+      return;
+    }
+
+    // 3) Click fuera cierra todo
+    if (!anyMenu) {
+      closeAllMenus();
+    }
+  });
+
+  // ✅ Recalcular posición si haces scroll o resize
+  window.addEventListener("scroll", closeAllMenus, true);
+  window.addEventListener("resize", closeAllMenus);
+}
+
 
     // =========================
     // GLOBAL EVENT LISTENERS
@@ -1874,6 +2323,24 @@ if (!window.__usuariosJSLoaded) {
     // View switch buttons
     safeOn(btnVistaTabla, "click", setVistaTabla);
     safeOn(btnVistaTarjetas, "click", setVistaTarjetas);
+
+    // =========================
+// MODAL ASIGNAR ROL - EVENTS
+// =========================
+safeOn(btnCerrarModalAsignarRol, "click", closeModalAsignarRol);
+safeOn(btnCancelarModalAsignarRol, "click", closeModalAsignarRol);
+
+safeOn(btnGuardarAsignarRol, "click", async () => {
+  await asignarRolFuncional();
+});
+
+// Cerrar modal si das click fuera del cuadro (overlay)
+if (modalAsignarRol) {
+  modalAsignarRol.addEventListener("click", (e) => {
+    if (e.target === modalAsignarRol) closeModalAsignarRol();
+  });
+}
+
 
     // ================================
     // FORM VALIDATION AND SUBMISSION
@@ -2357,6 +2824,10 @@ if (!window.__usuariosJSLoaded) {
         if (modalVerUsuario && modalVerUsuario.classList.contains("active")) {
           closeModalVerUsuario();
         }
+        if (modalAsignarRol && modalAsignarRol.classList.contains("active")) {
+  closeModalAsignarRol();
+}
+
       }
     });
 
@@ -2394,6 +2865,8 @@ if (!window.__usuariosJSLoaded) {
     cargarUsuarios();
     cargarProgramas();
     setVistaTabla();
+    cargarRolesFuncionales();
+
 
     // ✅ ADDED: start auto refresh (without affecting your base flow)
     startAutoRefresh();
