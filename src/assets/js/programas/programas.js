@@ -1,4 +1,4 @@
-// =========================
+﻿// =========================
 // FLOWBITE-STYLE ALERTS (WHITE BACKGROUND, WARNING, NO PROGRESS BAR)
 // =========================
 
@@ -33,7 +33,7 @@ function showFlowbiteAlert(type, message) {
   // Default style: warning
   let borderColor = "border-amber-500";
   let textColor = "text-amber-900";
-  let titleText = "Advertencia";
+  let titleText = "Warning";
 
   // Default icon: warning triangle
   let iconSVG = `
@@ -47,7 +47,7 @@ function showFlowbiteAlert(type, message) {
   if (type === "success") {
     borderColor = "border-emerald-500";
     textColor = "text-emerald-900";
-    titleText = "Éxito";
+    titleText = "Success";
     iconSVG = `
       <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg"
            fill="currentColor" viewBox="0 0 20 20">
@@ -59,7 +59,7 @@ function showFlowbiteAlert(type, message) {
   if (type === "info") {
     borderColor = "border-blue-500";
     textColor = "text-blue-900";
-    titleText = "Información";
+    titleText = "Information";
     iconSVG = `
       <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg"
            fill="currentColor" viewBox="0 0 20 20">
@@ -190,14 +190,12 @@ function applyFilterAndUpdateEmptyStates() {
     emptyState?.classList.add('hidden')
     emptySearch?.classList.add('hidden')
     tableView?.classList.remove('hidden')
-    // Nota: gridView será mostrado/ocultado por toggleView()
+    // Note: gridView will be shown/hidden by toggleView()
     if (!gridView?.classList.contains('hidden')) {
       gridView?.classList.remove('hidden')
     }
   }
 }
-
-// programs.js - Modifica la función toggleView()
 
 // Function to switch between table and grid view
 function toggleView(view) {
@@ -231,7 +229,7 @@ function toggleView(view) {
   checkAndShowEmptyStates(view)
 }
 
-// Nueva función para verificar y mostrar estados vacíos según la vista actual
+// New function to check and show empty states according to current view
 function checkAndShowEmptyStates(currentView) {
   const tableView = document.getElementById("tableView")
   const gridView = document.getElementById("gridView")
@@ -240,46 +238,45 @@ function checkAndShowEmptyStates(currentView) {
   const tableBtn = document.getElementById("viewTableBtn")
   const gridBtn = document.getElementById("viewGridBtn")
   
-  // Contar elementos visibles en AMBAS vistas
+  // Count visible elements in BOTH views
   const visibleRows = document.querySelectorAll('#tableView tbody tr[data-index]:not(.hidden)')
   const visibleCards = document.querySelectorAll('#gridView [data-index]:not(.hidden)')
   const hasVisibleItems = visibleRows.length > 0 || visibleCards.length > 0
   
-  // Verificar si hay programas en total en el sistema
+  // Check if there are any programs in total in the system
   const totalRows = document.querySelectorAll('#tableView tbody tr[data-index]').length
   const totalCards = document.querySelectorAll('#gridView [data-index]').length
   const hasAnyPrograms = totalRows > 0 || totalCards > 0
   
-  // Determinar qué mostrar
+  // Determine what to show
   if (!hasAnyPrograms) {
-    // No hay programas en el sistema - mostrar mensaje vacío
+    // No programs in the system - show empty message
     emptyState?.classList.remove('hidden')
     emptySearch?.classList.add('hidden')
     tableView?.classList.add('hidden')
     gridView?.classList.add('hidden')
   } else if (!hasVisibleItems) {
-    // Hay programas pero NINGUNO coincide con la búsqueda
+    // There are programs but NONE match the search
     emptyState?.classList.add('hidden')
     emptySearch?.classList.remove('hidden')
     tableView?.classList.add('hidden')
     gridView?.classList.add('hidden')
   } else {
-    // ¡¡¡AQUÍ ESTÁ LA SOLUCIÓN!!!
-    // Hay resultados visibles - determinar qué vista mostrar basado en los botones
+    // There are visible results - determine which view to show based on buttons
     emptyState?.classList.add('hidden')
     emptySearch?.classList.add('hidden')
     
-    // Mirar qué botón está activo (tiene clase bg-muted)
+    // Look which button is active (has bg-muted class)
     const isTableBtnActive = tableBtn?.classList.contains('bg-muted')
     const isGridBtnActive = gridBtn?.classList.contains('bg-muted')
     
-    // Por defecto, si ambos o ninguno está activo, mostrar tabla
+    // By default, if both or none is active, show table
     if (isGridBtnActive && !isTableBtnActive) {
-      // Botón grid está activo → mostrar grid
+      // Grid button is active → show grid
       tableView?.classList.add('hidden')
       gridView?.classList.remove('hidden')
     } else {
-      // Botón tabla está activo o estado ambiguo → mostrar tabla
+      // Table button is active or ambiguous state → show table
       tableView?.classList.remove('hidden')
       gridView?.classList.add('hidden')
     }
@@ -326,18 +323,18 @@ function applyFilterAndUpdateEmptyStates() {
     }
   })
   
-  // Determinar qué vista está activa actualmente
+  // Determine which view is currently active
   const tableView = document.getElementById("tableView")
   const currentView = tableView.classList.contains("hidden") ? "grid" : "table"
   
-  // Verificar y mostrar estados vacíos según la vista actual
+  // Check and show empty states according to current view
   checkAndShowEmptyStates(currentView)
 }
 
-// En el evento DOMContentLoaded, añade esta inicialización:
+// In the DOMContentLoaded event, add this initialization:
 document.addEventListener("DOMContentLoaded", () => {
   
-  // Inicializar el estado correcto al cargar la página
+  // Initialize the correct state when loading the page
   const tableView = document.getElementById("tableView")
   const initialView = tableView.classList.contains("hidden") ? "grid" : "table"
   checkAndShowEmptyStates(initialView)
@@ -403,7 +400,7 @@ function closeEditModal() {
   modal.classList.remove("flex")
 }
 
-// ========== FUNCIÓN PARA ASIGNAR COLORES SEGÚN NIVEL ==========
+// ========== FUNCTION TO ASSIGN COLORS ACCORDING TO LEVEL ==========
 function getLevelStyles(nivel) {
     const nivelLower = nivel.toLowerCase();
     
@@ -428,7 +425,7 @@ function getLevelStyles(nivel) {
     }
 }
 
-// Modifica la función openViewModal para usar los estilos según nivel
+// Modify the openViewModal function to use styles according to level
 function openViewModal(index) {
     const modal = document.getElementById("viewProgramModal");
     const row =
@@ -441,7 +438,7 @@ function openViewModal(index) {
         document.getElementById("view_nivel").textContent = row.dataset.nivel;
         document.getElementById("view_duracion").textContent = row.dataset.duracion;
 
-        // Mostrar instructores o mensaje si no hay
+        // Display instructors or message if there are none
         const instructores = row.dataset.instructores;
         const instructorElement = document.getElementById('view_instructor');
         
@@ -467,25 +464,25 @@ function openViewModal(index) {
             viewEstadoEl.className = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-500/20 text-gray-400';
         }
 
-        // ========== APLICAR ESTILOS SEGÚN NIVEL ==========
+        // ========== APPLY STYLES ACCORDING TO LEVEL ==========
         const nivel = row.dataset.nivel;
         const levelStyles = getLevelStyles(nivel);
         
-        // 1. Cambiar fondo del icono circular
+        // 1. Change circular icon background
         const iconContainer = modal.querySelector('.w-12.h-12');
         if (iconContainer) {
-            // Remover clases anteriores de color
+            // Remove previous color classes
             iconContainer.className = iconContainer.className.replace(/bg-\[[^\]]*\]/g, '').replace(/bg-[a-z-]+/g, '');
-            // Agregar nueva clase
+            // Add new class
             iconContainer.classList.add(levelStyles.bgColor);
         }
         
-        // 2. Cambiar color del icono
+        // 2. Change icon color
         const icon = modal.querySelector('.fa-graduation-cap');
         if (icon) {
-            // Remover clases anteriores de color
+            // Remove previous color classes
             icon.className = icon.className.replace(/text-[a-z-]+/g, '');
-            // Agregar nueva clase según nivel
+            // Add new class according to level
             if (nivel.toLowerCase().includes('técnico') || nivel.toLowerCase().includes('tecnico')) {
                 icon.classList.add('text-primary');
             } else {
@@ -493,7 +490,7 @@ function openViewModal(index) {
             }
         }
         
-        // 3. Cambiar estilo del badge de nivel
+        // 3. Change level badge style
         const nivelBadge = document.getElementById('view_nivel');
         if (nivelBadge) {
             nivelBadge.className = levelStyles.badgeClass;
@@ -673,10 +670,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   console.log("[v0] BASE_URL configured as:", BASE_URL)
 
-  // Variable para almacenar datos originales en edición
+  // Variable to store original data when editing
   let originalEditData = null;
 
-  // Evento para capturar datos originales al abrir modal de edición
+  // Event to capture original data when opening edit modal
   document.addEventListener('click', (e) => {
     if (e.target.closest('button[onclick^="openEditModal"]') || 
         e.target.closest('button[onclick^="toggleActionMenu"] + [data-action="editar"]') ||
@@ -697,7 +694,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Create Program Form
   const createForm = document.getElementById("createProgramForm")
   if (createForm) {
-    // Solo permitir números en el campo de duración
+    // Only allow numbers in the duration field
     const duracionInput = document.getElementById("create_duracion");
     if (duracionInput) {
       duracionInput.addEventListener("input", function(e) {
@@ -765,7 +762,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Edit Program Form
   const editForm = document.getElementById("editProgramForm")
   if (editForm) {
-    // Solo permitir números en el campo de duración
+    // Only allow numbers in the duration field
     const editDuracionInput = document.getElementById("edit_duracion");
     if (editDuracionInput) {
       editDuracionInput.addEventListener("input", function(e) {

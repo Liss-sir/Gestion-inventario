@@ -2,7 +2,7 @@
 $host = 'localhost';
 $dbname = 'gestion_inventario';
 $user = 'root';
-$pass = ''; 
+$pass = '123456';
 
 try {
     
