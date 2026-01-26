@@ -257,7 +257,7 @@ function pedirMotivoRechazo() {
           </button>
 
           <button type="button" data-motivo-ok
-            class="px-4 py-2 rounded-xl bg-error text-error-foreground hover:opacity-95">
+            class="px-4 py-2 rounded-xl bg-[#dc2626] text-white hover:bg-[#b91c1c]">
             Rechazar
           </button>
         </div>
@@ -361,6 +361,7 @@ const utilidades = {
       rae: s.codigo_rae ?? s.descripcion_rae ?? s.id_rae ?? "",
       observaciones: s.observaciones ?? "",
       fecha_respuesta: this.formatearFecha(s.fecha_respuesta),
+      materiales: s.materiales ?? [],
     };
   },
 
@@ -418,6 +419,51 @@ function respuestaEsStockFiltrado(arr) {
   return arr.some((m) => m && Object.prototype.hasOwnProperty.call(m, "stock_actual"));
 }
 
+// ============================================================
+// ✅ CACHE + RENDER DE MATERIALES EN CARD (sin tocar backend)
+// ============================================================
+estadoApp.materialesPorSolicitud = {}; // cache por id
+
+function normalizarMaterialesParaCard(materiales) {
+  if (!Array.isArray(materiales)) return [];
+  return materiales.map((m) => ({
+    // El modelo retorna: material, cantidad, unidad_medida
+    nombre: m.material ?? m.nombre_material ?? m.nombre ?? "Material",
+    cantidad: m.cantidad ?? m.cantidad_solicitada ?? 0,
+    unidad: m.unidad_medida ?? m.unidad ?? "",
+  }));
+}
+
+function htmlMaterialesCard(materiales) {
+  const mats = normalizarMaterialesParaCard(materiales);
+
+  if (!mats.length) {
+    return `
+      <div class="mt-3 border-t pt-3 text-sm text-muted-foreground">
+        Sin materiales registrados
+      </div>
+    `;
+  }
+
+  return `
+    <div class="mt-3 border-t pt-3">
+      <div class="text-sm font-medium text-gray-600 mb-2">Materiales solicitados:</div>
+      <ul class="space-y-1 text-sm">
+        ${mats
+          .map(
+            (m) => `
+          <li class="flex justify-between gap-2">
+            <span class="truncate">• ${m.nombre}</span>
+            <span class="font-semibold">${m.cantidad}${m.unidad ? ` ${m.unidad}` : ""}</span>
+          </li>`
+          )
+          .join("")}
+      </ul>
+    </div>
+  `;
+}
+
+
 const api = {
   async listarSolicitudes() {
     try {
@@ -443,6 +489,14 @@ const api = {
       return [];
     }
   },
+
+  async obtenerCompleta(idSolicitud) {
+    const res = await fetch(`${API}?accion=obtenerCompleta&id=${encodeURIComponent(idSolicitud)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status} en obtenerCompleta`);
+    const data = await res.json();
+    return data;
+  },
+
 
   async cargarActividades(fichaId, raeId) {
     if (!selectores.selectActividad) return;
@@ -920,22 +974,21 @@ const render = {
           </div>
           <span class="sol-badge ${st}">${label}</span>
         </div>
-
-        <div class="sol-card-body">
-          <div class="sol-card-row">
-            <i data-lucide="hash" class="sol-icon-muted"></i>
-            <span>Ficha: ${s.ficha}</span>
-          </div>
+  
+        <div class="sol-card-row">
+          <i data-lucide="folder-kanban" class="sol-icon-muted"></i>
+          <span>Ficha: ${s.ficha}</span>
+        </div>
 
           ${s.programa ? `
           <div class="sol-card-row">
-            <i data-lucide="book-open" class="sol-icon-muted"></i>
+            <i data-lucide="graduation-cap" class="sol-icon-muted"></i>
             <span>Programa: ${s.programa}</span>
           </div>` : ""}
 
           ${s.rae ? `
           <div class="sol-card-row">
-            <i data-lucide="target" class="sol-icon-muted"></i>
+            <i data-lucide="book-open-text" class="sol-icon-muted"></i>
             <span>RAE: ${s.rae}</span>
           </div>` : ""}
 
@@ -952,6 +1005,14 @@ const render = {
             <i data-lucide="calendar-check" class="sol-icon-muted"></i>
             <span>Respuesta: ${s.fecha_respuesta}</span>
           </div>` : ""}
+
+          <div class="sol-card-materiales" data-mats-for="${s.id}">
+            <div class="mt-3 border-t pt-3 text-sm text-muted-foreground">
+              <i data-lucide="loader"
+                 class="w-4 h-4 inline-block align-text-bottom animate-spin mr-1"></i>
+              Cargando materiales...
+            </div>
+          </div>
         </div>
 
         ${mostrarAccionesPendiente ? `
@@ -990,6 +1051,31 @@ const render = {
       `;
 
       cont.appendChild(card);
+
+      // ✅ Cargar materiales reales (sin tocar backend)
+      if (!estadoApp.materialesPorSolicitud[s.id]) {
+        api.obtenerCompleta(s.id)
+          .then((full) => {
+            const mats = full?.materiales || [];
+            estadoApp.materialesPorSolicitud[s.id] = mats;
+
+            const box = card.querySelector(`.sol-card-materiales[data-mats-for="${s.id}"]`);
+            if (box) box.innerHTML = htmlMaterialesCard(mats);
+
+            safeLucideCreateIcons();
+          })
+          .catch(() => {
+            const box = card.querySelector(`.sol-card-materiales[data-mats-for="${s.id}"]`);
+            if (box) {
+              box.innerHTML = `
+                <div class="mt-3 border-t pt-3 text-sm text-muted-foreground">
+                  No se pudieron cargar los materiales.
+                </div>
+              `;
+            }
+          });
+      }
+
     });
 
     safeLucideCreateIcons();
