@@ -639,6 +639,10 @@ function renderTable() {
   paginatedData.forEach((material) => {
     const statusText = material.enabled ? "Disponible" : "Agotado"
     const codigoDisplay = material.codigo || (material.clasificacion === "Consumible" ? "N/C" : "-")
+    const fotoUrl = getMaterialImageUrl(material.foto)
+    const avatarHtml = fotoUrl
+      ? `<img src="${fotoUrl}" alt="${material.name}" class="h-full w-full object-cover rounded-lg" />`
+      : '<i data-lucide="box" class="lucide lucide-box h-4 w-4 text-[#007832]"></i>'
 
     const row = document.createElement("tr")            
     row.className = "hover:bg-muted/40"
@@ -648,8 +652,8 @@ function renderTable() {
       <td class="px-4 py-3 align-middle text-sm font-medium">${codigoDisplay}</td>
       <td class="px-4 py-3 align-middle">
         <div class="flex items-center gap-3">
-          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-avatar-secondary-39 text-secondary flex-shrink-0">
-            <i data-lucide="box" class="lucide lucide-box h-4 w-4 text-[#007832]"></i>
+          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-avatar-secondary-39 text-secondary flex-shrink-0 overflow-hidden">
+            ${avatarHtml}
           </div>
           <div>
             <p class="font-medium text-sm">${material.name}</p>
@@ -758,6 +762,10 @@ function renderCards() {
   paginatedData.forEach((material) => {
     const statusText = material.enabled ? "Disponible" : "Agotado"
     const codigoDisplay = material.codigo || (material.clasificacion === "Consumible" ? "N/C" : "Sin código")
+    const fotoUrl = getMaterialImageUrl(material.foto)
+    const avatarHtml = fotoUrl
+      ? `<img src="${fotoUrl}" alt="${material.name}" class="h-full w-full object-cover rounded-lg" />`
+      : icons.package
 
     const card = document.createElement("div")
     card.className = "rounded-2xl border border-border bg-card p-2.5 shadow-sm flex flex-col gap-1.5"
@@ -766,8 +774,8 @@ function renderCards() {
     card.innerHTML = `
       <div class="flex items-start justify-between gap-2">
         <div class="flex items-center gap-2">
-          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-avatar-secondary-39 text-secondary flex-shrink-0">
-            ${icons.package}
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-avatar-secondary-39 text-secondary flex-shrink-0 overflow-hidden">
+            ${avatarHtml}
           </div>
           <div class="space-y-0.5">
             <p class="font-semibold text-xs sm:text-sm leading-snug">${material.name}</p>
