@@ -61,7 +61,7 @@ git clone https://github.com/Jhonatan1217/Gestion-inventario.git
 5. Iniciar el servidor local.
 
 6. Acceder al sistema desde el navegador:
-   http://localhost/senlock-inventario/
+   http://localhost/Gestion-inventario/
 
 ---
 
