@@ -450,7 +450,7 @@ async function toggleEstado(id, estado) {
         if (result.success) {
             // Recargar obras
             await cargarObras();
-            toastSuccess('Estado actualizado exitosamente');
+            toastSuccess('Estado actualizado correctamente');
         } else {
             toastError('Error al actualizar estado');
             const checkbox = document.querySelector(`input[onchange="toggleEstado(${id}, this.checked)"]`);
