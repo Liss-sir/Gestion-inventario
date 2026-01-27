@@ -13,64 +13,94 @@ return [
     // =====================================================
     // ✅ COORDINADOR / SUBCOORDINADOR (ADMIN GENERAL)
     // =====================================================
-    "coordinador" => [
-        // Gestionar usuarios
-        "usuarios.gestionar",
-        "usuarios.registrar",
-        "usuarios.editar",
-        "usuarios.activar_desactivar",
-        "usuarios.listar",
-        "usuarios.asignar_rol",
+   "coordinador" => [
+    // ✅ Dashboard + Notificaciones
+    "dashboard.ver",
+    "notificaciones.ver",
 
-        // Gestionar fichas
-        "fichas.gestionar",
-        "fichas.registrar",
-        "fichas.modificar",
-        "fichas.activar_desactivar",
-        "fichas.consultar",
+    // Gestionar usuarios
+    "usuarios.gestionar",
+    "usuarios.registrar",
+    "usuarios.editar",
+    "usuarios.activar_desactivar",
+    "usuarios.listar",
+    "usuarios.asignar_rol",
 
-        // Gestionar RAEs
-        "raes.gestionar",
-        "raes.crear",
-        "raes.editar",
-        "raes.activar_desactivar",
-        "raes.listar",
-        "raes.consultar",
+    // Gestionar fichas
+    "fichas.gestionar",
+    "fichas.registrar",
+    "fichas.modificar",
+    "fichas.activar_desactivar",
+    "fichas.consultar",
 
-        // ✅ Obras y Actividades (para el módulo de la captura)
-        "obras.gestionar",
-        "obras.crear",
-        "obras.editar",
-        "obras.activar_desactivar",
-        "obras.listar",
-        "obras.consultar",
+    // Gestionar RAEs
+    "raes.gestionar",
+    "raes.crear",
+    "raes.editar",
+    "raes.activar_desactivar",
+    "raes.listar",
+    "raes.consultar",
 
-        // Gestionar programas
-        "programas.gestionar",
-        "programas.crear",
-        "programas.editar",
-        "programas.activar_desactivar",
-        "programas.listar",
+    // Obras
+    "obras.gestionar",
+    "obras.crear",
+    "obras.editar",
+    "obras.activar_desactivar",
+    "obras.listar",
+    "obras.consultar",
 
-        // Movimientos
-        "movimientos.gestionar",
-        "movimientos.entradas",
-        "movimientos.salidas",
-        "movimientos.devoluciones",
+    // Programas
+    "programas.gestionar",
+    "programas.crear",
+    "programas.editar",
+    "programas.activar_desactivar",
+    "programas.listar",
 
-        // Solicitudes
-        "solicitudes.gestionar",
-        "solicitudes.consultar",
-        "solicitudes.aceptar",
-        "solicitudes.rechazar",
+    // ✅ Bodegas
+    "bodegas.gestionar",
+    "bodegas.crear",
+    "bodegas.actualizar",
+    "bodegas.cambiar_estado",
+    "bodegas.listar",
 
-        // Evidencias
-        "evidencias.subir",
-        "evidencias.consultar",
+    // ✅ Materiales
+    "materiales.gestionar",
+    "materiales.crear",
+    "materiales.editar",
+    "materiales.habilitar_deshabilitar",
+    "materiales.asignar_bodegas",
+    "materiales.cambiar_estado",
+    "materiales.consultar",
 
-        // Historial
-        "historial.ver"
-    ],
+    // ✅ Stock
+    "stock.controlar",
+    "stock.definir_minimo",
+    "stock.listar_riesgo",
+
+    // Movimientos
+    "movimientos.gestionar",
+    "movimientos.entradas",
+    "movimientos.salidas",
+    "movimientos.devoluciones",
+
+    // Solicitudes
+    "solicitudes.gestionar",
+    "solicitudes.consultar",
+    "solicitudes.aceptar",
+    "solicitudes.rechazar",
+
+    // ✅ Reportes
+    "reportes.consumo.generar",
+    "reportes.pdf.generar",
+
+    // Evidencias
+    "evidencias.subir",
+    "evidencias.consultar",
+
+    // Historial
+    "historial.ver",
+],
+
 
     "subcoordinador" => [
     // ✅ Dashboard + Notificaciones
