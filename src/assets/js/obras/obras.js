@@ -1,19 +1,4 @@
-// ============================================================
-// OBRAS UI CONTROLLER (obras.js)
-// ✅ COMBINADO COMPLETO (SIN FRAGMENTOS, CON TODAS LAS FUNCIONES)
-//
-// INCLUYE:
-// ✅ Permisos front desde PHP: window.OBRAS_PERMS = { canCrear, canEditar, canCambiarEstado }
-// ✅ UI bloqueada para aprendiz (sin permisos): no crear / no editar / no cambiar estado
-// ✅ Crear obra + flujo de asignación de aprendices:
-//    - Individual: asigna 1 aprendiz automáticamente
-//    - Grupal: abre modal para seleccionar varios aprendices y asignarlos
-// ✅ Flowbite-style alerts
-// ✅ Validaciones + hasChanges normalizado
-// ✅ Sidebar collapsed detector
-// ============================================================
-
-/* ============================================================
+﻿/* ============================================================
    GUARD GLOBAL (evita doble carga del script)
 ============================================================ */
 if (!window.__obrasJSLoaded) {
@@ -34,16 +19,16 @@ if (!window.__obrasJSLoaded) {
   let fichaSeleccionadaId = null;
   let aprendicesSeleccionados = [];
 
-  // ✅ FIX: variables que tu código usa (para NO crear globals implícitas)
+  // FIX: variables que tu código usa (para NO crear globals implícitas)
   let obraOriginal = null;
   let originalEditData = null;
 
   // ==============================
-  // ✅ PERMISOS FRONT (desde PHP)
+  // PERMISOS FRONT (desde PHP)
   // ==============================
   const OBRAS_PERMS = (function () {
     const p = window.OBRAS_PERMS || {};
-    // ✅ IMPORTANTE: si no viene nada desde PHP, no bloqueamos por defecto
+    // IMPORTANTE: si no viene nada desde PHP, no bloqueamos por defecto
     const hasAny =
       Object.prototype.hasOwnProperty.call(p, "canCrear") ||
       Object.prototype.hasOwnProperty.call(p, "canEditar") ||
@@ -94,10 +79,10 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // ✅ APLICAR PERMISOS A LA UI
+  // APLICAR PERMISOS A LA UI
   // ==============================
   function aplicarPermisosUI() {
-    // ✅ Ocultar botón "Nueva Obra" si no puede crear
+    // Ocultar botón "Nueva Obra" si no puede crear
     if (!OBRAS_PERMS.canCrear) {
       const btnNueva = document.querySelector('button[onclick="openCreateModal()"]');
       if (btnNueva) btnNueva.style.display = "none";
@@ -106,7 +91,7 @@ if (!window.__obrasJSLoaded) {
       if (modalCreate) modalCreate.classList.add("hidden");
     }
 
-    // ✅ Si no puede editar, por seguridad ocultamos modal edit
+    // Si no puede editar, por seguridad ocultamos modal edit
     if (!OBRAS_PERMS.canEditar) {
       const modalEdit = document.getElementById("modalEdit");
       if (modalEdit) modalEdit.classList.add("hidden");
@@ -325,56 +310,71 @@ if (!window.__obrasJSLoaded) {
     }
 
     container.innerHTML = obrasData
-      .map((obra) => {
-        // ✅ SWITCH SOLO SI CAN CHANGE STATE
-        const switchHTML = OBRAS_PERMS.canCambiarEstado
-          ? `
-            <div class="flex items-center gap-2">
-              <label class="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  class="sr-only peer"
-                  ${obra.estado === "Activa" ? "checked" : ""}
-                  onchange="toggleEstado(${obra.id_actividad}, this.checked)"
-                  data-estado-original="${obra.estado === "Activa"}"
-                >
-                <div class="w-11 h-6 bg-[#64748b] rounded-full transition-all peer-checked:bg-[var(--secondary)]"></div>
-                <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-all peer-checked:translate-x-5"></div>
-              </label>
+      .map((obra, index) => {
+        // ESTADO BADGE (SIEMPRE VISIBLE)
+        const estadoBadge = `
+          <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+            obra.estado === "Activa" ? "bg-emerald-100 text-emerald-700" : "bg-gray-200 text-gray-700"
+          }">
+            ${obra.estado === "Activa" ? "Activa" : "Finalizada"}
+          </span>
+        `;
 
-              <p class="flex text-sm font-medium js-name gap-2 items-center">
-                ${obra.estado === "Activa" ? "Activa" : "Finalizada"}
-              </p>
-            </div>
-          `
-          : `
-            <div class="flex items-center gap-2">
-              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                obra.estado === "Activa" ? "bg-emerald-100 text-emerald-700" : "bg-gray-200 text-gray-700"
-              }">
-                ${obra.estado === "Activa" ? "Activa" : "Finalizada"}
-              </span>
-            </div>
-          `;
-
-        // ✅ EDIT BUTTON SOLO SI CAN EDIT
-        const editBtnHTML = OBRAS_PERMS.canEditar
-          ? `
+        // MENÚ DE ACCIONES CON 3 PUNTOS
+        const actionMenu = `
+          <div class="relative">
             <button 
-              onclick="openEditModal(${obra.id_actividad})"
-              class="text-blue-600 hover:text-blue-800 p-2"
-              title="Editar"
+              onclick="toggleActionMenu(${index})"
+              class="text-muted-foreground hover:text-foreground p-2 hover:bg-muted rounded-lg transition-colors"
+              title="Más acciones"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round"
-                class="lucide lucide-square-pen-icon lucide-square-pen">
-                <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="5" r="2"/>
+                <circle cx="12" cy="12" r="2"/>
+                <circle cx="12" cy="19" r="2"/>
               </svg>
             </button>
-          `
-          : "";
+
+            <div id="actionMenu${index}" class="hidden absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg z-50 min-w-[180px]">
+              <button 
+                onclick="openDetailsModal(${obra.id_actividad}); closeAllMenus();"
+                class="w-full text-left px-4 py-2 text-sm text-foreground flex items-center gap-2 rounded-t-lg transition-colors duration-150 cursor-pointer hover:bg-gray-100"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye">
+                  <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                Visualizar
+              </button>
+
+              ${OBRAS_PERMS.canEditar ? `
+                <button 
+                  onclick="openEditModal(${obra.id_actividad}); closeAllMenus();"
+                  class="w-full text-left px-4 py-2 text-sm text-foreground flex items-center gap-2 transition-colors duration-150 cursor-pointer hover:bg-gray-100"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-pen">
+                    <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>
+                  </svg>
+                  Editar
+                </button>
+              ` : ''}
+
+              ${OBRAS_PERMS.canCambiarEstado ? `
+                <button 
+                  onclick="toggleEstado(${obra.id_actividad}, ${obra.estado === 'Activa' ? 'false' : 'true'}); closeAllMenus();"
+                  class="w-full text-left px-4 py-2 text-sm text-foreground flex items-center gap-2 rounded-b-lg transition-colors duration-150 cursor-pointer hover:bg-gray-100 border-t border-border"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-power">
+                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                    <line x1="12" y1="2" x2="12" y2="12"/>
+                  </svg>
+                  ${obra.estado === "Activa" ? "Finalizar" : "Activar"}
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
 
         return `
           <div class="border border-l-4 ${
@@ -382,7 +382,9 @@ if (!window.__obrasJSLoaded) {
           } rounded-lg p-5 mb-4 hover:shadow-md transition-shadow bg-white">
             <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
               <div class="flex-1">
-                <h3 class="text-lg font-semibold text-gray-900 mb-2">${obra.nombre_actividad}</h3>
+                <div class="flex items-start justify-between gap-2 mb-2">
+                  <h3 class="text-lg font-semibold text-gray-900">${obra.nombre_actividad}</h3>
+                </div>
                 <p class="text-sm text-gray-600 mb-4 line-clamp-2">${obra.descripcion || "Sin descripción"}</p>
 
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-3">
@@ -394,7 +396,7 @@ if (!window.__obrasJSLoaded) {
                         class="lucide lucide-folder-kanban h-5 w-5 shrink-0">
                         <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path>
                         <path d="M8 10v4"></path><path d="M12 10v2"></path><path d="M16 10v6"></path>
-                      </svg> Ficha *
+                      </svg> Ficha
                     </p>
                     <p class="text-sm font-medium text-gray-900">${obra.numero_ficha || "N/A"}</p>
                   </div>
@@ -409,7 +411,7 @@ if (!window.__obrasJSLoaded) {
                         <path d="M16 3.128a4 4 0 0 1 0 7.744"/>
                         <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
                         <circle cx="9" cy="7" r="4"/>
-                      </svg> Tipo *
+                      </svg> Tipo
                     </p>
                     <span class="inline-block px-2 py-1 ${
                       obra.tipo_trabajo === "Grupal" ? "bg-[#00304d]" : "bg-secondary"
@@ -425,7 +427,7 @@ if (!window.__obrasJSLoaded) {
                         <path d="M8 2v4"/><path d="M16 2v4"/>
                         <rect width="18" height="18" x="3" y="4" rx="2"/>
                         <path d="M3 10h18"/>
-                      </svg> Inicio *
+                      </svg> Inicio
                     </p>
                     <p class="text-sm font-medium text-gray-900">${formatDate(obra.fecha_inicio)}</p>
                   </div>
@@ -439,7 +441,7 @@ if (!window.__obrasJSLoaded) {
                         <path d="M8 2v4"/><path d="M16 2v4"/>
                         <rect width="18" height="18" x="3" y="4" rx="2"/>
                         <path d="M3 10h18"/>
-                      </svg> Fin *
+                      </svg> Fin
                     </p>
                     <p class="text-sm font-medium text-gray-900">${formatDate(obra.fecha_fin)}</p>
                   </div>
@@ -453,26 +455,9 @@ if (!window.__obrasJSLoaded) {
                 </div>
               </div>
 
-              <div class="flex flex-col items-center gap-3">
-                ${switchHTML}
-
-                <div class="flex items-center gap-2">
-                  <button 
-                    onclick="openDetailsModal(${obra.id_actividad})"
-                    class="text-gray-600 hover:text-gray-900 p-2"
-                    title="Ver detalles"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                      viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round"
-                      class="lucide lucide-eye">
-                      <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
-                      <circle cx="12" cy="12" r="3"/>
-                    </svg>
-                  </button>
-
-                  ${editBtnHTML}
-                </div>
+              <div class="flex flex-col items-end gap-3">
+                ${estadoBadge}
+                ${actionMenu}
               </div>
             </div>
           </div>
@@ -572,6 +557,31 @@ if (!window.__obrasJSLoaded) {
   function revertirSwitchEstado(id, estado) {
     const checkbox = document.querySelector(`input[onchange="toggleEstado(${id}, this.checked)"]`);
     if (checkbox) checkbox.checked = !estado;
+  }
+
+  // ==============================
+  // FUNCIONES PARA MENÚ DE ACCIONES
+  // ==============================
+  function toggleActionMenu(index) {
+    const menu = document.getElementById("actionMenu" + index);
+    const isHidden = menu.classList.contains("hidden");
+
+    // Cerrar todos los otros menús
+    closeAllMenus();
+
+    // Toggle menú actual
+    if (isHidden) {
+      menu.classList.remove("hidden");
+      menu.classList.add("block");
+    }
+  }
+
+  function closeAllMenus() {
+    const allMenus = document.querySelectorAll('[id^="actionMenu"]');
+    allMenus.forEach((menu) => {
+      menu.classList.add("hidden");
+      menu.classList.remove("block");
+    });
   }
 
   // ==============================
@@ -838,6 +848,14 @@ if (!window.__obrasJSLoaded) {
       document.getElementById("edit_fecha_inicio").value = obra.fecha_inicio;
       document.getElementById("edit_fecha_fin").value = obra.fecha_fin;
 
+      // DESACTIVAR CAMPOS QUE NO SE DEBEN EDITAR
+      document.getElementById("edit_ficha").disabled = true;
+      document.getElementById("edit_rae").disabled = true;
+      document.getElementById("edit_instructor").disabled = true;
+      document.getElementById("edit_tipo").disabled = true;
+      document.getElementById("edit_fecha_inicio").disabled = true;
+      document.getElementById("edit_fecha_fin").disabled = true;
+
       document.getElementById("modalEdit").classList.remove("hidden");
     } catch (error) {
       console.error("Error cargando obra:", error);
@@ -847,6 +865,15 @@ if (!window.__obrasJSLoaded) {
 
   function closeEditModal() {
     document.getElementById("modalEdit")?.classList.add("hidden");
+    
+    // REACTIVAR CAMPOS AL CERRAR PARA PRÓXIMAS EDICIONES
+    document.getElementById("edit_ficha").disabled = false;
+    document.getElementById("edit_rae").disabled = false;
+    document.getElementById("edit_instructor").disabled = false;
+    document.getElementById("edit_tipo").disabled = false;
+    document.getElementById("edit_fecha_inicio").disabled = false;
+    document.getElementById("edit_fecha_fin").disabled = false;
+    
     originalEditData = null;
     obraOriginal = null;
   }
@@ -1601,7 +1628,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // INICIALIZACIÓN (UNA SOLA VEZ ✅)
+  // INICIALIZACIÓN
   // ==============================
   document.addEventListener("DOMContentLoaded", () => {
     console.log("Inicializando módulo de obras...");
@@ -1609,9 +1636,8 @@ if (!window.__obrasJSLoaded) {
     setupSidebarDetection();
     aplicarPermisosUI();
 
-    // Bind submits si existen
+    // Bind submit para CREATE (formEdit ya tiene onsubmit en HTML)
     document.getElementById("formCreate")?.addEventListener("submit", handleCreateObra);
-    document.getElementById("formEdit")?.addEventListener("submit", handleEditObra);
 
     cargarObras();
 
@@ -1650,10 +1676,20 @@ if (!window.__obrasJSLoaded) {
 
     // Si tienes input filtro en modal grupal
     document.getElementById("searchAprendiz")?.addEventListener("input", filtrarAprendices);
+
+    // CERRAR MENÚS CUANDO SE HACE CLICK AFUERA (DENTRO DE DOMCONTENTLOADED)
+    document.addEventListener("click", (event) => {
+      const isMenuButton = event.target.closest('button[onclick^="toggleActionMenu"]');
+      const isMenuContent = event.target.closest('[id^="actionMenu"]');
+
+      if (!isMenuButton && !isMenuContent) {
+        closeAllMenus();
+      }
+    });
   });
 
   // ==============================
-  // ESC PARA CERRAR MODALES (UNA SOLA VEZ ✅)
+  // ESC PARA CERRAR MODALES
   // ==============================
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
@@ -1712,4 +1748,7 @@ if (!window.__obrasJSLoaded) {
   window.toastError = toastError;
   window.toastSuccess = toastSuccess;
   window.toastInfo = toastInfo;
+
+  window.toggleActionMenu = toggleActionMenu;
+  window.closeAllMenus = closeAllMenus;
 }

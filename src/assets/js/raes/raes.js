@@ -50,9 +50,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (createCodigoInput) {
         createCodigoInput.addEventListener('paste', (e) => {
             const textoPegado = e.clipboardData.getData('text');
-            if (!/^\d+$/.test(textoPegado)) {
+            // Filter to only numbers and limit to 15 characters
+            const numericOnly = textoPegado.replace(/[^0-9]/g, '').slice(0, 15);
+            if (!/^\d+$/.test(textoPegado) || textoPegado.length > 15) {
                 e.preventDefault();
-                toastError("No se pueden pegar caracteres no numéricos en el código RAE");
+                createCodigoInput.value = numericOnly;
+                toastError("Solo se permiten números (máximo 15) en el código RAE");
             }
         });
     }
@@ -62,9 +65,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (editCodigoInput) {
         editCodigoInput.addEventListener('paste', (e) => {
             const textoPegado = e.clipboardData.getData('text');
-            if (!/^\d+$/.test(textoPegado)) {
+            // Filter to only numbers and limit to 15 characters
+            const numericOnly = textoPegado.replace(/[^0-9]/g, '').slice(0, 15);
+            if (!/^\d+$/.test(textoPegado) || textoPegado.length > 15) {
                 e.preventDefault();
-                toastError("No se pueden pegar caracteres no numéricos en el código RAE");
+                editCodigoInput.value = numericOnly;
+                toastError("Solo se permiten números (máximo 15) en el código RAE");
             }
         });
     }

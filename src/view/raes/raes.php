@@ -309,6 +309,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                         id="editRaeCodigo" 
                         type="text" 
                         placeholder="Ej: 001" 
+                        maxlength="15"
                         class="w-full px-4 py-2 border border-border rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-ring transition-all"
                         onkeypress="return validarSoloNumeros(event)"
                     >
@@ -378,6 +379,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                         id="createRaeCodigo" 
                         type="text" 
                         placeholder="Ej: 001" 
+                        maxlength="15"
                         class="w-full px-4 py-2 border border-border rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
                         onkeypress="return validarSoloNumeros(event)"
                     >
