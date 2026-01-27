@@ -198,6 +198,13 @@ function toastInfo(message) {
   showFlowbiteAlert("info", message);
 }
 
+// Helper para truncar texto largo en opciones de select
+function truncateText(text, maxLength = 27) {
+  if (!text) return '';
+  const str = String(text);
+  return str.length > maxLength ? str.substring(0, maxLength) + '...' : str;
+}
+
 // ============================================================
 //  MODAL MOTIVO RECHAZO (SIGA) - sin prompt, sin confirm
 // ============================================================
@@ -575,8 +582,8 @@ const api = {
       data.forEach((a) => {
         const opt = document.createElement("option");
         opt.value = a.id_actividad ?? a.id ?? "";
-        opt.textContent = a.nombre_actividad ?? a.nombre ?? `Actividad ${opt.value}`;
-        selectores.selectActividad.appendChild(opt);
+        const fullText = a.nombre_actividad ?? a.nombre ?? `Actividad ${opt.value}`;
+        opt.textContent = truncateText(fullText, 25);
       });
     } catch (e) {
       selectores.selectActividad.innerHTML = '<option value="">Error cargando actividades</option>';
@@ -722,7 +729,9 @@ const api = {
             programas.forEach((p) => {
               const opt = document.createElement("option");
               opt.value = p.id_programa;
-              opt.textContent = `${p.codigo_programa} - ${p.nombre_programa}`;
+              const fullText = `${p.codigo_programa} - ${p.nombre_programa}`;
+              opt.textContent = truncateText(fullText, 27);
+              opt.title = fullText; // Mostrar texto completo en tooltip
               selectores.selectPrograma.appendChild(opt);
             });
           }
@@ -754,7 +763,9 @@ const api = {
                 raes.forEach((r) => {
                   const opt = document.createElement("option");
                   opt.value = r.id_rae;
-                  opt.textContent = `${r.codigo_rae} - ${r.descripcion_rae}`;
+                  const fullText = `${r.codigo_rae} - ${r.descripcion_rae}`;
+                  opt.textContent = truncateText(fullText, 27);
+                  opt.title = fullText; // Mostrar texto completo en tooltip
                   selectores.selectRae.appendChild(opt);
                 });
               } else {
@@ -769,7 +780,9 @@ const api = {
                 fichas.forEach((f) => {
                   const opt = document.createElement("option");
                   opt.value = f.id_ficha;
-                  opt.textContent = `${f.numero_ficha} - ${f.jornada}`;
+                  const fullText = `${f.numero_ficha} - ${f.jornada}`;
+                  opt.textContent = truncateText(fullText, 27);
+                  opt.title = fullText; // Mostrar texto completo en tooltip
                   selectores.selectFichas.appendChild(opt);
                 });
               } else {
@@ -813,8 +826,8 @@ const api = {
             bodegas.forEach((b) => {
               const opt = document.createElement("option");
               opt.value = b.id_bodega;
-              opt.textContent = `${b.codigo_bodega} - ${b.nombre}`;
-              selectores.selectBodega.appendChild(opt);
+              const fullText = `${b.codigo_bodega} - ${b.nombre}`;
+              opt.textContent = truncateText(fullText, 32);
             });
           }
         }
@@ -864,7 +877,9 @@ const api = {
                     const opt = document.createElement("option");
                     opt.value = s.id_subbodega;
                     const nombre = s.nombre_subbodega || s.nombre || "Subbodega";
-                    opt.textContent = `${s.codigo_subbodega || "SB"} - ${nombre}`;
+                    const fullText = `${s.codigo_subbodega || "SB"} - ${nombre}`;
+                    opt.textContent = truncateText(fullText, 27);
+                    opt.title = fullText; // Mostrar texto completo en tooltip
                     selectores.selectSubBodega.appendChild(opt);
                   });
                 } else {
