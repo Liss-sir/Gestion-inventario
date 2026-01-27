@@ -463,6 +463,49 @@ function htmlMaterialesCard(materiales) {
   `;
 }
 
+async function cargarMaterialesEnCard(card, idSolicitud) {
+  const box = card.querySelector(`.sol-card-materiales[data-mats-for="${idSolicitud}"]`);
+  if (!box) return;
+
+  // ✅ 1) Si ya existe cache => pintar de una vez (NO spinner infinito)
+  if (estadoApp.materialesPorSolicitud[idSolicitud]) {
+    box.innerHTML = htmlMaterialesCard(estadoApp.materialesPorSolicitud[idSolicitud]);
+    safeLucideCreateIcons();
+    return;
+  }
+
+  // ✅ 2) Si no hay cache => spinner + fetch
+  box.innerHTML = `
+    <div class="mt-3 border-t pt-3 text-sm text-muted-foreground">
+      <i data-lucide="loader" class="w-4 h-4 inline-block align-text-bottom animate-spin mr-1"></i>
+      Cargando materiales...
+    </div>
+  `;
+  safeLucideCreateIcons();
+
+  try {
+    const full = await api.obtenerCompleta(idSolicitud);
+
+    // soporta varias formas típicas de respuesta
+    const mats =
+      full?.materiales ||
+      full?.data?.materiales ||
+      full?.solicitud?.materiales ||
+      [];
+
+    estadoApp.materialesPorSolicitud[idSolicitud] = mats;
+    box.innerHTML = htmlMaterialesCard(mats);
+    safeLucideCreateIcons();
+  } catch (e) {
+    box.innerHTML = `
+      <div class="mt-3 border-t pt-3 text-sm text-muted-foreground">
+        No se pudieron cargar los materiales.
+      </div>
+    `;
+  }
+}
+
+
 
 const api = {
   async listarSolicitudes() {
@@ -1053,29 +1096,7 @@ const render = {
       cont.appendChild(card);
 
       // ✅ Cargar materiales reales (sin tocar backend)
-      if (!estadoApp.materialesPorSolicitud[s.id]) {
-        api.obtenerCompleta(s.id)
-          .then((full) => {
-            const mats = full?.materiales || [];
-            estadoApp.materialesPorSolicitud[s.id] = mats;
-
-            const box = card.querySelector(`.sol-card-materiales[data-mats-for="${s.id}"]`);
-            if (box) box.innerHTML = htmlMaterialesCard(mats);
-
-            safeLucideCreateIcons();
-          })
-          .catch(() => {
-            const box = card.querySelector(`.sol-card-materiales[data-mats-for="${s.id}"]`);
-            if (box) {
-              box.innerHTML = `
-                <div class="mt-3 border-t pt-3 text-sm text-muted-foreground">
-                  No se pudieron cargar los materiales.
-                </div>
-              `;
-            }
-          });
-      }
-
+      cargarMaterialesEnCard(card, s.id);
     });
 
     safeLucideCreateIcons();
