@@ -123,6 +123,7 @@ async function fetchMaterials() {
       codigo: material.codigo_inventario,
       unit: material.unidad_medida,
       precio: material.precio,
+      stock_maximo: material.stock_maximo,
       foto: material.foto,
       enabled: material.estado === "Disponible",
     }))
@@ -430,6 +431,59 @@ function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
   if (data.precio === "" || data.precio === null || data.precio === undefined || Number.isNaN(Number(data.precio))) {
     showAlert("Ingrese un precio válido", "error")
     document.getElementById(isEdit ? "editPrecio" : "precio")?.focus()
+    return false
+  }
+
+  // Validaciones para stock_maximo
+  if (!data.stock_maximo || data.stock_maximo === "") {
+    showAlert("El stock máximo es obligatorio", "warning")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  const stockMaximoStr = data.stock_maximo.toString().trim()
+
+  // Validar que no contenga letras
+  if (/[a-zA-Z]/.test(stockMaximoStr)) {
+    showAlert("El stock máximo no puede contener letras", "warning")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  // Validar que no contenga caracteres especiales
+  if (!/^\d+$/.test(stockMaximoStr)) {
+    showAlert("El stock máximo solo puede contener números enteros (sin decimales ni caracteres)", "warning")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  const stockMaximoNum = Number(stockMaximoStr)
+
+  // Validar que sea un número válido
+  if (Number.isNaN(stockMaximoNum)) {
+    showAlert("El stock máximo debe ser un número válido", "warning")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  // Validar que sea positivo
+  if (stockMaximoNum <= 0) {
+    showAlert("El stock máximo debe ser mayor a 0", "warning")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  // Validar que sea entero (sin decimales)
+  if (!Number.isInteger(stockMaximoNum)) {
+    showAlert("El stock máximo debe ser un número entero (sin decimales)", "warning")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  // Validar máximo 6 dígitos
+  if (stockMaximoNum > 999999) {
+    showAlert("El stock máximo no puede exceder 999,999 (máximo 6 dígitos)", "warning")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
     return false
   }
 
@@ -1057,7 +1111,11 @@ function openEditModal(id) {
   const editPrecioInput = document.getElementById("editPrecio")
   if (editPrecioInput) {
     editPrecioInput.dataset.rawPrice = material.precio ?? ""
-    editPrecioInput.value = material.precio ? formatCOPValue(material.precio) : ""
+   
+  const editStockMaximoInput = document.getElementById("editStockMaximo")
+  if (editStockMaximoInput) {
+    editStockMaximoInput.value = material.stock_maximo || ""
+  } editPrecioInput.value = material.precio ? formatCOPValue(material.precio) : ""
   }
 
   const editImagenInput = document.getElementById("editImagen")
@@ -1168,6 +1226,7 @@ async function createMaterial() {
     codigo_inventario: document.getElementById("codigo").value.trim() || null,
     unidad_medida: document.getElementById("unidad").value,
     precio: parsePriceValue(precioRaw || precioTyped),
+    stock_maximo: document.getElementById("stock_maximo").value,
   }
 
   if (!validateMaterialPayload(materialData)) return
@@ -1179,6 +1238,7 @@ async function createMaterial() {
   formData.append("codigo_inventario", materialData.codigo_inventario || "")
   formData.append("unidad_medida", materialData.unidad_medida)
   formData.append("precio", materialData.precio)
+  formData.append("stock_maximo", materialData.stock_maximo)
 
   const imagenInput = document.getElementById("imagen")
   if (imagenInput.files.length > 0) {
@@ -1216,6 +1276,7 @@ async function updateMaterial() {
     codigo_inventario: document.getElementById("editCodigo").value.trim() || null,
     unidad_medida: document.getElementById("editUnidad").value,
     precio: parsePriceValue(precioRaw || precioTyped),
+    stock_maximo: document.getElementById("editStockMaximo").value,
     estado: materialsData.find((m) => m.id === id)?.enabled ? "Disponible" : "Agotado",
   }
 
@@ -1226,6 +1287,7 @@ async function updateMaterial() {
   if (original) {
     const norm = (v) => (v ?? "").toString().trim()
     const samePrecio = Number(parsePriceValue(original.precio)) === Number(parsePriceValue(materialData.precio))
+    const sameStockMaximo = (original.stock_maximo ?? "").toString() === (materialData.stock_maximo ?? "").toString()
 
     const noChanges =
       norm(original.name) === norm(materialData.nombre) &&
@@ -1234,6 +1296,7 @@ async function updateMaterial() {
       norm(original.codigo) === norm(materialData.codigo_inventario) &&
       norm(original.unit) === norm(materialData.unidad_medida) &&
       samePrecio &&
+      sameStockMaximo &&
       !hasNewPhoto
 
     if (noChanges) {
@@ -1250,6 +1313,7 @@ async function updateMaterial() {
   formData.append("clasificacion", materialData.clasificacion)
   formData.append("codigo_inventario", materialData.codigo_inventario || "")
   formData.append("unidad_medida", materialData.unidad_medida)
+  formData.append("stock_maximo", materialData.stock_maximo || "")
   formData.append("precio", materialData.precio || "")
   formData.append("estado", materialData.estado)
 

@@ -279,10 +279,15 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                     <input id="precio" type="text" inputmode="decimal" placeholder="$ 0" min="100" required class="w-full rounded-md border border-input px-3 py-2 text-sm bg-transparent">
                   </div>
                   
-                  <div id="codigoContainer" class="space-y-2" style="display: none;">
-                    <label class="text-sm font-medium">Código *</label>
-                    <input id="codigo" type="text" placeholder="EJ: 1234" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  <div class="space-y-2">
+                    <label class="text-sm font-medium">Stock Máximo *</label>
+                    <input id="stock_maximo" type="text" inputmode="numeric" placeholder="0" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                   </div>
+                </div>
+
+                <div id="codigoContainer" class="space-y-2" style="display: none;">
+                  <label class="text-sm font-medium">Código *</label>
+                  <input id="codigo" type="text" placeholder="EJ: 1234" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                 </div>
                 
                 <div id="codigoHelpText" class="text-xs text-muted-foreground" style="display: none;">
@@ -449,10 +454,15 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                     <input id="editPrecio" type="text" inputmode="decimal" placeholder="$ 0" min="100" required class="w-full rounded-md border border-input px-3 py-2 text-sm bg-transparent">
                   </div>
                   
-                  <div id="editCodigoContainer" class="space-y-2">
-                    <label class="text-sm font-medium">Código <span id="editCodigoRequired">*</span></label>
-                    <input id="editCodigo" type="text" placeholder="EJ: 1234" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  <div class="space-y-2">
+                    <label class="text-sm font-medium">Stock Máximo *</label>
+                    <input id="editStockMaximo" type="text" inputmode="numeric" placeholder="0" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                   </div>
+                </div>
+
+                <div id="editCodigoContainer" class="space-y-2">
+                  <label class="text-sm font-medium">Código <span id="editCodigoRequired">*</span></label>
+                  <input id="editCodigo" type="text" placeholder="EJ: 1234" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                 </div>
                 
                 <p class="text-xs text-muted-foreground">Este campo es obligatorio solo para materiales inventariados</p>
@@ -471,13 +481,6 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                     <input id="editImagen" type="file" accept="image/png,image/jpeg" class="sr-only" />
                     <img id="editPreviewImagen" alt="Vista previa" class="absolute inset-0 h-full w-full object-cover hidden" />
                   </div>
-                </div>
-                
-                <!-- Código (solo si es Inventariado) -->
-                <div id="editCodigoContainer" class="space-y-2">
-                    <label class="text-sm font-medium">Código <span id="editCodigoRequired">*</span></label>
-                    <input id="editCodigo" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                    <p class="text-xs text-muted-foreground">Este campo es obligatorio solo para materiales inventariados</p>
                 </div>
                 
                 <!-- Buttons -->
