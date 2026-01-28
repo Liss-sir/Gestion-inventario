@@ -137,7 +137,7 @@ class FichaModel {
             $stmtDelete = $this->conn->prepare($sqlDelete);
             $stmtDelete->execute([$id_ficha]);
 
-            $sql = "INSERT INTO fichas_estudiantes (id_ficha, id_estudiante) VALUES (?, ?)";
+            $sql = "INSERT INTO fichas_estudiantes (id_ficha, id_usuario) VALUES (?, ?)";
             $stmt = $this->conn->prepare($sql);
 
             foreach ($estudiantes as $id_estudiante) {

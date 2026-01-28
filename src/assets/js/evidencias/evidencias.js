@@ -58,6 +58,7 @@ async function fetchAndRenderEvidences() {
         id: Number.parseInt(row.id_evidencia ?? row.id ?? Math.floor(Math.random() * 1e9)),
         fecha: fecha,
         ficha: row.ficha ?? "-",
+        obra: row.obra ?? "-",
         imagen: getEvidenceImageUrl(row.foto ?? row.imagen ?? ""),
         titulo: row.titulo ?? "Evidencia",
         descripcion: row.descripcion_obra ?? row.descripcion ?? "",
@@ -124,10 +125,11 @@ function renderEvidenceCards() {
     card.innerHTML = `
       <div class="relative">
         <img src="${evidence.imagen}" alt="Evidencia" class="w-full h-72 object-cover bg-muted">
-        <div class="absolute top-3 right-3 bg-card/90 backdrop-blur-sm px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-sm">
+        <div class="absolute top-3 right-3 bg-secondary px-2.5 py-1 rounded-lg shadow-lg">
+          <span class="text-xs font-bold text-white">Evidencia #${evidence.id}</span>
         </div>
-        </div>
-        <div class="p-4">
+      </div>
+      <div class="p-4">
         <div class="flex items-center justify-between mb-2">
         <span class="text-xs font-medium">Ficha ${evidence.ficha}</span>
         <div class="flex items-center gap-1">
@@ -138,6 +140,7 @@ function renderEvidenceCards() {
         <p class="text-sm text-foreground line-clamp-2 mb-3">${evidence.descripcion}</p>
         <div class="flex flex-wrap gap-2">
           ${evidence.materiales
+            .slice(0, 2)
             .map(
               (material) => `
             <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-secondary-13 text-secondary">
@@ -147,6 +150,11 @@ function renderEvidenceCards() {
           `,
             )
             .join("")}
+          ${evidence.materiales.length > 2 ? `
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-border">
+              +${evidence.materiales.length - 2} más
+            </span>
+          ` : ''}
         </div>
       </div>
     `
@@ -164,6 +172,8 @@ function openDetailsModal(id) {
 
   // Actualizar contenido del modal
   document.getElementById("detailImage").src = evidence.imagen
+  document.getElementById("detailEvidenceId").textContent = `Evidencia #${evidence.id}`
+  document.getElementById("detailObra").textContent = evidence.obra
   document.getElementById("detailFicha").textContent = evidence.ficha
   document.getElementById("detailDate").innerHTML = `
     <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
@@ -353,9 +363,10 @@ async function loadPendingSalidas() {
       option.value = salida.id_movimiento
       option.dataset.salida = JSON.stringify(salida)
 
-      // Construir el texto: Ficha - Material - Fecha
+      // Construir el texto: Ficha - Material - Obra - Fecha
       const fecha = salida.fecha_hora ? new Date(salida.fecha_hora).toLocaleDateString("es-CO") : "-"
-      const optionText = `${salida.ficha || 'S/N'} - ${salida.material} - ${fecha}`
+      const obra = salida.obra && salida.obra !== '-' ? ` (${salida.obra})` : ""
+      const optionText = `${salida.ficha || 'S/N'} - ${salida.material}${obra} - ${fecha}`
 
       option.textContent = optionText
       select.appendChild(option)
