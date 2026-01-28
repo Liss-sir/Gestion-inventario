@@ -231,6 +231,41 @@ window.esCoordinador = <?php
 ?>;
 
 </script>
+<?php
+// Debug: small, safe session dump for client-side inspection
+// Exclude sensitive fields
+$allowedKeys = [
+    'usuario_id', 'usuario_nombre', 'usuario_cargo', 'usuario_correo', 'usuario_foto',
+    'usuario_programas', 'usuario_fichas', 'usuario_actividades', 'usuario_bodegas',
+    'roles_funcionales', 'rol_funcional', 'rol_funcional_nombre', 'roles_funcionales', 'usuario_permisos',
+    'cargo', 'rol_funcional'
+];
+
+$sessionForClient = [];
+foreach ($_SESSION as $k => $v) {
+    if (in_array($k, $allowedKeys, true)) {
+        $sessionForClient[$k] = $v;
+    }
+}
+
+// Always include a minimal id and name for convenience
+if (!isset($sessionForClient['usuario_id']) && isset($_SESSION['usuario_id'])) {
+    $sessionForClient['usuario_id'] = $_SESSION['usuario_id'];
+}
+if (!isset($sessionForClient['usuario_nombre']) && isset($_SESSION['usuario_nombre'])) {
+    $sessionForClient['usuario_nombre'] = $_SESSION['usuario_nombre'];
+}
+
+?>
+<script>
+  // Expose a safe session snapshot for debugging in the console
+  try {
+    window.SESSION_SNAPSHOT = <?php echo json_encode($sessionForClient, JSON_UNESCAPED_UNICODE); ?> || {};
+    console.log("SESSION DUMP:", window.SESSION_SNAPSHOT);
+  } catch (e) {
+    console.warn('No se pudo serializar la sesión para debugging', e);
+  }
+</script>
   <!-- Buscador estilo pill -->
   <div class="relative flex-1 max-w-xl">
     <div class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">
