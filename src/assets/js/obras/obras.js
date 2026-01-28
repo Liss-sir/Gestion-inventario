@@ -455,9 +455,9 @@ if (!window.__obrasJSLoaded) {
                 </div>
               </div>
 
-              <div class="flex flex-col items-end gap-3">
-                ${estadoBadge}
+              <div class="flex flex-row items-center gap-3">
                 ${actionMenu}
+                ${estadoBadge}
               </div>
             </div>
           </div>
