@@ -549,6 +549,30 @@ select.no-arrow { background-image: none; padding-right: 0.75rem; }
   color: #64748b;
 }
 
+/* ===========================
+   AVATAR PERFIL (FIX CÍRCULO)
+   =========================== */
+.avatar-wrapper{
+  overflow:hidden;
+  border-radius:9999px;
+  position: relative;
+}
+
+.avatar-wrapper img{
+  /* Force the image to absolutely fill the circular wrapper.
+     Using position:absolute prevents layout shifts or flexbox
+     effects from moving the image inside the circle. */
+  position: absolute !important;
+  inset: 0 !important; /* top:0; right:0; bottom:0; left:0 */
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+  flex-shrink: 0 !important;
+}
+
+
 
 
 

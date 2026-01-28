@@ -55,7 +55,8 @@ if (!window.__perfilJSLoaded) {
 
     const avatarPerfilEditar = document.getElementById("avatarPerfilEditar");
     const inputFotoPerfilEditar = document.getElementById("inputFotoPerfilEditar");
-    const btnGuardarPerfil = document.getElementById("btnGuardarPerfil");
+    const btnGuardarPerfil = document.getElementById("btnGuardarPerfil") || document.getElementById("btnGuardarEditarPerfil");
+
 
     const sensibleChecks = document.querySelectorAll('input[type="checkbox"][data-sensible]');
 
@@ -891,9 +892,19 @@ if (!window.__perfilJSLoaded) {
       }
 
       // ✅ Si todo ok pero no cambió nada (esto debe ser INFO como imagen 1)
-      if (ok && !formHasChanges(formEditarPerfil)) {
-        toastInfo("Para actualizar debes modificar al menos un dato.");
-        return false;
+      if (ok) {
+        let externalFileSelected = false;
+        try {
+          const externalFileInput = document.getElementById('inputFotoPerfilEditar');
+          externalFileSelected = !!(externalFileInput && externalFileInput.files && externalFileInput.files.length > 0);
+        } catch (e) {
+          externalFileSelected = false;
+        }
+
+        if (!formHasChanges(formEditarPerfil) && !externalFileSelected) {
+          toastInfo("Para actualizar debes modificar al menos un dato.");
+          return false;
+        }
       }
 
       if (!ok) {
@@ -1062,6 +1073,16 @@ if (!window.__perfilJSLoaded) {
           }
 
           const formData = new FormData(formEditarPerfil);
+
+          // If the file input is outside the <form>, append the file manually
+          try {
+            const externalFileInput = document.getElementById('inputFotoPerfilEditar');
+            if (externalFileInput && externalFileInput.files && externalFileInput.files.length > 0) {
+              formData.set('foto_perfil', externalFileInput.files[0]);
+            }
+          } catch (e) {
+            // ignore
+          }
 
           // ✅ PROTECCIÓN: nunca enviar strings vacíos (evita sobrescribir BD con "")
           for (const [key, value] of Array.from(formData.entries())) {
@@ -1300,15 +1321,39 @@ if (!window.__perfilJSLoaded) {
 
         const reader = new FileReader();
         reader.onload = (ev) => {
-          let img = avatarPerfilEditar.querySelector("img");
+          console.log('[perfil] preview loaded, size=', (ev.target.result || '').slice(0,80));
+          // Prefer the avatar wrapper that lives inside the Edit modal to avoid
+          // touching any other .avatar-wrapper instances (header, other modals, etc).
+          const wrapper = (modalPerfilEditar && modalPerfilEditar.querySelector("#avatarPerfilEditar .avatar-wrapper")) || avatarPerfilEditar.querySelector(".avatar-wrapper") || avatarPerfilEditar.querySelector("div");
+          if (wrapper) {
+            // Remove initials (visible spans) or existing <img> so background shows cleanly
+            wrapper.querySelectorAll('img, span:not(.sr-only)').forEach(n => n.remove());
 
-          if (!img) {
-            img = document.createElement("img");
-            img.className = "h-full w-full object-cover rounded-full";
-            avatarPerfilEditar.querySelector("div")?.appendChild(img);
+            // Set background on wrapper
+            wrapper.style.backgroundImage = `url('${ev.target.result}')`;
+            wrapper.style.backgroundSize = 'cover';
+            wrapper.style.backgroundPosition = 'center center';
+            wrapper.style.backgroundRepeat = 'no-repeat';
+
+            // NOTE: intentionally DO NOT set background on the parent (#avatarPerfilEditar)
+            // to avoid accidentally updating the header/user-menu avatar. Preview must
+            // remain inside the Edit modal only.
+
+            // Force a tiny fade to ensure the browser repaints with the new background
+            wrapper.style.transition = 'opacity 0.18s ease';
+            wrapper.style.opacity = '0.98';
+            setTimeout(() => { wrapper.style.opacity = '1'; }, 50);
+
+            // ensure accessible label
+            if (!wrapper.querySelector('.sr-only')) {
+              const s = document.createElement('span');
+              s.className = 'sr-only';
+              s.textContent = `Foto de perfil de ${window.userData?.nombre_completo || ''}`;
+              wrapper.appendChild(s);
+            }
           }
 
-          img.src = ev.target.result;
+          // Do NOT update the header avatar during preview — only preview inside the edit modal.
         };
 
         reader.readAsDataURL(file);
