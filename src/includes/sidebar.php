@@ -5,6 +5,15 @@ $currentPage = $_GET['page'] ?? 'dashboard';
 // ✅ importar permisos
 require_once __DIR__ . "/../utils/permisos_helper.php";
 
+// Conexión a la base de datos (fallback igual que en otras vistas)
+if (!isset($conn) || !($conn instanceof PDO)) {
+  try {
+    require_once __DIR__ . '/../../Config/database.php';
+  } catch (Throwable $e) {
+    // no romper si no existe la configuración en este contexto
+  }
+}
+
 // Datos del menú (usamos 'page' en vez de href directo)
 $navigation = [
   ["name" => "Dashboard",   "page" => "dashboard",   "icon" => "LayoutDashboard"],
@@ -13,7 +22,7 @@ $navigation = [
   ["name" => "Materiales",  "page" => "materiales",  "icon" => "Package"],
   ["name" => "Obras",       "page" => "obras",       "icon" => "Hammer"],
   ["name" => "Movimientos", "page" => "movimientos", "icon" => "ArrowLeftRight"],
-  ["name" => "Solicitudes", "page" => "solicitudes", "icon" => "ClipboardList", "badge" => 0,"badge_id" => "sidebar-badge-solicitudes"],
+  ["name" => "Solicitudes", "page" => "solicitudes", "icon" => "ClipboardList", "badge" => 0, "badge_id" => "sidebar-badge-solicitudes"],
   ["name" => "Programas",   "page" => "programas",   "icon" => "GraduationCap"],
   ["name" => "Fichas",      "page" => "fichas",      "icon" => "FolderKanban"],
   ["name" => "RAEs",        "page" => "raes",        "icon" => "BookOpen"],
@@ -29,6 +38,19 @@ $navigation = array_values(array_filter($navigation, function($item){
 // Estado del sidebar
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $collQuery = $collapsed ? '&coll=1' : '';
+
+// Contador de solicitudes pendientes (defensivo)
+$solicitudesPendientes = 0;
+if (function_exists('canPermiso') && (canPermiso('solicitudes.gestionar') || permisos_puedeAccederModulo('solicitudes'))) {
+  try {
+    if (isset($conn) && $conn instanceof PDO) {
+      $solicitudesPendientes = (int)($conn->query("SELECT COUNT(*) FROM solicitudes_material WHERE estado = 'Pendiente'")->fetchColumn() ?: 0);
+    }
+  } catch (Throwable $e) {
+    // silencioso — deja en 0
+    $solicitudesPendientes = 0;
+  }
+}
 
 function getLucideIconName(string $key): string {
   switch ($key) {
@@ -105,11 +127,26 @@ if (!defined('BASE_URL')) {
             <span class="flex-1"><?= $item["name"]; ?></span>
 
             <?php if (isset($item["badge"])): ?>
-              <span
-                <?= isset($item["badge_id"]) ? 'id="'.htmlspecialchars($item["badge_id"], ENT_QUOTES, "UTF-8").'"' : '' ?>
-                class="h-5 min-w-5 flex items-center justify-center bg-primary text-white text-[11px] rounded-full"
-                style="display: none;"
-              ><?= (int)$item["badge"]; ?></span>
+              <?php
+                $badgeId = isset($item["badge_id"]) ? htmlspecialchars($item["badge_id"], ENT_QUOTES, "UTF-8") : '';
+                $badgeCount = 0;
+                $badgeStyle = 'display:none;';
+
+                if ($item['page'] === 'solicitudes') {
+                  $badgeCount = $solicitudesPendientes;
+                } else {
+                  $badgeCount = (int)$item["badge"];
+                }
+
+                if ($badgeCount > 0) {
+                  $badgeStyle = '';
+                }
+              ?>
+
+              <span id="<?= $badgeId ?>"
+                class="h-5 min-w-5 flex items-center justify-center bg-[#39A900] text-white text-[11px] rounded-full"
+                style="<?= $badgeStyle ?>"
+              ><?= htmlspecialchars((string)$badgeCount, ENT_QUOTES, 'UTF-8'); ?></span>
             <?php endif; ?>
           <?php endif; ?>
         </a>
@@ -163,4 +200,71 @@ if (!defined('BASE_URL')) {
       lucide.createIcons();
     }
   });
+</script>
+
+<!-- Defensive script: keep sidebar state in-sync with URL and prevent ESC from accidentally collapsing it -->
+<script>
+  (function () {
+    function applySidebarFromUrl() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const shouldCollapse = params.get('coll') === '1';
+        if (shouldCollapse) {
+          document.body.classList.add('sidebar-collapsed');
+        } else {
+          document.body.classList.remove('sidebar-collapsed');
+        }
+        return shouldCollapse;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    // Run once on load
+    const expectedCollapse = applySidebarFromUrl();
+
+    // If some script accidentally toggles the sidebar while the URL demands a state,
+    // re-assert it using a MutationObserver.
+    const obs = new MutationObserver(() => {
+      applySidebarFromUrl();
+    });
+    obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    // Prevent ESC from toggling sidebar when there are NO modals open.
+    // If there is any visible modal, allow other handlers to run.
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape' && e.key !== 'Esc' && e.keyCode !== 27) return;
+
+      // Common modal selectors used in the app
+      const modalSelectors = [
+        '.modal-overlay.active',
+        '.modal.active',
+        '.sol-modal-show',
+        '[data-modal-open] .active',
+        '[role="dialog"]',
+        '.modal',
+        '.active'
+      ];
+
+      let anyVisible = false;
+      for (const sel of modalSelectors) {
+        try {
+          const el = document.querySelector(sel);
+          if (!el) continue;
+          // Check computed style for visibility to avoid false positives on generic '.active'
+          const rect = el.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) { anyVisible = true; break; }
+        } catch (err) {
+          // ignore
+        }
+      }
+
+      if (!anyVisible) {
+        // No modal open → stop other handlers from running and do nothing
+        // (this prevents accidental sidebar collapse triggered by other key handlers)
+        e.stopImmediatePropagation();
+      }
+      // Otherwise, allow normal modal handling to proceed
+    }, true);
+  })();
 </script>
