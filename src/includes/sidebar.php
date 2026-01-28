@@ -200,71 +200,56 @@ if (!defined('BASE_URL')) {
       lucide.createIcons();
     }
   });
-</script>
 
-<!-- Defensive script: keep sidebar state in-sync with URL and prevent ESC from accidentally collapsing it -->
-<script>
-  (function () {
-    function applySidebarFromUrl() {
-      try {
-        const params = new URLSearchParams(window.location.search);
-        const shouldCollapse = params.get('coll') === '1';
-        if (shouldCollapse) {
-          document.body.classList.add('sidebar-collapsed');
-        } else {
-          document.body.classList.remove('sidebar-collapsed');
-        }
-        return shouldCollapse;
-      } catch (e) {
-        return false;
-      }
-    }
+  /* ============================================================
+     ✅ FIX (SIN TOCAR TU CÓDIGO BASE):
+     - Si otro script global usa "Escape" para cerrar cosas y termina
+       ocultando el sidebar, aquí protegemos el sidebar.
+     - No altera tu lógica de colapsar/expandir por ?coll=
+     - Solo evita que ESC dispare handlers globales cuando NO hay nada
+       que cerrar y/o cuando el evento viene repetido (spam).
+  ============================================================ */
 
-    // Run once on load
-    const expectedCollapse = applySidebarFromUrl();
+  (function protectSidebarFromEsc() {
+    // Guard global para evitar doble ejecución si este sidebar se incluye 2 veces
+    if (window.__SIDEBAR_ESC_GUARD__) return;
+    window.__SIDEBAR_ESC_GUARD__ = true;
 
-    // If some script accidentally toggles the sidebar while the URL demands a state,
-    // re-assert it using a MutationObserver.
-    const obs = new MutationObserver(() => {
-      applySidebarFromUrl();
-    });
-    obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    // Captura (true) para interceptar antes que listeners normales
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape") return;
 
-    // Prevent ESC from toggling sidebar when there are NO modals open.
-    // If there is any visible modal, allow other handlers to run.
-    document.addEventListener('keydown', function (e) {
-      if (e.key !== 'Escape' && e.key !== 'Esc' && e.keyCode !== 27) return;
-
-      // Common modal selectors used in the app
-      const modalSelectors = [
-        '.modal-overlay.active',
-        '.modal.active',
-        '.sol-modal-show',
-        '[data-modal-open] .active',
-        '[role="dialog"]',
-        '.modal',
-        '.active'
-      ];
-
-      let anyVisible = false;
-      for (const sel of modalSelectors) {
-        try {
-          const el = document.querySelector(sel);
-          if (!el) continue;
-          // Check computed style for visibility to avoid false positives on generic '.active'
-          const rect = el.getBoundingClientRect();
-          if (rect.width > 0 && rect.height > 0) { anyVisible = true; break; }
-        } catch (err) {
-          // ignore
-        }
+      // Evita ejecuciones por mantener presionada o spamear Esc
+      if (e.repeat) {
+        e.stopPropagation();
+        return;
       }
 
-      if (!anyVisible) {
-        // No modal open → stop other handlers from running and do nothing
-        // (this prevents accidental sidebar collapse triggered by other key handlers)
-        e.stopImmediatePropagation();
-      }
-      // Otherwise, allow normal modal handling to proceed
+      // Si hay un modal/alerta abierta, NO bloqueamos Esc (deja que se cierre)
+      // - SweetAlert2: .swal2-container
+      // - Dialog nativo: dialog[open]
+      // - Modales comunes: .modal.is-open / [data-modal].is-open / [aria-modal="true"]
+      const hasOpenOverlay =
+        !!document.querySelector(".swal2-container") ||
+        !!document.querySelector("dialog[open]") ||
+        !!document.querySelector("[aria-modal='true']") ||
+        !!document.querySelector(".modal.is-open") ||
+        !!document.querySelector("[data-modal].is-open");
+
+      if (hasOpenOverlay) return;
+
+      // Si hay un dropdown/menú abierto, NO bloqueamos Esc (deja que se cierre)
+      const hasOpenDropdown =
+        !!document.querySelector(".dropdown.open") ||
+        !!document.querySelector(".menu.open") ||
+        !!document.querySelector("[data-dropdown].is-open") ||
+        !!document.querySelector("[aria-expanded='true'][data-dropdown-trigger]");
+
+      if (hasOpenDropdown) return;
+
+      // ✅ Si NO hay nada abierto que cerrar, evitamos que otros handlers
+      // globales "togleen" el sidebar o le apliquen hidden/clases raras
+      e.stopPropagation();
     }, true);
   })();
 </script>
