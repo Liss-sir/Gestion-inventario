@@ -23,6 +23,9 @@ if (!window.__obrasJSLoaded) {
   let obraOriginal = null;
   let originalEditData = null;
 
+  // Flag para evitar creación múltiple
+  let isCreatingObra = false;
+
   // ==============================
   // PERMISOS FRONT (desde PHP)
   // ==============================
@@ -704,6 +707,11 @@ if (!window.__obrasJSLoaded) {
   async function handleCreateObra(e) {
     e.preventDefault();
 
+    if (isCreatingObra) {
+      console.log("Creación ya en progreso, ignorando clic adicional");
+      return;
+    }
+
     if (!OBRAS_PERMS.canCrear) {
       toastError("No tienes permisos para crear obras.");
       return;
@@ -745,6 +753,8 @@ if (!window.__obrasJSLoaded) {
     if (btnCreate) btnCreate.disabled = true;
     btnCreateText?.classList.add("hidden");
     btnCreateLoading?.classList.remove("hidden");
+
+    isCreatingObra = true; // Marcar como creando
 
     try {
       const response = await fetch(API_URL, {
@@ -793,6 +803,7 @@ if (!window.__obrasJSLoaded) {
       if (btnCreate) btnCreate.disabled = false;
       btnCreateText?.classList.remove("hidden");
       btnCreateLoading?.classList.add("hidden");
+      isCreatingObra = false; // Resetear flag
     }
   }
 
