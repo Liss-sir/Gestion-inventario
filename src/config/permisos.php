@@ -310,8 +310,12 @@ return [
         "dashboard.ver",
 
         // ✅ OBRAS Y ACTIVIDADES (para que el módulo exista y pueda entrar)
-        "obras.listar",
-        "obras.consultar",
+           "obras.gestionar",
+            "obras.crear",
+            "obras.editar",
+            "obras.activar_desactivar",
+            "obras.listar",
+            "obras.consultar",
 
         // ✅ RAEs (para que dentro de Obras pueda cargar TODOS los RAEs)
         "raes.listar",
