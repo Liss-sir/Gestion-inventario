@@ -1,39 +1,55 @@
 <?php
+// =====================================================
+// BODEGAS CONTROLLER (JSON) + PERMISOS POR ACCIÓN ✅
+// =====================================================
+
+ob_start();
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 require_once __DIR__ . "/../../Config/database.php";
 require_once __DIR__ . "/../models/bodega.php";
 
-header("Content-Type: application/json; charset=utf-8");
+// ✅ Permisos helper (funciones)
+require_once __DIR__ . "/../utils/permisos_helper.php";
+
+if (!headers_sent()) {
+    header("Content-Type: application/json; charset=utf-8");
+    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+    header("Pragma: no-cache");
+}
 
 /* ===============================
    VALIDAR CONEXIÓN PDO
 ================================ */
-
 if (!isset($conn) || !($conn instanceof PDO)) {
     http_response_code(500);
     echo json_encode([
         "success" => false,
         "message" => "Conexión a base de datos no disponible"
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 /* ===============================
    CONTROLLER
 ================================ */
-
-class BodegaController {
-
+class BodegaController
+{
     private BodegaModel $model;
 
-    public function __construct(PDO $conn) {
+    public function __construct(PDO $conn)
+    {
         $this->model = new BodegaModel($conn);
     }
 
     /* ===============================
        RESPUESTA JSON
     =============================== */
-    private function response($data, int $code = 200): void {
+    private function response($data, int $code = 200): void
+    {
         http_response_code($code);
         echo json_encode($data, JSON_UNESCAPED_UNICODE);
         exit;
@@ -41,8 +57,12 @@ class BodegaController {
 
     /* ===============================
        LISTAR
+       Permiso: bodegas.listar
     =============================== */
-    public function listar(): void {
+    public function listar(): void
+    {
+        requirePermiso("bodegas.listar");
+
         $this->response([
             "success" => true,
             "data" => $this->model->listar()
@@ -51,8 +71,12 @@ class BodegaController {
 
     /* ===============================
        OBTENER POR CÓDIGO
+       Permiso: bodegas.listar
     =============================== */
-    public function obtener(): void {
+    public function obtener(): void
+    {
+        requirePermiso("bodegas.listar");
+
         $codigo = $_GET["codigo_bodega"] ?? $_GET["codigo"] ?? null;
 
         if (!$codigo) {
@@ -79,8 +103,12 @@ class BodegaController {
 
     /* ===============================
        CREAR
+       Permiso: bodegas.crear
     =============================== */
-    public function crear(): void {
+    public function crear(): void
+    {
+        requirePermiso("bodegas.crear");
+
         $data = json_decode(file_get_contents("php://input"), true);
 
         if (!$data) {
@@ -124,8 +152,12 @@ class BodegaController {
 
     /* ===============================
        ACTUALIZAR
+       Permiso: bodegas.actualizar
     =============================== */
-    public function actualizar(): void {
+    public function actualizar(): void
+    {
+        requirePermiso("bodegas.actualizar");
+
         $data = json_decode(file_get_contents("php://input"), true);
 
         $required = ["id_bodega", "codigo_bodega", "nombre", "ubicacion", "clasificacion_bodega"];
@@ -146,7 +178,7 @@ class BodegaController {
         }
 
         $ok = $this->model->actualizar(
-            $data["id_bodega"],
+            (int)$data["id_bodega"],
             $data["codigo_bodega"],
             $data["nombre"],
             $data["ubicacion"],
@@ -163,8 +195,12 @@ class BodegaController {
 
     /* ===============================
        CAMBIAR ESTADO
+       Permiso: bodegas.cambiar_estado
     =============================== */
-    public function cambiar_estado(): void {
+    public function cambiar_estado(): void
+    {
+        requirePermiso("bodegas.cambiar_estado");
+
         $data = json_decode(file_get_contents("php://input"), true);
 
         if (empty($data["codigo_bodega"]) || empty($data["estado"])) {
@@ -195,16 +231,17 @@ class BodegaController {
     }
 
     /* ===============================
-       OBTENER INVENTARIO DE BODEGA
+       INVENTARIO DE BODEGA
        GET ?accion=inventario_bodega&id_bodega=X
+       Permiso: bodegas.listar
     =============================== */
-    public function inventario_bodega(): void {
+    public function inventario_bodega(): void
+    {
+        requirePermiso("bodegas.listar");
+
         $idBodega = $_GET['id_bodega'] ?? null;
 
-        error_log("[inventario_bodega] ID recibido: " . var_export($idBodega, true));
-
         if (!$idBodega) {
-            error_log("[inventario_bodega] ERROR: ID_BODEGA vacio");
             $this->response([
                 "success" => false,
                 "message" => "ID de bodega requerido"
@@ -213,8 +250,6 @@ class BodegaController {
         }
 
         $materiales = $this->model->obtenerInventarioPorBodega((int)$idBodega);
-        error_log("[inventario_bodega] Materiales encontrados: " . count($materiales));
-        error_log("[inventario_bodega] Datos: " . json_encode($materiales));
 
         $this->response([
             "success" => true,
@@ -223,10 +258,14 @@ class BodegaController {
     }
 
     /* ===============================
-       OBTENER INVENTARIO DE SUBBODEGA
+       INVENTARIO DE SUBBODEGA
        GET ?accion=inventario_subbodega&id_subbodega=X
+       Permiso: bodegas.listar
     =============================== */
-    public function inventario_subbodega(): void {
+    public function inventario_subbodega(): void
+    {
+        requirePermiso("bodegas.listar");
+
         $idSubbodega = $_GET['id_subbodega'] ?? null;
 
         if (!$idSubbodega) {
@@ -249,7 +288,6 @@ class BodegaController {
 /* ===============================
    ROUTER
 ================================ */
-
 $accion = $_GET["accion"] ?? null;
 
 if (!$accion) {
@@ -257,7 +295,7 @@ if (!$accion) {
     echo json_encode([
         "success" => false,
         "message" => "Acción requerida"
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -268,7 +306,7 @@ if (!method_exists($controller, $accion)) {
     echo json_encode([
         "success" => false,
         "message" => "Acción inválida"
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 

@@ -2088,6 +2088,154 @@ case 'cambiar_password_obligatorio':
     enviarJSON(['ok' => true, 'message' => 'Contraseña actualizada correctamente.']);
 break;
 
+/* =====================================================
+   ✅ LISTAR ROLES FUNCIONALES
+   GET: ?accion=listar_roles_funcionales
+===================================================== */
+case 'listar_roles_funcionales':
+
+    try {
+        $stmt = $conn->prepare("
+            SELECT id_rol, nombre_rol
+            FROM roles_funcionales
+            ORDER BY id_rol ASC
+        ");
+        $stmt->execute();
+
+        $roles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        enviarJSON([
+            'success' => true,
+            'roles' => $roles
+        ]);
+
+    } catch (\Exception $e) {
+        enviarJSON([
+            'success' => false,
+            'error' => 'Error listando roles funcionales',
+            'detalle' => $e->getMessage()
+        ], 500);
+    }
+
+break;
+
+/* =====================================================
+   ✅ OBTENER ROL FUNCIONAL DE UN USUARIO
+   GET: ?accion=obtener_rol_funcional_usuario&id_usuario=#
+===================================================== */
+case 'obtener_rol_funcional_usuario':
+
+    $id_usuario = (int)($_GET['id_usuario'] ?? 0);
+
+    if ($id_usuario <= 0) {
+        enviarJSON(['success' => false, 'error' => 'id_usuario requerido'], 400);
+    }
+
+    try {
+        $stmt = $conn->prepare("
+            SELECT urf.id_rol, rf.nombre_rol
+            FROM usuario_roles_funcionales urf
+            INNER JOIN roles_funcionales rf ON rf.id_rol = urf.id_rol
+            WHERE urf.id_usuario = ?
+            ORDER BY urf.fecha_asignacion DESC
+            LIMIT 1
+        ");
+        $stmt->execute([$id_usuario]);
+        $rol = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        enviarJSON([
+            'success' => true,
+            'rol' => $rol ?: null
+        ]);
+
+    } catch (\Exception $e) {
+        enviarJSON([
+            'success' => false,
+            'error' => 'Error obteniendo rol funcional',
+            'detalle' => $e->getMessage()
+        ], 500);
+    }
+
+break;
+
+/* =====================================================
+   ✅ ASIGNAR ROL FUNCIONAL (TABLA PUENTE)
+   POST JSON: ?accion=asignar_rol_funcional
+   Body: { id_usuario, id_rol }
+===================================================== */
+case 'asignar_rol_funcional':
+
+    // ✅ Solo Coordinador puede asignar rol funcional
+    if (!isset($_SESSION['usuario_id']) || ($_SESSION['usuario_cargo'] ?? '') !== 'Coordinador') {
+        enviarJSON(['success' => false, 'error' => 'No autorizado'], 401);
+    }
+
+    $data = json_decode(file_get_contents("php://input"), true);
+
+    $id_usuario = (int)($data['id_usuario'] ?? 0);
+    $id_rol     = (int)($data['id_rol'] ?? 0);
+
+    if ($id_usuario <= 0 || $id_rol <= 0) {
+        enviarJSON(['success' => false, 'error' => 'Datos incompletos (id_usuario / id_rol)'], 400);
+    }
+
+    $asignado_por = (int)$_SESSION['usuario_id'];
+
+    try {
+        $conn->beginTransaction();
+
+        // ✅ Verificar usuario existe
+        $stmtU = $conn->prepare("SELECT id_usuario FROM usuarios WHERE id_usuario = ? LIMIT 1");
+        $stmtU->execute([$id_usuario]);
+        if (!$stmtU->fetch()) {
+            $conn->rollBack();
+            enviarJSON(['success' => false, 'error' => 'Usuario no encontrado'], 404);
+        }
+
+        // ✅ Verificar rol funcional existe
+        $stmtR = $conn->prepare("SELECT id_rol FROM roles_funcionales WHERE id_rol = ? LIMIT 1");
+        $stmtR->execute([$id_rol]);
+        if (!$stmtR->fetch()) {
+            $conn->rollBack();
+            enviarJSON(['success' => false, 'error' => 'Rol funcional no existe'], 404);
+        }
+
+        // ✅ Si manejas 1 rol funcional por usuario -> reemplazar
+        $conn->prepare("DELETE FROM usuario_roles_funcionales WHERE id_usuario = ?")
+             ->execute([$id_usuario]);
+
+        // ✅ Insertar nuevo rol funcional
+        $stmtIns = $conn->prepare("
+            INSERT INTO usuario_roles_funcionales (id_usuario, id_rol, asignado_por)
+            VALUES (?, ?, ?)
+        ");
+        $stmtIns->execute([$id_usuario, $id_rol, $asignado_por]);
+
+        $conn->commit();
+
+        enviarJSON([
+            'success' => true,
+            'mensaje' => 'Rol funcional asignado correctamente ✅',
+            'data' => [
+                'id_usuario' => $id_usuario,
+                'id_rol' => $id_rol,
+                'asignado_por' => $asignado_por
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        if ($conn->inTransaction()) $conn->rollBack();
+
+        enviarJSON([
+            'success' => false,
+            'error' => 'Error asignando rol funcional',
+            'detalle' => $e->getMessage()
+        ], 500);
+    }
+
+break;
+
+
 
     
     /* =====================================================

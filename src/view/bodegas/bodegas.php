@@ -2,8 +2,16 @@
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 
+require_once __DIR__ . "/../../utils/permisos_helper.php";
+requirePermiso("bodegas.gestionar");
+
 include_once BASE_PATH . '/Config/database.php';
 include_once BASE_PATH . '/src/models/bodega.php';
+
+
+
+
+
 
 $model = new BodegaModel($conn);
 $bodegas = $model->listar();

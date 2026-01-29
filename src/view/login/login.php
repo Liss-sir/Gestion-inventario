@@ -7,7 +7,6 @@ session_start();
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Incluye la conexión a la BD y la BASE_URL si ya la defines allí
 require_once __DIR__ . '/../../../Config/database.php';
 
 // Si no tienes BASE_URL definida en otro sitio, la calculamos aquí
@@ -18,17 +17,34 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', $protocol . $host . $script_dir); // ej: .../src/view/login/
 }
 
-// Si ya está logueado, mandarlo al dashboard (usando el index de la raíz)
+/**
+ * ============================================================
+ * ✅ NUEVO: Helper para decidir redirección inicial
+ * - Si el usuario es "Aprendiz" → obras
+ * - Si no → dashboard
+ * ============================================================
+ */
+function getRedirectPageByRole(): string
+{
+    $cargo = strtolower(trim((string)($_SESSION['cargo'] ?? $_SESSION['usuario_cargo'] ?? '')));
+    $rolFuncional = strtolower(trim((string)($_SESSION['rol_funcional'] ?? $_SESSION['usuario_rol_funcional'] ?? '')));
+
+    $esAprendiz = (strpos($cargo, 'aprendiz') !== false) || (strpos($rolFuncional, 'aprendiz') !== false);
+
+    return $esAprendiz ? 'obras' : 'dashboard';
+}
+
+// Si ya está logueado, mandarlo a su inicio según rol
 if (isset($_SESSION['usuario_id'])) {
-    header('Location: ' . BASE_URL . '../../../index.php?page=dashboard');
+    $redirectPage = getRedirectPageByRole();
+    header('Location: ' . BASE_URL . '../../../index.php?page=' . $redirectPage);
     exit;
 }
 
 $loginError = "";
 
 // ===============================
-// ✅ NUEVO: Mostrar mensaje si viene por reason (timeout, revoked, etc.)
-// (SIN alterar tu lógica base: solo pre-cargamos el mensaje)
+// ✅ Mostrar mensaje si viene por reason (timeout, revoked, etc.)
 // ===============================
 $reason = $_GET['reason'] ?? '';
 
@@ -44,6 +60,49 @@ if ($reason === 'idle_timeout') {
     $loginError = "Tu sesión no es válida. Inicia sesión nuevamente.";
 }
 
+// =======================================================
+// ✅ DETECTAR ROL FUNCIONAL DESDE TABLAS RELACIONADAS
+// - usuario_roles_funcionales
+// - roles_funcionales
+// SIN asumir columnas como rf.slug (porque no existe)
+// =======================================================
+$rolFuncSelectSQL = "NULL AS rol_funcional"; // fallback
+
+try {
+    // 1) Verificar si existen las tablas
+    $t1 = $conn->query("SHOW TABLES LIKE 'usuario_roles_funcionales'")->fetchColumn();
+    $t2 = $conn->query("SHOW TABLES LIKE 'roles_funcionales'")->fetchColumn();
+
+    if ($t1 && $t2) {
+        // 2) Detectar columna correcta en roles_funcionales
+        $colsStmt = $conn->query("SHOW COLUMNS FROM roles_funcionales");
+        $cols = $colsStmt->fetchAll(PDO::FETCH_ASSOC);
+        $fields = array_map(fn($c) => $c['Field'], $cols);
+
+        // ✅ posibles nombres de columna que guardan el texto del rol
+        $candidatas = ['slug', 'nombre', 'rol', 'nombre_rol', 'titulo', 'descripcion'];
+
+        $rolCol = null;
+        foreach ($candidatas as $cand) {
+            if (in_array($cand, $fields, true)) {
+                $rolCol = $cand;
+                break;
+            }
+        }
+
+        if ($rolCol) {
+            // ✅ usamos SOLO la columna que exista
+            $rolFuncSelectSQL = "COALESCE(rf.`$rolCol`, 'Sin rol asignado') AS rol_funcional";
+        } else {
+            // si no hay ninguna columna usable
+            $rolFuncSelectSQL = "'Sin rol asignado' AS rol_funcional";
+        }
+    }
+} catch (Throwable $e) {
+    // si algo falla, seguimos con NULL AS rol_funcional
+    $rolFuncSelectSQL = "NULL AS rol_funcional";
+}
+
 // ------------------------
 // PROCESAR LOGIN (POST)
 // ------------------------
@@ -55,23 +114,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $loginError = "Por favor ingresa tu correo y contraseña.";
     } else {
         try {
-            // 🔥 AGREGAMOS direccion y fecha_creacion SIN BORRAR NADA
-            // ✅ AGREGAMOS foto_perfil SIN BORRAR NADA
+            // ✅ SELECT robusto: usuarios + rol funcional por relación
             $sql = "SELECT 
-                        id_usuario,
-                        nombre_completo,
-                        tipo_documento,
-                        numero_documento,
-                        telefono,
-                        direccion,          -- 🔥 agregado
-                        fecha_creacion,     -- 🔥 agregado
-                        cargo,
-                        correo,
-                        estado,
-                        password,
-                        foto_perfil         -- ✅ agregado (ajusta el nombre si tu columna se llama distinto)
-                    FROM usuarios 
-                    WHERE correo = :correo 
+                        u.id_usuario,
+                        u.nombre_completo,
+                        u.tipo_documento,
+                        u.numero_documento,
+                        u.telefono,
+                        u.direccion,
+                        u.fecha_creacion,
+                        u.cargo,
+                        u.correo,
+                        u.estado,
+                        u.password,
+                        u.foto_perfil,
+
+                        $rolFuncSelectSQL
+
+                    FROM usuarios u
+                    LEFT JOIN usuario_roles_funcionales urf 
+                        ON urf.id_usuario = u.id_usuario
+                    LEFT JOIN roles_funcionales rf
+                        ON rf.id_rol = urf.id_rol
+
+                    WHERE u.correo = :correo
+                    ORDER BY urf.fecha_asignacion DESC
                     LIMIT 1";
 
             $stmt = $conn->prepare($sql);
@@ -95,8 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($passwordOk) {
 
                     // =========================================================
-                    // ✅ NUEVO: BLOQUEAR LOGIN SI EL USUARIO ESTÁ INACTIVO
-                    // (NO TOCA TU DB, solo valida el campo estado)
+                    // ✅ BLOQUEAR LOGIN SI EL USUARIO ESTÁ INACTIVO
                     // =========================================================
                     $rawEstado = $user['estado'] ?? null;
                     $valEstado = strtolower(trim((string)$rawEstado));
@@ -107,7 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
 
                         // =========================================================
-                        // ✅ SOLUCIÓN: CERRAR SESIONES PEGADAS SIN TOCAR LA DB
+                        // ✅ CERRAR SESIONES PEGADAS SIN TOCAR LA DB
                         // =========================================================
                         try {
                             $stmtCloseOld = $conn->prepare("
@@ -138,11 +204,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_SESSION['token_sesion'] = $tokenSesion;
 
                         // ============================
-                        // 🔥 GUARDAR TODOS LOS DATOS EN SESIÓN
+                        // ✅ GUARDAR TODOS LOS DATOS EN SESIÓN
                         // ============================
                         $_SESSION['usuario_id']                = $user['id_usuario'];
                         $_SESSION['usuario_nombre']            = $user['nombre_completo'];
                         $_SESSION['usuario_cargo']             = $user['cargo'];
+
+                        // ✅ Rol funcional desde relación
+                        $_SESSION['usuario_rol_funcional']     = $user['rol_funcional'] ?? 'Sin rol asignado';
+
+                        // ✅ Alias cortos (NO rompe nada)
+                        $_SESSION['cargo']                     = $user['cargo'];
+                        $_SESSION['rol_funcional']             = $user['rol_funcional'] ?? 'Sin rol asignado';
 
                         $_SESSION['usuario_tipo_documento']    = $user['tipo_documento'];
                         $_SESSION['usuario_numero_documento']  = $user['numero_documento'];
@@ -150,17 +223,121 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_SESSION['usuario_correo']            = $user['correo'];
                         $_SESSION['usuario_estado']            = $user['estado'];
 
-                        // 🔥 AGREGAMOS ESTOS DOS CAMPOS QUE FALTABAN
                         $_SESSION['usuario_direccion']         = $user['direccion'];
                         $_SESSION['usuario_fecha_creacion']    = $user['fecha_creacion'];
 
-                        // ✅ CLAVE: guardar la foto en sesión para que persista tras volver a iniciar sesión
                         $_SESSION['usuario_foto']              = $user['foto_perfil'] ?? null;
 
-                        // =========================================================
-                        // ✅ NUEVO: MARCAR ACTIVIDAD INICIAL PARA TIMEOUT (15 min)
-                        // =========================================================
-                        $_SESSION['LAST_ACTIVITY'] = time();
+            // =========================================================
+            // ✅ CARGAR ASOCIACIONES DEL USUARIO EN SESIÓN
+            // - roles_funcionales (array)
+            // - programas asociados (array)
+            // - fichas asociadas (array)
+            // - actividades/obras donde es instructor (array)
+            // - bodegas asociadas (si existe tabla de mapeo)
+            // =========================================================
+            try {
+              // Roles funcionales (todos los asignados, orden descendente por fecha)
+              $stmtRoles = $conn->prepare("SELECT rf.id_rol, rf.nombre_rol FROM usuario_roles_funcionales urf INNER JOIN roles_funcionales rf ON rf.id_rol = urf.id_rol WHERE urf.id_usuario = ? ORDER BY urf.fecha_asignacion DESC");
+              $stmtRoles->execute([(int)$user['id_usuario']]);
+              $rolesRows = $stmtRoles->fetchAll(PDO::FETCH_ASSOC);
+              $rolesNombres = [];
+              foreach ($rolesRows as $r) {
+                if (!empty($r['nombre_rol'])) $rolesNombres[] = $r['nombre_rol'];
+              }
+              $_SESSION['roles_funcionales'] = array_values(array_unique($rolesNombres));
+            } catch (Throwable $e) {
+              $_SESSION['roles_funcionales'] = [];
+            }
+
+            try {
+              // Programas asociados: preferimos programas vinculados a fichas donde el usuario es instructor
+              $programas = [];
+
+              $stmtProg = $conn->prepare("SELECT DISTINCT p.id_programa, p.nombre_programa FROM fichas_instructores fi INNER JOIN fichas f ON fi.id_ficha = f.id_ficha INNER JOIN programas p ON f.id_programa = p.id_programa WHERE fi.id_usuario = ? AND fi.estado = 'Activo'");
+              $stmtProg->execute([(int)$user['id_usuario']]);
+              $progRows = $stmtProg->fetchAll(PDO::FETCH_ASSOC);
+              if (!empty($progRows)) {
+                $programas = $progRows;
+              } else {
+                // Fallback: si el usuario tiene id_programa en su fila de usuarios
+                if (!empty($user['id_programa'])) {
+                  $stmtP = $conn->prepare("SELECT id_programa, nombre_programa FROM programas WHERE id_programa = ? LIMIT 1");
+                  $stmtP->execute([(int)$user['id_programa']]);
+                  $pR = $stmtP->fetch(PDO::FETCH_ASSOC);
+                  if ($pR) $programas[] = $pR;
+                }
+              }
+              $_SESSION['usuario_programas'] = $programas;
+            } catch (Throwable $e) {
+              $_SESSION['usuario_programas'] = [];
+            }
+
+            try {
+              // Fichas asociadas (si es instructor)
+              $stmtF = $conn->prepare("SELECT f.id_ficha, f.numero_ficha, f.id_programa FROM fichas_instructores fi INNER JOIN fichas f ON fi.id_ficha = f.id_ficha WHERE fi.id_usuario = ? AND fi.estado = 'Activo' ORDER BY f.numero_ficha ASC");
+              $stmtF->execute([(int)$user['id_usuario']]);
+              $fichasRows = $stmtF->fetchAll(PDO::FETCH_ASSOC);
+              $_SESSION['usuario_fichas'] = $fichasRows ?: [];
+            } catch (Throwable $e) {
+              $_SESSION['usuario_fichas'] = [];
+            }
+
+            try {
+              // Actividades / obras donde es instructor
+              $stmtA = $conn->prepare("SELECT id_actividad, nombre_actividad, id_ficha, id_rae FROM actividades_formacion WHERE id_instructor = ? ORDER BY nombre_actividad ASC");
+              $stmtA->execute([(int)$user['id_usuario']]);
+              $activRows = $stmtA->fetchAll(PDO::FETCH_ASSOC);
+              $_SESSION['usuario_actividades'] = $activRows ?: [];
+            } catch (Throwable $e) {
+              $_SESSION['usuario_actividades'] = [];
+            }
+
+            try {
+              // Bodegas asociadas (si existe una tabla de mapeo usuario_bodegas o similares)
+              $bodegasMapped = [];
+              $candidateTables = ['usuario_bodegas', 'usuarios_bodegas', 'usuario_bodega', 'usuario_bodegas_map'];
+              $foundTable = null;
+              foreach ($candidateTables as $t) {
+                $check = $conn->query("SHOW TABLES LIKE " . $conn->quote($t))->fetchColumn();
+                if ($check) { $foundTable = $t; break; }
+              }
+
+              if ($foundTable) {
+                // Intentar columnas comunes
+                $sqlB = "SELECT ub.id_bodega, b.nombre FROM {$foundTable} ub LEFT JOIN bodegas b ON b.id_bodega = ub.id_bodega WHERE ub.id_usuario = ?";
+                $stmtB = $conn->prepare($sqlB);
+                $stmtB->execute([(int)$user['id_usuario']]);
+                $bodegasMapped = $stmtB->fetchAll(PDO::FETCH_ASSOC);
+              }
+              $_SESSION['usuario_bodegas'] = $bodegasMapped ?: [];
+            } catch (Throwable $e) {
+              $_SESSION['usuario_bodegas'] = [];
+            }
+
+            // =========================================================
+            // ✅ CALCULAR PERMISOS (usando helper si existe)
+            // =========================================================
+            try {
+              $permPath = __DIR__ . '/../../utils/permisos_helper.php';
+              if (file_exists($permPath)) {
+                require_once $permPath;
+                if (function_exists('permisos_getPermisosUsuario')) {
+                  $_SESSION['usuario_permisos'] = permisos_getPermisosUsuario();
+                } else {
+                  $_SESSION['usuario_permisos'] = [];
+                }
+              } else {
+                $_SESSION['usuario_permisos'] = [];
+              }
+            } catch (Throwable $e) {
+              $_SESSION['usuario_permisos'] = [];
+            }
+
+            // =========================================================
+            // ✅ TIMEOUT 15 min
+            // =========================================================
+            $_SESSION['LAST_ACTIVITY'] = time();
 
                         // =========================================================
                         // ✅ DETECTAR "CAMBIO OBLIGATORIO" (FORCE_%)
@@ -185,18 +362,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $_SESSION['force_password_change'] = 0;
                         }
 
-                        // =========================================================
-                        // ✅ NUEVO: si es obligatorio -> manda al dashboard con force_pwd=1
-                        // =========================================================
                         if (!empty($_SESSION['force_password_change']) && (int)$_SESSION['force_password_change'] === 1) {
                             header('Location: ' . BASE_URL . '../../../index.php?page=dashboard&force_pwd=1');
                             exit;
                         }
 
-                        header('Location: ' . BASE_URL . '../../../index.php?page=dashboard');
+                        /**
+                         * ============================================================
+                         * ✅ NUEVO: Redirección según rol (Aprendiz → obras)
+                         * ============================================================
+                         */
+                        $redirectPage = getRedirectPageByRole();
+
+                        header('Location: ' . BASE_URL . '../../../index.php?page=' . $redirectPage);
                         exit;
 
-                    } // ✅ fin else (estado activo)
+                    } // fin else estado activo
 
                 } else {
                     $loginError = "Credenciales incorrectas. Verifica tu correo y contraseña.";
@@ -219,19 +400,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <title>Login SIGA</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="../../assets/css/globals.css">
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="min-h-screen flex items-center justify-center bg-background p-4 relative">
-
-  <!-- Fondo degradado -->
   <div class="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5"></div>
 
-  <!-- Card -->
   <div class="relative w-full max-w-md shadow-xl bg-white rounded-xl border border-gray-200 fade-in">
-
-    <!-- Header -->
     <div class="space-y-4 text-center pb-2 p-6">
       <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-secondary">
         <img src="../../assets/img/logo-sena-blanco.png" alt="logo sena blanco" class="h-8 w-auto object-contain">
@@ -249,11 +424,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <?php endif; ?>
     </div>
 
-    <!-- Form -->
     <div class="pt-4 px-6 pb-6">
       <form id="loginForm" class="space-y-4" method="POST">
 
-        <!-- EMAIL -->
         <div class="space-y-2">
           <label for="email" class="text-sm font-medium">Correo electrónico</label>
           <input
@@ -266,7 +439,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           />
         </div>
 
-        <!-- PASSWORD -->
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <label for="password" class="text-sm font-medium">Contraseña</label>
@@ -274,7 +446,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <a href="<?= BASE_URL ?>recuperar_contrasena.php" class="text-xs text-secondary hover:underline">
               ¿Olvidaste tu contraseña?
             </a>
-
           </div>
 
           <div class="relative">
@@ -287,13 +458,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               class="h-11 pr-10 w-full border rounded-md px-3"
             />
 
-            <!-- Botón mostrar/ocultar -->
             <button
               type="button"
               id="togglePassword"
               class="absolute right-0 top-0 h-11 w-11 flex items-center justify-center hover:bg-transparent"
             >
-              <!-- ICONO EYE -->
               <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
                 <circle cx="12" cy="12" r="3"/>
@@ -302,7 +471,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </div>
         </div>
 
-        <!-- BOTÓN LOGIN -->
         <button
           type="submit"
           id="btnLogin"
@@ -310,7 +478,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         >
           <span id="btnText">Iniciar sesión</span>
 
-          <!-- LOADER -->
           <svg
             id="loaderIcon"
             class="hidden ml-2 h-4 w-4 animate-spin"
@@ -328,9 +495,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
   </div>
 
-  <!-- ======================== -->
-  <!-- JS — MISMA LÓGICA DE REACT -->
-  <!-- ======================== -->
   <script>
     const togglePasswordBtn = document.getElementById("togglePassword");
     const passwordInput = document.getElementById("password");

@@ -39,6 +39,20 @@ let estadoApp = {
   },
 };
 
+// ============================================================
+// ✅ PERMISOS (inyectados desde PHP)
+// ============================================================
+const PERMS = (() => {
+  const p = window.SIGA_SOL_PERMS || {};
+  return {
+    crear: !!p.crear,
+    aceptar: !!p.aceptar,
+    rechazar: !!p.rechazar,
+    entregar: !!p.entregar,
+  };
+})();
+
+
 const selectores = {
   btnNueva: document.getElementById("sol-btn-nueva"),
   modal: document.getElementById("sol-modal"),
@@ -184,6 +198,13 @@ function toastInfo(message) {
   showFlowbiteAlert("info", message);
 }
 
+// Helper para truncar texto largo en opciones de select
+function truncateText(text, maxLength = 27) {
+  if (!text) return '';
+  const str = String(text);
+  return str.length > maxLength ? str.substring(0, maxLength) + '...' : str;
+}
+
 // ============================================================
 //  MODAL MOTIVO RECHAZO (SIGA) - sin prompt, sin confirm
 // ============================================================
@@ -243,7 +264,7 @@ function pedirMotivoRechazo() {
           </button>
 
           <button type="button" data-motivo-ok
-            class="px-4 py-2 rounded-xl bg-error text-error-foreground hover:opacity-95">
+            class="px-4 py-2 rounded-xl bg-[#dc2626] text-white hover:bg-[#b91c1c]">
             Rechazar
           </button>
         </div>
@@ -347,6 +368,7 @@ const utilidades = {
       rae: s.codigo_rae ?? s.descripcion_rae ?? s.id_rae ?? "",
       observaciones: s.observaciones ?? "",
       fecha_respuesta: this.formatearFecha(s.fecha_respuesta),
+      materiales: s.materiales ?? [],
     };
   },
 
@@ -404,6 +426,94 @@ function respuestaEsStockFiltrado(arr) {
   return arr.some((m) => m && Object.prototype.hasOwnProperty.call(m, "stock_actual"));
 }
 
+// ============================================================
+// ✅ CACHE + RENDER DE MATERIALES EN CARD (sin tocar backend)
+// ============================================================
+estadoApp.materialesPorSolicitud = {}; // cache por id
+
+function normalizarMaterialesParaCard(materiales) {
+  if (!Array.isArray(materiales)) return [];
+  return materiales.map((m) => ({
+    // El modelo retorna: material, cantidad, unidad_medida
+    nombre: m.material ?? m.nombre_material ?? m.nombre ?? "Material",
+    cantidad: m.cantidad ?? m.cantidad_solicitada ?? 0,
+    unidad: m.unidad_medida ?? m.unidad ?? "",
+  }));
+}
+
+function htmlMaterialesCard(materiales) {
+  const mats = normalizarMaterialesParaCard(materiales);
+
+  if (!mats.length) {
+    return `
+      <div class="mt-3 border-t pt-3 text-sm text-muted-foreground">
+        Sin materiales registrados
+      </div>
+    `;
+  }
+
+  return `
+    <div class="mt-3 border-t pt-3">
+      <div class="text-sm font-medium text-gray-600 mb-2">Materiales solicitados:</div>
+      <ul class="space-y-1 text-sm">
+        ${mats
+          .map(
+            (m) => `
+          <li class="flex justify-between gap-2">
+            <span class="truncate">• ${m.nombre}</span>
+            <span class="font-semibold">${m.cantidad}${m.unidad ? ` ${m.unidad}` : ""}</span>
+          </li>`
+          )
+          .join("")}
+      </ul>
+    </div>
+  `;
+}
+
+async function cargarMaterialesEnCard(card, idSolicitud) {
+  const box = card.querySelector(`.sol-card-materiales[data-mats-for="${idSolicitud}"]`);
+  if (!box) return;
+
+  // ✅ 1) Si ya existe cache => pintar de una vez (NO spinner infinito)
+  if (estadoApp.materialesPorSolicitud[idSolicitud]) {
+    box.innerHTML = htmlMaterialesCard(estadoApp.materialesPorSolicitud[idSolicitud]);
+    safeLucideCreateIcons();
+    return;
+  }
+
+  // ✅ 2) Si no hay cache => spinner + fetch
+  box.innerHTML = `
+    <div class="mt-3 border-t pt-3 text-sm text-muted-foreground">
+      <i data-lucide="loader" class="w-4 h-4 inline-block align-text-bottom animate-spin mr-1"></i>
+      Cargando materiales...
+    </div>
+  `;
+  safeLucideCreateIcons();
+
+  try {
+    const full = await api.obtenerCompleta(idSolicitud);
+
+    // soporta varias formas típicas de respuesta
+    const mats =
+      full?.materiales ||
+      full?.data?.materiales ||
+      full?.solicitud?.materiales ||
+      [];
+
+    estadoApp.materialesPorSolicitud[idSolicitud] = mats;
+    box.innerHTML = htmlMaterialesCard(mats);
+    safeLucideCreateIcons();
+  } catch (e) {
+    box.innerHTML = `
+      <div class="mt-3 border-t pt-3 text-sm text-muted-foreground">
+        No se pudieron cargar los materiales.
+      </div>
+    `;
+  }
+}
+
+
+
 const api = {
   async listarSolicitudes() {
     try {
@@ -430,6 +540,14 @@ const api = {
     }
   },
 
+  async obtenerCompleta(idSolicitud) {
+    const res = await fetch(`${API}?accion=obtenerCompleta&id=${encodeURIComponent(idSolicitud)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status} en obtenerCompleta`);
+    const data = await res.json();
+    return data;
+  },
+
+
   async cargarActividades(fichaId, raeId) {
     if (!selectores.selectActividad) return;
 
@@ -443,32 +561,56 @@ const api = {
 
     try {
       // Intento 1: endpoint actividades (si tu controller ya lo tiene)
-      let res = await fetch(`${API}?accion=actividades&ficha=${encodeURIComponent(fichaId)}&rae=${encodeURIComponent(raeId)}`);
+      const url1 = `${API}?accion=actividades&ficha=${encodeURIComponent(fichaId)}&rae=${encodeURIComponent(raeId)}`;
+      const url2 = `${API}?accion=actividad&ficha=${encodeURIComponent(fichaId)}&rae=${encodeURIComponent(raeId)}`;
 
-      // Si no existe ese endpoint, intentamos un fallback común
+      console.debug(`[SOLICITUDES] cargarActividades: ficha=${fichaId}, rae=${raeId}`);
+      console.debug(`[SOLICITUDES] intentando URL: ${url1}`);
+
+      let res = await fetch(url1);
       if (!res.ok) {
-        res = await fetch(`${API}?accion=actividad&ficha=${encodeURIComponent(fichaId)}&rae=${encodeURIComponent(raeId)}`);
+        console.debug(`[SOLICITUDES] URL1 falló (${res.status}), intentando fallback: ${url2}`);
+        res = await fetch(url2);
       }
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
 
       const data = await res.json();
+      console.debug("[SOLICITUDES] actividades respuesta bruta:", data);
 
-      if (!Array.isArray(data) || !data.length) {
+      // Normalizar posibles formas de respuesta
+      let items = [];
+      if (Array.isArray(data)) items = data;
+      else if (Array.isArray(data.data)) items = data.data;
+      else if (Array.isArray(data.actividades)) items = data.actividades;
+      else if (Array.isArray(data.actividades_formacion)) items = data.actividades_formacion;
+      else if (data && data.success === false) items = [];
+      else if (data && typeof data === 'object') {
+        // Intentar extraer primer array dentro del objeto
+        const vals = Object.values(data).find((v) => Array.isArray(v));
+        if (Array.isArray(vals)) items = vals;
+      }
+
+      if (!Array.isArray(items) || !items.length) {
         selectores.selectActividad.innerHTML = '<option value="">No hay actividades disponibles</option>';
         return;
       }
 
       selectores.selectActividad.innerHTML = '<option value="">Seleccionar actividad</option>';
 
-      data.forEach((a) => {
+      items.forEach((a) => {
         const opt = document.createElement("option");
         opt.value = a.id_actividad ?? a.id ?? "";
-        opt.textContent = a.nombre_actividad ?? a.nombre ?? `Actividad ${opt.value}`;
+        const fullText = a.nombre_actividad ?? a.nombre ?? `Actividad ${opt.value}`;
+        opt.textContent = truncateText(fullText, 25);
+        opt.title = fullText;
         selectores.selectActividad.appendChild(opt);
       });
     } catch (e) {
       selectores.selectActividad.innerHTML = '<option value="">Error cargando actividades</option>';
+      console.error('[SOLICITUDES] error cargarActividades:', e);
       toastError("No se pudieron cargar las actividades. Revise el endpoint en el controller.");
     }
   },
@@ -600,6 +742,7 @@ const api = {
   },
 
   async cargarSelectores() {
+    console.debug('[SOLICITUDES] cargarSelectores invoked');
     try {
       // PROGRAMAS
       if (selectores.selectPrograma) {
@@ -611,7 +754,9 @@ const api = {
             programas.forEach((p) => {
               const opt = document.createElement("option");
               opt.value = p.id_programa;
-              opt.textContent = `${p.codigo_programa} - ${p.nombre_programa}`;
+              const fullText = `${p.codigo_programa} - ${p.nombre_programa}`;
+              opt.textContent = truncateText(fullText, 27);
+              opt.title = fullText; // Mostrar texto completo en tooltip
               selectores.selectPrograma.appendChild(opt);
             });
           }
@@ -621,6 +766,8 @@ const api = {
         if (!selectores.selectPrograma.dataset.boundChange) {
           selectores.selectPrograma.addEventListener("change", async function () {
             const programaId = this.value;
+
+            console.debug('[SOLICITUDES] selectPrograma changed:', programaId);
 
             if (selectores.selectActividad) {
               selectores.selectActividad.innerHTML = '<option value="">Seleccione ficha y RAE</option>';
@@ -638,12 +785,15 @@ const api = {
 
             if (selectores.selectRae && resRaes.ok) {
               const raes = await resRaes.json();
+              console.debug('[SOLICITUDES] raes fetched:', raes);
               selectores.selectRae.innerHTML = '<option value="">Seleccionar RAE</option>';
               if (Array.isArray(raes) && raes.length) {
                 raes.forEach((r) => {
                   const opt = document.createElement("option");
                   opt.value = r.id_rae;
-                  opt.textContent = `${r.codigo_rae} - ${r.descripcion_rae}`;
+                  const fullText = `${r.codigo_rae} - ${r.descripcion_rae}`;
+                  opt.textContent = truncateText(fullText, 27);
+                  opt.title = fullText; // Mostrar texto completo en tooltip
                   selectores.selectRae.appendChild(opt);
                 });
               } else {
@@ -653,17 +803,34 @@ const api = {
 
             if (selectores.selectFichas && resFichas.ok) {
               const fichas = await resFichas.json();
+              console.debug('[SOLICITUDES] fichas fetched:', fichas);
               selectores.selectFichas.innerHTML = '<option value="">Seleccionar ficha</option>';
               if (Array.isArray(fichas) && fichas.length) {
                 fichas.forEach((f) => {
                   const opt = document.createElement("option");
                   opt.value = f.id_ficha;
-                  opt.textContent = `${f.numero_ficha} - ${f.jornada}`;
+                  const fullText = `${f.numero_ficha} - ${f.jornada}`;
+                  opt.textContent = truncateText(fullText, 27);
+                  opt.title = fullText; // Mostrar texto completo en tooltip
                   selectores.selectFichas.appendChild(opt);
                 });
               } else {
                 selectores.selectFichas.innerHTML = '<option value="">No hay fichas disponibles</option>';
               }
+            }
+
+            // Si solo hay 1 RAE y 1 FICHA, autoseleccionarlas y cargar actividades
+            try {
+              if (Array.isArray(raes) && raes.length === 1 && Array.isArray(fichas) && fichas.length === 1) {
+                const rId = raes[0].id_rae;
+                const fId = fichas[0].id_ficha;
+                selectores.selectRae.value = rId;
+                selectores.selectFichas.value = fId;
+                console.debug('[SOLICITUDES] autoseleccionando rae/ficha y cargando actividades', rId, fId);
+                api.cargarActividades(fId, rId);
+              }
+            } catch (eAuto) {
+              console.warn('[SOLICITUDES] autoseleccionar fallback error:', eAuto);
             }
           });
 
@@ -674,6 +841,7 @@ const api = {
             selectores.selectRae.addEventListener("change", () => {
               const fichaId = selectores.selectFichas?.value || "";
               const raeId = selectores.selectRae?.value || "";
+              console.debug('[SOLICITUDES] selectRae changed, ficha=', fichaId, 'rae=', raeId);
               api.cargarActividades(fichaId, raeId);
             });
             selectores.selectRae.dataset.boundAct = "1";
@@ -684,6 +852,7 @@ const api = {
             selectores.selectFichas.addEventListener("change", () => {
               const fichaId = selectores.selectFichas?.value || "";
               const raeId = selectores.selectRae?.value || "";
+              console.debug('[SOLICITUDES] selectFichas changed, ficha=', fichaId, 'rae=', raeId);
               api.cargarActividades(fichaId, raeId);
             });
             selectores.selectFichas.dataset.boundAct = "1";
@@ -696,17 +865,26 @@ const api = {
         selectores.selectBodega.innerHTML = '<option value="">Seleccione una bodega</option>';
 
         const resB = await fetch(`${API}?accion=bodegas`);
-        if (resB.ok) {
-          const bodegas = await resB.json();
-          if (Array.isArray(bodegas) && bodegas.length) {
-            bodegas.forEach((b) => {
-              const opt = document.createElement("option");
-              opt.value = b.id_bodega;
-              opt.textContent = `${b.codigo_bodega} - ${b.nombre}`;
-              selectores.selectBodega.appendChild(opt);
-            });
+          if (resB.ok) {
+            const bodegas = await resB.json();
+            console.debug('[SOLICITUDES] bodegas fetched:', bodegas);
+            if (Array.isArray(bodegas) && bodegas.length) {
+              bodegas.forEach((b) => {
+                const opt = document.createElement("option");
+                opt.value = b.id_bodega;
+                const fullText = `${b.codigo_bodega} - ${b.nombre}`;
+                opt.textContent = truncateText(fullText, 32);
+                opt.title = fullText;
+                selectores.selectBodega.appendChild(opt);
+              });
+            } else {
+              // No hay bodegas
+              selectores.selectBodega.innerHTML = '<option value="">No hay bodegas disponibles</option>';
+            }
+          } else {
+            console.warn('[SOLICITUDES] fallo fetch bodegas:', resB.status, resB.statusText);
+            selectores.selectBodega.innerHTML = '<option value="">Error cargando bodegas</option>';
           }
-        }
 
         // ✅ Evitar duplicar listener
         if (!selectores.selectBodega.dataset.boundChange) {
@@ -744,8 +922,9 @@ const api = {
             // Cargar subbodegas
             try {
               const resSub = await fetch(`${API}?accion=subbodegas&bodega=${encodeURIComponent(bodegaId)}`);
-              if (selectores.selectSubBodega && resSub.ok) {
-                const subs = await resSub.json();
+                if (selectores.selectSubBodega && resSub.ok) {
+                  const subs = await resSub.json();
+                  console.debug('[SOLICITUDES] subbodegas fetched for bodega', bodegaId, subs);
                 selectores.selectSubBodega.innerHTML = '<option value="">Seleccione una subbodega</option>';
 
                 if (Array.isArray(subs) && subs.length) {
@@ -753,7 +932,9 @@ const api = {
                     const opt = document.createElement("option");
                     opt.value = s.id_subbodega;
                     const nombre = s.nombre_subbodega || s.nombre || "Subbodega";
-                    opt.textContent = `${s.codigo_subbodega || "SB"} - ${nombre}`;
+                    const fullText = `${s.codigo_subbodega || "SB"} - ${nombre}`;
+                    opt.textContent = truncateText(fullText, 27);
+                    opt.title = fullText; // Mostrar texto completo en tooltip
                     selectores.selectSubBodega.appendChild(opt);
                   });
                 } else {
@@ -882,8 +1063,14 @@ const render = {
       const icon = CONFIG.ICONS[st] || "clock";
       const label = CONFIG.LABELS[st] || st;
 
-      const mostrarAccionesPendiente = st === "pendiente";
-      const mostrarAccionEntregar = st === "aprobada";
+      const mostrarAccionesPendiente =
+        st === "pendiente" && (PERMS.aceptar || PERMS.rechazar);
+
+      const mostrarBtnAceptar = st === "pendiente" && PERMS.aceptar;
+      const mostrarBtnRechazar = st === "pendiente" && PERMS.rechazar;
+
+      const mostrarAccionEntregar = st === "aprobada" && PERMS.entregar;
+
 
       const card = document.createElement("div");
       card.className = "sol-card";
@@ -900,22 +1087,21 @@ const render = {
           </div>
           <span class="sol-badge ${st}">${label}</span>
         </div>
-
-        <div class="sol-card-body">
-          <div class="sol-card-row">
-            <i data-lucide="hash" class="sol-icon-muted"></i>
-            <span>Ficha: ${s.ficha}</span>
-          </div>
+  
+        <div class="sol-card-row">
+          <i data-lucide="folder-kanban" class="sol-icon-muted"></i>
+          <span>Ficha: ${s.ficha}</span>
+        </div>
 
           ${s.programa ? `
           <div class="sol-card-row">
-            <i data-lucide="book-open" class="sol-icon-muted"></i>
+            <i data-lucide="graduation-cap" class="sol-icon-muted"></i>
             <span>Programa: ${s.programa}</span>
           </div>` : ""}
 
           ${s.rae ? `
           <div class="sol-card-row">
-            <i data-lucide="target" class="sol-icon-muted"></i>
+            <i data-lucide="book-open-text" class="sol-icon-muted"></i>
             <span>RAE: ${s.rae}</span>
           </div>` : ""}
 
@@ -932,23 +1118,40 @@ const render = {
             <i data-lucide="calendar-check" class="sol-icon-muted"></i>
             <span>Respuesta: ${s.fecha_respuesta}</span>
           </div>` : ""}
+
+          <div class="sol-card-materiales" data-mats-for="${s.id}">
+            <div class="mt-3 border-t pt-3 text-sm text-muted-foreground">
+              <i data-lucide="loader"
+                 class="w-4 h-4 inline-block align-text-bottom animate-spin mr-1"></i>
+              Cargando materiales...
+            </div>
+          </div>
         </div>
 
         ${mostrarAccionesPendiente ? `
-        <div class="sol-card-footer mt-4 pt-4 border-t border-gray-200">
-          <div class="flex gap-2">
-            <button class="sol-btn-aceptar flex-1 py-2 px-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-                    data-id="${s.id}">
-              <i data-lucide="check-circle" class="w-4 h-4"></i>
-              Aceptar
-            </button>
-            <button class="sol-btn-rechazar flex-1 py-2 px-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
-                    data-id="${s.id}">
-              <i data-lucide="x-circle" class="w-4 h-4"></i>
-              Rechazar
-            </button>
+          <div class="sol-card-footer mt-4 pt-4 border-t border-gray-200">
+            <div class="flex gap-2">
+              
+              ${mostrarBtnAceptar ? `
+                <button class="sol-btn-aceptar flex-1 py-2 px-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                        data-id="${s.id}">
+                  <i data-lucide="check-circle" class="w-4 h-4"></i>
+                  Aceptar
+                </button>
+              ` : ""}
+
+              ${mostrarBtnRechazar ? `
+                <button class="sol-btn-rechazar flex-1 py-2 px-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                        data-id="${s.id}">
+                  <i data-lucide="x-circle" class="w-4 h-4"></i>
+                  Rechazar
+                </button>
+              ` : ""}
+
+            </div>
           </div>
-        </div>` : ""}
+        ` : ""}
+
 
         ${mostrarAccionEntregar ? `
         <div class="sol-card-footer mt-4 pt-4 border-t border-gray-200">
@@ -961,6 +1164,9 @@ const render = {
       `;
 
       cont.appendChild(card);
+
+      // ✅ Cargar materiales reales (sin tocar backend)
+      cargarMaterialesEnCard(card, s.id);
     });
 
     safeLucideCreateIcons();
@@ -1133,45 +1339,51 @@ const paginacion = {
 //  ✅ CORRECCIÓN: evitar duplicar eventos con data-bound
 // ============================================================
 function agregarEventosBotonesAccion() {
-  document.querySelectorAll(".sol-btn-aceptar").forEach((btn) => {
-    if (btn.dataset.bound === "1") return;
-    btn.dataset.bound = "1";
+  if (PERMS.aceptar) {
+    document.querySelectorAll(".sol-btn-aceptar").forEach((btn) => {
+      if (btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
 
-    btn.addEventListener("click", async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const idSolicitud = btn.dataset.id;
-      await cambiarEstadoSolicitud(idSolicitud, "aprobada");
+      btn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const idSolicitud = btn.dataset.id;
+        await cambiarEstadoSolicitud(idSolicitud, "aprobada");
+      });
     });
-  });
+  }
 
-  document.querySelectorAll(".sol-btn-rechazar").forEach((btn) => {
-    if (btn.dataset.bound === "1") return;
-    btn.dataset.bound = "1";
+  if (PERMS.rechazar) {
+    document.querySelectorAll(".sol-btn-rechazar").forEach((btn) => {
+      if (btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
 
-    btn.addEventListener("click", async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const idSolicitud = btn.dataset.id;
+      btn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const idSolicitud = btn.dataset.id;
 
-      const motivo = await pedirMotivoRechazo();
-      if (motivo === null) return;
+        const motivo = await pedirMotivoRechazo();
+        if (motivo === null) return;
 
-      await cambiarEstadoSolicitud(idSolicitud, "rechazada", motivo);
+        await cambiarEstadoSolicitud(idSolicitud, "rechazada", motivo);
+      });
     });
-  });
+  }
 
-  document.querySelectorAll(".sol-btn-entregar").forEach((btn) => {
-    if (btn.dataset.bound === "1") return;
-    btn.dataset.bound = "1";
+  if (PERMS.entregar) {
+    document.querySelectorAll(".sol-btn-entregar").forEach((btn) => {
+      if (btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
 
-    btn.addEventListener("click", async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const idSolicitud = btn.dataset.id;
-      await marcarEntregada(idSolicitud);
+      btn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const idSolicitud = btn.dataset.id;
+        await marcarEntregada(idSolicitud);
+      });
     });
-  });
+  }
 }
 
 async function cambiarEstadoSolicitud(idSolicitud, nuevoEstado, motivo = null) {
@@ -1252,6 +1464,13 @@ const modal = {
 
     if (selectores.btnGuardar) selectores.btnGuardar.style.display = "none";
     this.limpiarFormulario();
+    // Refrescar selectores al abrir modal para asegurar que bodegas/subbodegas/materiales están cargados
+    try {
+      api.cargarSelectores();
+    } catch (e) {
+      console.warn('[SOLICITUDES] error refrescando selectores al abrir modal:', e);
+    }
+
     setTimeout(() => selectores.selectPrograma?.focus(), 50);
   },
 
@@ -1464,6 +1683,12 @@ document.addEventListener("DOMContentLoaded", () => {
   safeLucideCreateIcons();
   console.log("[SOLICITUDES] API =", API);
   app.inicializar();
+
+  // ✅ Si no tiene permiso para crear, ocultamos el botón
+  if (selectores.btnNueva && !PERMS.crear) {
+    selectores.btnNueva.style.display = "none";
+  }
+
 });
 
 window.paginacion = paginacion;

@@ -20,6 +20,47 @@ if (!isset($_SESSION['usuario_id'])) {
     exit;
 }
 
+function obtenerRolFuncionalActual(PDO $conn, $idUsuario)
+{
+    try {
+        $stmt = $conn->prepare("
+            SELECT 
+                rf.id_rol,
+                rf.nombre_rol
+            FROM usuario_roles_funcionales urf
+            INNER JOIN roles_funcionales rf ON rf.id_rol = urf.id_rol
+            WHERE urf.id_usuario = ?
+            ORDER BY urf.fecha_asignacion DESC
+            LIMIT 1
+        ");
+        $stmt->execute([$idUsuario]);
+        $rol = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $rol ?: null; // null si no tiene rol asignado
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
+
+// ===============================
+// ✅ PASO 1: Asegurar CARGO en sesión (fallback BD)
+// ===============================
+if (empty($_SESSION["usuario_cargo"])) {
+    try {
+        $stmtCargo = $conn->prepare("SELECT cargo FROM usuarios WHERE id_usuario = ?");
+        $stmtCargo->execute([$_SESSION["usuario_id"]]);
+        $cargoDB = $stmtCargo->fetchColumn();
+
+        if (!empty($cargoDB)) {
+            $_SESSION["usuario_cargo"] = $cargoDB;
+        }
+    } catch (Throwable $e) {
+        // Silent fail: mantenemos tu base sin romper nada
+    }
+}
+
+
 // Armar nombre completo desde la sesión
 $nombreSesion   = $_SESSION['usuario_nombre']   ?? '';
 $apellidoSesion = $_SESSION['usuario_apellido'] ?? '';
@@ -46,11 +87,25 @@ if (!empty($fotoRaw)) {
     $fotoUrl = ltrim($fotoUrl, '/');
 }
 
+// ✅ Normalizar cargo
+$cargoSesion = $_SESSION["usuario_cargo"] ?? "encargado_inventario";
+$cargoSesion = strtolower(trim($cargoSesion));
+$cargoSesion = str_replace(" ", "_", $cargoSesion); // Encargado inventario → encargado_inventario
+
+
 $currentUser = [
     "nombre_completo" => $nombreCompleto !== '' ? $nombreCompleto : "Usuario",
-    "cargo"           => $_SESSION['usuario_cargo'] ?? "encargado_inventario",
+    "cargo" => $cargoSesion,
     "foto_url"        => $fotoUrl,
 ];
+
+$idUsuarioSesion = $_SESSION["usuario_id"] ?? null;
+
+$rolFuncionalActual = null;
+if ($idUsuarioSesion) {
+    $rolFuncionalActual = obtenerRolFuncionalActual($conn, $idUsuarioSesion);
+}
+
 
 /*
   🔹 Datos extra de perfil (tomados de la sesión)
@@ -65,7 +120,9 @@ $profileData = [
     "fecha_creacion"    => isset($_SESSION['usuario_fecha_creacion'])   ? $_SESSION['usuario_fecha_creacion']   : "",
     "direccion"         => isset($_SESSION['usuario_direccion'])        ? $_SESSION['usuario_direccion']        : "",
     "estado"            => isset($_SESSION['usuario_estado'])           ? $_SESSION['usuario_estado']           : "activo",
-    "cargo"             => isset($_SESSION['usuario_cargo'])            ? $_SESSION['usuario_cargo']            : "",
+   "cargo" => $cargoSesion,
+   "rol_funcional" => $rolFuncionalActual["nombre_rol"] ?? null,
+   "id_rol_funcional" => $rolFuncionalActual["id_rol"] ?? null,
 ];
 
 // Programas asociados (si es instructor)
@@ -87,11 +144,14 @@ $mockAlerts = [
 
 $roleLabels = [
     "coordinador"          => "Coordinador",
+    "subcoordinador"       => "Subcoordinador",
     "instructor"           => "Instructor",
     "pasante"              => "Pasante",
+    "aprendiz"             => "Aprendiz",
     "encargado_inventario" => "Encargado de Inventario",
     "encargado_bodega"     => "Encargado de Bodega",
 ];
+
 
 /*
   🔹 Clases de badge para el ROL (solo usadas en el MODAL de perfil)
@@ -526,23 +586,19 @@ function limpiarNotificaciones() {
 
         <!-- Avatar / Iniciales -->
         <div
-          class="flex h-9 w-9 items-center justify-center rounded-full overflow-hidden"
-          <?php if (empty($currentUser["foto_url"])): ?>
-            style="background-color: color-mix(in srgb, var(--secondary) 39%, #ffffff 61%);"
+          class="flex h-9 w-9 items-center justify-center rounded-full overflow-hidden avatar-wrapper"
+          <?php if (!empty($currentUser["foto_url"])): ?>
+            style="background-image: url('<?php echo htmlspecialchars($currentUser["foto_url"], ENT_QUOTES, 'UTF-8'); ?>'); background-size: cover; background-position: center center; background-repeat: no-repeat; background-color: transparent;"
           <?php else: ?>
-            style="background-color: transparent;"
+            style="background-color: color-mix(in srgb, var(--secondary) 39%, #ffffff 61%);"
           <?php endif; ?>
         >
-          <?php if (!empty($currentUser["foto_url"])): ?>
-            <img
-              src="<?php echo htmlspecialchars($currentUser["foto_url"], ENT_QUOTES, 'UTF-8'); ?>"
-              alt="<?php echo htmlspecialchars($currentUser["nombre_completo"], ENT_QUOTES, 'UTF-8'); ?>"
-              class="h-full w-full object-cover"
-            />
-          <?php else: ?>
+          <?php if (empty($currentUser["foto_url"])): ?>
             <span class="text-xs font-semibold text-primary">
               <?php echo getUserInitials($currentUser["nombre_completo"]); ?>
             </span>
+          <?php else: ?>
+            <span class="sr-only">Foto de perfil de <?php echo htmlspecialchars($currentUser["nombre_completo"], ENT_QUOTES, 'UTF-8'); ?></span>
           <?php endif; ?>
         </div>
 
@@ -613,6 +669,15 @@ function limpiarNotificaciones() {
 <!-- ✅ NUEVO: CONTENEDOR GLOBAL DE TOASTS (FUERA DEL MODAL) - SIN TOCAR TU BASE -->
 <div id="toastGlobalContainer" class="fixed top-5 right-5 z-[9999] space-y-3"></div>
 
+<?php
+  $cargoKey   = $profileData["cargo"] ?? "aprendiz";
+  $cargoLabel = $roleLabels[$cargoKey] ?? ucfirst(str_replace('_', ' ', $cargoKey));
+?>
+
+
+<!-- ===================================================
+   MODAL VER PERFIL (SOLO VISUALIZAR, SIN INPUTS)
+=================================================== -->
 <!-- ===================================================
    MODAL VER PERFIL (SOLO VISUALIZAR, SIN INPUTS)
 =================================================== -->
@@ -620,41 +685,53 @@ function limpiarNotificaciones() {
   id="modalPerfilVer"
   class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-4"
 >
-  <div class="relative w-full max-w-xl rounded-3xl bg-white shadow-xl">
+  <div class="relative w-full max-w-xl rounded-3xl bg-white shadow-xl overflow-hidden">
 
+    <!-- Botón cerrar -->
     <button
       id="btnCerrarModalPerfilVer"
-      class="absolute right-5 top-5 inline-flex h-8 w-8 items-center justify-center bg-white rounded-full"
+      class="absolute right-5 top-5 inline-flex h-8 w-8 items-center justify-center bg-white rounded-full z-10 hover:bg-slate-50 transition"
       type="button"
     >
       <i data-lucide="x" class="h-4 w-4 text-slate-600"></i>
     </button>
 
     <div class="p-6 md:p-8">
-      <div class="flex items-center gap-4 mb-6">
-        <div class="h-16 w-16 rounded-full overflow-hidden flex items-center justify-center bg-slate-100" style="background-color: color-mix(in srgb, var(--secondary) 39%, #ffffff 61%);">
+
+      <!-- Header Usuario -->
+      <div class="flex items-start gap-4 mb-6">
+
+        <!-- Avatar -->
+        <div
+          class="h-16 w-16 rounded-full overflow-hidden flex items-center justify-center bg-slate-100 shrink-0 avatar-wrapper"
           <?php if (!empty($currentUser["foto_url"])): ?>
-            <img
-              src="<?php echo htmlspecialchars($currentUser["foto_url"], ENT_QUOTES, 'UTF-8'); ?>"
-              alt="<?php echo htmlspecialchars($currentUser["nombre_completo"], ENT_QUOTES, 'UTF-8'); ?>"
-              class="h-full w-full object-cover"
-            />
+            style="background-image: url('<?php echo htmlspecialchars($currentUser["foto_url"], ENT_QUOTES, 'UTF-8'); ?>'); background-size: cover; background-position: center center; background-repeat: no-repeat; background-color: transparent;"
           <?php else: ?>
+            style="background-color: color-mix(in srgb, var(--secondary) 39%, #ffffff 61%);"
+          <?php endif; ?>
+        >
+          <?php if (empty($currentUser["foto_url"])): ?>
             <span class="text-xl font-semibold text-primary">
               <?php echo getUserInitials($currentUser["nombre_completo"]); ?>
             </span>
+          <?php else: ?>
+            <span class="sr-only">Foto de perfil de <?php echo htmlspecialchars($currentUser["nombre_completo"], ENT_QUOTES, 'UTF-8'); ?></span>
           <?php endif; ?>
         </div>
 
-        <div class="flex-1">
-          <h2 class="text-lg md:text-xl font-semibold text-slate-900">
+        <!-- Nombre + Badges -->
+        <div class="flex-1 min-w-0 pr-10">
+          <h2 class="text-lg md:text-xl font-semibold text-slate-900 truncate">
             <?php echo htmlspecialchars($profileData["nombre_completo"], ENT_QUOTES, 'UTF-8'); ?>
           </h2>
 
-          <div class="mt-1 flex items-center gap-2">
+          <!-- ✅ BADGES: Cargo + Rol funcional + Estado -->
+          <div class="mt-2 flex flex-wrap items-center gap-2">
+
             <?php
+              // ✅ BADGE 1: CARGO NORMAL
               $cargoRawModalVer      = $profileData["cargo"];
-              $cargoLabelModalVer    = $roleLabels[$cargoRawModalVer] ?? ucfirst(str_replace('_', ' ', $cargoRawModalVer));
+              $cargoLabelModalVer    = $roleLabels[$cargoRawModalVer] ?? ucwords(str_replace('_', ' ', $cargoRawModalVer));
               $cargoBadgeClsModalVer = $roleBadgeClasses[$cargoRawModalVer] ?? 'badge-role-instructor';
             ?>
             <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium <?php echo $cargoBadgeClsModalVer; ?>">
@@ -662,6 +739,32 @@ function limpiarNotificaciones() {
             </span>
 
             <?php
+              // ✅ BADGE 2: ROL FUNCIONAL
+              $rolFuncionalKey = $profileData["rol_funcional"] ?? null;
+
+              $rolFuncionalKeyNorm = $rolFuncionalKey ? strtolower(trim($rolFuncionalKey)) : null;
+              $rolFuncionalKeyNorm = $rolFuncionalKeyNorm ? str_replace(" ", "_", $rolFuncionalKeyNorm) : null;
+
+              $rolFuncionalLabel = $rolFuncionalKey
+                ? ($roleLabels[$rolFuncionalKey] ?? ucwords(str_replace('_', ' ', $rolFuncionalKey)))
+                : null;
+
+              $rolFuncionalBadgeClass = 'badge-rolfunc-default';
+              if ($rolFuncionalKeyNorm === 'encargado_inventario') {
+                $rolFuncionalBadgeClass = 'badge-rolfunc-inventario';
+              } elseif ($rolFuncionalKeyNorm === 'encargado_bodega') {
+                $rolFuncionalBadgeClass = 'badge-rolfunc-bodega';
+              }
+            ?>
+
+            <?php if (!empty($rolFuncionalLabel)): ?>
+              <span class="badge-rolfunc-base <?php echo $rolFuncionalBadgeClass; ?>">
+                <?php echo htmlspecialchars($rolFuncionalLabel, ENT_QUOTES, 'UTF-8'); ?>
+              </span>
+            <?php endif; ?>
+
+            <?php
+              // ✅ BADGE 3: ESTADO
               $isActiveVer = strtolower($profileData["estado"]) === 'activo';
               $estadoClassesVer = $isActiveVer
                 ? 'bg-emerald-100 text-emerald-700'
@@ -670,17 +773,22 @@ function limpiarNotificaciones() {
             <span class="inline-flex rounded-full px-3 py-0.5 text-[11px] font-semibold <?php echo $estadoClassesVer; ?>">
               <?php echo htmlspecialchars($profileData["estado"], ENT_QUOTES, 'UTF-8'); ?>
             </span>
+
           </div>
         </div>
+
       </div>
 
+      <!-- Body Info -->
       <div class="space-y-6 text-sm">
+
+        <!-- Datos personales -->
         <div>
           <h3 class="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase">
             Datos personales
           </h3>
-          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
             <div>
               <p class="text-xs font-medium text-slate-400">Tipo de documento</p>
               <p class="text-sm text-slate-800">
@@ -711,11 +819,13 @@ function limpiarNotificaciones() {
           </div>
         </div>
 
+        <!-- Datos cuenta -->
         <div>
           <h3 class="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase">
             Datos de la cuenta
           </h3>
-          <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
             <div>
               <p class="text-xs font-medium text-slate-400">Correo</p>
               <p class="text-sm text-slate-800 break-all">
@@ -732,11 +842,13 @@ function limpiarNotificaciones() {
           </div>
         </div>
 
+        <!-- Programas asociados (Instructor) -->
         <?php if ($esInstructor && !empty($programasAsociados)): ?>
           <div>
             <h3 class="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase">
               Programas asociados
             </h3>
+
             <div class="flex flex-wrap gap-2">
               <?php foreach ($programasAsociados as $prog): ?>
                 <?php if (trim($prog) === '') continue; ?>
@@ -747,10 +859,12 @@ function limpiarNotificaciones() {
             </div>
           </div>
         <?php endif; ?>
+
       </div>
     </div>
   </div>
 </div>
+
 
 <!-- ===================================================
    MODAL EDITAR PERFIL (CON INPUTS)
@@ -801,23 +915,19 @@ function limpiarNotificaciones() {
       <div class="flex items-center gap-4 mb-6">
         <div class="relative h-16 w-16 cursor-pointer" id="avatarPerfilEditar">
           <div
-            class="flex h-16 w-16 items-center justify-center rounded-full overflow-hidden"
-            <?php if (empty($currentUser["foto_url"])): ?>
-              style="background-color: color-mix(in srgb, var(--secondary) 39%, #ffffff 61%);"
+            class="flex h-16 w-16 items-center justify-center rounded-full overflow-hidden avatar-wrapper"
+            <?php if (!empty($currentUser["foto_url"])): ?>
+              style="background-image: url('<?php echo htmlspecialchars($currentUser["foto_url"], ENT_QUOTES, 'UTF-8'); ?>'); background-size: cover; background-position: center center; background-repeat: no-repeat; background-color: transparent;"
             <?php else: ?>
-              style="background-color: transparent;"
+              style="background-color: color-mix(in srgb, var(--secondary) 39%, #ffffff 61%);"
             <?php endif; ?>
           >
-            <?php if (!empty($currentUser["foto_url"])): ?>
-              <img
-                src="<?php echo htmlspecialchars($currentUser["foto_url"], ENT_QUOTES, 'UTF-8'); ?>"
-                alt="<?php echo htmlspecialchars($currentUser["nombre_completo"], ENT_QUOTES, 'UTF-8'); ?>"
-                class="h-full w-full object-cover"
-              />
-            <?php else: ?>
+            <?php if (empty($currentUser["foto_url"])): ?>
               <span class="text-xl font-semibold text-primary">
                 <?php echo getUserInitials($currentUser["nombre_completo"]); ?>
               </span>
+            <?php else: ?>
+              <span class="sr-only">Foto de perfil de <?php echo htmlspecialchars($currentUser["nombre_completo"], ENT_QUOTES, 'UTF-8'); ?></span>
             <?php endif; ?>
           </div>
 
@@ -843,6 +953,31 @@ function limpiarNotificaciones() {
             <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium <?php echo $cargoBadgeClsModalEditar; ?>">
               <?php echo htmlspecialchars($cargoLabelModalEditar, ENT_QUOTES, 'UTF-8'); ?>
             </span>
+
+            <?php
+              // ✅ BADGE: ROL FUNCIONAL (same logic as in the "Ver perfil" modal)
+              $rolFuncionalKey = $profileData["rol_funcional"] ?? null;
+
+              $rolFuncionalKeyNorm = $rolFuncionalKey ? strtolower(trim($rolFuncionalKey)) : null;
+              $rolFuncionalKeyNorm = $rolFuncionalKeyNorm ? str_replace(" ", "_", $rolFuncionalKeyNorm) : null;
+
+              $rolFuncionalLabel = $rolFuncionalKey
+                ? ($roleLabels[$rolFuncionalKey] ?? ucwords(str_replace('_', ' ', $rolFuncionalKey)))
+                : null;
+
+              $rolFuncionalBadgeClass = 'badge-rolfunc-default';
+              if ($rolFuncionalKeyNorm === 'encargado_inventario') {
+                $rolFuncionalBadgeClass = 'badge-rolfunc-inventario';
+              } elseif ($rolFuncionalKeyNorm === 'encargado_bodega') {
+                $rolFuncionalBadgeClass = 'badge-rolfunc-bodega';
+              }
+            ?>
+
+            <?php if (!empty($rolFuncionalLabel)): ?>
+              <span class="badge-rolfunc-base <?php echo $rolFuncionalBadgeClass; ?>">
+                <?php echo htmlspecialchars($rolFuncionalLabel, ENT_QUOTES, 'UTF-8'); ?>
+              </span>
+            <?php endif; ?>
 
             <?php
               $isActiveEditar = strtolower($profileData["estado"]) === 'activo';
@@ -889,6 +1024,7 @@ $datosParaJS = [
 
 <!-- MODAL EDITAR PERFIL (Normal: Teléfono, Dirección y Foto) -->
 <form id="formEditarPerfil" method="post" enctype="multipart/form-data" class="space-y-6">
+  
     <!-- Se añade campo oculto para el ID -->
     <input type="hidden" name="id_usuario" value="<?php echo $_SESSION['usuario_id']; ?>">
     

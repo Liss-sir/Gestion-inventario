@@ -43,7 +43,6 @@ if ($page === 'landing') {
 }
 
 // 2) Si es LOGIN, dejarlo pasar sin auth_guard
-//    (para evitar redirect automático si no hay sesión)
 if ($page === 'login') {
     $loginFile = BASE_PATH . "/src/view/login/login.php";
 
@@ -58,13 +57,34 @@ if ($page === 'login') {
 }
 
 // 3) A PARTIR DE AQUÍ, TODAS LAS PÁGINAS SON PROTEGIDAS
-// ✅ Ejecuta auth_guard completo (estado activo + sesión única + timeout 15 min)
 require_once BASE_PATH . '/src/includes/auth_guard.php';
 
-// Si NO hay sesión → mandar al login (extra protección)
+// Si NO hay sesión → mandar al login
 if (!isset($_SESSION[$SESSION_USER_KEY])) {
     header('Location: ' . BASE_URL . 'index.php?page=login');
     exit;
+}
+
+// =====================================================
+// ✅ FIX REAL: REDIRECCIÓN DEL APRENDIZ ANTES DEL HTML
+// =====================================================
+
+// Detectar rol aprendiz desde sesión (sin romper tu base)
+$rolSesion = $_SESSION['rol_nombre'] ?? $_SESSION['rol'] ?? $_SESSION['rol_usuario'] ?? '';
+$rolSesion = strtolower(trim((string)$rolSesion));
+
+if ($rolSesion === 'aprendiz') {
+    // Si intenta entrar al dashboard o solicitudes → mandarlo a obras
+    if ($page === 'dashboard' || $page === 'solicitudes') {
+        header("Location: " . BASE_URL . "index.php?page=obras");
+        exit;
+    }
+
+    // Si entra sin page claro (por seguridad) → mandarlo a obras
+    if (!$page || $page === '') {
+        header("Location: " . BASE_URL . "index.php?page=obras");
+        exit;
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -87,6 +107,7 @@ if (!isset($_SESSION[$SESSION_USER_KEY])) {
 
     <script>
         const BASE_URL = "<?= BASE_URL ?>";
+        window.USER_ROLE = "<?= $_SESSION['rol_nombre'] ?? $_SESSION['rol'] ?? $_SESSION['rol_usuario'] ?? '' ?>";
     </script>
 </body>
 </html>

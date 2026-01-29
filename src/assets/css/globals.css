@@ -516,6 +516,64 @@ select.no-arrow { background-image: none; padding-right: 0.75rem; }
   color: #475569 !important;
 }
 
+/* =========================================
+   BADGES — ROL FUNCIONAL (MISMO LOOK QUE ROL)
+   ========================================= */
+
+.badge-rolfunc-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0.125rem 0.75rem; /* pill */
+  font-size: 0.75rem;        /* text-xs */
+  font-weight: 500;          /* font-medium */
+  white-space: nowrap;
+}
+
+/* Encargado Inventario — mismo color que tu verde oscuro (chart-2) */
+.badge-rolfunc-inventario {
+  background-color: color-mix(in srgb, var(--chart-2) 29%, transparent);
+  color: var(--chart-2);
+}
+
+/* Encargado Bodega — mismo color que tu verde principal (chart-1) */
+.badge-rolfunc-bodega {
+  background-color: color-mix(in srgb, var(--chart-1) 29%, transparent);
+  color: var(--chart-1);
+}
+
+/* Sin rol asignado — neutro elegante */
+.badge-rolfunc-default {
+  background-color: color-mix(in srgb, #64748b 18%, transparent);
+  color: #64748b;
+}
+
+/* ===========================
+   AVATAR PERFIL (FIX CÍRCULO)
+   =========================== */
+.avatar-wrapper{
+  overflow:hidden;
+  border-radius:9999px;
+  position: relative;
+}
+
+.avatar-wrapper img{
+  /* Force the image to absolutely fill the circular wrapper.
+     Using position:absolute prevents layout shifts or flexbox
+     effects from moving the image inside the circle. */
+  position: absolute !important;
+  inset: 0 !important; /* top:0; right:0; bottom:0; left:0 */
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+  flex-shrink: 0 !important;
+}
+
+
+
 
 
 /* Animación moderna estilo shadcn/iOS */
