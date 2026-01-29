@@ -116,6 +116,10 @@ let subBodegasCountByBodega = {};
 
   const normalize = (s) => String(s || "").toLowerCase().trim();
 
+  const cleanText = (v) =>
+    String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
+
+
   // ============================
   // ✅ FLOWBITE-STYLE ALERTS (MISMO ESTILO QUE USUARIOS)
   // ============================
@@ -324,6 +328,19 @@ let subBodegasCountByBodega = {};
       toastError("Completa todos los campos obligatorios.");
       return;
     }
+
+    // ============================
+    // VALIDACIÓN FRONT: NOMBRE DUPLICADO
+    // ============================
+    const nombresExistentes = Array.from(
+      document.querySelectorAll(".bodegas-btn-dots")
+    ).map(btn => cleanText(btn.dataset.nombre));
+
+    if (nombresExistentes.includes(cleanText(nombre))) {
+      toastError("Ya existe una bodega con ese nombre.");
+      return;
+    }
+
 
     try {
       const res = await fetch(`${API_URL}?accion=crear`, {
