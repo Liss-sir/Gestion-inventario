@@ -20,6 +20,10 @@ $canCrearObra        = canPermiso("obras.crear") || canPermiso("obras.gestionar"
 $canEditarObra       = canPermiso("obras.editar") || canPermiso("obras.gestionar");
 $canCambiarEstadoObra = canPermiso("obras.activar_desactivar") || canPermiso("obras.gestionar");
 
+// Verificar si es instructor sin ficha vinculada
+$esInstructor = ($_SESSION['cargo'] ?? '') === "Instructor";
+$tieneFicha = !empty($_SESSION['usuario_fichas']);
+
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 ?>
@@ -66,8 +70,33 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       </div>
 
       <!-- ================================== -->
-      <!-- STATISTICS                         -->
+      <!-- INSTRUCTOR SIN FICHA - ALERTA      -->
       <!-- ================================== -->
+      <?php if ($esInstructor && !$tieneFicha): ?>
+      <div class="rounded-xl border border-amber-200 bg-amber-50 shadow-sm p-6">
+        <div class="flex items-start gap-4">
+          <div class="p-3 rounded-2xl bg-amber-100 inline-flex items-center justify-center">
+            <i class="fas fa-exclamation-triangle text-amber-600 text-xl"></i>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-amber-900 mb-2">Ficha No Vinculada</h3>
+            <p class="text-amber-800 mb-3">
+              Debe contar con una ficha vinculada para poder listar y crear sus obras.
+              Por favor, contacte al administrador o coordinador para que le asigne una ficha.
+            </p>
+            <div class="text-sm text-amber-700">
+              <p><strong>Cargo actual:</strong> Instructor</p>
+              <p><strong>Estado:</strong> Sin ficha asignada</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <?php endif; ?>
+
+      <!-- ================================== -->
+      <!-- STATISTICS (OCULTO SI INSTRUCTOR SIN FICHA) -->
+      <!-- ================================== -->
+      <?php if (!($esInstructor && !$tieneFicha)): ?>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
         <!-- Total Works -->
@@ -163,14 +192,15 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </div>
 
       </div>
+      <?php endif; ?>
 
     </div>
   </main>
 
   <!-- ========================================= -->
-  <!-- NEW WORK MODAL                             -->
+  <!-- NEW WORK MODAL (OCULTO SI INSTRUCTOR SIN FICHA) -->
   <!-- ========================================= -->
-  <?php if ($canCrearObra): ?>
+  <?php if ($canCrearObra && !($esInstructor && !$tieneFicha)): ?>
   <div id="modalCreate" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between p-6 pb-0">
@@ -275,9 +305,9 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   <?php endif; ?>
 
   <!-- ========================================= -->
-  <!-- EDIT WORK MODAL                            -->
+  <!-- EDIT WORK MODAL (OCULTO SI INSTRUCTOR SIN FICHA) -->
   <!-- ========================================= -->
-  <?php if ($canEditarObra): ?>
+  <?php if ($canEditarObra && !($esInstructor && !$tieneFicha)): ?>
   <div id="modalEdit" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between p-6 pb-0">
@@ -395,7 +425,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   <?php endif; ?>
 
   <!-- ========================================= -->
-  <!-- DETAILS MODAL                              -->
+  <!-- DETAILS MODAL (SIEMPRE DISPONIBLE)        -->
   <!-- ========================================= -->
   <div id="modalDetails" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
@@ -595,7 +625,11 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       fichas: <?= json_encode($_SESSION['usuario_fichas'] ?? []) ?>,
     };
     
+    // Información sobre instructor sin ficha
+    window.INSTRUCTOR_SIN_FICHA = <?= json_encode($esInstructor && !$tieneFicha) ?>;
+    
     console.log("👤 USUARIO SESIÓN:", window.USUARIO_SESION);
+    console.log("📋 INSTRUCTOR SIN FICHA:", window.INSTRUCTOR_SIN_FICHA);
   </script>
 
   <script src="<?= ASSETS_URL ?>js/obras/obras.js"></script>
