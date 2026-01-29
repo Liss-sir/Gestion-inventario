@@ -24,6 +24,7 @@ if (!isset($conn) || !($conn instanceof PDO)) {
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 
+try {
 // =====================================================
 // ✅ CONTROL DE VISUALIZACIÓN POR PERMISOS (DASHBOARD)
 // - Aprendiz / Pasante / Instructor NO verán:

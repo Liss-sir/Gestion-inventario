@@ -369,22 +369,25 @@ return [
     ],
 
     // =====================================================
-    // ✅ APRENDIZ
-    // =====================================================
+// ✅ APRENDIZ (SEGÚN DIAGRAMA HU113 - HU116)
+// =====================================================
     "aprendiz" => [
 
-        // Solicitudes
-        "solicitudes.crear",
-        "solicitudes.consultar",
+    // ✅ Entrada / cargar vista principal
+    "dashboard.ver",
 
-        "obras.listar",
-        "obras.consultar",
+    // ✅ HU115: Consultar notificaciones
+    "notificaciones.ver",
 
-        // Evidencias
-        "evidencias.subir",
-        "evidencias.consultar",
+    // ✅ HU116: Consultar obras (listar + detalle opcional)
+    "obras.listar",
+    "obras.consultar",
 
-        // Notificaciones
-        "notificaciones.ver",
-    ],
+    // ✅ HU113: Consultar evidencias (listar + detalle opcional)
+    "evidencias.consultar",
+
+    // ✅ HU114: Subir evidencias (adjuntar, validar, guardar, confirmar)
+    "evidencias.subir",
+],
+
 ];
