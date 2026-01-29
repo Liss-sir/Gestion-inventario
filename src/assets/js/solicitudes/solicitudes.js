@@ -198,6 +198,13 @@ function toastInfo(message) {
   showFlowbiteAlert("info", message);
 }
 
+// Helper para truncar texto largo en opciones de select
+function truncateText(text, maxLength = 27) {
+  if (!text) return '';
+  const str = String(text);
+  return str.length > maxLength ? str.substring(0, maxLength) + '...' : str;
+}
+
 // ============================================================
 //  MODAL MOTIVO RECHAZO (SIGA) - sin prompt, sin confirm
 // ============================================================
@@ -554,32 +561,56 @@ const api = {
 
     try {
       // Intento 1: endpoint actividades (si tu controller ya lo tiene)
-      let res = await fetch(`${API}?accion=actividades&ficha=${encodeURIComponent(fichaId)}&rae=${encodeURIComponent(raeId)}`);
+      const url1 = `${API}?accion=actividades&ficha=${encodeURIComponent(fichaId)}&rae=${encodeURIComponent(raeId)}`;
+      const url2 = `${API}?accion=actividad&ficha=${encodeURIComponent(fichaId)}&rae=${encodeURIComponent(raeId)}`;
 
-      // Si no existe ese endpoint, intentamos un fallback común
+      console.debug(`[SOLICITUDES] cargarActividades: ficha=${fichaId}, rae=${raeId}`);
+      console.debug(`[SOLICITUDES] intentando URL: ${url1}`);
+
+      let res = await fetch(url1);
       if (!res.ok) {
-        res = await fetch(`${API}?accion=actividad&ficha=${encodeURIComponent(fichaId)}&rae=${encodeURIComponent(raeId)}`);
+        console.debug(`[SOLICITUDES] URL1 falló (${res.status}), intentando fallback: ${url2}`);
+        res = await fetch(url2);
       }
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
 
       const data = await res.json();
+      console.debug("[SOLICITUDES] actividades respuesta bruta:", data);
 
-      if (!Array.isArray(data) || !data.length) {
+      // Normalizar posibles formas de respuesta
+      let items = [];
+      if (Array.isArray(data)) items = data;
+      else if (Array.isArray(data.data)) items = data.data;
+      else if (Array.isArray(data.actividades)) items = data.actividades;
+      else if (Array.isArray(data.actividades_formacion)) items = data.actividades_formacion;
+      else if (data && data.success === false) items = [];
+      else if (data && typeof data === 'object') {
+        // Intentar extraer primer array dentro del objeto
+        const vals = Object.values(data).find((v) => Array.isArray(v));
+        if (Array.isArray(vals)) items = vals;
+      }
+
+      if (!Array.isArray(items) || !items.length) {
         selectores.selectActividad.innerHTML = '<option value="">No hay actividades disponibles</option>';
         return;
       }
 
       selectores.selectActividad.innerHTML = '<option value="">Seleccionar actividad</option>';
 
-      data.forEach((a) => {
+      items.forEach((a) => {
         const opt = document.createElement("option");
         opt.value = a.id_actividad ?? a.id ?? "";
-        opt.textContent = a.nombre_actividad ?? a.nombre ?? `Actividad ${opt.value}`;
+        const fullText = a.nombre_actividad ?? a.nombre ?? `Actividad ${opt.value}`;
+        opt.textContent = truncateText(fullText, 25);
+        opt.title = fullText;
         selectores.selectActividad.appendChild(opt);
       });
     } catch (e) {
       selectores.selectActividad.innerHTML = '<option value="">Error cargando actividades</option>';
+      console.error('[SOLICITUDES] error cargarActividades:', e);
       toastError("No se pudieron cargar las actividades. Revise el endpoint en el controller.");
     }
   },
@@ -711,6 +742,7 @@ const api = {
   },
 
   async cargarSelectores() {
+    console.debug('[SOLICITUDES] cargarSelectores invoked');
     try {
       // PROGRAMAS
       if (selectores.selectPrograma) {
@@ -722,7 +754,9 @@ const api = {
             programas.forEach((p) => {
               const opt = document.createElement("option");
               opt.value = p.id_programa;
-              opt.textContent = `${p.codigo_programa} - ${p.nombre_programa}`;
+              const fullText = `${p.codigo_programa} - ${p.nombre_programa}`;
+              opt.textContent = truncateText(fullText, 27);
+              opt.title = fullText; // Mostrar texto completo en tooltip
               selectores.selectPrograma.appendChild(opt);
             });
           }
@@ -732,6 +766,8 @@ const api = {
         if (!selectores.selectPrograma.dataset.boundChange) {
           selectores.selectPrograma.addEventListener("change", async function () {
             const programaId = this.value;
+
+            console.debug('[SOLICITUDES] selectPrograma changed:', programaId);
 
             if (selectores.selectActividad) {
               selectores.selectActividad.innerHTML = '<option value="">Seleccione ficha y RAE</option>';
@@ -749,12 +785,15 @@ const api = {
 
             if (selectores.selectRae && resRaes.ok) {
               const raes = await resRaes.json();
+              console.debug('[SOLICITUDES] raes fetched:', raes);
               selectores.selectRae.innerHTML = '<option value="">Seleccionar RAE</option>';
               if (Array.isArray(raes) && raes.length) {
                 raes.forEach((r) => {
                   const opt = document.createElement("option");
                   opt.value = r.id_rae;
-                  opt.textContent = `${r.codigo_rae} - ${r.descripcion_rae}`;
+                  const fullText = `${r.codigo_rae} - ${r.descripcion_rae}`;
+                  opt.textContent = truncateText(fullText, 27);
+                  opt.title = fullText; // Mostrar texto completo en tooltip
                   selectores.selectRae.appendChild(opt);
                 });
               } else {
@@ -764,17 +803,34 @@ const api = {
 
             if (selectores.selectFichas && resFichas.ok) {
               const fichas = await resFichas.json();
+              console.debug('[SOLICITUDES] fichas fetched:', fichas);
               selectores.selectFichas.innerHTML = '<option value="">Seleccionar ficha</option>';
               if (Array.isArray(fichas) && fichas.length) {
                 fichas.forEach((f) => {
                   const opt = document.createElement("option");
                   opt.value = f.id_ficha;
-                  opt.textContent = `${f.numero_ficha} - ${f.jornada}`;
+                  const fullText = `${f.numero_ficha} - ${f.jornada}`;
+                  opt.textContent = truncateText(fullText, 27);
+                  opt.title = fullText; // Mostrar texto completo en tooltip
                   selectores.selectFichas.appendChild(opt);
                 });
               } else {
                 selectores.selectFichas.innerHTML = '<option value="">No hay fichas disponibles</option>';
               }
+            }
+
+            // Si solo hay 1 RAE y 1 FICHA, autoseleccionarlas y cargar actividades
+            try {
+              if (Array.isArray(raes) && raes.length === 1 && Array.isArray(fichas) && fichas.length === 1) {
+                const rId = raes[0].id_rae;
+                const fId = fichas[0].id_ficha;
+                selectores.selectRae.value = rId;
+                selectores.selectFichas.value = fId;
+                console.debug('[SOLICITUDES] autoseleccionando rae/ficha y cargando actividades', rId, fId);
+                api.cargarActividades(fId, rId);
+              }
+            } catch (eAuto) {
+              console.warn('[SOLICITUDES] autoseleccionar fallback error:', eAuto);
             }
           });
 
@@ -785,6 +841,7 @@ const api = {
             selectores.selectRae.addEventListener("change", () => {
               const fichaId = selectores.selectFichas?.value || "";
               const raeId = selectores.selectRae?.value || "";
+              console.debug('[SOLICITUDES] selectRae changed, ficha=', fichaId, 'rae=', raeId);
               api.cargarActividades(fichaId, raeId);
             });
             selectores.selectRae.dataset.boundAct = "1";
@@ -795,6 +852,7 @@ const api = {
             selectores.selectFichas.addEventListener("change", () => {
               const fichaId = selectores.selectFichas?.value || "";
               const raeId = selectores.selectRae?.value || "";
+              console.debug('[SOLICITUDES] selectFichas changed, ficha=', fichaId, 'rae=', raeId);
               api.cargarActividades(fichaId, raeId);
             });
             selectores.selectFichas.dataset.boundAct = "1";
@@ -807,17 +865,26 @@ const api = {
         selectores.selectBodega.innerHTML = '<option value="">Seleccione una bodega</option>';
 
         const resB = await fetch(`${API}?accion=bodegas`);
-        if (resB.ok) {
-          const bodegas = await resB.json();
-          if (Array.isArray(bodegas) && bodegas.length) {
-            bodegas.forEach((b) => {
-              const opt = document.createElement("option");
-              opt.value = b.id_bodega;
-              opt.textContent = `${b.codigo_bodega} - ${b.nombre}`;
-              selectores.selectBodega.appendChild(opt);
-            });
+          if (resB.ok) {
+            const bodegas = await resB.json();
+            console.debug('[SOLICITUDES] bodegas fetched:', bodegas);
+            if (Array.isArray(bodegas) && bodegas.length) {
+              bodegas.forEach((b) => {
+                const opt = document.createElement("option");
+                opt.value = b.id_bodega;
+                const fullText = `${b.codigo_bodega} - ${b.nombre}`;
+                opt.textContent = truncateText(fullText, 32);
+                opt.title = fullText;
+                selectores.selectBodega.appendChild(opt);
+              });
+            } else {
+              // No hay bodegas
+              selectores.selectBodega.innerHTML = '<option value="">No hay bodegas disponibles</option>';
+            }
+          } else {
+            console.warn('[SOLICITUDES] fallo fetch bodegas:', resB.status, resB.statusText);
+            selectores.selectBodega.innerHTML = '<option value="">Error cargando bodegas</option>';
           }
-        }
 
         // ✅ Evitar duplicar listener
         if (!selectores.selectBodega.dataset.boundChange) {
@@ -855,8 +922,9 @@ const api = {
             // Cargar subbodegas
             try {
               const resSub = await fetch(`${API}?accion=subbodegas&bodega=${encodeURIComponent(bodegaId)}`);
-              if (selectores.selectSubBodega && resSub.ok) {
-                const subs = await resSub.json();
+                if (selectores.selectSubBodega && resSub.ok) {
+                  const subs = await resSub.json();
+                  console.debug('[SOLICITUDES] subbodegas fetched for bodega', bodegaId, subs);
                 selectores.selectSubBodega.innerHTML = '<option value="">Seleccione una subbodega</option>';
 
                 if (Array.isArray(subs) && subs.length) {
@@ -864,7 +932,9 @@ const api = {
                     const opt = document.createElement("option");
                     opt.value = s.id_subbodega;
                     const nombre = s.nombre_subbodega || s.nombre || "Subbodega";
-                    opt.textContent = `${s.codigo_subbodega || "SB"} - ${nombre}`;
+                    const fullText = `${s.codigo_subbodega || "SB"} - ${nombre}`;
+                    opt.textContent = truncateText(fullText, 27);
+                    opt.title = fullText; // Mostrar texto completo en tooltip
                     selectores.selectSubBodega.appendChild(opt);
                   });
                 } else {
@@ -1394,6 +1464,13 @@ const modal = {
 
     if (selectores.btnGuardar) selectores.btnGuardar.style.display = "none";
     this.limpiarFormulario();
+    // Refrescar selectores al abrir modal para asegurar que bodegas/subbodegas/materiales están cargados
+    try {
+      api.cargarSelectores();
+    } catch (e) {
+      console.warn('[SOLICITUDES] error refrescando selectores al abrir modal:', e);
+    }
+
     setTimeout(() => selectores.selectPrograma?.focus(), 50);
   },
 

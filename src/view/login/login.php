@@ -228,10 +228,116 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         $_SESSION['usuario_foto']              = $user['foto_perfil'] ?? null;
 
-                        // =========================================================
-                        // ✅ TIMEOUT 15 min
-                        // =========================================================
-                        $_SESSION['LAST_ACTIVITY'] = time();
+            // =========================================================
+            // ✅ CARGAR ASOCIACIONES DEL USUARIO EN SESIÓN
+            // - roles_funcionales (array)
+            // - programas asociados (array)
+            // - fichas asociadas (array)
+            // - actividades/obras donde es instructor (array)
+            // - bodegas asociadas (si existe tabla de mapeo)
+            // =========================================================
+            try {
+              // Roles funcionales (todos los asignados, orden descendente por fecha)
+              $stmtRoles = $conn->prepare("SELECT rf.id_rol, rf.nombre_rol FROM usuario_roles_funcionales urf INNER JOIN roles_funcionales rf ON rf.id_rol = urf.id_rol WHERE urf.id_usuario = ? ORDER BY urf.fecha_asignacion DESC");
+              $stmtRoles->execute([(int)$user['id_usuario']]);
+              $rolesRows = $stmtRoles->fetchAll(PDO::FETCH_ASSOC);
+              $rolesNombres = [];
+              foreach ($rolesRows as $r) {
+                if (!empty($r['nombre_rol'])) $rolesNombres[] = $r['nombre_rol'];
+              }
+              $_SESSION['roles_funcionales'] = array_values(array_unique($rolesNombres));
+            } catch (Throwable $e) {
+              $_SESSION['roles_funcionales'] = [];
+            }
+
+            try {
+              // Programas asociados: preferimos programas vinculados a fichas donde el usuario es instructor
+              $programas = [];
+
+              $stmtProg = $conn->prepare("SELECT DISTINCT p.id_programa, p.nombre_programa FROM fichas_instructores fi INNER JOIN fichas f ON fi.id_ficha = f.id_ficha INNER JOIN programas p ON f.id_programa = p.id_programa WHERE fi.id_usuario = ? AND fi.estado = 'Activo'");
+              $stmtProg->execute([(int)$user['id_usuario']]);
+              $progRows = $stmtProg->fetchAll(PDO::FETCH_ASSOC);
+              if (!empty($progRows)) {
+                $programas = $progRows;
+              } else {
+                // Fallback: si el usuario tiene id_programa en su fila de usuarios
+                if (!empty($user['id_programa'])) {
+                  $stmtP = $conn->prepare("SELECT id_programa, nombre_programa FROM programas WHERE id_programa = ? LIMIT 1");
+                  $stmtP->execute([(int)$user['id_programa']]);
+                  $pR = $stmtP->fetch(PDO::FETCH_ASSOC);
+                  if ($pR) $programas[] = $pR;
+                }
+              }
+              $_SESSION['usuario_programas'] = $programas;
+            } catch (Throwable $e) {
+              $_SESSION['usuario_programas'] = [];
+            }
+
+            try {
+              // Fichas asociadas (si es instructor)
+              $stmtF = $conn->prepare("SELECT f.id_ficha, f.numero_ficha, f.id_programa FROM fichas_instructores fi INNER JOIN fichas f ON fi.id_ficha = f.id_ficha WHERE fi.id_usuario = ? AND fi.estado = 'Activo' ORDER BY f.numero_ficha ASC");
+              $stmtF->execute([(int)$user['id_usuario']]);
+              $fichasRows = $stmtF->fetchAll(PDO::FETCH_ASSOC);
+              $_SESSION['usuario_fichas'] = $fichasRows ?: [];
+            } catch (Throwable $e) {
+              $_SESSION['usuario_fichas'] = [];
+            }
+
+            try {
+              // Actividades / obras donde es instructor
+              $stmtA = $conn->prepare("SELECT id_actividad, nombre_actividad, id_ficha, id_rae FROM actividades_formacion WHERE id_instructor = ? ORDER BY nombre_actividad ASC");
+              $stmtA->execute([(int)$user['id_usuario']]);
+              $activRows = $stmtA->fetchAll(PDO::FETCH_ASSOC);
+              $_SESSION['usuario_actividades'] = $activRows ?: [];
+            } catch (Throwable $e) {
+              $_SESSION['usuario_actividades'] = [];
+            }
+
+            try {
+              // Bodegas asociadas (si existe una tabla de mapeo usuario_bodegas o similares)
+              $bodegasMapped = [];
+              $candidateTables = ['usuario_bodegas', 'usuarios_bodegas', 'usuario_bodega', 'usuario_bodegas_map'];
+              $foundTable = null;
+              foreach ($candidateTables as $t) {
+                $check = $conn->query("SHOW TABLES LIKE " . $conn->quote($t))->fetchColumn();
+                if ($check) { $foundTable = $t; break; }
+              }
+
+              if ($foundTable) {
+                // Intentar columnas comunes
+                $sqlB = "SELECT ub.id_bodega, b.nombre FROM {$foundTable} ub LEFT JOIN bodegas b ON b.id_bodega = ub.id_bodega WHERE ub.id_usuario = ?";
+                $stmtB = $conn->prepare($sqlB);
+                $stmtB->execute([(int)$user['id_usuario']]);
+                $bodegasMapped = $stmtB->fetchAll(PDO::FETCH_ASSOC);
+              }
+              $_SESSION['usuario_bodegas'] = $bodegasMapped ?: [];
+            } catch (Throwable $e) {
+              $_SESSION['usuario_bodegas'] = [];
+            }
+
+            // =========================================================
+            // ✅ CALCULAR PERMISOS (usando helper si existe)
+            // =========================================================
+            try {
+              $permPath = __DIR__ . '/../../utils/permisos_helper.php';
+              if (file_exists($permPath)) {
+                require_once $permPath;
+                if (function_exists('permisos_getPermisosUsuario')) {
+                  $_SESSION['usuario_permisos'] = permisos_getPermisosUsuario();
+                } else {
+                  $_SESSION['usuario_permisos'] = [];
+                }
+              } else {
+                $_SESSION['usuario_permisos'] = [];
+              }
+            } catch (Throwable $e) {
+              $_SESSION['usuario_permisos'] = [];
+            }
+
+            // =========================================================
+            // ✅ TIMEOUT 15 min
+            // =========================================================
+            $_SESSION['LAST_ACTIVITY'] = time();
 
                         // =========================================================
                         // ✅ DETECTAR "CAMBIO OBLIGATORIO" (FORCE_%)

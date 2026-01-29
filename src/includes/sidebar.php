@@ -5,6 +5,15 @@ $currentPage = $_GET['page'] ?? 'dashboard';
 // ✅ importar permisos
 require_once __DIR__ . "/../utils/permisos_helper.php";
 
+// Conexión a la base de datos (fallback igual que en otras vistas)
+if (!isset($conn) || !($conn instanceof PDO)) {
+  try {
+    require_once __DIR__ . '/../../Config/database.php';
+  } catch (Throwable $e) {
+    // no romper si no existe la configuración en este contexto
+  }
+}
+
 // Datos del menú (usamos 'page' en vez de href directo)
 $navigation = [
   ["name" => "Dashboard",   "page" => "dashboard",   "icon" => "LayoutDashboard"],
@@ -13,7 +22,7 @@ $navigation = [
   ["name" => "Materiales",  "page" => "materiales",  "icon" => "Package"],
   ["name" => "Obras",       "page" => "obras",       "icon" => "Hammer"],
   ["name" => "Movimientos", "page" => "movimientos", "icon" => "ArrowLeftRight"],
-  ["name" => "Solicitudes", "page" => "solicitudes", "icon" => "ClipboardList", "badge" => 0,"badge_id" => "sidebar-badge-solicitudes"],
+  ["name" => "Solicitudes", "page" => "solicitudes", "icon" => "ClipboardList", "badge" => 0, "badge_id" => "sidebar-badge-solicitudes"],
   ["name" => "Programas",   "page" => "programas",   "icon" => "GraduationCap"],
   ["name" => "Fichas",      "page" => "fichas",      "icon" => "FolderKanban"],
   ["name" => "RAEs",        "page" => "raes",        "icon" => "BookOpen"],
@@ -29,6 +38,19 @@ $navigation = array_values(array_filter($navigation, function($item){
 // Estado del sidebar
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $collQuery = $collapsed ? '&coll=1' : '';
+
+// Contador de solicitudes pendientes (defensivo)
+$solicitudesPendientes = 0;
+if (function_exists('canPermiso') && (canPermiso('solicitudes.gestionar') || permisos_puedeAccederModulo('solicitudes'))) {
+  try {
+    if (isset($conn) && $conn instanceof PDO) {
+      $solicitudesPendientes = (int)($conn->query("SELECT COUNT(*) FROM solicitudes_material WHERE estado = 'Pendiente'")->fetchColumn() ?: 0);
+    }
+  } catch (Throwable $e) {
+    // silencioso — deja en 0
+    $solicitudesPendientes = 0;
+  }
+}
 
 function getLucideIconName(string $key): string {
   switch ($key) {
@@ -105,11 +127,26 @@ if (!defined('BASE_URL')) {
             <span class="flex-1"><?= $item["name"]; ?></span>
 
             <?php if (isset($item["badge"])): ?>
-              <span
-                <?= isset($item["badge_id"]) ? 'id="'.htmlspecialchars($item["badge_id"], ENT_QUOTES, "UTF-8").'"' : '' ?>
-                class="h-5 min-w-5 flex items-center justify-center bg-primary text-white text-[11px] rounded-full"
-                style="display: none;"
-              ><?= (int)$item["badge"]; ?></span>
+              <?php
+                $badgeId = isset($item["badge_id"]) ? htmlspecialchars($item["badge_id"], ENT_QUOTES, "UTF-8") : '';
+                $badgeCount = 0;
+                $badgeStyle = 'display:none;';
+
+                if ($item['page'] === 'solicitudes') {
+                  $badgeCount = $solicitudesPendientes;
+                } else {
+                  $badgeCount = (int)$item["badge"];
+                }
+
+                if ($badgeCount > 0) {
+                  $badgeStyle = '';
+                }
+              ?>
+
+              <span id="<?= $badgeId ?>"
+                class="h-5 min-w-5 flex items-center justify-center bg-[#39A900] text-white text-[11px] rounded-full"
+                style="<?= $badgeStyle ?>"
+              ><?= htmlspecialchars((string)$badgeCount, ENT_QUOTES, 'UTF-8'); ?></span>
             <?php endif; ?>
           <?php endif; ?>
         </a>
@@ -163,4 +200,56 @@ if (!defined('BASE_URL')) {
       lucide.createIcons();
     }
   });
+
+  /* ============================================================
+     ✅ FIX (SIN TOCAR TU CÓDIGO BASE):
+     - Si otro script global usa "Escape" para cerrar cosas y termina
+       ocultando el sidebar, aquí protegemos el sidebar.
+     - No altera tu lógica de colapsar/expandir por ?coll=
+     - Solo evita que ESC dispare handlers globales cuando NO hay nada
+       que cerrar y/o cuando el evento viene repetido (spam).
+  ============================================================ */
+
+  (function protectSidebarFromEsc() {
+    // Guard global para evitar doble ejecución si este sidebar se incluye 2 veces
+    if (window.__SIDEBAR_ESC_GUARD__) return;
+    window.__SIDEBAR_ESC_GUARD__ = true;
+
+    // Captura (true) para interceptar antes que listeners normales
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape") return;
+
+      // Evita ejecuciones por mantener presionada o spamear Esc
+      if (e.repeat) {
+        e.stopPropagation();
+        return;
+      }
+
+      // Si hay un modal/alerta abierta, NO bloqueamos Esc (deja que se cierre)
+      // - SweetAlert2: .swal2-container
+      // - Dialog nativo: dialog[open]
+      // - Modales comunes: .modal.is-open / [data-modal].is-open / [aria-modal="true"]
+      const hasOpenOverlay =
+        !!document.querySelector(".swal2-container") ||
+        !!document.querySelector("dialog[open]") ||
+        !!document.querySelector("[aria-modal='true']") ||
+        !!document.querySelector(".modal.is-open") ||
+        !!document.querySelector("[data-modal].is-open");
+
+      if (hasOpenOverlay) return;
+
+      // Si hay un dropdown/menú abierto, NO bloqueamos Esc (deja que se cierre)
+      const hasOpenDropdown =
+        !!document.querySelector(".dropdown.open") ||
+        !!document.querySelector(".menu.open") ||
+        !!document.querySelector("[data-dropdown].is-open") ||
+        !!document.querySelector("[aria-expanded='true'][data-dropdown-trigger]");
+
+      if (hasOpenDropdown) return;
+
+      // ✅ Si NO hay nada abierto que cerrar, evitamos que otros handlers
+      // globales "togleen" el sidebar o le apliquen hidden/clases raras
+      e.stopPropagation();
+    }, true);
+  })();
 </script>

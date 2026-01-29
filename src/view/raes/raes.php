@@ -52,7 +52,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 </head>
 <body>
     <!-- Significantly reducing side margins: 80px when collapsed and 270px when expanded -->
-    <main class="p-6 transition-all duration-300"
+    <main class="p-6 pt-0 transition-all duration-300"
       style="margin-left: <?= $collapsed ? '70px' : '260px' ?>;">
         
         <!-- Page title -->
@@ -176,17 +176,17 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             </div>
 
             <!-- TABLE VIEW -->
-            <div id="tableView" class="border border-border rounded-lg">
+            <div id="tableView" class="border border-border rounded-lg overflow-visible">
                 <table class="w-full border-collapse">
                     
                     <!-- Table Headers -->
                     <thead>
                         <tr class="border-b border-border bg-muted">
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">ID</th>
+                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm rounded-tl-[11px]">ID</th>
                             <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Descripción</th>
                             <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Programa</th>
                             <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Estado</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Acciones</th>
+                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm rounded-tr-[11px]">Acciones</th>
                         </tr>
                     </thead>
                     
@@ -309,6 +309,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                         id="editRaeCodigo" 
                         type="text" 
                         placeholder="Ej: 001" 
+                        maxlength="15"
                         class="w-full px-4 py-2 border border-border rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-ring transition-all"
                         onkeypress="return validarSoloNumeros(event)"
                     >
@@ -378,6 +379,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                         id="createRaeCodigo" 
                         type="text" 
                         placeholder="Ej: 001" 
+                        maxlength="15"
                         class="w-full px-4 py-2 border border-border rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
                         onkeypress="return validarSoloNumeros(event)"
                     >

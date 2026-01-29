@@ -579,13 +579,23 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   <!-- ========================================= -->
   <div id="flowbite-alert-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 w-full max-w-md"></div>
 
-  <!-- ✅ PASAMOS PERMISOS A JS (IMPORTANTÍSIMO) -->
+  <!-- ✅ PASAMOS PERMISOS Y DATOS DE SESIÓN A JS (IMPORTANTÍSIMO) -->
   <script>
     window.OBRAS_PERMS = {
       canCrear: <?= json_encode($canCrearObra) ?>,
       canEditar: <?= json_encode($canEditarObra) ?>,
       canCambiarEstado: <?= json_encode($canCambiarEstadoObra) ?>,
     };
+    
+    // Datos de sesión del usuario
+    window.USUARIO_SESION = {
+      usuarioId: <?= json_encode($_SESSION['usuario_id'] ?? null) ?>,
+      cargo: <?= json_encode($_SESSION['cargo'] ?? null) ?>,
+      nombre: <?= json_encode($_SESSION['usuario_nombre'] ?? null) ?>,
+      fichas: <?= json_encode($_SESSION['usuario_fichas'] ?? []) ?>,
+    };
+    
+    console.log("👤 USUARIO SESIÓN:", window.USUARIO_SESION);
   </script>
 
   <script src="<?= ASSETS_URL ?>js/obras/obras.js"></script>
