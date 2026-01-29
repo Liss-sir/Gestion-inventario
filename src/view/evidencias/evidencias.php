@@ -84,7 +84,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             </div>
             
             <form class="space-y-3" onsubmit="event.preventDefault(); createEvidence();">
-                <!-- Seleccionar Salida Pendiente -->
+                <!-- Seleccionar Salida de Material -->
                 <div class="space-y-1.5">
                     <label for="salidaSelect" class="text-xs font-medium">Salida de Material *</label>
                     <select id="salidaSelect" class="w-full rounded-md border border-input px-2.5 py-1.5 text-xs" required>
@@ -113,8 +113,11 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 
                 <!-- Descripción -->
                 <div class="space-y-1.5">
-                    <label class="text-xs font-medium">Descripción de la evidencia *</label>
-                    <textarea id="descripcion" placeholder="Describe la evidencia..." class="w-full rounded-md border border-input px-2.5 py-1.5 text-xs h-14 resize-none" required></textarea>
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-medium">Descripción de la evidencia *</label>
+                        <span class="text-xs text-muted-foreground"><span id="charCount">0</span>/250</span>
+                    </div>
+                    <textarea id="descripcion" placeholder="Describe la evidencia..." class="w-full rounded-md border border-input px-2.5 py-1.5 text-xs h-14 resize-none" maxlength="250" required></textarea>
                 </div>
                 
                 <!-- Buttons -->
@@ -150,11 +153,19 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             </div>
             
             <div class="p-5 space-y-3">
-                <div>
+                <div class="relative">
                     <img id="detailImage" src="" alt="Evidencia" class="w-full h-80 object-cover rounded-xl border border-border">
+                    <div class="absolute top-3 right-3 bg-secondary px-2.5 py-1 rounded-lg shadow-lg">
+                        <span id="detailEvidenceId" class="text-xs font-bold text-white">Evidencia #-</span>
+                    </div>
                 </div>
                 
                 <div class="space-y-3 text-sm">
+                    <div>
+                        <p class="text-xs text-muted-foreground mb-1">Obra</p>
+                        <p id="detailObra" class="font-medium">-</p>
+                    </div>
+                    
                     <div>
                         <p class="text-xs text-muted-foreground mb-1">Ficha</p>
                         <p id="detailFicha" class="font-medium">-</p>

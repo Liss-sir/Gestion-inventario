@@ -38,20 +38,25 @@ class MaterialFormacionModel {
         */
     public function create($data)
     {
-        // Safe read: inventory code
         $codigo = (isset($data['codigo_inventario']) && $data['codigo_inventario'] !== "")
             ? $data['codigo_inventario']
             : null;
 
-        // If Inventariado → must have inventory code
         if ($data['clasificacion'] === "Inventariado" && $codigo === null) {
             return false;
         }
 
+        $stockMaximo = $data['stock_maximo'] ?? null; // This can be null --> DB default value is 100
+
+        if ($stockMaximo !== null && $stockMaximo <= 0) {
+            return false;
+        }
+
+
         $sql = "INSERT INTO material_formacion 
                 (nombre, descripcion, unidad_medida, clasificacion, 
-                 codigo_inventario, precio, foto)
-                VALUES (?, ?, ?, ?, ?, ?, ?)";
+                codigo_inventario, precio, foto, stock_maximo)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $this->db->prepare($sql);
 
@@ -61,10 +66,12 @@ class MaterialFormacionModel {
             $data['unidad_medida'],
             $data['clasificacion'],
             $codigo,
-            $data['precio'],              // required
-            $data['foto'] ?? null          // optional
+            $data['precio'],
+            $data['foto'] ?? null,
+            $data['stock_maximo']
         ]);
     }
+
 
     /* 
        UPDATE MATERIAL
@@ -78,11 +85,13 @@ class MaterialFormacionModel {
         if ($data['clasificacion'] === "Inventariado" && $codigo === null) {
             return false;
         }
-
+        if (!isset($data['stock_maximo']) || $data['stock_maximo'] <= 0) {
+            return false;
+        }
         $sql = "UPDATE material_formacion
                 SET nombre = ?, descripcion = ?, unidad_medida = ?, 
                     clasificacion = ?, codigo_inventario = ?, 
-                    precio = ?, foto = ?, estado = ?
+                    precio = ?, foto = ?, estado = ?, stock_maximo = ?
                 WHERE id_material = ?";
 
         $stmt = $this->db->prepare($sql);
@@ -96,6 +105,7 @@ class MaterialFormacionModel {
             $data['precio'],
             $data['foto'] ?? null,
             $data['estado'],
+            $data['stock_maximo'],
             $id_material
         ]);
         
@@ -191,6 +201,47 @@ class MaterialFormacionModel {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-}
 
+
+    public function getEstadoStock(
+        int $id_material,
+        int $id_bodega,
+        ?int $id_subbodega = null
+    ): array {
+
+        // Stock actual
+        if ($id_subbodega) {
+            $sql = "SELECT stock_actual 
+                    FROM stock_subbodega
+                    WHERE id_material = ? AND id_subbodega = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$id_material, $id_subbodega]);
+        } else {
+            $sql = "SELECT stock_actual 
+                    FROM stock_bodega
+                    WHERE id_material = ? AND id_bodega = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$id_material, $id_bodega]);
+        }
+
+        $stockActual = (int) ($stmt->fetchColumn() ?? 0);
+
+        // Stock máximo
+        $stmt = $this->db->prepare(
+            "SELECT stock_maximo FROM material_formacion WHERE id_material = ?"
+        );
+        $stmt->execute([$id_material]);
+        $stockMaximo = (int) $stmt->fetchColumn();
+
+        $umbral = $stockMaximo * 0.25;
+
+        return [
+            "stock_actual" => $stockActual,
+            "stock_maximo" => $stockMaximo,
+            "umbral" => $umbral,
+            "stock_bajo" => $stockActual <= $umbral
+        ];
+    }
+
+}
 ?>

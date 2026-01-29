@@ -2,6 +2,18 @@
 // Página actual según el router (?page=...)
 $currentPage = $_GET['page'] ?? 'dashboard';
 
+// ✅ importar permisos
+require_once __DIR__ . "/../utils/permisos_helper.php";
+
+// Conexión a la base de datos (fallback igual que en otras vistas)
+if (!isset($conn) || !($conn instanceof PDO)) {
+  try {
+    require_once __DIR__ . '/../../Config/database.php';
+  } catch (Throwable $e) {
+    // no romper si no existe la configuración en este contexto
+  }
+}
+
 // Datos del menú (usamos 'page' en vez de href directo)
 $navigation = [
   ["name" => "Dashboard",   "page" => "dashboard",   "icon" => "LayoutDashboard"],
@@ -10,7 +22,7 @@ $navigation = [
   ["name" => "Materiales",  "page" => "materiales",  "icon" => "Package"],
   ["name" => "Obras",       "page" => "obras",       "icon" => "Hammer"],
   ["name" => "Movimientos", "page" => "movimientos", "icon" => "ArrowLeftRight"],
-  ["name" => "Solicitudes", "page" => "solicitudes", "icon" => "ClipboardList", "badge" => 0,"badge_id" => "sidebar-badge-solicitudes"],
+  ["name" => "Solicitudes", "page" => "solicitudes", "icon" => "ClipboardList", "badge" => 0, "badge_id" => "sidebar-badge-solicitudes"],
   ["name" => "Programas",   "page" => "programas",   "icon" => "GraduationCap"],
   ["name" => "Fichas",      "page" => "fichas",      "icon" => "FolderKanban"],
   ["name" => "RAEs",        "page" => "raes",        "icon" => "BookOpen"],
@@ -18,13 +30,28 @@ $navigation = [
   ["name" => "Reportes",    "page" => "reportes",    "icon" => "BarChart3"],
 ];
 
+// ✅ FILTRAR SEGÚN PERMISOS
+$navigation = array_values(array_filter($navigation, function($item){
+  return permisos_puedeAccederModulo($item["page"]);
+}));
+
 // Estado del sidebar
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
-
-// ✅ Mantener estado collapsed en toda la navegación (sin cambiar tu base)
 $collQuery = $collapsed ? '&coll=1' : '';
 
-// 🔹 Mapeo de tus claves a nombres reales de Lucide
+// Contador de solicitudes pendientes (defensivo)
+$solicitudesPendientes = 0;
+if (function_exists('canPermiso') && (canPermiso('solicitudes.gestionar') || permisos_puedeAccederModulo('solicitudes'))) {
+  try {
+    if (isset($conn) && $conn instanceof PDO) {
+      $solicitudesPendientes = (int)($conn->query("SELECT COUNT(*) FROM solicitudes_material WHERE estado = 'Pendiente'")->fetchColumn() ?: 0);
+    }
+  } catch (Throwable $e) {
+    // silencioso — deja en 0
+    $solicitudesPendientes = 0;
+  }
+}
+
 function getLucideIconName(string $key): string {
   switch ($key) {
     case 'LayoutDashboard':  return 'layout-dashboard';
@@ -43,7 +70,6 @@ function getLucideIconName(string $key): string {
   }
 }
 
-// Asegurarnos de tener BASE_URL (normalmente ya viene desde index.php)
 if (!defined('BASE_URL')) {
   $protocol   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
   $host       = $_SERVER['HTTP_HOST'];
@@ -59,18 +85,12 @@ if (!defined('BASE_URL')) {
   class="fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300
   <?php echo $collapsed ? 'w-[70px]' : 'w-[260px]'; ?>"
 >
-
   <!-- Logo -->
   <div class="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
     <?php if (!$collapsed): ?>
-      <!-- ✅ Conserva coll en el logo también -->
       <a href="<?= BASE_URL ?>index.php?page=dashboard<?= $collQuery ?>" class="flex items-center gap-3">
         <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-white">
-          <img
-            src="src/assets/img/logo-sena-negro.png"
-            alt="Logo SENA"
-            class="max-h-10 w-auto object-contain"
-          />
+          <img src="src/assets/img/logo-sena-negro.png" alt="Logo SENA" class="max-h-10 w-auto object-contain" />
         </div>
         <div class="flex flex-col">
           <span class="text-lg font-bold text-sidebar-foreground leading-tight">SIGA</span>
@@ -79,11 +99,7 @@ if (!defined('BASE_URL')) {
       </a>
     <?php else: ?>
       <div class="flex h-12 w-12 mx-auto items-center justify-center rounded-lg bg-white">
-        <img
-          src="src/assets/img/logo-sena-negro.png"
-          alt="Logo SENA"
-          class="max-h-10 w-auto object-contain"
-        />
+        <img src="src/assets/img/logo-sena-negro.png" alt="Logo SENA" class="max-h-10 w-auto object-contain" />
       </div>
     <?php endif; ?>
   </div>
@@ -91,88 +107,82 @@ if (!defined('BASE_URL')) {
   <!-- Navigation -->
   <div class="flex-1 px-3 py-4 overflow-y-auto">
     <nav class="flex flex-col gap-1">
-
       <?php foreach ($navigation as $item): ?>
         <?php
-          // URL final SIEMPRE pasa por index.php?page=... y conserva coll
           $itemHref = BASE_URL . 'index.php?page=' . $item['page'] . $collQuery;
-
-          // ✅ Ya NO es dashboard siempre activo: activo solo si coincide con la página actual
           $isActive = ($currentPage === $item['page']);
-
           $iconName = getLucideIconName($item["icon"]);
         ?>
 
-        <a href="<?php echo $itemHref; ?>"
+        <a href="<?= $itemHref ?>"
           class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all
-          <?php echo $isActive
+          <?= $isActive
             ? 'bg-sidebar-accent text-sidebar-primary'
             : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'; ?>"
         >
-          <i
-            data-lucide="<?php echo htmlspecialchars($iconName, ENT_QUOTES, 'UTF-8'); ?>"
-            class="h-5 w-5 shrink-0 <?php echo $isActive ? 'text-sidebar-primary' : ''; ?>"
-          ></i>
+          <i data-lucide="<?= htmlspecialchars($iconName, ENT_QUOTES, 'UTF-8') ?>"
+             class="h-5 w-5 shrink-0 <?= $isActive ? 'text-sidebar-primary' : ''; ?>"></i>
 
           <?php if (!$collapsed): ?>
-            <span class="flex-1"><?php echo $item["name"]; ?></span>
+            <span class="flex-1"><?= $item["name"]; ?></span>
 
             <?php if (isset($item["badge"])): ?>
-              <span
-                <?php if (isset($item["badge_id"])): ?>
-                  id="<?php echo htmlspecialchars($item["badge_id"], ENT_QUOTES, 'UTF-8'); ?>"
-                <?php endif; ?>
-                class="h-5 min-w-5 flex items-center justify-center bg-primary text-white text-[11px] rounded-full"
-                style="display: none;"
-              >
-                <?php echo (int)$item["badge"]; ?>
-              </span>
+              <?php
+                $badgeId = isset($item["badge_id"]) ? htmlspecialchars($item["badge_id"], ENT_QUOTES, "UTF-8") : '';
+                $badgeCount = 0;
+                $badgeStyle = 'display:none;';
+
+                if ($item['page'] === 'solicitudes') {
+                  $badgeCount = $solicitudesPendientes;
+                } else {
+                  $badgeCount = (int)$item["badge"];
+                }
+
+                if ($badgeCount > 0) {
+                  $badgeStyle = '';
+                }
+              ?>
+
+              <span id="<?= $badgeId ?>"
+                class="h-5 min-w-5 flex items-center justify-center bg-[#39A900] text-white text-[11px] rounded-full"
+                style="<?= $badgeStyle ?>"
+              ><?= htmlspecialchars((string)$badgeCount, ENT_QUOTES, 'UTF-8'); ?></span>
             <?php endif; ?>
           <?php endif; ?>
         </a>
-
       <?php endforeach; ?>
-
     </nav>
   </div>
 
   <!-- Footer -->
   <div class="border-t border-sidebar-border p-3">
-    <div class="flex items-center justify-center gap-2 <?php echo $collapsed ? 'flex-col' : ''; ?>">
+    <div class="flex items-center justify-center gap-2 <?= $collapsed ? 'flex-col' : ''; ?>">
 
-      <!-- ✅ Historial (a la izquierda de la campana) -->
-      <a 
-        href="<?= BASE_URL ?>index.php?page=historial<?= $collQuery ?>"
-        class="h-9 w-9 flex items-center justify-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent"
-        title="Historial"
-      >
-        <i data-lucide="history" class="h-5 w-5"></i>
-      </a>
+      <?php if (permisos_puedeAccederModulo("historial")): ?>
+        <a href="<?= BASE_URL ?>index.php?page=historial<?= $collQuery ?>"
+          class="h-9 w-9 flex items-center justify-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent"
+          title="Historial">
+          <i data-lucide="history" class="h-5 w-5"></i>
+        </a>
+      <?php endif; ?>
 
-      <!-- Bell -->
-      <a 
-        href="<?= BASE_URL ?>index.php?page=notificaciones<?= $collQuery ?>"
-        class="h-9 w-9 flex items-center justify-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent"
-        title="Notificaciones"
-      >
-        <i data-lucide="bell" class="h-5 w-5"></i>
-      </a>
+      <?php if (permisos_puedeAccederModulo("notificaciones")): ?>
+        <a href="<?= BASE_URL ?>index.php?page=notificaciones<?= $collQuery ?>"
+          class="h-9 w-9 flex items-center justify-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent"
+          title="Notificaciones">
+          <i data-lucide="bell" class="h-5 w-5"></i>
+        </a>
+      <?php endif; ?>
 
-      <!-- Logout (icono rojo) -->
-      <a 
-        href="<?= BASE_URL ?>logout.php"
+      <a href="<?= BASE_URL ?>logout.php"
         class="h-9 w-9 flex items-center justify-center rounded-md text-red-500 hover:bg-red-100"
-        title="Cerrar sesión"
-      >
+        title="Cerrar sesión">
         <i data-lucide="log-out" class="h-5 w-5"></i>
       </a>
 
-      <!-- Botón colapsar -->
-      <a
-        href="<?= BASE_URL ?>index.php?page=<?= urlencode($currentPage) ?>&coll=<?= $collapsed ? '0' : '1' ?>"
+      <a href="<?= BASE_URL ?>index.php?page=<?= urlencode($currentPage) ?>&coll=<?= $collapsed ? '0' : '1' ?>"
         class="h-9 w-9 flex items-center justify-center rounded-md text-sidebar-foreground/50 hover:bg-sidebar-accent"
-        title="<?= $collapsed ? 'Expandir' : 'Colapsar' ?>"
-      >
+        title="<?= $collapsed ? 'Expandir' : 'Colapsar' ?>">
         <?php if ($collapsed): ?>
           <i data-lucide="chevron-right" class="h-5 w-5"></i>
         <?php else: ?>
@@ -182,64 +192,64 @@ if (!defined('BASE_URL')) {
 
     </div>
   </div>
-
 </aside>
 
-<!-- 🔹 Inicializar los iconos Lucide -->
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     if (window.lucide && typeof lucide.createIcons === "function") {
       lucide.createIcons();
     }
   });
-</script>
 
-<script>
-(function () {
-  const API = new URL("src/controllers/solicitudes_controller.php", document.baseURI).toString();
-  const badge = document.getElementById("sidebar-badge-solicitudes");
-  if (!badge) return;
+  /* ============================================================
+     ✅ FIX (SIN TOCAR TU CÓDIGO BASE):
+     - Si otro script global usa "Escape" para cerrar cosas y termina
+       ocultando el sidebar, aquí protegemos el sidebar.
+     - No altera tu lógica de colapsar/expandir por ?coll=
+     - Solo evita que ESC dispare handlers globales cuando NO hay nada
+       que cerrar y/o cuando el evento viene repetido (spam).
+  ============================================================ */
 
-  function normalizarEstado(estado) {
-    if (!estado) return "pendiente";
-    const s = String(estado).trim().toLowerCase();
-    // por si viene "Pendiente" desde BD
-    return s;
-  }
+  (function protectSidebarFromEsc() {
+    // Guard global para evitar doble ejecución si este sidebar se incluye 2 veces
+    if (window.__SIDEBAR_ESC_GUARD__) return;
+    window.__SIDEBAR_ESC_GUARD__ = true;
 
-  async function actualizarBadgeSolicitudes() {
-    try {
-      const res = await fetch(`${API}?accion=listar`, { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    // Captura (true) para interceptar antes que listeners normales
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape") return;
 
-      const data = await res.json();
-      if (!Array.isArray(data)) {
-        // si backend devuelve {success:false,...}
-        badge.style.display = "none";
+      // Evita ejecuciones por mantener presionada o spamear Esc
+      if (e.repeat) {
+        e.stopPropagation();
         return;
       }
 
-      const pendientes = data.reduce((acc, row) => {
-        const st = normalizarEstado(row.estado);
-        return acc + (st === "pendiente" ? 1 : 0);
-      }, 0);
+      // Si hay un modal/alerta abierta, NO bloqueamos Esc (deja que se cierre)
+      // - SweetAlert2: .swal2-container
+      // - Dialog nativo: dialog[open]
+      // - Modales comunes: .modal.is-open / [data-modal].is-open / [aria-modal="true"]
+      const hasOpenOverlay =
+        !!document.querySelector(".swal2-container") ||
+        !!document.querySelector("dialog[open]") ||
+        !!document.querySelector("[aria-modal='true']") ||
+        !!document.querySelector(".modal.is-open") ||
+        !!document.querySelector("[data-modal].is-open");
 
-      if (pendientes > 0) {
-        badge.textContent = pendientes;
-        badge.style.display = "flex";
-      } else {
-        badge.textContent = "0";
-        badge.style.display = "none";
-      }
-    } catch (e) {
-      // si falla, ocultamos (no dañamos UI)
-      badge.style.display = "none";
-      console.error("[SIDEBAR] No se pudo actualizar badge solicitudes:", e);
-    }
-  }
+      if (hasOpenOverlay) return;
 
-  document.addEventListener("DOMContentLoaded", actualizarBadgeSolicitudes);
-  window.addEventListener("solicitudes:updated", actualizarBadgeSolicitudes);
-})();
+      // Si hay un dropdown/menú abierto, NO bloqueamos Esc (deja que se cierre)
+      const hasOpenDropdown =
+        !!document.querySelector(".dropdown.open") ||
+        !!document.querySelector(".menu.open") ||
+        !!document.querySelector("[data-dropdown].is-open") ||
+        !!document.querySelector("[aria-expanded='true'][data-dropdown-trigger]");
+
+      if (hasOpenDropdown) return;
+
+      // ✅ Si NO hay nada abierto que cerrar, evitamos que otros handlers
+      // globales "togleen" el sidebar o le apliquen hidden/clases raras
+      e.stopPropagation();
+    }, true);
+  })();
 </script>
-

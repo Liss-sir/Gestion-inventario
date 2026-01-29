@@ -15,9 +15,10 @@ class EvidenciaModel {
                     e.id_evidencia,
                     e.foto,
                     e.descripcion_obra,
-                    COALESCE(m.fecha_hora, NOW()) as fecha,
+                    e.fecha_hora as fecha,
                     u.nombre_completo as usuario,
                     f.numero_ficha as ficha,
+                    COALESCE(a.nombre_actividad, '-') as obra,
                     COALESCE(sol_det.materiales,
                         CONCAT(mat_single.nombre, ' (', m.cantidad, ' ', mat_single.unidad_medida, ')')
                     ) as materiales
@@ -42,7 +43,11 @@ class EvidenciaModel {
                     ON m.id_ficha = f.id_ficha
                 LEFT JOIN material_formacion mat_single
                     ON m.id_material = mat_single.id_material
-                ORDER BY m.fecha_hora DESC";
+                LEFT JOIN solicitudes_material s
+                    ON m.id_solicitud = s.id_solicitud
+                LEFT JOIN actividades_formacion a
+                    ON s.id_actividad = a.id_actividad
+                ORDER BY e.fecha_hora DESC";
 
         $stmt = $this->conn->prepare($sql);
         $stmt->execute();
@@ -55,7 +60,7 @@ class EvidenciaModel {
                     e.id_evidencia,
                     e.foto,
                     e.descripcion_obra,
-                    COALESCE(m.fecha_hora, NOW()) as fecha,
+                    e.fecha_hora as fecha,
                     u.nombre_completo as usuario,
                     mat.nombre as material,
                     mat.unidad_medida,
@@ -107,7 +112,8 @@ class EvidenciaModel {
                     b.nombre as bodega,
                     COALESCE(sb.nombre_subbodega, 'N/A') as subbodega,
                     u.nombre_completo as usuario,
-                    f.numero_ficha as ficha
+                    f.numero_ficha as ficha,
+                    COALESCE(a.nombre_actividad, '-') as obra
                 FROM movimientos_material m
                 LEFT JOIN material_formacion mat 
                     ON m.id_material = mat.id_material
@@ -119,6 +125,10 @@ class EvidenciaModel {
                     ON m.id_usuario = u.id_usuario
                 LEFT JOIN fichas f
                     ON m.id_ficha = f.id_ficha
+                LEFT JOIN solicitudes_material s
+                    ON m.id_solicitud = s.id_solicitud
+                LEFT JOIN actividades_formacion a
+                    ON s.id_actividad = a.id_actividad
                 WHERE m.tipo_movimiento = 'Salida'
                 AND m.id_movimiento NOT IN (
                     SELECT id_movimiento_salida FROM {$this->table}
@@ -168,12 +178,17 @@ class EvidenciaModel {
                     m.observaciones,
                     mat.nombre as material,
                     mat.unidad_medida,
-                    f.numero_ficha as ficha
+                    f.numero_ficha as ficha,
+                    COALESCE(a.nombre_actividad, '-') as obra
                 FROM movimientos_material m
                 LEFT JOIN material_formacion mat 
                     ON m.id_material = mat.id_material
                 LEFT JOIN fichas f
                     ON m.id_ficha = f.id_ficha
+                LEFT JOIN solicitudes_material s
+                    ON m.id_solicitud = s.id_solicitud
+                LEFT JOIN actividades_formacion a
+                    ON s.id_actividad = a.id_actividad
                 WHERE m.tipo_movimiento = 'Salida'
                 AND m.id_usuario = :id_usuario
                 AND m.id_movimiento NOT IN (

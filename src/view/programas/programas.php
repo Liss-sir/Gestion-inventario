@@ -1,50 +1,27 @@
-<?php
-require_once __DIR__ . '../../../../Config/database.php';
+﻿<?php
+// Incluir configuración y modelo
+include_once __DIR__ . '/../../../Config/database.php';
+include_once __DIR__ . '/../../models/programa.php';
 
-// Final array that will be used by the HTML
-$programas = [];
+// Crear instancia del modelo
+$programaModel = new Programa($conn);
 
+// Obtener todos los programas
 try {
-    $sql = "SELECT 
-                p.id_programa, 
-                p.codigo_programa, 
-                p.nombre_programa, 
-                p.nivel_programa, 
-                p.descripcion_programa, 
-                p.duracion_horas, 
-                p.estado,
-                GROUP_CONCAT(DISTINCT u.nombre_completo SEPARATOR '; ') as instructores_nombres,
-                COUNT(DISTINCT u.id_usuario) as instructores
-            FROM programas_formacion p
-            LEFT JOIN usuarios u ON p.id_programa = u.id_programa 
-                AND u.cargo = 'Instructor'
-                AND u.estado = 'active'
-            GROUP BY p.id_programa
-            ORDER BY p.nombre_programa";
-
-    $stmt = $conn->prepare($sql);
-    $stmt->execute();
-
-    // Fetch raw DB results
-    $raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // Map DB fields → HTML expected fields
-    foreach ($raw as $r) {
-        $programas[] = [
-            'id_programa' => $r['id_programa'],
-            'codigo'      => $r['codigo_programa'],
-            'nombre'      => $r['nombre_programa'],
-            'descripcion' => $r['descripcion_programa'],
-            'nivel'       => $r['nivel_programa'],
-            'duracion'    => $r['duracion_horas'] . ' horas',
-            'instructores_nombres' => $r['instructores_nombres'] ?: 'No hay instructores vinculados',
-            'instructores'=> (int)$r['instructores'],
-            'estado'      => $r['estado']
-        ];
+    $programas = $programaModel->listar();
+    
+    // Verificar si hay error en la consulta
+    if (isset($programas['error'])) {
+        error_log("Error al listar programas: " . $programas['error']);
+        $programas = []; // Asegurar que sea un array vacío
     }
-
-} catch (PDOException $e) {
-    die("Error al cargar programas: " . $e->getMessage());
+    
+    // Debug: Ver qué datos se obtienen
+    error_log("Programas obtenidos: " . print_r($programas, true));
+    
+} catch (Exception $e) {
+    error_log("Excepción al listar programas: " . $e->getMessage());
+    $programas = [];
 }
 ?>
 
@@ -284,7 +261,7 @@ try {
                                 </div>
                             </td>
 
-                            <!-- Level badge (Técnico/Tecnólogo) -->
+                            <!-- Level badge (Technical/Technologist) -->
                             <td class="py-4 px-4">
                                 <span class="js-nivel">
                                 <?php if (strtolower($programa['nivel']) === 'técnico'): ?>
@@ -400,7 +377,7 @@ try {
                     data-num-instructores="<?php echo htmlspecialchars($programa['instructores']); ?>"
                     data-estado="<?php echo $isActive ? 1 : 0; ?>">
                     
-                    <!-- ICONO + TÍTULO + EDIT -->
+                    <!-- ICON + TITLE + EDIT -->
                     <div class="flex justify-between items-start mb-3 flex-shrink-0">
                         <!-- Info + Icon -->
                         <div class="flex items-start gap-3 flex-1 min-w-0">

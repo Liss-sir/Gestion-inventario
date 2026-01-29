@@ -36,7 +36,21 @@ class ObraController {
     }
 
     public function obtenerInstructores() {
-        echo json_encode($this->model->obtenerInstructoresActivos());
+        try {
+            $instructores = $this->model->obtenerInstructoresActivos();
+            if ($instructores === false) {
+                echo json_encode(["error" => "Error al obtener instructores"]);
+            } else {
+                echo json_encode($instructores);
+            }
+        } catch (Exception $e) {
+            error_log("Error en obtenerInstructores: " . $e->getMessage());
+            echo json_encode(["error" => "Error interno del servidor"]);
+        }
+    }
+
+    public function obtenerAprendicesFicha($idFicha) {
+        echo json_encode($this->model->obtenerAprendicesFicha($idFicha));
     }
 
     public function obtener($id) {
@@ -53,10 +67,29 @@ class ObraController {
             return;
         }
         
-        echo json_encode([
-            "success" => $this->model->crear($data),
-            "message" => "Obra creada exitosamente"
-        ]);
+        // Validar fecha de inicio no sea futura
+        if (!empty($data["fecha_inicio"])) {
+            $fechaInicio = new DateTime($data["fecha_inicio"]);
+            $hoy = new DateTime();
+            $hoy->setTime(0, 0, 0); // Solo fecha sin hora
+            
+            if ($fechaInicio > $hoy) {
+                echo json_encode(["error" => "La fecha de inicio no puede ser futura"]);
+                return;
+            }
+        }
+        
+        $idActividad = $this->model->crear($data);
+        
+        if ($idActividad) {
+            echo json_encode([
+                "success" => true,
+                "id_actividad" => $idActividad,
+                "message" => "Obra creada exitosamente"
+            ]);
+        } else {
+            echo json_encode(["error" => "Error al crear la obra"]);
+        }
     }
 
     public function actualizar() {
@@ -78,6 +111,29 @@ class ObraController {
             "success" => $this->model->cambiarEstado($id, $estado)
         ]);
     }
+
+    public function asignarAprendices() {
+        $data = json_decode(file_get_contents("php://input"), true);
+        
+        if (empty($data["id_actividad"]) || empty($data["aprendices"])) {
+            echo json_encode(["error" => "Datos incompletos para asignar aprendices"]);
+            return;
+        }
+        
+        $result = $this->model->asignarAprendices($data["id_actividad"], $data["aprendices"]);
+        
+        if ($result) {
+            echo json_encode([
+                "success" => true,
+                "message" => "Aprendices asignados exitosamente"
+            ]);
+        } else {
+            echo json_encode([
+                "success" => false,
+                "error" => "Error al asignar aprendices"
+            ]);
+        }
+    }
 }
 
 /* INSTANCIA CONTROLLER */
@@ -87,6 +143,7 @@ $controller = new ObraController($conn);
 $input = json_decode(file_get_contents("php://input"), true) ?? [];
 $accion = $_POST["accion"] ?? $_GET["accion"] ?? $input["accion"] ?? null;
 $id = $_POST["id_actividad"] ?? $_GET["id_actividad"] ?? $input["id_actividad"] ?? null;
+$idFicha = $_POST["id_ficha"] ?? $_GET["id_ficha"] ?? $input["id_ficha"] ?? null;
 
 switch ($accion) {
     case "listar":
@@ -103,6 +160,18 @@ switch ($accion) {
 
     case "obtener_instructores":
         $controller->obtenerInstructores();
+        break;
+
+    case "obtener_aprendices_ficha":
+        // Obtener id_ficha de GET o POST
+        $idFicha = $_GET['id_ficha'] ?? ($_POST['id_ficha'] ?? null);
+        
+        if (!$idFicha || !is_numeric($idFicha)) {
+            echo json_encode(["error" => "ID de ficha inválido o no proporcionado"]);
+            break;
+        }
+        
+        $controller->obtenerAprendicesFicha((int)$idFicha);
         break;
 
     case "obtener":
@@ -123,6 +192,10 @@ switch ($accion) {
 
     case "finalizar":
         $controller->cambiarEstado($id, "Finalizada");
+        break;
+
+    case "asignar_aprendices":
+        $controller->asignarAprendices();
         break;
 
     default:
