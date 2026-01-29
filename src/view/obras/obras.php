@@ -1,13 +1,24 @@
 <?php
 // =====================================
-// OBRAS Y ACTIVIDADES – PHP VIEW
-// (Adaptado al layout de "Usuarios": sidebar colapsable + main con margin-left)
+// WORKS AND ACTIVITIES – PHP VIEW
+// (Adapted to "Users" layout: collapsible sidebar + main with margin-left)
 // =====================================
 
-// ✅ NECESARIO: para poder usar $_SESSION sin warnings
+// REQUIRED: to be able to use $_SESSION without warnings
 if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
+
+// ✅ FIX PERMISOS (SIN ROMPER TU BASE)
+require_once __DIR__ . "/../../utils/permisos_helper.php";
+
+// ✅ PROTECCIÓN: Si NO puede listar obras, NO entra
+requirePermiso("obras.listar");
+
+// ✅ Flags de acciones (Aprendiz NO tendrá estos permisos)
+$canCrearObra        = canPermiso("obras.crear") || canPermiso("obras.gestionar");
+$canEditarObra       = canPermiso("obras.editar") || canPermiso("obras.gestionar");
+$canCambiarEstadoObra = canPermiso("obras.activar_desactivar") || canPermiso("obras.gestionar");
 
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
@@ -26,10 +37,10 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Flowbite (opcional, pero en Usuarios lo incluyes y tus toasts son "flowbite-like") -->
+  <!-- Flowbite (optional, but in Users you include it and your toasts are "flowbite-like") -->
   <script src="https://unpkg.com/flowbite@2.5.1/dist/flowbite.min.js"></script>
 
-  <!-- Estilos módulo -->
+  <!-- Module styles -->
   <link rel="stylesheet" href="src/assets/css/obras/obras.css" />
 
   <!-- Icons -->
@@ -37,9 +48,6 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 </head>
 
 <body class="bg-background p-6">
-
-  <!-- Si tienes header/sidebar global, lo puedes incluir aquí (igual que en Usuarios) -->
-  <!-- <?php include '../partials/dashboard-header.php'; ?> -->
 
   <main
     class="p-6 transition-all duration-300"
@@ -58,11 +66,11 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       </div>
 
       <!-- ================================== -->
-      <!-- ESTADÍSTICAS                        -->
+      <!-- STATISTICS                         -->
       <!-- ================================== -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-        <!-- Total Obras -->
+        <!-- Total Works -->
         <div class="rounded-xl border border-border bg-card shadow-sm p-6">
           <div class="flex items-center justify-between">
             <div>
@@ -76,7 +84,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </div>
         </div>
 
-        <!-- Obras Activas -->
+        <!-- Active Works -->
         <div class="rounded-xl border border-border bg-card shadow-sm p-6">
           <div class="flex items-center justify-between">
             <div>
@@ -90,7 +98,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </div>
         </div>
 
-        <!-- Obras Finalizadas -->
+        <!-- Completed Works -->
         <div class="rounded-xl border border-border bg-card shadow-sm p-6">
           <div class="flex items-center justify-between">
             <div>
@@ -107,7 +115,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       </div>
 
       <!-- ================================== -->
-      <!-- LISTA DE OBRAS                      -->
+      <!-- WORKS LIST                         -->
       <!-- ================================== -->
       <div class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
 
@@ -118,16 +126,19 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               <p class="text-sm text-muted-foreground mt-1">Administra las obras y actividades formativas</p>
             </div>
 
-            <button
-              onclick="openCreateModal()"
-              class="inline-flex items-center justify-center whitespace-nowrap rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2"
-            >
-              <i class="fas fa-plus"></i>
-              Nueva Obra
-            </button>
+            <!-- ✅ SI ES APRENDIZ: NO VE "NUEVA OBRA" -->
+            <?php if ($canCrearObra): ?>
+              <button
+                onclick="openCreateModal()"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2"
+              >
+                <i class="fas fa-plus"></i>
+                Nueva Obra
+              </button>
+            <?php endif; ?>
           </div>
 
-          <!-- Buscador (estilo tipo Usuarios) -->
+          <!-- Search bar (Users-style) -->
           <div class="mt-4">
             <div class="relative w-full">
               <i class="fas fa-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
@@ -142,7 +153,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </div>
         </div>
 
-        <!-- Contenedor de obras -->
+        <!-- Works container -->
         <div id="obrasContainer" class="p-6">
           <!-- Loading -->
           <div class="text-center py-12" id="loading">
@@ -157,8 +168,9 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   </main>
 
   <!-- ========================================= -->
-  <!-- MODAL NUEVA OBRA                          -->
+  <!-- NEW WORK MODAL                             -->
   <!-- ========================================= -->
+  <?php if ($canCrearObra): ?>
   <div id="modalCreate" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between p-6 pb-0">
@@ -223,6 +235,13 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </select>
         </div>
 
+        <div id="containerAprendizIndividual" class="hidden">
+          <label class="block text-xs text-muted-foreground mb-1">Aprendiz Asignado *</label>
+          <select id="create_aprendiz_individual" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga">
+            <option value="" disabled selected>Cargando aprendices...</option>
+          </select>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs text-muted-foreground mb-1">Fecha de Inicio *</label>
@@ -253,10 +272,12 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       </form>
     </div>
   </div>
+  <?php endif; ?>
 
   <!-- ========================================= -->
-  <!-- MODAL EDITAR OBRA                         -->
+  <!-- EDIT WORK MODAL                            -->
   <!-- ========================================= -->
+  <?php if ($canEditarObra): ?>
   <div id="modalEdit" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between p-6 pb-0">
@@ -371,9 +392,10 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       </form>
     </div>
   </div>
+  <?php endif; ?>
 
   <!-- ========================================= -->
-  <!-- MODAL DETALLES                            -->
+  <!-- DETAILS MODAL                              -->
   <!-- ========================================= -->
   <div id="modalDetails" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
@@ -436,10 +458,145 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
     </div>
   </div>
 
+  <div id="modalAsignarAprendices" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
+    <div class="bg-card rounded-xl border border-border shadow-xl w-[68vh] max-w-3xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between p-6 pb-0">
+          <div class="flex flex-col items-start justify-between p-0">
+              <h3 class="text-xl font-semibold text-foreground">Asignar Aprendices</h3>
+              <p class="text-sm text-muted-foreground js-descripcion opacity-75">Selecciona los aprendices que participarán en esta obra grupal</p>
+          </div>
+          <button onclick="closeAsignarModal()" class="text-muted-foreground hover:opacity-80">
+              <i class="fas fa-times text-xl"></i>
+          </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+          <!-- Information about the created work -->
+          <div class="bg-[#002f4d34] border border-[#00304D] rounded-lg p-4 mb-4">
+              <h4 class="font-semibold text-[#00304D] mb-2">Obra Creada:</h4>
+              <p id="infoObraCreada" class="text-sm text-[#00304D]"></p>
+          </div>
+
+          <!-- Learner search -->
+          <div>
+              <label class="block text-xs text-muted-foreground mb-1">Buscar Aprendices</label>
+              <div class="relative">
+                  <i class="fas fa-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+                  <input
+                      type="text"
+                      id="searchAprendiz"
+                      placeholder="Buscar por nombre o documento..."
+                      class="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm"
+                      onkeyup="filtrarAprendices()"
+                  />
+              </div>
+          </div>
+
+          <!-- Learner select -->
+          <div>
+              <label class="block text-xs text-muted-foreground mb-1">Seleccionar Aprendiz *</label>
+              <select 
+                  id="selectAprendiz"
+                  class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  onchange="agregarAprendizSeleccionado()"
+              >
+                  <option value="" selected disabled>Cargando aprendices...</option>
+              </select>
+          </div>
+
+          <!-- List of selected learners -->
+          <div class="mt-6">
+              <h4 class="text-sm font-medium text-foreground mb-3">Aprendices Seleccionados</h4>
+              <div id="listaAprendicesSeleccionados" class="space-y-2 min-h-[100px] border border-border rounded-lg p-4">
+                  <p class="text-sm text-muted-foreground text-center py-4">No hay aprendices seleccionados</p>
+              </div>
+          </div>
+
+          <div class="flex gap-3 pt-4 justify-end">
+              <button type="button" onclick="closeAsignarModal()" class="px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors">
+                  Cancelar
+              </button>
+              <button
+                  type="button"
+                  onclick="finalizarCreacionGrupal()"
+                  class="inline-flex items-center justify-center rounded-md bg-secondary px-10 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2 transition-colors"
+                  id="btnFinalizarGrupal"
+              >
+                  <span id="btnFinalizarText">Finalizar</span>
+                  <span id="btnFinalizarLoading" class="hidden">
+                      <i class="fas fa-spinner fa-spin"></i>
+                  </span>
+              </button>
+          </div>
+      </div>
+    </div>
+  </div>
+
+<!-- ========================================= -->
+<!-- SELECT LEARNER MODAL (INDIVIDUAL)          -->
+<!-- ========================================= -->
+<div id="modalSeleccionarAprendiz" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
+    <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between p-6 pb-0">
+            <div class="flex flex-col items-start justify-between p-0">
+                <h3 class="text-xl font-semibold text-foreground">Seleccionar Aprendiz</h3>
+                <p class="text-sm text-muted-foreground opacity-75">Selecciona el aprendiz que realizará esta obra individual</p>
+            </div>
+            <button onclick="closeSeleccionarModal()" class="text-muted-foreground hover:opacity-80">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-xs text-muted-foreground mb-1">Aprendiz *</label>
+                <select 
+                    id="selectAprendizIndividual"
+                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                    <option value="" selected disabled>Cargando aprendices...</option>
+                </select>
+            </div>
+
+            <div class="flex gap-3 pt-4 justify-end">
+                <button type="button" onclick="closeSeleccionarModal()" class="px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors">
+                    Cancelar
+                </button>
+                <button
+                    type="button"
+                    onclick="finalizarCreacionIndividual()"
+                    class="inline-flex items-center justify-center rounded-md bg-secondary px-10 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2 transition-colors"
+                >
+                    Finalizar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
   <!-- ========================================= -->
   <!-- ALERT CONTAINER (FLOWBITE-LIKE TOASTS)    -->
   <!-- ========================================= -->
   <div id="flowbite-alert-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 w-full max-w-md"></div>
+
+  <!-- ✅ PASAMOS PERMISOS Y DATOS DE SESIÓN A JS (IMPORTANTÍSIMO) -->
+  <script>
+    window.OBRAS_PERMS = {
+      canCrear: <?= json_encode($canCrearObra) ?>,
+      canEditar: <?= json_encode($canEditarObra) ?>,
+      canCambiarEstado: <?= json_encode($canCambiarEstadoObra) ?>,
+    };
+    
+    // Datos de sesión del usuario
+    window.USUARIO_SESION = {
+      usuarioId: <?= json_encode($_SESSION['usuario_id'] ?? null) ?>,
+      cargo: <?= json_encode($_SESSION['cargo'] ?? null) ?>,
+      nombre: <?= json_encode($_SESSION['usuario_nombre'] ?? null) ?>,
+      fichas: <?= json_encode($_SESSION['usuario_fichas'] ?? []) ?>,
+    };
+    
+    console.log("👤 USUARIO SESIÓN:", window.USUARIO_SESION);
+  </script>
 
   <script src="<?= ASSETS_URL ?>js/obras/obras.js"></script>
 </body>

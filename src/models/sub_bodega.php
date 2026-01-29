@@ -31,6 +31,18 @@ class SubBodegaModel {
         }
     }
 
+    /* GET BY BODEGA */
+    public function obtenerPorBodega(int $idBodega): array {
+        try {
+            $stmt = $this->conn->prepare("SELECT * FROM subbodegas WHERE id_bodega = ? ORDER BY nombre_subbodega");
+            $stmt->execute([$idBodega]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("PDO get by bodega error: " . $e->getMessage());
+            return [];
+        }
+    }
+
     /* CREATE */
     public function crear(array $data): bool {
         try {

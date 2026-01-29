@@ -54,32 +54,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
         <!-- Evidence Grid -->
         <div id="evidenceGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            <!-- Evidence Card 1 -->
-            <div class="evidence-card bg-card rounded-xl border border-border overflow-hidden cursor-pointer hover:shadow-lg transition-all" onclick="openDetailModal(1)">
-                <div class="relative">
-                    <img src="<?= BASE_URL ?>/uploads/evidencias/prueba.jpg" alt="Evidencia" class="w-full h-48 object-cover">
-                    <div class="absolute top-3 right-3 bg-card/90 backdrop-blur-sm px-3 py-1.5 rounded-lg flex items-center gap-2">
-                        </div>
-                    </div>
-                    <div class="p-4">
-                        <div class="flex items-center justify-between mb-2">
-                            
-                        <span class="text-xs text-muted-foreground">2024-04-06</span>
-                        <span class="text-xs font-medium">Ficha 2896441</span>
-                    </div>
-                    <p class="text-sm text-foreground line-clamp-2 mb-3">Trabajo de cimentación realizado por los aprendices de la ficha 2567890</p>
-                    <div class="flex flex-wrap gap-2">
-                        <span class="badge-material">
-                            <img src="tag-icon.png" alt="material" class="w-3 h-3">
-                            Cemento Gris
-                        </span>
-                        <span class="badge-material">
-                            <img src="tag-icon.png" alt="material" class="w-3 h-3">
-                            Arena de Río
-                        </span>
-                    </div>
-                </div>
-            </div>
+            <!-- Las tarjetas se generarán dinámicamente con JavaScript -->
         </div>
       </div>
     </main>
@@ -109,6 +84,14 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             </div>
             
             <form class="space-y-3" onsubmit="event.preventDefault(); createEvidence();">
+                <!-- Seleccionar Salida de Material -->
+                <div class="space-y-1.5">
+                    <label for="salidaSelect" class="text-xs font-medium">Salida de Material *</label>
+                    <select id="salidaSelect" class="w-full rounded-md border border-input px-2.5 py-1.5 text-xs" required>
+                        <option value="">Cargando salidas pendientes...</option>
+                    </select>
+                </div>
+
                 <!-- Fotografía de evidencia -->
                 <div class="space-y-1.5">
                     <label class="text-xs font-medium">Fotografía de evidencia *</label>
@@ -130,8 +113,11 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 
                 <!-- Descripción -->
                 <div class="space-y-1.5">
-                    <label class="text-xs font-medium">Descripción de la evidencia *</label>
-                    <textarea id="descripcion" placeholder="Describe la evidencia..." class="w-full rounded-md border border-input px-2.5 py-1.5 text-xs h-14 resize-none" required></textarea>
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-medium">Descripción de la evidencia *</label>
+                        <span class="text-xs text-muted-foreground"><span id="charCount">0</span>/250</span>
+                    </div>
+                    <textarea id="descripcion" placeholder="Describe la evidencia..." class="w-full rounded-md border border-input px-2.5 py-1.5 text-xs h-14 resize-none" maxlength="250" required></textarea>
                 </div>
                 
                 <!-- Buttons -->
@@ -158,7 +144,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                     class="rounded-full p-1 hover:bg-muted flex-shrink-0"
                 >
                     <span class="sr-only">Cerrar</span>
-                    <svg class="h-4 w-4" xm lns="http://www.w3.org/2000/svg" fill="none"
+                    <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
                          viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M6 18L18 6M6 6l12 12"/>
@@ -167,11 +153,19 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             </div>
             
             <div class="p-5 space-y-3">
-                <div>
+                <div class="relative">
                     <img id="detailImage" src="" alt="Evidencia" class="w-full h-80 object-cover rounded-xl border border-border">
+                    <div class="absolute top-3 right-3 bg-secondary px-2.5 py-1 rounded-lg shadow-lg">
+                        <span id="detailEvidenceId" class="text-xs font-bold text-white">Evidencia #-</span>
+                    </div>
                 </div>
                 
                 <div class="space-y-3 text-sm">
+                    <div>
+                        <p class="text-xs text-muted-foreground mb-1">Obra</p>
+                        <p id="detailObra" class="font-medium">-</p>
+                    </div>
+                    
                     <div>
                         <p class="text-xs text-muted-foreground mb-1">Ficha</p>
                         <p id="detailFicha" class="font-medium">-</p>

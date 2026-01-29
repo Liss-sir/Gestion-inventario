@@ -23,7 +23,10 @@ function getMaterialesBaseUrl() {
 function getMaterialImageUrl(foto) {
   if (!foto) return ""
   if (foto.startsWith("http")) return foto
-  return `${getMaterialesBaseUrl()}/src/uploads/materiales/${foto}`
+  const baseUrl = getMaterialesBaseUrl()
+  // Asegurar que no haya doble slash
+  const cleanBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl
+  return `${cleanBase}/src/uploads/materiales/${foto}`
 }
 
 function parsePriceValue(raw) {
@@ -79,11 +82,11 @@ function attachCurrencyMask(inputId) {
   input.addEventListener("blur", () => {
     const rawTyped = (input.value ?? "").toString().trim()
 
-    // ✅ PRIMERO: no permitir puntos ni comas (ALERTA TIPO INFO)
+    // No permitir puntos ni comas
     if (rawTyped && /[.,]/.test(rawTyped)) {
       input.dataset.rawPrice = ""
       input.value = ""
-      showAlert("No se admiten puntos ni comas en el precio. Escríbelo sin separadores (ej: 2000).", "info")
+      showAlert("No se admiten puntos ni comas en el precio. Escríbelo sin separadores (ej: 2000).", "error")
       return
     }
 
@@ -123,6 +126,7 @@ async function fetchMaterials() {
       codigo: material.codigo_inventario,
       unit: material.unidad_medida,
       precio: material.precio,
+      stock_maximo: material.stock_maximo,
       foto: material.foto,
       enabled: material.estado === "Disponible",
     }))
@@ -247,6 +251,9 @@ async function toggleMaterialStatusAPI(id) {
     // precio: tu modelo lo requiere, enviamos num limpio
     const precioNum = parsePriceValue(mat.precio)
     fd.append("precio", precioNum === "" ? "" : String(precioNum))
+
+    // stock_maximo: requerido por el modelo
+    fd.append("stock_maximo", (mat.stock_maximo ?? 100).toString())
 
     // estado nuevo
     fd.append("estado", nextEstado)
@@ -395,52 +402,105 @@ function showAlert(message, type = "success") {
 
 function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
   const nameRegex = /^[A-Za-z0-9ÁÉÍÓÚÜÑñáéíóúüñ\s\-.]{3,80}$/
-  const codeRegex = /^[A-Za-z0-9_-]{3,30}$/
+  const codeRegex = /^[0-9]{3,30}$/
 
   if (!data.nombre) {
-    showAlert("El nombre es obligatorio", "warning")
+    showAlert("El nombre es obligatorio", "info")
     document.getElementById(isEdit ? "editNombre" : "nombre")?.focus()
     return false
   }
 
   if (!nameRegex.test(data.nombre)) {
-    showAlert("El nombre solo puede tener letras/números y 3-80 caracteres", "warning")
+    showAlert("El nombre solo puede tener letras/números y 3-80 caracteres", "info")
     document.getElementById(isEdit ? "editNombre" : "nombre")?.focus()
     return false
   }
 
   if (!data.descripcion || data.descripcion.length < 5) {
-    showAlert("La descripción debe tener al menos 5 caracteres", "warning")
+    showAlert("La descripción debe tener al menos 5 caracteres", "info")
     document.getElementById(isEdit ? "editDescripcion" : "descripcion")?.focus()
     return false
   }
 
   if (!data.clasificacion) {
-    showAlert("Seleccione la clasificación", "warning")
+    showAlert("Seleccione la clasificación", "info")
     document.getElementById(isEdit ? "editClasificacion" : "clasificacion")?.focus()
     return false
   }
 
   if (!data.unidad_medida) {
-    showAlert("Seleccione la unidad de medida", "warning")
+    showAlert("Seleccione la unidad de medida", "info")
     document.getElementById(isEdit ? "editUnidad" : "unidad")?.focus()
     return false
   }
 
   if (data.precio === "" || data.precio === null || data.precio === undefined || Number.isNaN(Number(data.precio))) {
-    showAlert("Ingrese un precio válido", "warning")
+    showAlert("Ingrese un precio válido", "info")
     document.getElementById(isEdit ? "editPrecio" : "precio")?.focus()
+    return false
+  }
+
+  // Validaciones para stock_maximo
+  if (!data.stock_maximo || data.stock_maximo === "") {
+    showAlert("El stock máximo es obligatorio", "info")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  const stockMaximoStr = data.stock_maximo.toString().trim()
+
+  // Validar que no contenga letras
+  if (/[a-zA-Z]/.test(stockMaximoStr)) {
+    showAlert("El stock máximo no puede contener letras", "info")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  // Validar que no contenga caracteres especiales
+  if (!/^\d+$/.test(stockMaximoStr)) {
+    showAlert("El stock máximo solo puede contener números enteros (sin decimales ni caracteres)", "info")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  const stockMaximoNum = Number(stockMaximoStr)
+
+  // Validar que sea un número válido
+  if (Number.isNaN(stockMaximoNum)) {
+    showAlert("El stock máximo debe ser un número válido", "info")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  // Validar que sea positivo
+  if (stockMaximoNum <= 0) {
+    showAlert("El stock máximo debe ser mayor a 0", "info")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  // Validar que sea entero (sin decimales)
+  if (!Number.isInteger(stockMaximoNum)) {
+    showAlert("El stock máximo debe ser un número entero (sin decimales)", "info")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  // Validar máximo 6 dígitos
+  if (stockMaximoNum > 999999) {
+    showAlert("El stock máximo no puede exceder 999,999 (máximo 6 dígitos)", "info")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
     return false
   }
 
   if (data.clasificacion === "Inventariado") {
     if (!data.codigo_inventario) {
-      showAlert("El código es obligatorio para inventariados", "warning")
+      showAlert("El código es obligatorio para inventariados", "info")
       document.getElementById(isEdit ? "editCodigo" : "codigo")?.focus()
       return false
     }
     if (!codeRegex.test(data.codigo_inventario)) {
-      showAlert("Código inválido: solo números (3-30 dígitos)", "warning")
+      showAlert("Código inválido: solo números (3-30 dígitos)", "info")
       document.getElementById(isEdit ? "editCodigo" : "codigo")?.focus()
       return false
     }
@@ -451,7 +511,7 @@ function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
   )
 
   if (nombreDuplicado) {
-    showAlert("Ya existe un material con ese nombre", "warning")
+    showAlert("Ya existe un material con ese nombre", "info")
     return false
   }
 
@@ -460,7 +520,7 @@ function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
       (m) => m.codigo && m.codigo.toLowerCase() === data.codigo_inventario.toLowerCase() && (!isEdit || m.id !== id),
     )
     if (codigoDuplicado) {
-      showAlert("Ya existe un material con ese código", "warning")
+      showAlert("Ya existe un material con ese código", "info")
       return false
     }
   }
@@ -639,6 +699,10 @@ function renderTable() {
   paginatedData.forEach((material) => {
     const statusText = material.enabled ? "Disponible" : "Agotado"
     const codigoDisplay = material.codigo || (material.clasificacion === "Consumible" ? "N/C" : "-")
+    const fotoUrl = getMaterialImageUrl(material.foto)
+    const avatarHtml = fotoUrl
+      ? `<img src="${fotoUrl}" alt="${material.name}" class="h-full w-full object-cover rounded-lg" />`
+      : '<i data-lucide="box" class="lucide lucide-box h-4 w-4 text-[#007832]"></i>'
 
     const row = document.createElement("tr")            
     row.className = "hover:bg-muted/40"
@@ -648,8 +712,8 @@ function renderTable() {
       <td class="px-4 py-3 align-middle text-sm font-medium">${codigoDisplay}</td>
       <td class="px-4 py-3 align-middle">
         <div class="flex items-center gap-3">
-          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-avatar-secondary-39 text-secondary flex-shrink-0">
-            <i data-lucide="box" class="lucide lucide-box h-4 w-4 text-[#007832]"></i>
+          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-avatar-secondary-39 text-secondary flex-shrink-0 overflow-hidden">
+            ${avatarHtml}
           </div>
           <div>
             <p class="font-medium text-sm">${material.name}</p>
@@ -758,6 +822,10 @@ function renderCards() {
   paginatedData.forEach((material) => {
     const statusText = material.enabled ? "Disponible" : "Agotado"
     const codigoDisplay = material.codigo || (material.clasificacion === "Consumible" ? "N/C" : "Sin código")
+    const fotoUrl = getMaterialImageUrl(material.foto)
+    const avatarHtml = fotoUrl
+      ? `<img src="${fotoUrl}" alt="${material.name}" class="h-full w-full object-cover rounded-lg" />`
+      : icons.package
 
     const card = document.createElement("div")
     card.className = "rounded-2xl border border-border bg-card p-2.5 shadow-sm flex flex-col gap-1.5"
@@ -766,8 +834,8 @@ function renderCards() {
     card.innerHTML = `
       <div class="flex items-start justify-between gap-2">
         <div class="flex items-center gap-2">
-          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-avatar-secondary-39 text-secondary flex-shrink-0">
-            ${icons.package}
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-avatar-secondary-39 text-secondary flex-shrink-0 overflow-hidden">
+            ${avatarHtml}
           </div>
           <div class="space-y-0.5">
             <p class="font-semibold text-xs sm:text-sm leading-snug">${material.name}</p>
@@ -820,12 +888,16 @@ function renderCards() {
       </div>
 
       <div class="space-y-0.5 text-[11px] sm:text-xs text-muted-foreground">
-        <div class="flex items-center gap-2">
-          ${icons.email}
+        <div class="flex items-start gap-2">
+          <div class="flex-shrink-0">
+            ${icons.email}
+          </div>
           <span class="truncate">${material.description}</span>
         </div>
         <div class="flex items-center gap-2">
-          ${icons.ruler}
+          <div class="flex-shrink-0">
+            ${icons.ruler}
+          </div>
           <span>${material.unit}</span>
         </div>
       </div>
@@ -1023,6 +1095,10 @@ function openDetailsModal(id) {
         <span class="text-muted-foreground">Precio:</span>
         <span class="col-span-2 font-medium">${material.precio ? formatCOPValue(material.precio) : "Sin precio"}</span>
       </div>
+      <div class="grid grid-cols-3 gap-2">
+        <span class="text-muted-foreground">Stock Máximo:</span>
+        <span class="col-span-2 font-medium">${material.stock_maximo || "0"}</span>
+      </div>
     </div>
   `
 
@@ -1046,10 +1122,16 @@ function openEditModal(id) {
   document.getElementById("editClasificacion").value = material.clasificacion
   document.getElementById("editCodigo").value = material.codigo || ""
   document.getElementById("editUnidad").value = material.unit
+  
   const editPrecioInput = document.getElementById("editPrecio")
   if (editPrecioInput) {
     editPrecioInput.dataset.rawPrice = material.precio ?? ""
     editPrecioInput.value = material.precio ? formatCOPValue(material.precio) : ""
+  }
+   
+  const editStockMaximoInput = document.getElementById("editStockMaximo")
+  if (editStockMaximoInput) {
+    editStockMaximoInput.value = material.stock_maximo || ""
   }
 
   const editImagenInput = document.getElementById("editImagen")
@@ -1097,7 +1179,7 @@ function toggleCodigoField() {
   if (clasificacion === "Inventariado") {
     codigoContainer.style.display = "block"
     codigoHelpText.style.display = "block"
-    codigoInput.required = true
+    codigoInput.required = false
     precioCodigoGrid.style.gridTemplateColumns = "1fr 1fr"
   } else {
     codigoContainer.style.display = "none"
@@ -1121,7 +1203,7 @@ function toggleEditCodigoField() {
 
   if (clasificacion === "Inventariado") {
     codigoContainer.style.display = "block"
-    codigoInput.required = true
+    codigoInput.required = false
 
     if (editPrecioCodigoGrid && editPrecioCodigoGrid.classList) {
       editPrecioCodigoGrid.classList.remove("grid-cols-1")
@@ -1160,6 +1242,7 @@ async function createMaterial() {
     codigo_inventario: document.getElementById("codigo").value.trim() || null,
     unidad_medida: document.getElementById("unidad").value,
     precio: parsePriceValue(precioRaw || precioTyped),
+    stock_maximo: document.getElementById("stock_maximo").value,
   }
 
   if (!validateMaterialPayload(materialData)) return
@@ -1171,6 +1254,7 @@ async function createMaterial() {
   formData.append("codigo_inventario", materialData.codigo_inventario || "")
   formData.append("unidad_medida", materialData.unidad_medida)
   formData.append("precio", materialData.precio)
+  formData.append("stock_maximo", materialData.stock_maximo)
 
   const imagenInput = document.getElementById("imagen")
   if (imagenInput.files.length > 0) {
@@ -1195,12 +1279,6 @@ async function updateMaterial() {
   const precioTyped = (editPrecioEl?.value ?? "").toString().trim()
   const precioRaw = (editPrecioEl?.dataset.rawPrice ?? "").toString().trim()
 
-  if (!precioRaw && precioTyped && /[.,]/.test(precioTyped)) {
-    showAlert("No se admiten puntos ni comas en el precio. Escríbelo sin separadores (ej: 2000).", "error")
-    editPrecioEl?.focus()
-    return
-  }
-
   const materialData = {
     nombre: document.getElementById("editNombre").value.trim(),
     descripcion: document.getElementById("editDescripcion").value.trim(),
@@ -1208,16 +1286,46 @@ async function updateMaterial() {
     codigo_inventario: document.getElementById("editCodigo").value.trim() || null,
     unidad_medida: document.getElementById("editUnidad").value,
     precio: parsePriceValue(precioRaw || precioTyped),
+    stock_maximo: document.getElementById("editStockMaximo").value,
     estado: materialsData.find((m) => m.id === id)?.enabled ? "Disponible" : "Agotado",
   }
 
   const editImagenInput = document.getElementById("editImagen")
   const hasNewPhoto = editImagenInput && editImagenInput.files.length > 0
 
+  // Validar si no hay cambios ANTES de validar los datos
   const original = materialsData.find((m) => m.id === id)
   if (original) {
-    const norm = (v) => (v ?? "").toString().trim()
+    // Función mejorada para normalizar y limpiar valores
+    const norm = (v) => {
+      if (v === null || v === undefined) return ""
+      return v.toString()
+        .trim()
+        .replace(/\s+/g, " ") // Reemplazar múltiples espacios/saltos de línea por un solo espacio
+        .replace(/\r\n/g, " ") // Reemplazar saltos de línea Windows
+        .replace(/\n/g, " ") // Reemplazar saltos de línea Unix
+        .replace(/\r/g, " ") // Reemplazar retornos de carro
+        .trim()
+    }
+    
     const samePrecio = Number(parsePriceValue(original.precio)) === Number(parsePriceValue(materialData.precio))
+    
+    // Normalizar stock_maximo para comparación correcta
+    const originalStock = original.stock_maximo ? Number(original.stock_maximo) : 0
+    const newStock = materialData.stock_maximo ? Number(materialData.stock_maximo) : 0
+    const sameStockMaximo = originalStock === newStock
+
+    // Debug para materiales creados manualmente en DB
+    console.log("Comparación de cambios:", {
+      nombre: { original: norm(original.name), nuevo: norm(materialData.nombre), igual: norm(original.name) === norm(materialData.nombre) },
+      descripcion: { original: norm(original.description), nuevo: norm(materialData.descripcion), igual: norm(original.description) === norm(materialData.descripcion) },
+      clasificacion: { original: norm(original.clasificacion), nuevo: norm(materialData.clasificacion), igual: norm(original.clasificacion) === norm(materialData.clasificacion) },
+      codigo: { original: norm(original.codigo), nuevo: norm(materialData.codigo_inventario), igual: norm(original.codigo) === norm(materialData.codigo_inventario) },
+      unidad: { original: norm(original.unit), nuevo: norm(materialData.unidad_medida), igual: norm(original.unit) === norm(materialData.unidad_medida) },
+      precio: { original: Number(parsePriceValue(original.precio)), nuevo: Number(parsePriceValue(materialData.precio)), igual: samePrecio },
+      stock: { original: originalStock, nuevo: newStock, igual: sameStockMaximo },
+      hasNewPhoto
+    })
 
     const noChanges =
       norm(original.name) === norm(materialData.nombre) &&
@@ -1226,12 +1334,20 @@ async function updateMaterial() {
       norm(original.codigo) === norm(materialData.codigo_inventario) &&
       norm(original.unit) === norm(materialData.unidad_medida) &&
       samePrecio &&
+      sameStockMaximo &&
       !hasNewPhoto
 
     if (noChanges) {
-      showAlert("No realizaste cambios. Usa Cancelar o cierra el modal.", "warning")
+      showAlert("No realizaste cambios en el material", "info")
       return
     }
+  }
+
+  // Validar puntos y comas en precio
+  if (!precioRaw && precioTyped && /[.,]/.test(precioTyped)) {
+    showAlert("No se admiten puntos ni comas en el precio. Escríbelo sin separadores (ej: 2000).", "error")
+    editPrecioEl?.focus()
+    return
   }
 
   if (!validateMaterialPayload(materialData, { isEdit: true, id })) return
@@ -1242,6 +1358,7 @@ async function updateMaterial() {
   formData.append("clasificacion", materialData.clasificacion)
   formData.append("codigo_inventario", materialData.codigo_inventario || "")
   formData.append("unidad_medida", materialData.unidad_medida)
+  formData.append("stock_maximo", materialData.stock_maximo || "")
   formData.append("precio", materialData.precio || "")
   formData.append("estado", materialData.estado)
 

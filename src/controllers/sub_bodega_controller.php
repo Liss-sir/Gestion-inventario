@@ -1,25 +1,8 @@
 <?php
 
-require_once __DIR__ . "/../../Config/database.php";
 require_once __DIR__ . "/../models/sub_bodega.php";
+require_once __DIR__ . "/../../Config/database.php";
 
-header("Content-Type: application/json; charset=utf-8");
-
-/* ===============================
-   VALIDAR CONEXIÓN
-================================ */
-if (!isset($conn) || !($conn instanceof PDO)) {
-    http_response_code(500);
-    echo json_encode([
-        "success" => false,
-        "message" => "Error de conexión a la base de datos"
-    ]);
-    exit;
-}
-
-/* ===============================
-   CONTROLLER
-================================ */
 class SubBodegaController {
 
     private $model;
@@ -30,62 +13,25 @@ class SubBodegaController {
 
     private function response($data, int $status = 200) {
         http_response_code($status);
+        header("Content-Type: application/json; charset=utf-8");
         echo json_encode($data, JSON_UNESCAPED_UNICODE);
         exit;
     }
 
-    /* ===============================
-       LISTAR TODAS
-       ?accion=listar
-    ================================ */
+    /* LIST */
     public function listar() {
-        $this->response([
-            "success" => true,
-            "data" => $this->model->listar()
-        ]);
+        $this->response($this->model->listar());
     }
 
-    /* ===============================
-       LISTAR POR BODEGA
-       ?accion=por_bodega&id_bodega=1
-    ================================ */
-    public function por_bodega() {
-
-        $id_bodega = $_GET["id_bodega"] ?? null;
-
-        if (!$id_bodega) {
-            $this->response([
-                "success" => false,
-                "message" => "ID de bodega requerido"
-            ], 400);
-        }
-
-        // 🔥 filtrado desde DB
-        $todas = $this->model->listar();
-
-        $filtradas = array_values(array_filter($todas, function ($s) use ($id_bodega) {
-            return (int)$s["id_bodega"] === (int)$id_bodega;
-        }));
-
-        $this->response([
-            "success" => true,
-            "data" => $filtradas
-        ]);
-    }
-
-    /* ===============================
-       OBTENER POR ID
-       ?accion=obtener&id=3
-    ================================ */
+    /* GET BY ID*/
     public function obtener() {
-
         $id = $_GET["id"] ?? null;
 
         if (!$id) {
             $this->response(["error" => "ID requerido"], 400);
         }
 
-        $data = $this->model->obtenerPorId((int)$id);
+        $data = $this->model->obtenerPorId($id);
 
         if (!$data) {
             $this->response(["error" => "Subbodega no encontrada"], 404);
@@ -94,12 +40,22 @@ class SubBodegaController {
         $this->response($data);
     }
 
-    /* ===============================
-       CREAR
-       POST JSON
-    ================================ */
-    public function crear() {
+    /* GET BY BODEGA */
+    public function porBodega() {
+        $idBodega = $_GET["id_bodega"] ?? null;
 
+        if (!$idBodega) {
+            $this->response(["success" => false, "error" => "ID de bodega requerido"], 400);
+        }
+
+        $idBodega = (int)$idBodega;
+        $subbodegas = $this->model->obtenerPorBodega($idBodega);
+
+        $this->response(["success" => true, "data" => $subbodegas]);
+    }
+
+    /* CREATE */
+    public function crear() {
         $input = json_decode(file_get_contents("php://input"), true);
 
         if (!$input) {
@@ -117,7 +73,6 @@ class SubBodegaController {
 
    /* UPDATE */
     public function actualizar() {
-
         $id = $_GET["id"] ?? null;
 
         if (!$id) {
@@ -159,10 +114,7 @@ class SubBodegaController {
         $this->response(["error" => "No se pudo actualizar"], 500);
     }
 
-    /* ===============================
-       CAMBIAR ESTADO
-       ?accion=estado&id=3
-    ================================ */
+    /* CHANGE STATE  */
     public function estado() {
 
         $id = $_GET["id"] ?? null;
@@ -171,34 +123,33 @@ class SubBodegaController {
             $this->response(["error" => "ID requerido"], 400);
         }
 
+        // Recibir estado desde el BODY (POR POST)
         $input = json_decode(file_get_contents("php://input"), true);
 
         if (!$input || !isset($input["estado"])) {
-            $this->response([
-                "error" => "Debes enviar { estado: 'Activo' | 'Inactivo' }"
-            ], 400);
+            $this->response(["error" => "Debes enviar { estado: 'Activo' | 'Inactivo' }"], 400);
         }
 
-        if (!in_array($input["estado"], ["Activo", "Inactivo"])) {
+        $estado = $input["estado"];
+
+        if (!in_array($estado, ["Activo", "Inactivo"])) {
             $this->response(["error" => "Estado inválido"], 400);
         }
 
-        $ok = $this->model->cambiarEstado((int)$id, $input["estado"]);
+        $ok = $this->model->cambiarEstado($id, $estado);
 
         if ($ok) {
-            $this->response([
-                "message" => "Estado cambiado a {$input["estado"]}"
-            ]);
+            $this->response(["message" => "Estado cambiado a $estado"]);
         }
 
         $this->response(["error" => "No se pudo cambiar el estado"], 500);
     }
 }
 
-/* ===============================
-   ROUTER
-================================ */
+/* ROUTES */
+
 $accion = $_GET["accion"] ?? null;
+
 $controller = new SubBodegaController($conn);
 
 switch ($accion) {
@@ -207,12 +158,12 @@ switch ($accion) {
         $controller->listar();
         break;
 
-    case "por_bodega":
-        $controller->por_bodega();
-        break;
-
     case "obtener":
         $controller->obtener();
+        break;
+
+    case "por_bodega":
+        $controller->porBodega();
         break;
 
     case "crear":
@@ -228,7 +179,7 @@ switch ($accion) {
         break;
 
     default:
-        http_response_code(400);
+        header("Content-Type: application/json");
         echo json_encode(["error" => "Ruta no válida"]);
         break;
 }

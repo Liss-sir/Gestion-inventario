@@ -5,7 +5,11 @@
 
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
+
+
 ?>
+
+
 
 <!DOCTYPE html>
 <html lang="es">
@@ -176,6 +180,13 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 </div>
 
                 <div>
+                    <label for="actividad" class="text-sm font-medium block mb-1">Actividad *</label>
+                    <select id="actividad" name="actividad" class="input-siga w-full" required>
+                    <option value="">Seleccionar actividad</option>
+                    </select>
+                </div>
+
+                <div>
                     <label for="observaciones" class="text-sm font-medium block mb-1">Observaciones</label>
                     <textarea id="observaciones" name="observaciones" 
                               class="input-siga w-full" rows="3" 
@@ -194,6 +205,24 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
             <!-- PASO 2 -->
             <div id="sol-paso-2" class="hidden space-y-4">
+
+                <!-- ✅ NUEVO: FILTRO BODEGA + SUBBODEGA -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="bodega-select" class="text-sm font-medium block mb-1">Bodega *</label>
+                        <select id="bodega-select" class="input-siga w-full">
+                            <option value="">Seleccione una bodega</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="subbodega-select" class="text-sm font-medium block mb-1">Subbodega *</label>
+                        <select id="subbodega-select" class="input-siga w-full" disabled>
+                            <option value="">Seleccione una subbodega</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div>
                     <label class="text-sm font-medium block mb-1">Materiales *</label>
                     
@@ -233,6 +262,16 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </form>
     </div>
 </div>
+
+<script>
+  window.SIGA_SOL_PERMS = {
+    crear: <?= json_encode(canPermiso("solicitudes.crear")) ?>,
+    aceptar: <?= json_encode(canPermiso("solicitudes.aceptar")) ?>,
+    rechazar: <?= json_encode(canPermiso("solicitudes.rechazar")) ?>,
+    entregar: <?= json_encode(canPermiso("solicitudes.entregar")) ?>,
+  };
+</script>
+
 
 <!-- JS -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
