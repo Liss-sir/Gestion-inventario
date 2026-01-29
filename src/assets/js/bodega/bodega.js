@@ -9,8 +9,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const API_URL = new URL("src/controllers/bodega_controller.php", document.baseURI).toString();
   const API_SUBBODEGAS = new URL("src/controllers/sub_bodega_controller.php", document.baseURI).toString();
 
-
-
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".btn-toggle-subbodegas");
   if (!btn) return;
@@ -46,13 +44,9 @@ document.addEventListener("click", (e) => {
       </p>
     </div>
 
-    <div class="flex items-center gap-2">
-      <span class="text-xs px-2 py-1 rounded-full
-        ${sb.estado === "Activo"
-          ? "bg-emerald-100 text-emerald-700"
-          : "bg-red-100 text-red-700"}">
-        ${sb.estado}
-      </span>
+    <span class="text-xs px-2 py-1 rounded-full inline-flex w-fit ${estadoBadgeClass(sb.estado)}">
+      ${estadoLabel(sb.estado)}
+    </span>
 
       <button
         type="button"
@@ -110,6 +104,15 @@ let subBodegasCountByBodega = {};
     modal.classList.remove("flex");
     document.body.classList.remove("overflow-hidden");
   };
+
+  const normalizeEstado = (estado) => String(estado ?? "").trim().toLowerCase();
+  const isActivoEstado = (estado) => {
+    const v = normalizeEstado(estado);
+    return v === "activo" || v === "1" || v === "true";
+  };
+  const estadoLabel = (estado) => (isActivoEstado(estado) ? "Activo" : "Inactivo");
+  const estadoBadgeClass = (estado) => (isActivoEstado(estado) ? "badge-estado-activo" : "badge-estado-inactivo");
+
 
   const normalize = (s) => String(s || "").toLowerCase().trim();
 
@@ -470,11 +473,8 @@ container.innerHTML = subBodegas.map(sb => `
     </div>
 
     <div class="flex items-center gap-2">
-      <span class="text-xs px-2 py-1 rounded-full
-        ${sb.estado === "Activo"
-          ? "bg-emerald-100 text-emerald-700"
-          : "bg-red-100 text-red-700"}">
-        ${sb.estado}
+      <span class="text-xs px-2 py-1 rounded-full inline-flex w-fit ${estadoBadgeClass(sb.estado)}">
+        ${estadoLabel(sb.estado)}
       </span>
 
       <!-- Botón menú (igual idea que bodegas) -->
@@ -847,6 +847,14 @@ const fillDetalleSub = (data) => {
     const el = $(id);
     if (!el) return;
     el.textContent = value ?? "";
+
+    const estadoEl = $("detalleSubEstado");
+    if (estadoEl) {
+      const estado = data.estado || "";
+      estadoEl.textContent = estadoLabel(estado);
+      estadoEl.classList.remove("badge-estado-activo", "badge-estado-inactivo");
+      estadoEl.classList.add(estadoBadgeClass(estado), "inline-flex", "w-fit");
+    }
   };
 
   // OJO: estos IDs deben existir en tu HTML del modal sub-bodega
