@@ -110,40 +110,6 @@ class MaterialFormacionModel {
         ]);
         
     }
-
-    // /* 
-    //    DELETE MATERIAL (check relations)
-    //     */
-    // public function delete($id_material)
-    // {
-    //     $tables = [
-    //         "movimientos_material",
-    //         "devoluciones_material",
-    //         "stock_bodega",
-    //         "stock_subbodega",
-    //         "solicitudes_material"
-    //     ];
-
-    //     foreach ($tables as $table) {
-
-    //         $sql = "SELECT COUNT(*) FROM $table WHERE id_material = ?";
-    //         $stmt = $this->db->prepare($sql);
-    //         $stmt->execute([$id_material]);
-
-    //         if ($stmt->fetchColumn() > 0) {
-    //             return false;
-    //         }
-    //     }
-
-    //     $sql = "DELETE FROM material_formacion WHERE id_material = ?";
-    //     $stmt = $this->db->prepare($sql);
-
-    //     return $stmt->execute([$id_material]);
-    // }
-
-    /* 
-       GET TOTAL STOCK
-        */
     public function getStockTotal($id_material)
     {
         $sql = "

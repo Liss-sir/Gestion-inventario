@@ -2158,6 +2158,79 @@ case 'obtener_rol_funcional_usuario':
 
 break;
 
+        /* =====================================================
+           ✅ OBTENER ASIGNACIONES (BODEGAS / SUBBODEGAS) DE UN USUARIO
+           GET: ?accion=obtener_asignaciones_usuario&id_usuario=#
+           Retorna: { success:true, data: { bodegas: [...], subbodegas: [...] } }
+        ===================================================== */
+        case 'obtener_asignaciones_usuario':
+
+            $id_usuario = (int)($_GET['id_usuario'] ?? 0);
+
+            if ($id_usuario <= 0) {
+                enviarJSON(['success' => false, 'error' => 'id_usuario requerido'], 400);
+            }
+
+            // Permisos: permitir solo Coordinador o el propio usuario ver sus asignaciones
+            $esCoordinador = isset($_SESSION['usuario_cargo']) && $_SESSION['usuario_cargo'] === 'Coordinador';
+            $esPropio = isset($_SESSION['usuario_id']) && (int)$_SESSION['usuario_id'] === $id_usuario;
+
+            if (!$esCoordinador && !$esPropio) {
+                enviarJSON(['success' => false, 'error' => 'No autorizado'], 401);
+            }
+
+            try {
+                // Bodegas: buscar en bodega_encargados (si la tabla existe)
+                $bodegas = [];
+                try {
+                    $stmtB = $conn->prepare(
+                        "SELECT be.id_bodega, b.nombre AS nombre_bodega, be.id_usuario_encargado, be.asignado_por, u.nombre_completo AS asignado_por_nombre, be.fecha_asignacion
+                         FROM bodega_encargados be
+                         LEFT JOIN bodegas b ON b.id_bodega = be.id_bodega
+                         LEFT JOIN usuarios u ON u.id_usuario = be.asignado_por
+                         WHERE be.id_usuario_encargado = ?"
+                    );
+                    $stmtB->execute([$id_usuario]);
+                    $bodegas = $stmtB->fetchAll(PDO::FETCH_ASSOC);
+                } catch (\Exception $e) {
+                    // Tabla puede no existir o fallar; no romper la respuesta
+                    error_log('Error leyendo bodega_encargados: ' . $e->getMessage());
+                    $bodegas = [];
+                }
+
+                // Subbodegas: buscar en subbodega_encargados (activo = 1)
+                $subbodegas = [];
+                try {
+                    $stmtS = $conn->prepare(
+                        "SELECT sb.id_subbodega, sb.nombre_subbodega, sbe.id_usuario, sbe.fecha_asignacion, sbe.activo
+                         FROM subbodega_encargados sbe
+                         LEFT JOIN sub_bodegas sb ON sb.id_subbodega = sbe.id_subbodega
+                         WHERE sbe.id_usuario = ? AND (sbe.activo IS NULL OR sbe.activo = 1)"
+                    );
+                    $stmtS->execute([$id_usuario]);
+                    $subbodegas = $stmtS->fetchAll(PDO::FETCH_ASSOC);
+                } catch (\Exception $e) {
+                    error_log('Error leyendo subbodega_encargados: ' . $e->getMessage());
+                    $subbodegas = [];
+                }
+
+                enviarJSON([
+                    'success' => true,
+                    'data' => [
+                        'bodegas' => $bodegas,
+                        'subbodegas' => $subbodegas,
+                    ]
+                ]);
+            } catch (\Exception $e) {
+                enviarJSON([
+                    'success' => false,
+                    'error' => 'Error obteniendo asignaciones',
+                    'detalle' => $e->getMessage()
+                ], 500);
+            }
+
+        break;
+
 /* =====================================================
    ✅ ASIGNAR ROL FUNCIONAL (TABLA PUENTE)
    POST JSON: ?accion=asignar_rol_funcional
@@ -2211,11 +2284,45 @@ case 'asignar_rol_funcional':
         ");
         $stmtIns->execute([$id_usuario, $id_rol, $asignado_por]);
 
+
+        // ✅ Si mandaron id_bodega → registrar encargado en tabla bodega_encargados
+        if (!empty($data['id_bodega'])) {
+            $idBodega = (int)$data['id_bodega'];
+
+            // Eliminar asignaciones previas del mismo usuario en bodega_encargados
+            $conn->prepare("DELETE FROM bodega_encargados WHERE id_usuario_encargado = ?")
+                 ->execute([$id_usuario]);
+
+            // Insertar la nueva asignación (si la tabla existe)
+            try {
+                $stmtBe = $conn->prepare("INSERT INTO bodega_encargados (id_bodega, id_usuario_encargado, asignado_por, fecha_asignacion) VALUES (?, ?, ?, NOW())");
+                $stmtBe->execute([$idBodega, $id_usuario, $asignado_por]);
+            } catch (\Exception $e) {
+                // Si la tabla no existe o falla, registramos en log pero no rompemos el flujo
+                error_log('Error asignando bodega_encargados: ' . $e->getMessage());
+            }
+        }
+
+        // ✅ Si mandaron id_subbodega → registrar encargado en tabla subbodega_encargados
+        if (!empty($data['id_subbodega'])) {
+            $idSub = (int)$data['id_subbodega'];
+
+            // Eliminar asignaciones previas del mismo usuario en subbodega_encargados
+            $conn->prepare("DELETE FROM subbodega_encargados WHERE id_usuario = ?")
+                 ->execute([$id_usuario]);
+
+            try {
+                $stmtSb = $conn->prepare("INSERT INTO subbodega_encargados (id_subbodega, id_usuario, fecha_asignacion, activo) VALUES (?, ?, NOW(), 1)");
+                $stmtSb->execute([$idSub, $id_usuario]);
+            } catch (\Exception $e) {
+                error_log('Error asignando subbodega_encargados: ' . $e->getMessage());
+            }
+        }
         $conn->commit();
 
         enviarJSON([
             'success' => true,
-            'mensaje' => 'Rol funcional asignado correctamente ✅',
+            'mensaje' => 'Rol funcional asignado correctamente',
             'data' => [
                 'id_usuario' => $id_usuario,
                 'id_rol' => $id_rol,

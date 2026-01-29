@@ -344,12 +344,12 @@ function setupUploadArea() {
 
   function handleImageUpload(file) {
     if (!file.type.match(/image\/(png|jpg|jpeg)/)) {
-      showFlowbiteAlert("error", "Solo se permiten archivos PNG, JPG o JPEG")
+      showFlowbiteAlert("info", "Solo se permiten archivos PNG, JPG o JPEG")
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      showFlowbiteAlert("error", "La imagen no debe superar los 5MB")
+      showFlowbiteAlert("info", "La imagen no debe superar los 5MB")
       return
     }
 
@@ -431,17 +431,21 @@ async function createEvidence() {
 
   // Validaciones
   if (!salidaSelect.value) {
-    showFlowbiteAlert("error", "Por favor selecciona una salida")
+    if (salidaSelect.options.length <= 1 || salidaSelect.disabled) {
+      showFlowbiteAlert("info", "No hay salidas ni obras pendientes para registrar evidencias")
+    } else {
+      showFlowbiteAlert("info", "Por favor selecciona una salida")
+    }
     return
   }
   
   if (!descripcion || !photoInput.files.length) {
-    showFlowbiteAlert("error", "Por favor complete todos los campos obligatorios")
+    showFlowbiteAlert("info", "Por favor complete todos los campos obligatorios")
     return
   }
 
   if (descripcion.length > 250) {
-    showFlowbiteAlert("error", "La descripción no puede exceder 250 caracteres")
+    showFlowbiteAlert("info", "La descripción no puede exceder 250 caracteres")
     return
   }
 
@@ -520,6 +524,17 @@ function showFlowbiteAlert(type, message) {
     iconSVG = `
       <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
         <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm1 15H9v-2h2Zm0-4H9V5h2Z"/>
+      </svg>
+    `
+  }
+
+  if (type === "info") {
+    borderColor = "border-blue-500"
+    textColor = "text-blue-900"
+    titleText = "Información"
+    iconSVG = `
+      <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm0 15h-1v-4h1zm0-6h-1V5h1z"/>
       </svg>
     `
   }

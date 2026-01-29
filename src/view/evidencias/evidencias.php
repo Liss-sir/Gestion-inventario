@@ -87,7 +87,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 <!-- Seleccionar Salida de Material -->
                 <div class="space-y-1.5">
                     <label for="salidaSelect" class="text-xs font-medium">Salida de Material *</label>
-                    <select id="salidaSelect" class="w-full rounded-md border border-input px-2.5 py-1.5 text-xs" required>
+                    <select id="salidaSelect" class="w-full rounded-md border border-input px-2.5 py-1.5 text-xs">
                         <option value="">Cargando salidas pendientes...</option>
                     </select>
                 </div>
@@ -103,12 +103,12 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                             <span class="font-medium text-secondary cursor-pointer">Arrastra una imagen o haz clic para seleccionar</span>
                         </p>
                         <p class="text-xs text-muted-foreground">PNG, JPG, hasta 5MB</p>
-                        <input type="file" id="photoInput" accept="image/png,image/jpeg,image/jpg" class="hidden" required>
                     </div>
                     <div id="imagePreview" class="hidden mt-1.5">
                         <img id="previewImg" src="" alt="Preview" class="w-full h-24 object-cover rounded-lg border border-border">
                         <button type="button" onclick="removeImage()" class="mt-1 text-xs text-red-500 hover:text-red-700">Eliminar imagen</button>
                     </div>
+                    <input type="file" id="photoInput" accept="image/png,image/jpeg,image/jpg" class="hidden">
                 </div>
                 
                 <!-- Descripción -->
@@ -117,7 +117,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                         <label class="text-xs font-medium">Descripción de la evidencia *</label>
                         <span class="text-xs text-muted-foreground"><span id="charCount">0</span>/250</span>
                     </div>
-                    <textarea id="descripcion" placeholder="Describe la evidencia..." class="w-full rounded-md border border-input px-2.5 py-1.5 text-xs h-14 resize-none" maxlength="250" required></textarea>
+                    <textarea id="descripcion" placeholder="Describe la evidencia..." class="w-full rounded-md border border-input px-2.5 py-1.5 text-xs h-14 resize-none" maxlength="250"></textarea>
                 </div>
                 
                 <!-- Buttons -->

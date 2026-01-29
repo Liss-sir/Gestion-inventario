@@ -24,6 +24,7 @@ if (!isset($conn) || !($conn instanceof PDO)) {
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 
+try {
 // =====================================================
 // ✅ CONTROL DE VISUALIZACIÓN POR PERMISOS (DASHBOARD)
 // - Aprendiz / Pasante / Instructor NO verán:
@@ -282,9 +283,19 @@ $pieGradient = implode(", ", $gradientParts);
 
 // Máximo consumo para la escala de la gráfica
 $maxConsumo = max(array_column($consumoData, 'consumo')) ?: 0;
+} catch (Throwable $e) {
+  error_log('Dashboard data error: ' . $e->getMessage());
+  http_response_code(500);
+  echo '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Error</title></head><body>';
+  echo '<h1>Error al cargar el dashboard</h1>';
+  echo '<p>Detalle técnico:</p>';
+  echo '<pre style="white-space:pre-wrap;font-family:monospace">' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</pre>';
+  echo '</body></html>';
+  exit;
+}
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -296,14 +307,11 @@ $maxConsumo = max(array_column($consumoData, 'consumo')) ?: 0;
     <script src="https://unpkg.com/flowbite@2.5.1/dist/flowbite.min.js"></script>
 
     <link rel="stylesheet" href="src/assets/css/globals.css">
-
-    <!-- ✅ FIX SIN TOCAR TU BASE:
-         Fallback de estilos del modal por si globals.css no tiene .modal-overlay / .active -->
     <style>
       .modal-overlay{
         position:fixed;
         inset:0;
-        display:none;              /* oculto por defecto */
+        display:none;             
         align-items:center;
         justify-content:center;
         background:rgba(15, 23, 42, .55);
