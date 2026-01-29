@@ -355,9 +355,17 @@ if (parsed?.data?.error) {
       setTimeout(() => location.reload(), 650);
     } catch (err) {
       console.error(err);
-      toastError(err?.message || "No se pudo crear la bodega.");
+
+      const msg = String(err?.message || "");
+
+      if (msg.includes("HTTP 500")) {
+        toastError("Estás usando datos que ya se encuentran en otra bodega creada.");
+        return;
+      }
+
+      toastError(msg || "No se pudo crear la bodega.");
     }
-  });
+    });
 
 // ============================
 // MODAL CREAR SUB-BODEGA (FIX)
