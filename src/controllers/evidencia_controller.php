@@ -6,8 +6,10 @@ require_once __DIR__ . "/../models/evidencia.php";
 class EvidenciaController {
 
     public $model;
+    private $conn; // 👈 AÑADIR
 
     public function __construct(PDO $conn) {
+        $this->conn = $conn;       // 👈 AÑADIR
         $this->model = new EvidenciaModel($conn);
     }
 
@@ -29,46 +31,93 @@ class EvidenciaController {
 
     /* POST - Create evidence */
     public function store() {
-        try {
-            // Validar que venga de FormData (POST)
-            if (
-                !isset($_POST["id_usuario"]) ||
-                !isset($_POST["id_movimiento_salida"]) ||
-                !isset($_POST["descripcion_obra"]) ||
-                !isset($_FILES["foto"])
-            ) {
-                sendJSON(["mensaje" => "Datos incompletos"], 400);
-            }
-
-            $id_usuario = $_POST["id_usuario"];
-            $id_movimiento_salida = $_POST["id_movimiento_salida"];
-
-            // Procesar upload de imagen
-            $foto = $this->savePhoto($_FILES["foto"]);
-            
-            if (!$foto) {
-                sendJSON(["mensaje" => "Error al subir la imagen. Verifique el formato y tamaño (PNG/JPG, máx 5MB)"], 400);
-            }
-
-            // Preparar datos
-            $data = [
-                "id_movimiento_salida" => $id_movimiento_salida,
-                "id_usuario" => $id_usuario,
-                "foto" => $foto,
-                "descripcion_obra" => $_POST["descripcion_obra"]
-            ];
-
-            if ($this->model->crear($data)) {
-                sendJSON(["mensaje" => "Evidencia creada correctamente"], 201);
-            } else {
-                sendJSON(["mensaje" => "Error al crear la evidencia"], 400);
-            }
-        } catch (Exception $e) {
-            sendJSON(["mensaje" => "Error del servidor: " . $e->getMessage()], 500);
+    try {
+        // 1. Validar datos
+        if (
+            !isset($_POST["id_usuario"]) ||
+            !isset($_POST["id_movimiento_salida"]) ||
+            !isset($_POST["descripcion_obra"]) ||
+            !isset($_FILES["foto"])
+        ) {
+            sendJSON(["mensaje" => "Datos incompletos"], 400);
         }
+
+        $id_usuario = $_POST["id_usuario"];
+        $id_movimiento_salida = $_POST["id_movimiento_salida"];
+
+        // 2. Subir imagen
+        $foto = $this->savePhoto($_FILES["foto"]);
+
+        if (!$foto) {
+            sendJSON([
+                "mensaje" => "Error al subir la imagen. Verifique formato y tamaño"
+            ], 400);
+        }
+
+        // 3. Preparar datos
+        $data = [
+            "id_movimiento_salida" => $id_movimiento_salida,
+            "id_usuario" => $id_usuario,
+            "foto" => $foto,
+            "descripcion_obra" => $_POST["descripcion_obra"]
+        ];
+
+        // 4. Guardar evidencia
+        if ($this->model->crear($data)) {
+
+            // 5. 🔔 NOTIFICACIÓN (AQUÍ VA, ESTE ES EL PUNTO CLAVE)
+            $this->notificarEvidencia(
+                $id_usuario,              // destinatario
+                $id_movimiento_salida     // referencia
+            );
+
+            // 6. Respuesta
+            sendJSON(["mensaje" => "Evidencia creada correctamente"], 201);
+        } else {
+            sendJSON(["mensaje" => "Error al crear la evidencia"], 400);
+        }
+
+    } catch (Exception $e) {
+        sendJSON([
+            "mensaje" => "Error del servidor",
+            "error" => $e->getMessage()
+        ], 500);
+    }
+}
+
+
+        private function notificarEvidencia($idUsuario, $idMovimiento) {
+        $sql = "
+            INSERT INTO notificaciones (
+                id_usuario,
+                tipo,
+                titulo,
+                mensaje,
+                referencia_tipo,
+                referencia_id,
+                leida,
+                fecha_creacion
+            ) VALUES (?, ?, ?, ?, ?, ?, 0, NOW())
+        ";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([
+            $idUsuario,
+            'EVIDENCIA_SUBIDA',
+            'Nueva evidencia cargada',
+            'Se ha subido una nueva evidencia de una obra.',
+            'movimiento',          // 👈 CORRECTO
+            $idMovimiento
+        ]);
     }
 
+
+
+
+
+
     /* Save uploaded photo */
+    
     private function savePhoto($file) {
         $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
         $maxSize = 5 * 1024 * 1024; // 5MB
