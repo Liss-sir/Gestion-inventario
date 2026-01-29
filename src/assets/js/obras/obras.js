@@ -26,6 +26,15 @@ if (!window.__obrasJSLoaded) {
   // Flag para evitar creación múltiple
   let isCreatingObra = false;
 
+  // Detectar si el usuario es instructor
+  const usuarioActual = window.USUARIO_SESION || {};
+  const esInstructor = usuarioActual.cargo === "Instructor";
+  const fichaInstructor = (usuarioActual.fichas && usuarioActual.fichas.length > 0) 
+    ? usuarioActual.fichas[0].id_ficha 
+    : null;
+  
+  console.log("🔍 VERIFICACIÓN INSTRUCTOR:", { esInstructor, fichaInstructor, usuarioActual });
+
   // ==============================
   // PERMISOS FRONT (desde PHP)
   // ==============================
@@ -148,10 +157,20 @@ if (!window.__obrasJSLoaded) {
 
       if (data && data.error) {
         mostrarError(`Error del servidor: ${data.error}`);
+        const loadingElement = document.getElementById("loading");
+        if (loadingElement) loadingElement.style.display = "none";
         return;
       }
 
-      obras = Array.isArray(data) ? data : [];
+      let obrasData = Array.isArray(data) ? data : [];
+      
+      // Si es instructor, filtrar solo las obras de su ficha
+      if (esInstructor && fichaInstructor) {
+        obrasData = obrasData.filter(obra => obra.id_ficha === fichaInstructor);
+        console.log(`📚 Obras filtradas para instructor (ficha ${fichaInstructor}): ${obrasData.length}`);
+      }
+      
+      obras = obrasData;
       console.log(`${obras.length} obras cargadas`);
 
       updateEstadisticas();
@@ -167,6 +186,9 @@ if (!window.__obrasJSLoaded) {
       errorMsg += `Error: ${error.message}`;
 
       mostrarError(errorMsg);
+      // Asegurarnos de ocultar el loading si ocurre un error
+      const loadingElement = document.getElementById("loading");
+      if (loadingElement) loadingElement.style.display = "none";
     }
   }
 
@@ -221,6 +243,13 @@ if (!window.__obrasJSLoaded) {
       select.appendChild(option);
     });
 
+    // Si es instructor, preseleccionar y deshabilitar su ficha
+    if (esInstructor && fichaInstructor) {
+      select.value = fichaInstructor;
+      select.disabled = true;
+      console.log("✅ Ficha preseleccionada para instructor:", fichaInstructor);
+    }
+
     const selectAprendiz = document.getElementById("create_aprendiz_individual");
     if (selectAprendiz) {
       selectAprendiz.innerHTML =
@@ -268,6 +297,13 @@ if (!window.__obrasJSLoaded) {
       option.textContent = instructor.nombre_completo;
       select.appendChild(option);
     });
+
+    // Si es instructor, preseleccionar y deshabilitar como instructor
+    if (esInstructor && usuarioActual.usuarioId) {
+      select.value = usuarioActual.usuarioId;
+      select.disabled = true;
+      console.log("✅ Instructor preseleccionado:", usuarioActual.usuarioId);
+    }
   }
 
   function mostrarErrorSelects(mensaje) {
@@ -451,7 +487,9 @@ if (!window.__obrasJSLoaded) {
                 </div>
 
                 <div class="text-sm text-gray-600">
-                  <span class="font-medium">Instructor:</span> ${obra.nombre_instructor || "No asignado"}
+                  <span class="font-medium">Instructor:</span> ${
+                    esInstructor ? "Tu obra" : (obra.nombre_instructor || "No asignado")
+                  }
                 </div>
                 <div class="text-sm text-gray-600 mt-1">
                   <span class="font-medium">RAE:</span> ${obra.descripcion_rae || "No asignado"}
@@ -684,6 +722,27 @@ if (!window.__obrasJSLoaded) {
     const tipo = document.getElementById("create_tipo");
     if (tipo) tipo.value = "Individual";
 
+    // Resetear disabled si es instructor para que se cargue correctamente
+    if (esInstructor) {
+      const create_ficha = document.getElementById("create_ficha");
+      const create_instructor = document.getElementById("create_instructor");
+      if (create_ficha) create_ficha.disabled = false;
+      if (create_instructor) create_instructor.disabled = false;
+    }
+
+    // Rellenar selects nuevamente
+    llenarSelectFichas();
+    llenarSelectRaes();
+    llenarSelectInstructores();
+
+    // Volver a deshabilitar si es instructor
+    if (esInstructor) {
+      const create_ficha = document.getElementById("create_ficha");
+      const create_instructor = document.getElementById("create_instructor");
+      if (create_ficha) create_ficha.disabled = true;
+      if (create_instructor) create_instructor.disabled = true;
+    }
+
     const container = document.getElementById("containerAprendizIndividual");
     if (container) container.classList.remove("hidden");
 
@@ -691,6 +750,12 @@ if (!window.__obrasJSLoaded) {
     if (selectAprendiz) {
       selectAprendiz.innerHTML =
         '<option value="" disabled selected>Selecciona una ficha primero</option>';
+    }
+
+    // Si es instructor, cargar aprendices de su ficha automáticamente
+    if (esInstructor && fichaInstructor) {
+      console.log("📚 Cargando aprendices para instructor de ficha:", fichaInstructor);
+      cargarAprendicesParaSelect(fichaInstructor);
     }
 
     // Reset flujo creación
@@ -979,7 +1044,13 @@ if (!window.__obrasJSLoaded) {
           ? "inline-block px-2 py-1 bg-[#00304d] text-white text-xs font-semibold rounded-full"
           : "inline-block px-2 py-1 bg-secondary text-white text-xs font-semibold rounded-full";
 
-      document.getElementById("details_instructor").textContent = obra.nombre_instructor || "No asignado";
+      // Si es instructor, no mostrar nombre del instructor (mostrar "Tu obra" o no mostrar)
+      if (esInstructor) {
+        document.getElementById("details_instructor").textContent = "Tu obra";
+      } else {
+        document.getElementById("details_instructor").textContent = obra.nombre_instructor || "No asignado";
+      }
+      
       document.getElementById("details_rae").textContent = obra.descripcion_rae || "No asignado";
       document.getElementById("details_fecha_inicio").textContent = formatFullDate(obra.fecha_inicio);
       document.getElementById("details_fecha_fin").textContent = formatFullDate(obra.fecha_fin);
@@ -1071,13 +1142,25 @@ if (!window.__obrasJSLoaded) {
 
     select.innerHTML = '<option value="" disabled class="text-gray-500">Selecciona un instructor</option>';
 
-    instructores.forEach((instructor) => {
-      const option = document.createElement("option");
-      option.value = instructor.id_usuario;
-      option.textContent = instructor.nombre_completo;
-      if (selectedId && instructor.id_usuario == selectedId) option.selected = true;
-      select.appendChild(option);
-    });
+    // Si es instructor, solo mostrar el instructor actual
+    if (esInstructor && usuarioActual.usuarioId) {
+      const instructorActual = instructores.find(i => i.id_usuario === usuarioActual.usuarioId);
+      if (instructorActual) {
+        const option = document.createElement("option");
+        option.value = instructorActual.id_usuario;
+        option.textContent = instructorActual.nombre_completo;
+        if (selectedId && instructorActual.id_usuario == selectedId) option.selected = true;
+        select.appendChild(option);
+      }
+    } else {
+      instructores.forEach((instructor) => {
+        const option = document.createElement("option");
+        option.value = instructor.id_usuario;
+        option.textContent = instructor.nombre_completo;
+        if (selectedId && instructor.id_usuario == selectedId) option.selected = true;
+        select.appendChild(option);
+      });
+    }
   }
 
   // =========================
