@@ -543,3 +543,49 @@ select {
   border-color: hsl(var(--primary));
   box-shadow: 0 0 0 2px hsla(var(--primary), 0.1);
 }
+
+/* ===========================
+   SEARCHABLE SELECT DROPDOWN
+   =========================== */
+/* Estilos para el dropdown de búsqueda de unidades */
+#unidadDropdown,
+#editUnidadDropdown {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+#unidadDropdown::-webkit-scrollbar,
+#editUnidadDropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+#unidadDropdown::-webkit-scrollbar-track,
+#editUnidadDropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#unidadDropdown::-webkit-scrollbar-thumb,
+#editUnidadDropdown::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+}
+
+#unidadDropdown::-webkit-scrollbar-thumb:hover,
+#editUnidadDropdown::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.8);
+}
+
+.unidad-option,
+.edit-unidad-option {
+  transition: background-color 0.15s ease;
+}
+
+.unidad-option:hover,
+.edit-unidad-option:hover {
+  background-color: var(--muted);
+}
+
+.no-results-message {
+  font-style: italic;
+}
+
