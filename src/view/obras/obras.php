@@ -507,21 +507,6 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               <p id="infoObraCreada" class="text-sm text-[#00304D]"></p>
           </div>
 
-          <!-- Learner search -->
-          <div>
-              <label class="block text-xs text-muted-foreground mb-1">Buscar Aprendices</label>
-              <div class="relative">
-                  <i class="fas fa-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
-                  <input
-                      type="text"
-                      id="searchAprendiz"
-                      placeholder="Buscar por nombre o documento..."
-                      class="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm"
-                      onkeyup="filtrarAprendices()"
-                  />
-              </div>
-          </div>
-
           <!-- Learner select -->
           <div>
               <label class="block text-xs text-muted-foreground mb-1">Seleccionar Aprendiz *</label>
