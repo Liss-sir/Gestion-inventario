@@ -65,7 +65,7 @@ class EvidenciaController {
         // 4. Guardar evidencia
         if ($this->model->crear($data)) {
 
-            // 5. 🔔 NOTIFICACIÓN (AQUÍ VA, ESTE ES EL PUNTO CLAVE)
+            // 5. NOTIFICACIÓN
             $this->notificarEvidencia(
                 $id_usuario,              // destinatario
                 $id_movimiento_salida     // referencia
@@ -86,7 +86,32 @@ class EvidenciaController {
 }
 
 
-        private function notificarEvidencia($idUsuario, $idMovimiento) {
+    private function notificarEvidencia($idUsuario, $idMovimiento) {
+        // Obtener la descripción de la obra y el ID de la evidencia recién creada
+        $sqlInfo = "
+            SELECT
+                e.id_evidencia as id_evidencia,
+                e.descripcion_obra as descripcion_obra
+            FROM evidencias e
+            WHERE e.id_movimiento_salida = ?
+            ORDER BY e.id_evidencia DESC
+            LIMIT 1
+        ";
+
+        $stmtInfo = $this->conn->prepare($sqlInfo);
+        $stmtInfo->execute([$idMovimiento]);
+        $info = $stmtInfo->fetch(PDO::FETCH_ASSOC);
+
+        if (!$info) {
+            // Si no encontramos la información, se usan valores por defecto
+            $titulo = 'Nueva evidencia cargada';
+            $mensaje = 'Se ha subido una nueva evidencia de una obra.';
+        } else {
+            // Construir mensaje con la información obtenida
+            $titulo = 'Nueva evidencia cargada';
+            $mensaje = 'Se ha subido la evidencia #' . $info['id_evidencia'] . ' de salida de material.';
+        }
+
         $sql = "
             INSERT INTO notificaciones (
                 id_usuario,
@@ -104,9 +129,9 @@ class EvidenciaController {
         $stmt->execute([
             $idUsuario,
             'EVIDENCIA_SUBIDA',
-            'Nueva evidencia cargada',
-            'Se ha subido una nueva evidencia de una obra.',
-            'movimiento',          // 👈 CORRECTO
+            $titulo,
+            $mensaje,
+            'movimiento',
             $idMovimiento
         ]);
     }
