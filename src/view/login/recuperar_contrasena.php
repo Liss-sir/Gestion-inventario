@@ -20,6 +20,8 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', $protocol . $host . $project);
 }
 
+// ✅ status esperado: sent | not_found | error
+$status = $_GET['status'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -33,22 +35,33 @@ if (!defined('BASE_URL')) {
 <div class="bg-white p-6 rounded shadow w-full max-w-md">
     <h2 class="text-xl font-bold mb-4">Olvidé mi contraseña</h2>
 
-    <?php if (isset($_GET['ok'])): ?>
-        <p class="text-green-600 text-sm mb-3">
-            Si el correo está registrado, te llegará un enlace.
+    <?php if (isset($_GET['ok']) && $_GET['ok'] === 'sent'): ?>
+    <p class="text-green-700 bg-green-50 border border-green-200 px-3 py-2 rounded text-sm mb-3">
+        Hemos enviado un enlace para restablecer tu contraseña. Por favor revisa tu bandeja de entrada y la carpeta de spam/no deseado.
+    </p>
+    <?php endif; ?>
+
+    <?php if (isset($_GET['err']) && $_GET['err'] === 'not_registered'): ?>
+        <p class="text-yellow-700 bg-yellow-50 border border-yellow-200 px-3 py-2 rounded text-sm mb-3">
+            El correo ingresado no se encuentra registrado en el sistema. Verifica la dirección e inténtalo nuevamente.
         </p>
     <?php endif; ?>
 
-    <?php if (isset($_GET['err'])): ?>
-        <p class="text-red-600 text-sm mb-3">
-            Error enviando el correo.
+    <?php if (isset($_GET['err']) && $_GET['err'] === 'correo'): ?>
+        <p class="text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded text-sm mb-3">
+            Por favor ingresa un correo electrónico válido.
         </p>
     <?php endif; ?>
+
+    <?php if (isset($_GET['err']) && $_GET['err'] === 'send'): ?>
+        <p class="text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded text-sm mb-3">
+            No fue posible enviar el correo de recuperación en este momento. Por favor, inténtalo nuevamente más tarde.
+        </p>
+    <?php endif; ?>
+
 
     <!-- 🔥 FORM CORRECTO -->
     <form method="POST" action="<?= BASE_URL ?>src/controllers/usuario_controller.php?accion=request_reset_password">
-
-
         <label class="block text-sm mb-1">Correo electrónico</label>
         <input
             type="email"

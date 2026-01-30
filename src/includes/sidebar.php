@@ -39,9 +39,18 @@ $navigation = array_values(array_filter($navigation, function($item){
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $collQuery = $collapsed ? '&coll=1' : '';
 
-// Contador de solicitudes pendientes (defensivo)
+//Solo roles con CRUD completo en solicitudes pueden ver el contador (badge)
+$canVerBadgeSolicitudes = (
+  function_exists('canPermiso')
+  && canPermiso('solicitudes.gestionar')
+  && canPermiso('solicitudes.consultar')
+  && canPermiso('solicitudes.aceptar')
+  && canPermiso('solicitudes.rechazar')
+);
+
+// Contador de solicitudes pendientes (solo si aplica)
 $solicitudesPendientes = 0;
-if (function_exists('canPermiso') && (canPermiso('solicitudes.gestionar') || permisos_puedeAccederModulo('solicitudes'))) {
+if ($canVerBadgeSolicitudes) {
   try {
     if (isset($conn) && $conn instanceof PDO) {
       $solicitudesPendientes = (int)($conn->query("SELECT COUNT(*) FROM solicitudes_material WHERE estado = 'Pendiente'")->fetchColumn() ?: 0);
@@ -133,7 +142,8 @@ if (!defined('BASE_URL')) {
                 $badgeStyle = 'display:none;';
 
                 if ($item['page'] === 'solicitudes') {
-                  $badgeCount = $solicitudesPendientes;
+                  // ✅ Badge solo para CRUD completo
+                  $badgeCount = $canVerBadgeSolicitudes ? $solicitudesPendientes : 0;
                 } else {
                   $badgeCount = (int)$item["badge"];
                 }
@@ -251,5 +261,74 @@ if (!defined('BASE_URL')) {
       // globales "togleen" el sidebar o le apliquen hidden/clases raras
       e.stopPropagation();
     }, true);
+  })();
+
+  /* ============================================================
+     ✅ NUEVO (INTEGRADO): CIERRE DE SESIÓN AUTOMÁTICO SIN RECARGAR
+     - Usa tu endpoint existente:
+       src/controllers/auth_controller.php?accion=check
+     - Si detecta que la sesión fue revocada o usuario desactivado:
+       redirige al login con ?reason=
+     - Guard global para NO duplicar intervalos
+  ============================================================ */
+
+  (function sigaSessionWatcher() {
+    // Guard global para evitar doble ejecución si el sidebar se incluye 2 veces
+    if (window.__SIGA_SESSION_WATCHER__) return;
+    window.__SIGA_SESSION_WATCHER__ = true;
+
+    // ✅ Check existente
+    const CHECK_URL = new URL(
+      "src/controllers/auth_controller.php?accion=check",
+      document.baseURI
+    ).toString();
+
+    // ✅ Login (ajusta si tu ruta real cambia)
+    // Tu login ya muestra mensajes según ?reason=session_revoked / disabled / no_session / etc.
+    const LOGIN_URL_BASE = new URL(
+      "src/view/login/login.php",
+      document.baseURI
+    ).toString();
+
+    let busy = false;
+
+    async function checkNow() {
+      if (busy) return;
+      busy = true;
+
+      try {
+        const res = await fetch(CHECK_URL, {
+          method: "GET",
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: { "Accept": "application/json" }
+        });
+
+        const data = await res.json().catch(() => null);
+        if (!data) return;
+
+        // Esperado: { ok:false, logout:true, reason:"session_revoked" }
+        if (data.logout === true) {
+          const reason = encodeURIComponent(data.reason || "session_revoked");
+          window.location.replace(`${LOGIN_URL_BASE}?reason=${reason}`);
+        }
+      } catch (e) {
+        // Si falla el check (red/servidor), NO tumbar al usuario por falso positivo
+      } finally {
+        busy = false;
+      }
+    }
+
+    // ✅ Intervalo “casi inmediato” sin castigar el server
+    const INTERVAL_MS = 4000;
+
+    // Check inmediato + polling
+    checkNow();
+    setInterval(checkNow, INTERVAL_MS);
+
+    // Check cuando el usuario vuelve a la pestaña
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) checkNow();
+    });
   })();
 </script>

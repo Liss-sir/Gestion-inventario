@@ -369,12 +369,9 @@ return [
     ],
 
     // =====================================================
-// ✅ APRENDIZ (SEGÚN DIAGRAMA HU113 - HU116)
+// APRENDIZ (SEGÚN DIAGRAMA HU113 - HU116)
 // =====================================================
     "aprendiz" => [
-
-    // ✅ Entrada / cargar vista principal
-    "dashboard.ver",
 
     // ✅ HU115: Consultar notificaciones
     "notificaciones.ver",

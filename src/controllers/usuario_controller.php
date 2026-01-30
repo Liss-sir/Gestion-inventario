@@ -1160,15 +1160,6 @@ break;
             enviarJSON(['error' => 'Cargo no válido'], 400);
         }
 
-        // Regla: solo Instructor puede llevar id_programa
-        if ($cargo !== 'Instructor') {
-            $id_programa = null;
-        } else {
-            if ($id_programa === null || $id_programa === '' || (int)$id_programa <= 0) {
-                enviarJSON(['error' => 'Debe seleccionar un programa para el Instructor.'], 400);
-            }
-        }
-
         try {
             if ($numero_documento && $usuario->obtenerPorDocumento($numero_documento)) {
                 enviarJSON(['error' => 'El número de documento ya está registrado'], 409);
@@ -1417,13 +1408,6 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             enviarJSON(['error' => 'Cargo no válido'], 400);
         }
 
-        if ($cargo !== 'Instructor') {
-            $id_programa = null;
-        } else {
-            if ($id_programa === null || $id_programa === '' || (int)$id_programa <= 0) {
-                enviarJSON(['error' => 'Debe seleccionar un programa para el Instructor.'], 400);
-            }
-        }
 
         if ($num_doc !== $usuarioActual['numero_documento']) {
             $existeDoc = $usuario->obtenerPorDocumento($num_doc);
@@ -1769,56 +1753,68 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     ===================================================== */
     case 'request_reset_password':
 
-        $correo = trim($_POST['correo'] ?? '');
+    $correo = trim($_POST['correo'] ?? '');
 
-        if ($correo === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
-            header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=correo");
+    if ($correo === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+        header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=correo");
+        exit;
+    }
+
+    try {
+        $stmt = $conn->prepare("SELECT id_usuario, nombre_completo, correo FROM usuarios WHERE correo = :c LIMIT 1");
+        $stmt->execute([':c' => $correo]);
+        $u = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // ✅ SI NO EXISTE -> decirle que NO está registrado
+        if (!$u) {
+            header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=not_registered");
             exit;
         }
 
-        try {
-            $stmt = $conn->prepare("SELECT id_usuario, nombre_completo, correo FROM usuarios WHERE correo = :c LIMIT 1");
-            $stmt->execute([':c' => $correo]);
-            $u = $stmt->fetch(PDO::FETCH_ASSOC);
+        $idUsuario = (int)$u['id_usuario'];
+        $nombre    = $u['nombre_completo'] ?? $correo;
 
-            if (!$u) {
-                header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?ok=1");
-                exit;
-            }
+        // Inhabilitar tokens anteriores activos
+        $conn->prepare("
+            UPDATE tokens_correo
+            SET usado = 1
+            WHERE id_usuario = :uid AND tipo = 'reset_password' AND usado = 0
+        ")->execute([':uid' => $idUsuario]);
 
-            $idUsuario = (int)$u['id_usuario'];
-            $nombre    = $u['nombre_completo'] ?? $correo;
+        // Crear token nuevo
+        $token = bin2hex(random_bytes(32));
+        $fechaExp = (new DateTime('now'))->modify('+30 minutes')->format('Y-m-d H:i:s');
 
-            $conn->prepare("
-                UPDATE tokens_correo
-                SET usado = 1
-                WHERE id_usuario = :uid AND tipo = 'reset_password' AND usado = 0
-            ")->execute([':uid' => $idUsuario]);
+        $ins = $conn->prepare("
+            INSERT INTO tokens_correo (id_usuario, token, tipo, fecha_expiracion, usado)
+            VALUES (:uid, :t, 'reset_password', :exp, 0)
+        ");
+        $ins->execute([
+            ':uid' => $idUsuario,
+            ':t'   => $token,
+            ':exp' => $fechaExp
+        ]);
 
-            $token = bin2hex(random_bytes(32));
-            $fechaExp = (new DateTime('now'))->modify('+30 minutes')->format('Y-m-d H:i:s');
+        $resetLink = BASE_URL . "src/view/login/reset_password.php?token=" . urlencode($token);
 
-            $ins = $conn->prepare("
-                INSERT INTO tokens_correo (id_usuario, token, tipo, fecha_expiracion, usado)
-                VALUES (:uid, :t, 'reset_password', :exp, 0)
-            ");
-            $ins->execute([
-                ':uid' => $idUsuario,
-                ':t'   => $token,
-                ':exp' => $fechaExp
-            ]);
+        // ✅ Si tu función retorna true/false, validamos. Si no retorna nada, esto no estorba.
+        $enviado = enviarCorreoResetPassword($correo, $nombre, $resetLink);
 
-            $resetLink = BASE_URL . "src/view/login/reset_password.php?token=" . urlencode($token);
-            enviarCorreoResetPassword($correo, $nombre, $resetLink);
-
-            header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?ok=1");
-            exit;
-
-        } catch (\Exception $e) {
+        if ($enviado === false) {
             header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=send");
             exit;
         }
+
+        // ✅ SI EXISTE -> mensaje profesional de enviado
+        header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?ok=sent");
+        exit;
+
+    } catch (\Exception $e) {
+        header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=send");
+        exit;
+    }
     break;
+
 
     /* =====================================================
        ✅ ACTUALIZAR PERFIL (TELÉFONO, DIRECCIÓN Y FOTO)
