@@ -9,13 +9,7 @@
 
    ✅ Ahora SOLO se hace "break" si:
       - parsed existe (no null)
-      - NO viene error
-      - y la lista es un array (aunque venga vacío por ser válido)
-
-   ✅ También se agrega GUARD GLOBAL para evitar doble ejecución si el script
-      se carga dos veces (esto previene dobles listeners y dobles fetch).
-
-============================================================ */
+*/
 
 if (!window.__usuariosJSLoaded) {
   window.__usuariosJSLoaded = true;
@@ -45,7 +39,7 @@ if (!window.__usuariosJSLoaded) {
       Subcoordinador: "badge-role-coordinador",
       Instructor: "badge-role-instructor",
       Pasante: "badge-role-pasante",
-      Aprendiz: "badge-role-pasante", // Corregido: Aprendiz usa mismo estilo que Pasante
+      Aprendiz: "badge-role-pasante",
     };
 
     // =========================
@@ -56,7 +50,6 @@ if (!window.__usuariosJSLoaded) {
       "Encargado Bodega": "badge-rolfunc-bodega",
       "Sin rol asignado": "badge-rolfunc-default",
     };
-
 
 
 
@@ -261,6 +254,12 @@ const hiddenAsignarRolUserId = document.getElementById("hiddenAsignarRolUserId")
 const asignarRolNombreUsuario = document.getElementById("asignarRolNombreUsuario");
 const selectAsignarRol = document.getElementById("selectAsignarRol");
 const asignarRolCargoUsuario = document.getElementById("asignarRolCargoUsuario");
+
+// NEW: selects for bodegas/subbodegas inside assign-role modal
+const wrapperBodegaAsignarRol = document.getElementById("wrapper_bodega_asignar_rol");
+const selectBodegaAsignarRol = document.getElementById("selectBodegaAsignarRol");
+const wrapperSubbodegaAsignarRol = document.getElementById("wrapper_subbodega_asignar_rol");
+const selectSubbodegaAsignarRol = document.getElementById("selectSubbodegaAsignarRol");
 
 // Dataset roles funcionales en memoria
 let rolesFuncionales = [];
@@ -554,31 +553,15 @@ function renderRolFuncionalBadgeHTML(user) {
      */
     function actualizarVisibilidadPrograma() {
   if (!inputPrograma || !wrapperPrograma || !inputCargo) return;
-
-  const esInstructor = inputCargo.value === "Instructor";
-
-  if (esInstructor) {
-    wrapperPrograma.classList.remove("hidden");
-
-    // Si todavía no han llegado, muestra loading + carga
-    if (!Array.isArray(programas) || programas.length === 0) {
-      inputPrograma.disabled = true;
-      inputPrograma.innerHTML = `<option value="">Cargando programas...</option>`;
-      cargarProgramas();
-      return;
-    }
-
-    // Ya hay programas -> pintar opciones y habilitar
-    renderOpcionesPrograma();
-    return;
+  // Decide no mostrar el selector de programa incluso si el cargo es Instructor.
+  // El sistema mantiene las opciones en memoria pero el UI no las muestra.
+  try {
+    wrapperPrograma.classList.add("hidden");
+    inputPrograma.value = "";
+    inputPrograma.disabled = true;
+  } catch (e) {
+    // no-fatal
   }
-
-  // No instructor -> ocultar PERO NO BORRAR LAS OPCIONES
-  wrapperPrograma.classList.add("hidden");
-  inputPrograma.value = "";
-  inputPrograma.disabled = true;
-
-  // ✅ Importante: NO vuelvas a poner innerHTML aquí porque pisas lo cargado
 }
 
 
@@ -614,6 +597,8 @@ function renderRolFuncionalBadgeHTML(user) {
   inputPrograma.disabled = false;
   inputPrograma.removeAttribute("disabled");
 }
+        // NEW: Ensure to reset the selected value
+        inputPrograma.value = "";
 
 
 
@@ -817,14 +802,17 @@ function renderRolFuncionalBadgeHTML(user) {
         programasMap[String(p.id_programa)] = p.nombre_programa;
       });
 
-      // ✅ Pintar opciones SIEMPRE
+      // ✅ Pintar opciones SIEMPRE (pero NO mostrar el wrapper en la UI)
+      // Rationale: the program selector should not be visible even for Instructor.
       renderOpcionesPrograma();
 
-      // ✅ Si en este momento el cargo es Instructor, mostrar
-      if (inputCargo && inputCargo.value === "Instructor") {
-        wrapperPrograma?.classList.remove("hidden");
-        inputPrograma.disabled = false;
-        inputPrograma.removeAttribute("disabled");
+      // Keep wrapper hidden; only ensure the select is populated and usable in memory.
+      try {
+        wrapperPrograma?.classList.add("hidden");
+        inputPrograma.disabled = true;
+        inputPrograma.setAttribute("disabled", "true");
+      } catch (e) {
+        // non-fatal
       }
 
       return;
@@ -936,6 +924,79 @@ function renderOpcionesRolesFuncionales() {
   selectAsignarRol.removeAttribute("disabled");
 }
 
+// -------------------------
+// BODEGAS / SUBBODEGAS HELPERS
+// -------------------------
+async function cargarBodegasAsignarRol() {
+  if (!selectBodegaAsignarRol) return;
+  selectBodegaAsignarRol.innerHTML = '<option value="">Cargando bodegas...</option>';
+
+  try {
+    const res = await fetch('src/controllers/bodega_controller.php?accion=listar');
+    const data = await res.json();
+    if (!data || !data.success) {
+      selectBodegaAsignarRol.innerHTML = '<option value="">No hay bodegas</option>';
+      return;
+    }
+
+    const bodegas = Array.isArray(data.data) ? data.data : [];
+    if (bodegas.length === 0) {
+      selectBodegaAsignarRol.innerHTML = '<option value="">No hay bodegas disponibles</option>';
+      return;
+    }
+
+    const frag = document.createDocumentFragment();
+    frag.appendChild(new Option('Seleccione una bodega', ''));
+    bodegas.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b.id_bodega || b.id || b.id_bodega;
+      opt.textContent = b.nombre || b.nombre_bodega || b.nombre;
+      frag.appendChild(opt);
+    });
+
+    selectBodegaAsignarRol.innerHTML = '';
+    selectBodegaAsignarRol.appendChild(frag);
+  } catch (e) {
+    console.error('Error cargando bodegas para asignar rol:', e);
+    selectBodegaAsignarRol.innerHTML = '<option value="">Error cargando bodegas</option>';
+  }
+}
+
+async function cargarSubbodegasAsignarRol(idBodega) {
+  if (!selectSubbodegaAsignarRol) return;
+  selectSubbodegaAsignarRol.innerHTML = '<option value="">Cargando sub-bodegas...</option>';
+
+  try {
+    const res = await fetch(`src/controllers/sub_bodega_controller.php?accion=por_bodega&id_bodega=${encodeURIComponent(idBodega)}`);
+    const data = await res.json();
+    if (!data || data.success === false) {
+      selectSubbodegaAsignarRol.innerHTML = '<option value="">No hay sub-bodegas</option>';
+      return;
+    }
+
+    const subs = Array.isArray(data.data) ? data.data : [];
+    if (subs.length === 0) {
+      selectSubbodegaAsignarRol.innerHTML = '<option value="">No hay sub-bodegas disponibles</option>';
+      return;
+    }
+
+    const frag = document.createDocumentFragment();
+    frag.appendChild(new Option('Seleccione una sub-bodega', ''));
+    subs.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id_subbodega || s.id || s.id_subbodega;
+      opt.textContent = s.nombre_subbodega || s.nombre || s.nombre_subbodega;
+      frag.appendChild(opt);
+    });
+
+    selectSubbodegaAsignarRol.innerHTML = '';
+    selectSubbodegaAsignarRol.appendChild(frag);
+  } catch (e) {
+    console.error('Error cargando subbodegas para asignar rol:', e);
+    selectSubbodegaAsignarRol.innerHTML = '<option value="">Error cargando sub-bodegas</option>';
+  }
+}
+
 function openModalAsignarRol(user) {
   if (!modalAsignarRol || !hiddenAsignarRolUserId || !asignarRolNombreUsuario || !selectAsignarRol) return;
 
@@ -952,14 +1013,54 @@ function openModalAsignarRol(user) {
 
 
   // Cargar roles si aún no existen
-  if (!Array.isArray(rolesFuncionales) || rolesFuncionales.length === 0) {
-    cargarRolesFuncionales();
-  } else {
-    renderOpcionesRolesFuncionales();
-  }
-
   // Reset selection
   selectAsignarRol.value = "";
+
+  // Local helper: apply restrictions for 'Aprendiz' after options exist
+  function applyAprendizRestrictions() {
+    try {
+      const cargoUser = (user.cargo || "").toString().trim();
+      if (cargoUser === "Aprendiz") {
+        for (const opt of Array.from(selectAsignarRol.options)) {
+          const txt = (opt.text || "").toString().toLowerCase();
+          const forbidden = (txt.includes("encarg") && (txt.includes("bodega") || txt.includes("subbodega") || txt.includes("inventario"))) ||
+                            txt.includes("encargado bodega") || txt.includes("encargado subbodega") || txt.includes("encargado inventario");
+
+          if (forbidden) {
+            opt.disabled = true;
+            opt.title = "No se puede asignar este rol a un usuario con cargo 'Aprendiz'.";
+          } else {
+            opt.disabled = false;
+            if (opt.title && opt.title.includes("No se puede asignar")) opt.removeAttribute("title");
+          }
+        }
+      } else {
+        // enable all options for other cargos
+        for (const opt of Array.from(selectAsignarRol.options)) {
+          if (opt.disabled) opt.disabled = false;
+          if (opt.title && opt.title.includes("No se puede asignar")) opt.removeAttribute("title");
+        }
+      }
+    } catch (e) {
+      console.error('Error aplicando restricciones por cargo en selectAsignarRol:', e);
+    }
+  }
+
+  // Load or render roles, and ensure restrictions are applied after options are present
+  if (!Array.isArray(rolesFuncionales) || rolesFuncionales.length === 0) {
+    // cargarRolesFuncionales will call renderOpcionesRolesFuncionales internally, but we also
+    // run applyAprendizRestrictions once the async load completes to avoid races.
+    cargarRolesFuncionales().then(() => {
+      // slight delay to ensure DOM options are updated
+      setTimeout(applyAprendizRestrictions, 20);
+    }).catch((e) => {
+      console.error('Error cargando roles funcionales:', e);
+    });
+  } else {
+    renderOpcionesRolesFuncionales();
+    // ensure restrictions after rendering
+    setTimeout(applyAprendizRestrictions, 0);
+  }
 
   // ✅ Cargar rol actual del usuario (si tiene uno)
 setTimeout(async () => {
@@ -979,6 +1080,18 @@ function closeModalAsignarRol() {
   if (hiddenAsignarRolUserId) hiddenAsignarRolUserId.value = "";
   if (asignarRolNombreUsuario) asignarRolNombreUsuario.textContent = "--";
   if (selectAsignarRol) selectAsignarRol.value = "";
+
+  // Re-enable any options that were disabled by cargo-specific logic
+  try {
+    if (selectAsignarRol) {
+      for (const opt of Array.from(selectAsignarRol.options)) {
+        if (opt.disabled) opt.disabled = false;
+        if (opt.title && opt.title.includes("No se puede asignar")) opt.removeAttribute("title");
+      }
+    }
+  } catch (e) {
+    console.error('Error re-habilitando opciones de selectAsignarRol al cerrar modal:', e);
+  }
 }
 
 async function asignarRolFuncional() {
@@ -997,31 +1110,81 @@ async function asignarRolFuncional() {
     return;
   }
 
+  // ✅ Visibilidad REAL (la maneja el WRAPPER, no el select)
+  const bodegaVisible =
+    !!wrapperBodegaAsignarRol && !wrapperBodegaAsignarRol.classList.contains("hidden");
+
+  const subbodegaVisible =
+    !!wrapperSubbodegaAsignarRol && !wrapperSubbodegaAsignarRol.classList.contains("hidden");
+
+  // ✅ Si es rol de bodega/subbodega, EXIGIR selección
+  const id_bodega = String(selectBodegaAsignarRol?.value || "").trim();
+  const id_subbodega = String(selectSubbodegaAsignarRol?.value || "").trim();
+
+  if (bodegaVisible && !id_bodega) {
+    toastError("Debes seleccionar una bodega para este rol.");
+    selectBodegaAsignarRol?.focus();
+    return;
+  }
+
+  if (subbodegaVisible && !id_subbodega) {
+    toastError("Debes seleccionar una sub-bodega para este rol.");
+    selectSubbodegaAsignarRol?.focus();
+    return;
+  }
+
   try {
+    // ✅ Payload base
     const payload = { id_usuario, id_rol };
+
+    // EXTRA SAFETY: prevent assigning certain functional roles to users with cargo 'Aprendiz'
+    try {
+      const usuarioObj = users.find(u => String(u.id) === String(id_usuario));
+      const cargoUser = usuarioObj ? (usuarioObj.cargo || "").toString().trim() : "";
+      if (cargoUser === "Aprendiz") {
+        // find selected option text
+        const selectedOpt = selectAsignarRol.options[selectAsignarRol.selectedIndex];
+        const selectedText = selectedOpt ? (selectedOpt.text || "").toString().toLowerCase() : "";
+
+        const isForbidden = (selectedText.includes("encarg") && (selectedText.includes("bodega") || selectedText.includes("subbodega") || selectedText.includes("inventario"))) ||
+                            selectedText.includes("encargado bodega") || selectedText.includes("encargado subbodega") || selectedText.includes("encargado inventario");
+
+        if (isForbidden) {
+          toastError("No es posible asignar ese rol funcional a un usuario con cargo 'Aprendiz'.");
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('Error validando restricciones por cargo antes de asignar rol:', e);
+    }
+
+    // ✅ Agregar ids SOLO cuando aplica (y ya validados)
+    if (bodegaVisible) payload.id_bodega = id_bodega;
+    if (subbodegaVisible) payload.id_subbodega = id_subbodega;
 
     // ✅ Se envía al backend
     const data = await callApi(`${API_URL}?accion=asignar_rol_funcional`, payload);
 
+    console.log("Payload enviado asignar_rol_funcional:", payload);
     console.log("Respuesta asignar_rol_funcional:", data);
 
     if (data?.success === false || data?.error) {
-  toastError(data?.error || "No se pudo asignar el rol funcional.");
-  return;
-}
-
+      toastError(data?.error || "No se pudo asignar el rol funcional.");
+      return;
+    }
 
     toastSuccess(data?.mensaje || "Rol funcional asignado correctamente");
 
     closeModalAsignarRol();
 
-    // Recargar tabla (por si quieres reflejar cambios)
+    // Refrescar tabla
     await cargarUsuarios();
   } catch (e) {
     console.error("Error asignando rol funcional:", e);
     toastError("Error de red/servidor al asignar el rol funcional.");
   }
 }
+
 
 async function obtenerRolFuncionalUsuario(id_usuario) {
   try {
@@ -1171,19 +1334,10 @@ async function obtenerRolFuncionalUsuario(id_usuario) {
         }
 
         if (inputPrograma && wrapperPrograma) {
-          if (editUser.cargo === "Instructor") {
-            wrapperPrograma.classList.remove("hidden");
-            renderOpcionesPrograma();
-
-            if (editUser.id_programa) {
-              inputPrograma.value = String(editUser.id_programa);
-            } else {
-              inputPrograma.value = "";
-            }
-          } else {
-            wrapperPrograma.classList.add("hidden");
-            inputPrograma.value = "";
-          }
+          // By design, the program selector should not be shown in the modal
+          // even if the user cargo is Instructor. Keep it hidden and reset value.
+          wrapperPrograma.classList.add("hidden");
+          inputPrograma.value = "";
         }
       } else {
         // Create mode
@@ -1257,7 +1411,7 @@ async function obtenerRolFuncionalUsuario(id_usuario) {
               </span>
 
                 <!-- ✅ Rol funcional -->
-  ${renderRolFuncionalBadgeHTML(user)}
+              ${renderRolFuncionalBadgeHTML(user)}
 
               <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${estadoBadgeClass}">
                 ${user.estado ? "Activo" : "Inactivo"}
@@ -1294,18 +1448,112 @@ async function obtenerRolFuncionalUsuario(id_usuario) {
 
           
 
+          
+
           ${
             programaNombre
               ? `
                 <div class="grid grid-cols-3 gap-2">
                   <span class="text-muted-foreground">Programa:</span>
-                  <span class="col-span-2 font-medium">${programaNombre}</span>
+                  <span class="col-span-2">${programaNombre}</span>
                 </div>
               `
               : ""
           }
         </div>
       `;
+
+      // Cargar y mostrar asignaciones (bodegas / subbodegas) en formato de grid para coincidir con el diseño
+      (async function cargarYMostrarAsignaciones() {
+        try {
+          const url = `${API_URL}?accion=obtener_asignaciones_usuario&id_usuario=${encodeURIComponent(
+            user.id
+          )}&t=${Date.now()}`;
+
+          const { parsed, text } = await fetchJSONSafe(url, { method: "GET" });
+          console.log("Respuesta obtener_asignaciones_usuario:", text);
+
+          if (!parsed || parsed.success === false) return;
+
+          const data = parsed.data || {};
+          const bodegas = Array.isArray(data.bodegas) ? data.bodegas : [];
+          const subbodegas = Array.isArray(data.subbodegas) ? data.subbodegas : [];
+
+          const rows = [];
+
+          if (bodegas.length > 0) {
+      const itemsHtml = bodegas
+        .map((b, idx) => {
+          const nombre = b.nombre_bodega || b.nombre || `Bodega #${b.id_bodega}`;
+          const asignador = b.asignado_por_nombre || b.asignado_por || "N/A";
+          const fecha = b.fecha_asignacion || "N/A";
+
+          return `
+            <div class="${idx > 0 ? "mt-3 pt-3 border-t border-gray-200" : ""}">
+              <div class="grid grid-cols-3 gap-2">
+                <span class="text-sm">Bodega asignada:</span>
+                <span class="col-span-2 text-sm">${nombre}</span>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2 mt-1">
+                <span class="text-sm">Asignada por:</span>
+                <span class="col-span-2 text-sm">${asignador}</span>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2 mt-1">
+                <span class="text-sm">Fecha:</span>
+                <span class="col-span-2 text-sm">${fecha}</span>
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+
+      rows.push(`
+        <hr class="my-3 border-gray-200" />
+        <div class="grid  gap-2 mt-3">
+          <div class="col-span-2">
+            ${itemsHtml}
+          </div>
+        </div>
+      `);
+    }
+
+
+          if (subbodegas.length > 0) {
+            const itemsHtml = subbodegas
+              .map((s) => {
+                const nombre = s.nombre_subbodega || s.nombre || `Subbodega #${s.id_subbodega}`;
+                const fecha = s.fecha_asignacion ? ` • asignada: ${s.fecha_asignacion}` : "";
+                const activo = typeof s.activo !== "undefined" ? (s.activo ? " (Activa)" : " (Inactiva)") : "";
+                return `<div class="text-sm">${nombre}${fecha}${activo}</div>`;
+              })
+              .join("");
+
+            rows.push(`
+              <div class="grid grid-cols-3 gap-2 mt-3">
+                <span class="text-muted-foreground">Sub-bodegas asignadas:</span>
+                <div class="col-span-2 font-medium">${itemsHtml}</div>
+              </div>
+            `);
+          }
+
+          if (rows.length > 0) {
+            detalleUsuarioContent.insertAdjacentHTML('beforeend', rows.join(''));
+          } else {
+            detalleUsuarioContent.insertAdjacentHTML(
+              'beforeend', `
+              <hr class="my-3 border-gray-200" />
+              <div class="grid grid-cols-3 gap-2 mt-3">
+                <span class="text-sm">Bodegas asignadas:</span>
+                <span class="col-span-2 text-sm text-muted-foreground">No tiene bodegas ni sub-bodegas asignadas.</span>
+              </div>
+            `);
+          }
+        } catch (e) {
+          console.error('Error al obtener asignaciones del usuario:', e);
+        }
+      })();
     }
 
     /**
@@ -1855,6 +2103,7 @@ tr.innerHTML = `
           Editar
         </button>
 
+        ${user.cargo === "Aprendiz" ? "" : `
         <button
           type="button"
           class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
@@ -1872,6 +2121,7 @@ tr.innerHTML = `
           </svg>
           Asignar rol
         </button>
+        `}
 
         <hr class="border-border my-1">
 
@@ -1983,23 +2233,25 @@ tr.innerHTML = `
                   </svg>
                   Editar
                 </button>
-                <button
-                    type="button"
-                    class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
-                    data-action="asignar_rol"
-                    data-id="${user.id}"
-                  >
-                    <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                      <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                      <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M20 21v-1a4 4 0 0 0-4-4h-1" />
-                      <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M4 21v-1a4 4 0 0 1 4-4h4" />
-                    </svg>
-                    Asignar rol
-                  </button>
+        ${user.cargo === "Aprendiz" ? "" : `
+        <button
+        type="button"
+        class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
+        data-action="asignar_rol"
+        data-id="${user.id}"
+      >
+        <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+        viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M20 21v-1a4 4 0 0 0-4-4h-1" />
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M4 21v-1a4 4 0 0 1 4-4h4" />
+        </svg>
+        Asignar rol
+      </button>
+        `}
 
                 <hr class="border-border my-1">
                 <button
@@ -2334,6 +2586,52 @@ safeOn(btnGuardarAsignarRol, "click", async () => {
   await asignarRolFuncional();
 });
 
+// Cuando cambia el rol seleccionado en el modal de asignar rol
+safeOn(selectAsignarRol, "change", (e) => {
+  const selectedText =
+    selectAsignarRol.options[selectAsignarRol.selectedIndex]?.text || "";
+
+  const isEncargadoBodega = /bodega/i.test(selectedText) && !/subbodega/i.test(selectedText);
+  const isEncargadoSubbodega = /subbodega/i.test(selectedText) || /sub-bodega/i.test(selectedText);
+
+  // ✅ Mostrar/ocultar wrappers
+  if (wrapperBodegaAsignarRol)
+    wrapperBodegaAsignarRol.classList.toggle("hidden", !isEncargadoBodega && !isEncargadoSubbodega);
+
+  if (wrapperSubbodegaAsignarRol)
+    wrapperSubbodegaAsignarRol.classList.toggle("hidden", !isEncargadoSubbodega);
+
+  // ✅ Reset selects para evitar “valores pegados”
+  if (selectBodegaAsignarRol) {
+    selectBodegaAsignarRol.value = "";
+    selectBodegaAsignarRol.innerHTML = '<option value="">Cargando bodegas...</option>';
+  }
+
+  if (selectSubbodegaAsignarRol) {
+    selectSubbodegaAsignarRol.value = "";
+    selectSubbodegaAsignarRol.innerHTML = '<option value="">Seleccione una bodega primero</option>';
+  }
+
+  // ✅ Cargar bodegas cuando aplica
+  if (isEncargadoBodega || isEncargadoSubbodega) {
+    cargarBodegasAsignarRol();
+  }
+});
+
+
+// Al cambiar la bodega, cargar subbodegas si el wrapper está visible
+safeOn(selectBodegaAsignarRol, 'change', (e) => {
+  const id = selectBodegaAsignarRol.value;
+  if (!id) {
+    if (selectSubbodegaAsignarRol) selectSubbodegaAsignarRol.innerHTML = '<option value="">Seleccione una bodega primero</option>';
+    return;
+  }
+  // Solo cargar subbodegas si el wrapper está visible (es relevante para subbodega roles)
+  if (wrapperSubbodegaAsignarRol && !wrapperSubbodegaAsignarRol.classList.contains('hidden')) {
+    cargarSubbodegasAsignarRol(id);
+  }
+});
+
 // Cerrar modal si das click fuera del cuadro (overlay)
 if (modalAsignarRol) {
   modalAsignarRol.addEventListener("click", (e) => {
@@ -2359,6 +2657,15 @@ if (modalAsignarRol) {
         direccion: inputDireccion ? inputDireccion.value.trim() : "",
         id_programa: inputPrograma ? inputPrograma.value : null,
       };
+
+      //VALIDACIÓN ESPECÍFICA: NO permitir espacios en el correo
+      const correoRaw = inputCorreo ? String(inputCorreo.value || "") : "";
+
+      if (/\s/.test(correoRaw)) {
+        toastError("El correo electrónico no debe contener espacios.");
+        if (inputCorreo) inputCorreo.focus();
+        return;
+      }
 
       // Normalize program assignment: only applicable for "Instructor"
       if (payload.cargo !== "Instructor" || !payload.id_programa) {
@@ -2434,7 +2741,7 @@ if (modalAsignarRol) {
       }
 
       if (!emailRegex.test(payload.correo)) {
-        toastError("Ingrese un correo electrónico válido (debe contener '@').");
+        toastError("Ingrese un correo electrónico válido (debe contener ej: '@expale.com').");
         if (inputCorreo) inputCorreo.focus();
         return;
       }
@@ -2469,10 +2776,9 @@ if (modalAsignarRol) {
         return;
       }
 
-      if (payload.cargo === "Instructor" && !payload.id_programa) {
-        toastError("Debe seleccionar un programa de formación para el Instructor.");
-        return;
-      }
+      // Note: programa selector was removed from the UI for Instructors by design.
+      // If you still need to enforce assignment of a program to Instructors,
+      // re-enable this validation or implement it server-side.
 
       // Edit mode validation: prevent saving if there are no changes
       if (isEdit && originalEditData) {

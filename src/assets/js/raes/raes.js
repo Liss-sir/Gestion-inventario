@@ -18,40 +18,47 @@ let originalEditData = null; // For change validation during editing
 function validarSoloNumeros(event) {
     // Allow control keys: backspace, delete, tab, escape, enter
     const teclasPermitidas = [
-        'Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
-        'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'
+        "Backspace",
+        "Delete",
+        "Tab",
+        "Escape",
+        "Enter",
+        "ArrowLeft",
+        "ArrowRight",
+        "ArrowUp",
+        "ArrowDown",
     ];
-    
+
     if (teclasPermitidas.includes(event.key)) {
         return true;
     }
-    
+
     // Allow Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
     if (event.ctrlKey || event.metaKey) {
         return true;
     }
-    
+
     // Only allow digits (0-9)
     const esNumero = /^[0-9]$/.test(event.key);
-    
+
     if (!esNumero) {
         event.preventDefault();
         toastError("Solo se permiten números en el código RAE");
         return false;
     }
-    
+
     return true;
 }
 
 // Also prevent pasting non-numeric text
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
     // For the creation field
-    const createCodigoInput = document.getElementById('createRaeCodigo');
+    const createCodigoInput = document.getElementById("createRaeCodigo");
     if (createCodigoInput) {
-        createCodigoInput.addEventListener('paste', (e) => {
-            const textoPegado = e.clipboardData.getData('text');
+        createCodigoInput.addEventListener("paste", (e) => {
+            const textoPegado = e.clipboardData.getData("text");
             // Filter to only numbers and limit to 15 characters
-            const numericOnly = textoPegado.replace(/[^0-9]/g, '').slice(0, 15);
+            const numericOnly = textoPegado.replace(/[^0-9]/g, "").slice(0, 15);
             if (!/^\d+$/.test(textoPegado) || textoPegado.length > 15) {
                 e.preventDefault();
                 createCodigoInput.value = numericOnly;
@@ -59,14 +66,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
+
     // For the edit field
-    const editCodigoInput = document.getElementById('editRaeCodigo');
+    const editCodigoInput = document.getElementById("editRaeCodigo");
     if (editCodigoInput) {
-        editCodigoInput.addEventListener('paste', (e) => {
-            const textoPegado = e.clipboardData.getData('text');
+        editCodigoInput.addEventListener("paste", (e) => {
+            const textoPegado = e.clipboardData.getData("text");
             // Filter to only numbers and limit to 15 characters
-            const numericOnly = textoPegado.replace(/[^0-9]/g, '').slice(0, 15);
+            const numericOnly = textoPegado.replace(/[^0-9]/g, "").slice(0, 15);
             if (!/^\d+$/.test(textoPegado) || textoPegado.length > 15) {
                 e.preventDefault();
                 editCodigoInput.value = numericOnly;
@@ -208,11 +215,11 @@ function toggleView(view) {
     const gridBtn = document.getElementById("viewGridBtn");
     const emptyState = document.getElementById("emptyStateRaes");
     const emptySearch = document.getElementById("emptySearchRaes");
-    
+
     // Close all dropdown menus when changing views
     const allMenus = document.querySelectorAll('[id^="actionMenu"]');
     allMenus.forEach((menu) => menu.classList.add("hidden"));
-    
+
     // If there are no RAEs, keep empty state
     if (!window.currentRaes || window.currentRaes.length === 0) {
         emptyState?.classList.remove("hidden");
@@ -221,18 +228,18 @@ function toggleView(view) {
         gridView?.classList.add("hidden");
         return;
     }
-    
+
     // Check if there are active filters
     const searchText = document.getElementById("searchRae").value.toLowerCase().trim();
     const nivelFilter = document.getElementById("selectFiltroNivel").value;
     const hasActiveFilters = searchText !== "" || nivelFilter !== "";
-    
+
     if (hasActiveFilters) {
         // If there are filters, use updateFilter which already handles empty states
         updateFilter();
         return;
     }
-    
+
     if (view === "table") {
         // Show table view
         tableView.classList.remove("hidden");
@@ -246,7 +253,7 @@ function toggleView(view) {
         tableBtn.classList.remove("bg-muted");
         gridBtn.classList.add("bg-muted");
     }
-    
+
     // Ensure empty states are hidden when there is an active view
     emptyState?.classList.add("hidden");
     emptySearch?.classList.add("hidden");
@@ -299,7 +306,9 @@ function openDetailsModal(id, descripcion, programa, estado, codigo) {
     } catch (e) {}
 
     // Update modal content
-    document.getElementById("detailsRaeCode").textContent = codigo ? `RAE # ${codigo}` : `RAE #${id}`;
+    document.getElementById("detailsRaeCode").textContent = codigo
+        ? `RAE # ${codigo}`
+        : `RAE #${id}`;
     document.getElementById("detailsRaeDescription").textContent = descripcion;
     document.getElementById("detailsPrograma").textContent = programa;
 
@@ -324,6 +333,13 @@ function closeDetailsModal() {
 }
 
 function openEditModal(id, descripcion, programa, codigo, programId) {
+    // ✅ GUARD: si no puede editar, NO abrir modal (Instructor: solo listar/ver detalles)
+    const p = window.RAES_PERMS || {};
+    if (!p.canEditar) {
+        toastError("No tienes permisos para editar RAEs");
+        return;
+    }
+
     // Close all dropdown menus
     const allMenus = document.querySelectorAll('[id^="actionMenu"]');
     allMenus.forEach((menu) => menu.classList.add("hidden"));
@@ -386,6 +402,14 @@ function closeEditModal() {
 }
 
 function openCreateModal() {
+    const p = window.RAES_PERMS || {};
+
+    // ✅ Instructor: si solo lista/ver detalles, canCrear vendrá false y quedará bloqueado
+    if (!p.canCrear) {
+        toastError("No tienes permisos para crear RAEs");
+        return;
+    }
+
     // Clear form fields
     document.getElementById("createRaeCodigo").value = "";
     document.getElementById("createRaeProgram").value = "";
@@ -400,13 +424,11 @@ function closeCreateModal() {
 }
 
 // Close modals by clicking outside of them
-document
-    .getElementById("detailsModal")
-    .addEventListener("click", function (event) {
-        if (event.target === this) {
-            closeDetailsModal();
-        }
-    });
+document.getElementById("detailsModal").addEventListener("click", function (event) {
+    if (event.target === this) {
+        closeDetailsModal();
+    }
+});
 
 document.getElementById("editModal").addEventListener("click", function (event) {
     if (event.target === this) {
@@ -414,13 +436,11 @@ document.getElementById("editModal").addEventListener("click", function (event) 
     }
 });
 
-document
-    .getElementById("createModal")
-    .addEventListener("click", function (event) {
-        if (event.target === this) {
-            closeCreateModal();
-        }
-    });
+document.getElementById("createModal").addEventListener("click", function (event) {
+    if (event.target === this) {
+        closeCreateModal();
+    }
+});
 
 // Close modals with the Escape key
 document.addEventListener("keydown", (event) => {
@@ -449,31 +469,30 @@ async function loadRaes() {
         });
         if (!res.ok) throw new Error("Error al obtener RAEs");
         const data = await res.json();
-        
+
         // Store RAEs for search
         window.currentRaes = data;
-        
+
         // Initialize empty states if there is no data
         if (!data || data.length === 0) {
             const emptyState = document.getElementById("emptyStateRaes");
             const emptySearch = document.getElementById("emptySearchRaes");
             const tableView = document.getElementById("tableView");
             const gridView = document.getElementById("gridView");
-            
+
             if (emptyState) emptyState.classList.remove("hidden");
             if (emptySearch) emptySearch.classList.add("hidden");
             if (tableView) tableView.classList.add("hidden");
             if (gridView) gridView.classList.add("hidden");
             return;
         }
-        
+
         // If there is data, render
         renderTable(data);
         renderGrid(data);
-        
+
         // Apply initial filters if they exist
         updateFilter();
-        
     } catch (err) {
         console.error(err);
         toastError("Error al cargar los RAEs. Intente nuevamente.");
@@ -488,10 +507,8 @@ async function loadPrograms() {
         });
         if (!res.ok) throw new Error("Error al obtener programas");
         const data = await res.json();
-        // Filter assets (field can be 'state')
-        const activos = data.filter(
-            (p) => (p.estado || "").toString().toLowerCase() === "activo"
-        );
+        // Filter activos (field can be 'estado')
+        const activos = data.filter((p) => (p.estado || "").toString().toLowerCase() === "activo");
 
         // Save map id->name for use in RAE rendering
         window._programMap = {};
@@ -526,11 +543,17 @@ async function loadPrograms() {
 
 // Create RAE: read inputs and send to the API
 async function createRae() {
-    const codigo = (document.getElementById("createRaeCodigo")?.value || "").trim();
+    // ✅ GUARD: Instructor (solo listar/ver detalles) no puede crear
+    const p = window.RAES_PERMS || {};
+    if (!p.canCrear) {
+        toastError("No tienes permisos para crear RAEs");
+        return;
+    }
+
+    const codigoInput = document.getElementById("createRaeCodigo"); // ✅ FIX: evita codigoInput undefined
+    const codigo = (codigoInput?.value || "").trim();
     const id_programa = (document.getElementById("createRaeProgram")?.value || "").trim();
-    const descripcion = (
-        document.getElementById("createRaeDescription")?.value || ""
-    ).trim();
+    const descripcion = (document.getElementById("createRaeDescription")?.value || "").trim();
 
     // Validation of required fields
     if (!/^\d+$/.test(codigo)) {
@@ -576,7 +599,6 @@ async function createRae() {
             return;
         }
 
-        // Done
         toastSuccess(data.message || data.mensaje || "RAE creada correctamente");
         closeCreateModal();
         loadRaes();
@@ -588,11 +610,19 @@ async function createRae() {
 
 // RAE Update (edition) - WITH CHANGE VALIDATION
 async function updateRae() {
+    // ✅ GUARD: Instructor (solo listar/ver detalles) no puede editar
+    const p = window.RAES_PERMS || {};
+    if (!p.canEditar) {
+        toastError("No tienes permisos para editar RAEs");
+        return;
+    }
+
     const id = (document.getElementById("editRaeId")?.value || "").trim();
-    const descripcion = (
-        document.getElementById("editRaeDescription")?.value || ""
-    ).trim();
-    const codigo = (document.getElementById("editRaeCodigo")?.value || "").trim();
+    const descripcion = (document.getElementById("editRaeDescription")?.value || "").trim();
+
+    const codigoInput = document.getElementById("editRaeCodigo"); // ✅ FIX: evita codigoInput undefined
+    const codigo = (codigoInput?.value || "").trim();
+
     const id_programa = (document.getElementById("editRaeProgram")?.value || "").trim();
 
     // Validation of required fields
@@ -622,13 +652,10 @@ async function updateRae() {
             id_programa: id_programa,
         };
 
-        const noHayCambios =
-            JSON.stringify(currentData) === JSON.stringify(originalEditData);
+        const noHayCambios = JSON.stringify(currentData) === JSON.stringify(originalEditData);
 
         if (noHayCambios) {
-            toastInfo(
-                "Para actualizar el registro es necesario modificar al menos un dato del RAE."
-            );
+            toastInfo("Para actualizar el registro es necesario modificar al menos un dato del RAE.");
             return;
         }
     }
@@ -668,6 +695,13 @@ async function updateRae() {
 
 // Change the status of a RAE (activate / deactivate)
 async function changeRaeEstado(id, estado) {
+    const p = window.RAES_PERMS || {};
+    // ✅ Instructor: por permisos, esto quedará bloqueado y el switch no se renderiza
+    if (!p.canCambiarEstado) {
+        toastError("No tienes permisos para cambiar el estado del RAE");
+        return;
+    }
+
     if (!id) {
         toastError("ID del RAE faltante");
         return;
@@ -695,12 +729,7 @@ async function changeRaeEstado(id, estado) {
             return;
         }
 
-        toastSuccess(
-            estado === "Activo"
-                ? "RAE activado correctamente."
-                : "RAE desactivado correctamente."
-        );
-        // Refresh list to update UI
+        toastSuccess(estado === "Activo" ? "RAE activado correctamente." : "RAE desactivado correctamente.");
         loadRaes();
     } catch (err) {
         console.error(err);
@@ -711,22 +740,23 @@ async function changeRaeEstado(id, estado) {
 function renderTable(items) {
     const tbody = document.getElementById("raesTableBody");
     if (!tbody) return;
-    
+
     const emptyState = document.getElementById("emptyStateRaes");
     const emptySearch = document.getElementById("emptySearchRaes");
     const tableView = document.getElementById("tableView");
     const gridView = document.getElementById("gridView");
-    
+
     // Clear previous content
     tbody.innerHTML = "";
-    
+
     if (!items || items.length === 0) {
         // Check if we are filtering or if there really are no RAEs
         const searchInput = document.getElementById("searchRae");
         const levelFilter = document.getElementById("selectFiltroNivel");
-        const hasActiveFilters = (searchInput && searchInput.value.trim() !== "") || 
-                                (levelFilter && levelFilter.value !== "");
-        
+        const hasActiveFilters =
+            (searchInput && searchInput.value.trim() !== "") ||
+            (levelFilter && levelFilter.value !== "");
+
         if (hasActiveFilters) {
             // There are active filters but no results
             emptySearch?.classList.remove("hidden");
@@ -736,16 +766,18 @@ function renderTable(items) {
             emptyState?.classList.remove("hidden");
             emptySearch?.classList.add("hidden");
         }
-        
+
         // Hide Views
         tableView?.classList.add("hidden");
         gridView?.classList.add("hidden");
         return;
     }
-    
+
     // There are RAEs, hide empty states
     emptyState?.classList.add("hidden");
     emptySearch?.classList.add("hidden");
+
+    const PERMS = window.RAES_PERMS || {};
 
     items.forEach((r, idx) => {
         const id = _getField(r, "id", "id_rae");
@@ -769,6 +801,7 @@ function renderTable(items) {
                 programa = pid;
             }
         }
+
         const estado = _getField(r, "estado") || "";
         const ed = encodeURIComponent(descripcion);
         const ep = encodeURIComponent(programa);
@@ -779,9 +812,7 @@ function renderTable(items) {
         tr.setAttribute("data-nivel", nivelPrograma || "");
 
         tr.innerHTML = `
-            <td class="py-4 px-4 text-sm font-medium text-foreground">${
-                codigo || id
-            }</td>
+            <td class="py-4 px-4 text-sm font-medium text-foreground">${codigo || id}</td>
             <td class="py-4 px-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-avatar-secondary-39 rounded-md flex items-center justify-center flex-shrink-0">
@@ -808,6 +839,7 @@ function renderTable(items) {
                     <button onclick="toggleActionMenu(${idx})" class="text-muted-foreground hover:text-foreground transition-colors p-2 hover:bg-muted rounded">
                         <i class="fas fa-ellipsis-h"></i>
                     </button>
+
                     <div id="actionMenu${idx}" class="hidden absolute right-0 mt-2 w-48 rounded-xl border border-border bg-popover shadow-md py-1 z-50">
                         <button onclick="openDetailsModal('${id}', '${ed}', '${ep}', '${estado}', '${codigo ? encodeURIComponent(codigo) : ""}')" class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted transition-colors">
                             <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
@@ -817,31 +849,39 @@ function renderTable(items) {
                             Ver detalles
                         </button>
 
-                        <button onclick="openEditModal('${id}', '${ed}', '${ep}', '${
-            codigo ? encodeURIComponent(codigo) : ""
-        }', '${pid ?? ""}')" class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted transition-colors">
-                            <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9"/>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.5a2.121 2.121 0 0 1 3 3L9 17l-4 1 1-4 10.5-10.5z"/>
-                            </svg>
-                            Editar
-                        </button>
-                        
-                        <hr class="border-border my-1">
-                        
-                        <button onclick="changeRaeEstado('${id}', '${
-            estado.toLowerCase() === "activo" ? "Inactivo" : "Activo"
-        }')" class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="mr-2 h-4 w-4">
-                                <path d="M12 2v10"/>
-                                <path d="M18.4 6.6a9 9 0 1 1-12.77.04"/>
-                            </svg>
-                            ${
-                                estado.toLowerCase() === "activo"
-                                    ? "Deshabilitar"
-                                    : "Habilitar"
-                            }
-                        </button>
+                        ${
+                            (window.RAES_PERMS && window.RAES_PERMS.canEditar)
+                                ? `
+                                    <button onclick="openEditModal('${id}', '${ed}', '${ep}', '${codigo ? encodeURIComponent(codigo) : ""}', '${pid ?? ""}')" class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted transition-colors">
+                                        <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.5a2.121 2.121 0 0 1 3 3L9 17l-4 1 1-4 10.5-10.5z"/>
+                                        </svg>
+                                        Editar
+                                    </button>
+                                `
+                                : ``
+                        }
+
+                        ${
+                            (window.RAES_PERMS && window.RAES_PERMS.canCambiarEstado)
+                                ? `
+                                    ${
+                                        (window.RAES_PERMS && window.RAES_PERMS.canEditar)
+                                            ? `<hr class="border-border my-1">`
+                                            : ``
+                                    }
+
+                                    <button onclick="changeRaeEstado('${id}', '${estado.toLowerCase() === "activo" ? "Inactivo" : "Activo"}')" class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="mr-2 h-4 w-4">
+                                            <path d="M12 2v10"/>
+                                            <path d="M18.4 6.6a9 9 0 1 1-12.77.04"/>
+                                        </svg>
+                                        ${estado.toLowerCase() === "activo" ? "Deshabilitar" : "Habilitar"}
+                                    </button>
+                                `
+                                : ``
+                        }
                     </div>
                 </div>
             </td>
@@ -854,41 +894,42 @@ function renderTable(items) {
 function renderGrid(items) {
     const container = document.getElementById("gridViewContainer");
     if (!container) return;
-    
+
     const emptyState = document.getElementById("emptyStateRaes");
     const emptySearch = document.getElementById("emptySearchRaes");
     const tableView = document.getElementById("tableView");
     const gridView = document.getElementById("gridView");
-    
+
     // Clear previous content
     container.innerHTML = "";
-    
+
     if (!items || items.length === 0) {
         // Check if we are filtering or if there really are no RAEs
         const searchInput = document.getElementById("searchRae");
         const levelFilter = document.getElementById("selectFiltroNivel");
-        const hasActiveFilters = (searchInput && searchInput.value.trim() !== "") || 
-                                (levelFilter && levelFilter.value !== "");
-        
+        const hasActiveFilters =
+            (searchInput && searchInput.value.trim() !== "") ||
+            (levelFilter && levelFilter.value !== "");
+
         if (hasActiveFilters) {
-            // There are active filters but no results
             emptySearch?.classList.remove("hidden");
             emptyState?.classList.add("hidden");
         } else {
-            // There are no RAEs in the system
             emptyState?.classList.remove("hidden");
             emptySearch?.classList.add("hidden");
         }
-        
-        // Hide Views
+
         tableView?.classList.add("hidden");
         gridView?.classList.add("hidden");
         return;
     }
-    
-    // There are RAEs, hide empty states
+
     emptyState?.classList.add("hidden");
     emptySearch?.classList.add("hidden");
+
+    const PERMS = window.RAES_PERMS || {};
+    const canEditar = !!PERMS.canEditar;
+    const canCambiarEstado = !!PERMS.canCambiarEstado;
 
     items.forEach((r, idx) => {
         const id = _getField(r, "id", "id_rae");
@@ -917,8 +958,7 @@ function renderGrid(items) {
         const estado = _getField(r, "estado") || "";
 
         const card = document.createElement("div");
-        card.className =
-            "bg-card border border-border rounded-2xl p-6 hover:shadow-lg transition-all";
+        card.className = "bg-card border border-border rounded-2xl p-6 hover:shadow-lg transition-all";
         card.setAttribute("data-pid", pid || "");
         card.setAttribute("data-nivel", nivelPrograma || "");
 
@@ -927,22 +967,33 @@ function renderGrid(items) {
                 <div class="w-14 h-14 bg-avatar-secondary-39 rounded-md flex items-center justify-center flex-shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" width="33" height="33" viewBox="0 0 24 24" fill="none" stroke="#007832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-open-icon lucide-book-open"><path d="M12 7v14"></path><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"></path></svg>
                 </div>
-                <div class="flex-1"><h3 class="text-lg font-semibold text-foreground leading-tight">${descripcion}</h3></div>
-                <button onclick="openEditModal('${id}', '${ed}', '${ep}', '${
-            codigo ? encodeURIComponent(codigo) : ""
-        }', '${pid ?? ""}')" class="text-muted-foreground hover:text-foreground transition flex-shrink-0" title="Editar RAE">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                    </svg>
-                </button>
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-foreground leading-tight">${descripcion}</h3>
+                </div>
+
+                ${
+                    canEditar
+                        ? `
+                            <button onclick="openEditModal('${id}', '${ed}', '${ep}', '${codigo ? encodeURIComponent(codigo) : ""}', '${pid ?? ""}')"
+                                class="text-muted-foreground hover:text-foreground transition flex-shrink-0" title="Editar RAE">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                </svg>
+                            </button>
+                        `
+                        : ""
+                }
             </div>
+
             <div class="border-t border-border mb-4"></div>
+
             <div class="flex items-center justify-between">
                 <div class="flex-1">
                     <div class="flex items-center gap-2 text-foreground mb-3">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-graduation-cap-icon lucide-graduation-cap"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
                         <span class="text-sm">${programa}</span>
                     </div>
+
                     <div class="flex items-center justify-between">
                         <div class="flex items-center">
                             ${
@@ -951,15 +1002,21 @@ function renderGrid(items) {
                                     : `<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-gray-400" style="background-color: color-mix(in srgb, #9ca3af 18%, transparent);">Inactivo</span>`
                             }
                         </div>
-                        <div class="flex items-center">
-                            <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" class="sr-only peer" ${
-                                    estado.toLowerCase() === "activo" ? "checked" : ""
-                                }>
-                                <div class="w-11 h-6 bg-gray-500/20 rounded-full peer-checked:bg-secondary transition-all"></div>
-                                <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-all peer-checked:translate-x-5"></div>
-                            </label>
-                        </div>
+
+                        <!-- SIN TOCAR TU BASE: solo envolvemos el switch con el condicional -->
+                        ${
+                            canCambiarEstado
+                                ? `
+                                    <div class="flex items-center">
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" class="sr-only peer" ${estado.toLowerCase() === "activo" ? "checked" : ""}>
+                                            <div class="w-11 h-6 bg-gray-500/20 rounded-full peer-checked:bg-secondary transition-all"></div>
+                                            <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-all peer-checked:translate-x-5"></div>
+                                        </label>
+                                    </div>
+                                `
+                                : ""
+                        }
                     </div>
                 </div>
             </div>
@@ -989,21 +1046,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadProgramLevels(); // Load program levels
     await loadRaes();
 
-    // Attach create handler
+    const PERMS = window.RAES_PERMS || {};
+
+    // Attach create handler (solo si puede crear)
     const createBtn = document.getElementById("createRaeSubmit");
-    if (createBtn)
+    if (createBtn && PERMS.canCrear) {
         createBtn.addEventListener("click", (e) => {
             e.preventDefault();
             createRae();
         });
+    }
 
-    // Attach edit handler
+    // Attach edit handler (solo si puede editar)
     const editBtn = document.getElementById("editRaeSubmit");
-    if (editBtn)
+    if (editBtn && PERMS.canEditar) {
         editBtn.addEventListener("click", (e) => {
             e.preventDefault();
             updateRae();
         });
+    }
 
     // Attach search handler
     const searchInput = document.getElementById("searchRae");
@@ -1051,14 +1112,12 @@ function filterRaesByLevel() {
     const allRaes = window.currentRaes || [];
 
     if (!searchText && !nivelFilter) {
-        // If there are no filters, show all
         renderTable(allRaes);
         renderGrid(allRaes);
         hideEmptySearchMessage();
         return;
     }
 
-    // Filter RAE
     const filteredRaes = allRaes.filter((rae) => {
         const id = _getField(rae, "id", "id_rae");
         const codigo = _getField(rae, "codigo_rae", "codigo");
@@ -1066,12 +1125,9 @@ function filterRaesByLevel() {
         const programa = _getField(rae, "programa", "nombre_programa") || "";
         const estado = _getField(rae, "estado") || "";
 
-        // Get the program ID to find the level
         const pid = _getField(rae, "id_programa", "id_programa", "id_programa");
-        const nivelPrograma =
-            pid && window._programLevelMap ? window._programLevelMap[pid] : "";
+        const nivelPrograma = pid && window._programLevelMap ? window._programLevelMap[pid] : "";
 
-        // Search in all fields
         const matchesSearch =
             !searchText ||
             (codigo && codigo.toLowerCase().includes(searchText)) ||
@@ -1080,7 +1136,6 @@ function filterRaesByLevel() {
             (estado && estado.toLowerCase().includes(searchText)) ||
             (id && id.toString().includes(searchText));
 
-        // Filter by level
         const matchesLevel = !nivelFilter || nivelPrograma === nivelFilter;
 
         return matchesSearch && matchesLevel;
@@ -1092,7 +1147,6 @@ function filterRaesByLevel() {
         hideEmptySearchMessage();
     }
 
-    // Render filtered results
     renderTable(filteredRaes);
     renderGrid(filteredRaes);
 }
@@ -1106,8 +1160,7 @@ function updateFilter() {
     const emptySearch = document.getElementById("emptySearchRaes");
     const tableView = document.getElementById("tableView");
     const gridView = document.getElementById("gridView");
-    
-    // If there are no RAEs at all
+
     if (!allRaes || allRaes.length === 0) {
         emptyState?.classList.remove("hidden");
         emptySearch?.classList.add("hidden");
@@ -1115,48 +1168,42 @@ function updateFilter() {
         gridView?.classList.add("hidden");
         return;
     }
-    
-    // Filter RAE
+
     const filteredRaes = allRaes.filter((rae) => {
         const id = _getField(rae, "id", "id_rae");
         const codigo = _getField(rae, "codigo_rae", "codigo");
         const descripcion = _getField(rae, "descripcion", "descripcion_rae");
         const programa = _getField(rae, "programa", "nombre_programa") || "";
         const estado = _getField(rae, "estado") || "";
-        
-        // Get the program ID to find the level
+
         const pid = _getField(rae, "id_programa", "id_programa", "id_programa");
         const nivelPrograma = pid && window._programLevelMap ? window._programLevelMap[pid] : "";
-        
-        // Search in all fields
-        const matchesSearch = !searchText ||
+
+        const matchesSearch =
+            !searchText ||
             (codigo && codigo.toLowerCase().includes(searchText)) ||
             (descripcion && descripcion.toLowerCase().includes(searchText)) ||
             (programa && programa.toLowerCase().includes(searchText)) ||
             (estado && estado.toLowerCase().includes(searchText)) ||
             (id && id.toString().includes(searchText));
-        
-        // Filter by level
+
         const matchesLevel = !nivelFilter || nivelPrograma === nivelFilter;
-        
+
         return matchesSearch && matchesLevel;
     });
-    
+
     if (filteredRaes.length === 0) {
-        // There are RAEs but they don't match the filters
         emptyState?.classList.add("hidden");
         emptySearch?.classList.remove("hidden");
         tableView?.classList.add("hidden");
         gridView?.classList.add("hidden");
     } else {
-        // There are results, show the active view
         emptyState?.classList.add("hidden");
         emptySearch?.classList.add("hidden");
-        
-        // Determine which view is active
+
         const viewTableBtn = document.getElementById("viewTableBtn");
         const isTableView = viewTableBtn && viewTableBtn.classList.contains("bg-muted");
-        
+
         if (isTableView) {
             tableView?.classList.remove("hidden");
             gridView?.classList.add("hidden");
@@ -1164,8 +1211,7 @@ function updateFilter() {
             tableView?.classList.add("hidden");
             gridView?.classList.remove("hidden");
         }
-        
-        // Render results
+
         renderTable(filteredRaes);
         renderGrid(filteredRaes);
     }
@@ -1180,12 +1226,11 @@ function showEmptySearchMessage() {
     if (emptySearchContainer) {
         emptySearchContainer.classList.remove("hidden");
     }
-    
+
     if (emptyState) {
         emptyState.classList.add("hidden");
     }
 
-    // Hide table and grid views
     if (tableView) {
         tableView.classList.add("hidden");
     }
@@ -1203,12 +1248,11 @@ function hideEmptySearchMessage() {
     if (emptySearchContainer) {
         emptySearchContainer.classList.add("hidden");
     }
-    
+
     if (emptyState) {
         emptyState.classList.add("hidden");
     }
 
-    // Show views based on the active button
     const viewTableBtn = document.getElementById("viewTableBtn");
     const viewGridBtn = document.getElementById("viewGridBtn");
 

@@ -1160,15 +1160,6 @@ break;
             enviarJSON(['error' => 'Cargo no válido'], 400);
         }
 
-        // Regla: solo Instructor puede llevar id_programa
-        if ($cargo !== 'Instructor') {
-            $id_programa = null;
-        } else {
-            if ($id_programa === null || $id_programa === '' || (int)$id_programa <= 0) {
-                enviarJSON(['error' => 'Debe seleccionar un programa para el Instructor.'], 400);
-            }
-        }
-
         try {
             if ($numero_documento && $usuario->obtenerPorDocumento($numero_documento)) {
                 enviarJSON(['error' => 'El número de documento ya está registrado'], 409);
@@ -1417,13 +1408,6 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             enviarJSON(['error' => 'Cargo no válido'], 400);
         }
 
-        if ($cargo !== 'Instructor') {
-            $id_programa = null;
-        } else {
-            if ($id_programa === null || $id_programa === '' || (int)$id_programa <= 0) {
-                enviarJSON(['error' => 'Debe seleccionar un programa para el Instructor.'], 400);
-            }
-        }
 
         if ($num_doc !== $usuarioActual['numero_documento']) {
             $existeDoc = $usuario->obtenerPorDocumento($num_doc);
@@ -1769,56 +1753,68 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     ===================================================== */
     case 'request_reset_password':
 
-        $correo = trim($_POST['correo'] ?? '');
+    $correo = trim($_POST['correo'] ?? '');
 
-        if ($correo === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
-            header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=correo");
+    if ($correo === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+        header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=correo");
+        exit;
+    }
+
+    try {
+        $stmt = $conn->prepare("SELECT id_usuario, nombre_completo, correo FROM usuarios WHERE correo = :c LIMIT 1");
+        $stmt->execute([':c' => $correo]);
+        $u = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // ✅ SI NO EXISTE -> decirle que NO está registrado
+        if (!$u) {
+            header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=not_registered");
             exit;
         }
 
-        try {
-            $stmt = $conn->prepare("SELECT id_usuario, nombre_completo, correo FROM usuarios WHERE correo = :c LIMIT 1");
-            $stmt->execute([':c' => $correo]);
-            $u = $stmt->fetch(PDO::FETCH_ASSOC);
+        $idUsuario = (int)$u['id_usuario'];
+        $nombre    = $u['nombre_completo'] ?? $correo;
 
-            if (!$u) {
-                header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?ok=1");
-                exit;
-            }
+        // Inhabilitar tokens anteriores activos
+        $conn->prepare("
+            UPDATE tokens_correo
+            SET usado = 1
+            WHERE id_usuario = :uid AND tipo = 'reset_password' AND usado = 0
+        ")->execute([':uid' => $idUsuario]);
 
-            $idUsuario = (int)$u['id_usuario'];
-            $nombre    = $u['nombre_completo'] ?? $correo;
+        // Crear token nuevo
+        $token = bin2hex(random_bytes(32));
+        $fechaExp = (new DateTime('now'))->modify('+30 minutes')->format('Y-m-d H:i:s');
 
-            $conn->prepare("
-                UPDATE tokens_correo
-                SET usado = 1
-                WHERE id_usuario = :uid AND tipo = 'reset_password' AND usado = 0
-            ")->execute([':uid' => $idUsuario]);
+        $ins = $conn->prepare("
+            INSERT INTO tokens_correo (id_usuario, token, tipo, fecha_expiracion, usado)
+            VALUES (:uid, :t, 'reset_password', :exp, 0)
+        ");
+        $ins->execute([
+            ':uid' => $idUsuario,
+            ':t'   => $token,
+            ':exp' => $fechaExp
+        ]);
 
-            $token = bin2hex(random_bytes(32));
-            $fechaExp = (new DateTime('now'))->modify('+30 minutes')->format('Y-m-d H:i:s');
+        $resetLink = BASE_URL . "src/view/login/reset_password.php?token=" . urlencode($token);
 
-            $ins = $conn->prepare("
-                INSERT INTO tokens_correo (id_usuario, token, tipo, fecha_expiracion, usado)
-                VALUES (:uid, :t, 'reset_password', :exp, 0)
-            ");
-            $ins->execute([
-                ':uid' => $idUsuario,
-                ':t'   => $token,
-                ':exp' => $fechaExp
-            ]);
+        // ✅ Si tu función retorna true/false, validamos. Si no retorna nada, esto no estorba.
+        $enviado = enviarCorreoResetPassword($correo, $nombre, $resetLink);
 
-            $resetLink = BASE_URL . "src/view/login/reset_password.php?token=" . urlencode($token);
-            enviarCorreoResetPassword($correo, $nombre, $resetLink);
-
-            header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?ok=1");
-            exit;
-
-        } catch (\Exception $e) {
+        if ($enviado === false) {
             header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=send");
             exit;
         }
+
+        // ✅ SI EXISTE -> mensaje profesional de enviado
+        header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?ok=sent");
+        exit;
+
+    } catch (\Exception $e) {
+        header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=send");
+        exit;
+    }
     break;
+
 
     /* =====================================================
        ✅ ACTUALIZAR PERFIL (TELÉFONO, DIRECCIÓN Y FOTO)
@@ -2158,6 +2154,79 @@ case 'obtener_rol_funcional_usuario':
 
 break;
 
+        /* =====================================================
+           ✅ OBTENER ASIGNACIONES (BODEGAS / SUBBODEGAS) DE UN USUARIO
+           GET: ?accion=obtener_asignaciones_usuario&id_usuario=#
+           Retorna: { success:true, data: { bodegas: [...], subbodegas: [...] } }
+        ===================================================== */
+        case 'obtener_asignaciones_usuario':
+
+            $id_usuario = (int)($_GET['id_usuario'] ?? 0);
+
+            if ($id_usuario <= 0) {
+                enviarJSON(['success' => false, 'error' => 'id_usuario requerido'], 400);
+            }
+
+            // Permisos: permitir solo Coordinador o el propio usuario ver sus asignaciones
+            $esCoordinador = isset($_SESSION['usuario_cargo']) && $_SESSION['usuario_cargo'] === 'Coordinador';
+            $esPropio = isset($_SESSION['usuario_id']) && (int)$_SESSION['usuario_id'] === $id_usuario;
+
+            if (!$esCoordinador && !$esPropio) {
+                enviarJSON(['success' => false, 'error' => 'No autorizado'], 401);
+            }
+
+            try {
+                // Bodegas: buscar en bodega_encargados (si la tabla existe)
+                $bodegas = [];
+                try {
+                    $stmtB = $conn->prepare(
+                        "SELECT be.id_bodega, b.nombre AS nombre_bodega, be.id_usuario_encargado, be.asignado_por, u.nombre_completo AS asignado_por_nombre, be.fecha_asignacion
+                         FROM bodega_encargados be
+                         LEFT JOIN bodegas b ON b.id_bodega = be.id_bodega
+                         LEFT JOIN usuarios u ON u.id_usuario = be.asignado_por
+                         WHERE be.id_usuario_encargado = ?"
+                    );
+                    $stmtB->execute([$id_usuario]);
+                    $bodegas = $stmtB->fetchAll(PDO::FETCH_ASSOC);
+                } catch (\Exception $e) {
+                    // Tabla puede no existir o fallar; no romper la respuesta
+                    error_log('Error leyendo bodega_encargados: ' . $e->getMessage());
+                    $bodegas = [];
+                }
+
+                // Subbodegas: buscar en subbodega_encargados (activo = 1)
+                $subbodegas = [];
+                try {
+                    $stmtS = $conn->prepare(
+                        "SELECT sb.id_subbodega, sb.nombre_subbodega, sbe.id_usuario, sbe.fecha_asignacion, sbe.activo
+                         FROM subbodega_encargados sbe
+                         LEFT JOIN sub_bodegas sb ON sb.id_subbodega = sbe.id_subbodega
+                         WHERE sbe.id_usuario = ? AND (sbe.activo IS NULL OR sbe.activo = 1)"
+                    );
+                    $stmtS->execute([$id_usuario]);
+                    $subbodegas = $stmtS->fetchAll(PDO::FETCH_ASSOC);
+                } catch (\Exception $e) {
+                    error_log('Error leyendo subbodega_encargados: ' . $e->getMessage());
+                    $subbodegas = [];
+                }
+
+                enviarJSON([
+                    'success' => true,
+                    'data' => [
+                        'bodegas' => $bodegas,
+                        'subbodegas' => $subbodegas,
+                    ]
+                ]);
+            } catch (\Exception $e) {
+                enviarJSON([
+                    'success' => false,
+                    'error' => 'Error obteniendo asignaciones',
+                    'detalle' => $e->getMessage()
+                ], 500);
+            }
+
+        break;
+
 /* =====================================================
    ✅ ASIGNAR ROL FUNCIONAL (TABLA PUENTE)
    POST JSON: ?accion=asignar_rol_funcional
@@ -2211,11 +2280,45 @@ case 'asignar_rol_funcional':
         ");
         $stmtIns->execute([$id_usuario, $id_rol, $asignado_por]);
 
+
+        // ✅ Si mandaron id_bodega → registrar encargado en tabla bodega_encargados
+        if (!empty($data['id_bodega'])) {
+            $idBodega = (int)$data['id_bodega'];
+
+            // Eliminar asignaciones previas del mismo usuario en bodega_encargados
+            $conn->prepare("DELETE FROM bodega_encargados WHERE id_usuario_encargado = ?")
+                 ->execute([$id_usuario]);
+
+            // Insertar la nueva asignación (si la tabla existe)
+            try {
+                $stmtBe = $conn->prepare("INSERT INTO bodega_encargados (id_bodega, id_usuario_encargado, asignado_por, fecha_asignacion) VALUES (?, ?, ?, NOW())");
+                $stmtBe->execute([$idBodega, $id_usuario, $asignado_por]);
+            } catch (\Exception $e) {
+                // Si la tabla no existe o falla, registramos en log pero no rompemos el flujo
+                error_log('Error asignando bodega_encargados: ' . $e->getMessage());
+            }
+        }
+
+        // ✅ Si mandaron id_subbodega → registrar encargado en tabla subbodega_encargados
+        if (!empty($data['id_subbodega'])) {
+            $idSub = (int)$data['id_subbodega'];
+
+            // Eliminar asignaciones previas del mismo usuario en subbodega_encargados
+            $conn->prepare("DELETE FROM subbodega_encargados WHERE id_usuario = ?")
+                 ->execute([$id_usuario]);
+
+            try {
+                $stmtSb = $conn->prepare("INSERT INTO subbodega_encargados (id_subbodega, id_usuario, fecha_asignacion, activo) VALUES (?, ?, NOW(), 1)");
+                $stmtSb->execute([$idSub, $id_usuario]);
+            } catch (\Exception $e) {
+                error_log('Error asignando subbodega_encargados: ' . $e->getMessage());
+            }
+        }
         $conn->commit();
 
         enviarJSON([
             'success' => true,
-            'mensaje' => 'Rol funcional asignado correctamente ✅',
+            'mensaje' => 'Rol funcional asignado correctamente',
             'data' => [
                 'id_usuario' => $id_usuario,
                 'id_rol' => $id_rol,

@@ -9,10 +9,6 @@ include_once BASE_PATH . '/Config/database.php';
 include_once BASE_PATH . '/src/models/bodega.php';
 
 
-
-
-
-
 $model = new BodegaModel($conn);
 $bodegas = $model->listar();
 ?>
@@ -819,7 +815,7 @@ $bodegas = $model->listar();
 
             <div class="grid grid-cols-[120px_auto] gap-3 items-center">
               <span class="text-gray-600">Estado:</span>
-              <span id="detalleSubEstado" class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium w-fit badge-estado-activo text-emerald-700">-</span>
+              <span id="detalleSubEstado" class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium w-fit">-</span>
             </div>
           </div>
 

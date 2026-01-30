@@ -111,4 +111,14 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Description in details modal */
+#detailDescription {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-height: 150px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
 }

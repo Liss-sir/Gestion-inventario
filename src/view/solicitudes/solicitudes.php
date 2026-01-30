@@ -216,7 +216,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                     </div>
 
                     <div>
-                        <label for="subbodega-select" class="text-sm font-medium block mb-1">Subbodega *</label>
+                        <label for="subbodega-select" class="text-sm font-medium block mb-1">Subbodega</label>
                         <select id="subbodega-select" class="input-siga w-full" disabled>
                             <option value="">Seleccione una subbodega</option>
                         </select>
@@ -269,6 +269,11 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
     aceptar: <?= json_encode(canPermiso("solicitudes.aceptar")) ?>,
     rechazar: <?= json_encode(canPermiso("solicitudes.rechazar")) ?>,
     entregar: <?= json_encode(canPermiso("solicitudes.entregar")) ?>,
+  };
+
+  window.SIGA_USER = {
+    id: <?= (int)($_SESSION['usuario']['id_usuario'] ?? 0) ?>,
+    cargo: "<?= addslashes($_SESSION['usuario']['cargo'] ?? '') ?>"
   };
 </script>
 

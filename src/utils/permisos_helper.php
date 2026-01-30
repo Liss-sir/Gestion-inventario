@@ -222,6 +222,12 @@ function permisos_buildPageUrl($page) {
   return $url;
 }
 
+// ✅ Compatibilidad con vistas antiguas que usan hasPermiso()
+function hasPermiso($permiso) {
+  return permisos_tienePermiso($permiso);
+}
+
+
 /**
  * ✅ Sidebar: puede acceder al MÓDULO si tiene algún permiso que empiece por "modulo."
  * Ej: materiales.* / materiales.gestionar / materiales.crear
