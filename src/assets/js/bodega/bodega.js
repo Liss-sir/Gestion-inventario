@@ -1,3 +1,4 @@
+
 document.addEventListener("DOMContentLoaded", () => {
   console.log("[BODEGAS.JS] cargado v2025-12-18_flowbite-alerts+toggle-no-reload+empty-icons-fixed");
 
@@ -248,7 +249,77 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (!isBodegasPage) return;
 
+
+
+    // ============================
+  // ✅ LIMITES DE CARACTERES (BODEGAS)
+  // ============================
+  const LIMITES = {
+    crearCodigo: 20,
+    crearNombre: 80,
+    crearUbicacion: 120,
+
+    subCodigo: 20,
+    subNombre: 80,
+    subDescripcion: 250,
+
+    editCodigoBodega: 20,
+    editNombre: 80,
+    editUbicacion: 120,
+
+    editSubCodigo: 20,
+    editSubNombre: 80,
+    editSubDescripcion: 250,
+  };
+
+  const aplicarLimiteCaracteres = (el, max, { onLimitMessage } = {}) => {
+    if (!el || !max) return;
+
+    el.setAttribute("maxlength", String(max));
+
+    const cortar = () => {
+      const v = String(el.value ?? "");
+      if (v.length > max) {
+        el.value = v.slice(0, max);
+        if (typeof onLimitMessage === "function") onLimitMessage(max);
+      }
+    };
+
+    el.addEventListener("input", cortar);
+    el.addEventListener("paste", () => setTimeout(cortar, 0));
+  };
+
+  const initLimitesBodegas = () => {
+    // Crear bodega
+    aplicarLimiteCaracteres($("crearCodigo"), LIMITES.crearCodigo, {
+      onLimitMessage: (max) => toastInfo(`Máximo ${max} caracteres en Código.`),
+    });
+    aplicarLimiteCaracteres($("crearNombre"), LIMITES.crearNombre, {
+      onLimitMessage: (max) => toastInfo(`Máximo ${max} caracteres en Nombre.`),
+    });
+    aplicarLimiteCaracteres($("crearUbicacion"), LIMITES.crearUbicacion, {
+      onLimitMessage: (max) => toastInfo(`Máximo ${max} caracteres en Ubicación.`),
+    });
+
+    // Crear sub-bodega
+    aplicarLimiteCaracteres($("subCodigo"), LIMITES.subCodigo);
+    aplicarLimiteCaracteres($("subNombre"), LIMITES.subNombre);
+    aplicarLimiteCaracteres($("subDescripcion"), LIMITES.subDescripcion);
+
+    // Editar bodega
+    aplicarLimiteCaracteres($("editCodigoBodega"), LIMITES.editCodigoBodega);
+    aplicarLimiteCaracteres($("editNombre"), LIMITES.editNombre);
+    aplicarLimiteCaracteres($("editUbicacion"), LIMITES.editUbicacion);
+
+    // Editar sub-bodega
+    aplicarLimiteCaracteres($("editSubCodigo"), LIMITES.editSubCodigo);
+    aplicarLimiteCaracteres($("editSubNombre"), LIMITES.editSubNombre);
+    aplicarLimiteCaracteres($("editSubDescripcion"), LIMITES.editSubDescripcion);
+  };
+
   safeIcons();
+
+  initLimitesBodegas();
 
   // ============================
   // LISTA / GRID
@@ -327,6 +398,7 @@ document.addEventListener("DOMContentLoaded", () => {
   btnNuevaBodega?.addEventListener("click", () => {
     closeCreateMenu();
     openModal(modalCrear);
+    initLimitesBodegas();
   });
 
   cerrarModal?.addEventListener("click", () => closeModal(modalCrear));
@@ -441,6 +513,7 @@ document.addEventListener("DOMContentLoaded", () => {
   btnNuevaSubBodega?.addEventListener("click", () => {
     closeCreateMenu();
     openModal(modalCrearSubBodega);
+    initLimitesBodegas();
   });
 
   cerrarModalSub?.addEventListener("click", () => closeModal(modalCrearSubBodega));
@@ -799,6 +872,7 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("editSubDescripcion").value = selectedSubBodega.descripcion || "";
 
       openModal(document.getElementById("modalEditarSubBodega"));
+      initLimitesBodegas();
       return;
     }
 
@@ -1138,6 +1212,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (action === "editar") {
       fillEditar(selectedData);
       openModal(modalEditar);
+      initLimitesBodegas();
       return;
     }
 
