@@ -568,11 +568,11 @@ try {
                 </div>
             </div>
         </div>
-
-        <!-- Create New Program Modal (UI only) -->
+        <!-- Create New Program Modal (2 steps) -->
         <div id="createProgramModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
             <div class="absolute inset-0 bg-black/40" onclick="closeCreateModal()"></div>
             <div class="relative max-w-lg w-full bg-card rounded-lg shadow-lg border border-border p-6">
+                <!-- Step indicator -->
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <h3 class="text-lg font-semibold">Crear Nuevo Programa</h3>
@@ -580,43 +580,104 @@ try {
                     </div>
                     <button onclick="closeCreateModal()" class="text-muted-foreground hover:text-foreground"><i class="fas fa-times"></i></button>
                 </div>
-
-                <form id="createProgramForm" class="space-y-3">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs text-muted-foreground mb-1">Código *</label>
-                            <input id="create_codigo" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="TEC-001">
+                
+                <!-- Step indicator -->
+                <div class="flex mb-6">
+                    <div class="flex-1 text-center">
+                        <div class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+                            1
                         </div>
+                        <p class="text-xs mt-1 text-muted-foreground">Información</p>
+                    </div>
+                    <div class="flex-1 flex items-center justify-center">
+                        <div class="h-0.5 w-full bg-border"></div>
+                    </div>
+                    <div class="flex-1 text-center">
+                        <div class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-border text-muted-foreground text-sm font-semibold">
+                            2
+                        </div>
+                        <p class="text-xs mt-1 text-muted-foreground">Instructores</p>
+                    </div>
+                </div>
+
+                <!-- Step 1: Program Information -->
+                <div id="createStep1" class="space-y-3">
+                    <form id="createProgramForm" class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-muted-foreground mb-1">Código *</label>
+                                <input id="create_codigo" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="TEC-001" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-muted-foreground mb-1">Nivel *</label>
+                                <select id="create_nivel" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" required>
+                                    <option value="Técnico">Técnico</option>
+                                    <option value="Tecnólogo">Tecnólogo</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div>
-                            <label class="block text-xs text-muted-foreground mb-1">Nivel *</label>
-                            <select id="create_nivel" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga">
-                                <option value="Técnico">Técnico</option>
-                                <option value="Tecnólogo">Tecnólogo</option>
-                            </select>
+                            <label class="block text-xs text-muted-foreground mb-1">Nombre del programa *</label>
+                            <input id="create_nombre" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="Técnico en Construcción" required>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs text-muted-foreground mb-1">Descripción *</label>
+                            <textarea id="create_descripcion" rows="4" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="Formación técnica de procesos constructivos" required></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs text-muted-foreground mb-1">Duración (horas) *</label>
+                            <input id="create_duracion" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="Ej: 1200" required>
+                            <p class="text-xs text-muted-foreground mt-1">Solo números, sin texto</p>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Step 2: Instructors Selection -->
+                <div id="createStep2" class="space-y-3 hidden">
+                    <div>
+                        <label class="block text-xs text-muted-foreground mb-1">Seleccionar instructores</label>
+                        <p class="text-xs text-muted-foreground mb-3">Seleccione los instructores que estarán relacionados con este programa</p>
+                        
+                        <!-- Instructors list -->
+                        <div id="instructorsListContainer" class="space-y-2 max-h-60 overflow-y-auto border border-border rounded-md p-3">
+                            <!-- Instructors will be loaded here -->
+                            <div class="text-center py-4 text-muted-foreground">
+                                <i class="fas fa-spinner fa-spin"></i> Cargando instructores...
+                            </div>
+                        </div>
+                        
+                        <!-- Selected instructors summary -->
+                        <div class="mt-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs text-muted-foreground">Total seleccionados:</span>
+                                <span id="selectedCount" class="text-sm font-semibold">0</span>
+                            </div>
+                            <div id="selectedInstructorsList" class="border border-border rounded-md p-3 min-h-20">
+                                <p class="text-sm text-muted-foreground text-center py-4">No hay instructores seleccionados</p>
+                            </div>
                         </div>
                     </div>
+                </div>
 
-                    <div>
-                        <label class="block text-xs text-muted-foreground mb-1">Nombre del programa *</label>
-                        <input id="create_nombre" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="Técnico en Construcción">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs text-muted-foreground mb-1">Descripción *</label>
-                        <textarea id="create_descripcion" rows="4" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="Formación técnica de procesos constructivos"></textarea>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs text-muted-foreground mb-1">Duración (horas) *</label>
-                        <input id="create_duracion" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="Ej: 1200">
-                        <p class="text-xs text-muted-foreground mt-1">Solo números, sin texto</p>
-                    </div>
-
-                    <div class="flex items-center justify-end gap-3 mt-4">
+                <!-- Navigation buttons -->
+                <div class="flex items-center justify-between gap-3 mt-6">
+                    <button type="button" id="btnPrevStep" class="px-4 py-2 border border-border rounded-lg hidden">
+                        <i class="fas fa-arrow-left mr-2"></i> Anterior
+                    </button>
+                    
+                    <div class="flex items-center gap-3 ml-auto">
                         <button type="button" onclick="closeCreateModal()" class="px-4 py-2 border border-border rounded-lg">Cancelar</button>
-                        <button type="submit" class="px-4 py-2 bg-secondary text-primary-foreground rounded-lg">Crear Programa</button>
+                        <button type="button" id="btnNextStep" class="px-4 py-2 bg-secondary text-primary-foreground rounded-lg">
+                            Siguiente <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                        <button type="button" id="btnCreateProgram" class="px-4 py-2 bg-primary text-primary-foreground rounded-lg hidden">
+                            Crear Programa
+                        </button>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
     </main>

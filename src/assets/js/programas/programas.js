@@ -197,6 +197,401 @@ function applyFilterAndUpdateEmptyStates() {
   }
 }
 
+// ========== VARIABLES GLOBALES PARA EL MODAL DE CREACIÓN ==========
+let currentStep = 1;
+let selectedInstructors = []; // Array para almacenar ID de instructores seleccionados
+let allInstructors = []; // Array con todos los instructores disponibles
+
+// ========== FUNCIONES PARA EL MODAL DE 2 PASOS ==========
+
+// Función para obtener todos los instructores
+async function loadAllInstructors() {
+    try {
+        const response = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_instructores`);
+        const result = await response.json();
+        
+        if (result.error) {
+            toastError("Error al cargar instructores: " + result.error);
+            return [];
+        }
+        
+        // Filtrar solo instructores (cargo === 'Instructor')
+        const instructors = Array.isArray(result) ? result.filter(user => 
+            user.cargo === 'Instructor' && user.estado === 'activo'
+        ) : [];
+        
+        allInstructors = instructors;
+        return instructors;
+    } catch (error) {
+        console.error("Error loading instructors:", error);
+        toastError("Error de conexión al cargar instructores");
+        return [];
+    }
+}
+
+// Función para renderizar la lista de instructores
+function renderInstructorsList(instructors) {
+    const container = document.getElementById('instructorsListContainer');
+    if (!container) return;
+    
+    if (!instructors || instructors.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4 text-muted-foreground">
+                <i class="fas fa-users-slash text-lg mb-2"></i>
+                <p>No hay instructores disponibles</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    instructors.forEach(instructor => {
+        const isSelected = selectedInstructors.includes(instructor.id_usuario);
+        html += `
+            <div class="flex items-center justify-between p-2 hover:bg-muted rounded-md transition-colors">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-primary text-sm"></i>
+                    </div>
+                    <div>
+                        <div class="text-sm font-medium">${instructor.nombre_completo}</div>
+                        <div class="text-xs text-muted-foreground">${instructor.correo}</div>
+                    </div>
+                </div>
+                <button type="button" 
+                    onclick="toggleInstructorSelection(${instructor.id_usuario})"
+                    class="w-5 h-5 rounded border ${isSelected ? 'bg-primary border-primary' : 'border-input'} flex items-center justify-center">
+                    ${isSelected ? '<i class="fas fa-check text-white text-xs"></i>' : ''}
+                </button>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// Función para renderizar la lista de instructores seleccionados
+function renderSelectedInstructorsList() {
+    const container = document.getElementById('selectedInstructorsList');
+    const countElement = document.getElementById('selectedCount');
+    
+    if (!container || !countElement) return;
+    
+    countElement.textContent = selectedInstructors.length;
+    
+    if (selectedInstructors.length === 0) {
+        container.innerHTML = '<p class="text-sm text-muted-foreground text-center py-4">No hay instructores seleccionados</p>';
+        return;
+    }
+    
+    let html = '<div class="space-y-2">';
+    selectedInstructors.forEach(instructorId => {
+        const instructor = allInstructors.find(inst => inst.id_usuario == instructorId);
+        if (instructor) {
+            html += `
+                <div class="flex items-center justify-between p-2 bg-primary/5 rounded-md">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-user text-primary text-sm"></i>
+                        <span class="text-sm">${instructor.nombre_completo}</span>
+                    </div>
+                    <button type="button" 
+                        onclick="toggleInstructorSelection(${instructor.id_usuario})"
+                        class="text-muted-foreground hover:text-destructive">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+        }
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+// Función para alternar la selección de un instructor
+function toggleInstructorSelection(instructorId) {
+    const index = selectedInstructors.indexOf(instructorId);
+    
+    if (index === -1) {
+        // Agregar instructor
+        selectedInstructors.push(instructorId);
+    } else {
+        // Remover instructor
+        selectedInstructors.splice(index, 1);
+    }
+    
+    // Re-renderizar ambas listas
+    renderInstructorsList(allInstructors);
+    renderSelectedInstructorsList();
+}
+
+// Función para avanzar al siguiente paso
+function nextStep() {
+    const step1 = document.getElementById('createStep1');
+    const step2 = document.getElementById('createStep2');
+    const btnPrev = document.getElementById('btnPrevStep');
+    const btnNext = document.getElementById('btnNextStep');
+    const btnCreate = document.getElementById('btnCreateProgram');
+    const step1Indicators = document.querySelectorAll('.flex-1:nth-child(1) .w-8');
+    const step2Indicators = document.querySelectorAll('.flex-1:nth-child(3) .w-8');
+    const step1Texts = document.querySelectorAll('.flex-1:nth-child(1) .text-xs');
+    const step2Texts = document.querySelectorAll('.flex-1:nth-child(3) .text-xs');
+    
+    if (currentStep === 1) {
+        // Obtener valores del formulario
+        const codigo = document.getElementById('create_codigo').value.trim();
+        const nombre = document.getElementById('create_nombre').value.trim();
+        const descripcion = document.getElementById('create_descripcion').value.trim();
+        const duracion = document.getElementById('create_duracion').value.trim();
+        
+        // Validar que no estén vacíos
+        if (!codigo || !nombre || !descripcion || !duracion) {
+            toastError('Todos los campos del paso 1 son obligatorios');
+            
+            // Resaltar campos vacíos
+            if (!codigo) document.getElementById('create_codigo').classList.add('border-red-500');
+            if (!nombre) document.getElementById('create_nombre').classList.add('border-red-500');
+            if (!descripcion) document.getElementById('create_descripcion').classList.add('border-red-500');
+            if (!duracion) document.getElementById('create_duracion').classList.add('border-red-500');
+            
+            // Remover clase de error después de 2 segundos
+            setTimeout(() => {
+                document.getElementById('create_codigo').classList.remove('border-red-500');
+                document.getElementById('create_nombre').classList.remove('border-red-500');
+                document.getElementById('create_descripcion').classList.remove('border-red-500');
+                document.getElementById('create_duracion').classList.remove('border-red-500');
+            }, 2000);
+            
+            return;
+        }
+        
+        // Validar duración numérica
+        const duracionNum = parseInt(duracion.replace(/[^\d]/g, ''));
+        if (isNaN(duracionNum) || duracionNum <= 0) {
+            toastError('La duración debe ser un número positivo');
+            document.getElementById('create_duracion').classList.add('border-red-500');
+            setTimeout(() => {
+                document.getElementById('create_duracion').classList.remove('border-red-500');
+            }, 2000);
+            return;
+        }
+        
+        // Validar código básico (mínimo 3 caracteres)
+        if (codigo.length < 3) {
+            toastError('El código debe tener al menos 3 caracteres');
+            document.getElementById('create_codigo').classList.add('border-red-500');
+            setTimeout(() => {
+                document.getElementById('create_codigo').classList.remove('border-red-500');
+            }, 2000);
+            return;
+        }
+        
+        // Validar nombre básico (mínimo 5 caracteres)
+        if (nombre.length < 5) {
+            toastError('El nombre debe tener al menos 5 caracteres');
+            document.getElementById('create_nombre').classList.add('border-red-500');
+            setTimeout(() => {
+                document.getElementById('create_nombre').classList.remove('border-red-500');
+            }, 2000);
+            return;
+        }
+        
+        // Si pasa todas las validaciones, cambiar al paso 2
+        step1.classList.add('hidden');
+        step2.classList.remove('hidden');
+        btnPrev.classList.remove('hidden');
+        btnNext.classList.add('hidden');
+        btnCreate.classList.remove('hidden');
+        
+        // Actualizar indicadores visuales
+        step1Indicators.forEach(el => {
+            el.classList.remove('bg-primary', 'text-primary-foreground');
+            el.classList.add('bg-border', 'text-muted-foreground');
+        });
+        
+        step1Texts.forEach(el => {
+            el.classList.remove('text-primary');
+            el.classList.add('text-muted-foreground');
+        });
+        
+        step2Indicators.forEach(el => {
+            el.classList.remove('bg-border', 'text-muted-foreground');
+            el.classList.add('bg-primary', 'text-primary-foreground');
+        });
+        
+        step2Texts.forEach(el => {
+            el.classList.remove('text-muted-foreground');
+            el.classList.add('text-primary');
+        });
+        
+        currentStep = 2;
+        
+        // Cargar instructores si no se han cargado
+        if (allInstructors.length === 0) {
+            loadAllInstructors().then(instructors => {
+                renderInstructorsList(instructors);
+                renderSelectedInstructorsList();
+            });
+        } else {
+            renderInstructorsList(allInstructors);
+            renderSelectedInstructorsList();
+        }
+    }
+}
+
+// Función para retroceder al paso anterior
+function prevStep() {
+    const step1 = document.getElementById('createStep1');
+    const step2 = document.getElementById('createStep2');
+    const btnPrev = document.getElementById('btnPrevStep');
+    const btnNext = document.getElementById('btnNextStep');
+    const btnCreate = document.getElementById('btnCreateProgram');
+    const step1Indicators = document.querySelectorAll('.flex-1:nth-child(1) .w-8');
+    const step2Indicators = document.querySelectorAll('.flex-1:nth-child(3) .w-8');
+    const step1Texts = document.querySelectorAll('.flex-1:nth-child(1) .text-xs');
+    const step2Texts = document.querySelectorAll('.flex-1:nth-child(3) .text-xs');
+    
+    if (currentStep === 2) {
+        // Cambiar al paso 1
+        step2.classList.add('hidden');
+        step1.classList.remove('hidden');
+        btnPrev.classList.add('hidden');
+        btnNext.classList.remove('hidden');
+        btnCreate.classList.add('hidden');
+        
+        // Actualizar indicadores
+        step1Indicators.forEach(el => el.classList.replace('bg-border', 'bg-primary'));
+        step1Indicators.forEach(el => el.classList.replace('text-muted-foreground', 'text-primary-foreground'));
+        step1Texts.forEach(el => el.classList.replace('text-muted-foreground', 'text-primary'));
+        
+        step2Indicators.forEach(el => el.classList.replace('bg-primary', 'bg-border'));
+        step2Indicators.forEach(el => el.classList.replace('text-primary-foreground', 'text-muted-foreground'));
+        step2Texts.forEach(el => el.classList.replace('text-primary', 'text-muted-foreground'));
+        
+        currentStep = 1;
+    }
+}
+
+// Función para crear programa con instructores
+async function createProgramWithInstructors() {
+    // Obtener datos del formulario
+    const codigo = document.getElementById('create_codigo').value.trim();
+    const nombre = document.getElementById('create_nombre').value.trim();
+    const nivel = document.getElementById('create_nivel').value;
+    const descripcion = document.getElementById('create_descripcion').value.trim();
+    const duracionText = document.getElementById('create_duracion').value.trim();
+    const duracionHoras = parseInt(duracionText.replace(/[^\d]/g, '')) || 0;
+    
+    const programData = {
+        codigo_programa: codigo,
+        nombre_programa: nombre,
+        nivel_programa: nivel,
+        descripcion_programa: descripcion,
+        duracion_horas: duracionHoras,
+        estado: 1,
+    };
+    
+    console.log("Creando programa con datos:", programData);
+    console.log("Instructores seleccionados:", selectedInstructors);
+    
+    // Validar datos (no validateProgramData para incluir instructores)
+    if (!validateProgramData(programData, false, null)) {
+        return;
+    }
+    
+    // Validar que haya al menos un instructor seleccionado
+    if (selectedInstructors.length === 0) {
+        const confirmResult = confirm("No ha seleccionado ningún instructor para este programa. ¿Desea continuar de todos modos?");
+        if (!confirmResult) {
+            return;
+        }
+    }
+    
+    try {
+        // 1. Crear el programa primero
+        const createResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=crear`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(programData),
+        });
+        
+        const createResult = await createResponse.json();
+        console.log("Resultado creación programa:", createResult);
+        
+        if (createResult.error) {
+            toastError("Error al crear programa: " + createResult.error);
+            return;
+        }
+        
+        // Obtener el ID del programa creado (necesitamos ajustar el controlador para devolverlo)
+        if (!createResult.id_programa) {
+            // Si el controlador no devuelve el ID, necesitamos buscarlo por código
+            try {
+                const searchResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_por_codigo&codigo=${encodeURIComponent(codigo)}`);
+                const searchResult = await searchResponse.json();
+                
+                if (searchResult.id_programa) {
+                    createResult.id_programa = searchResult.id_programa;
+                } else {
+                    // Fallback: asumir que fue creado y hacer reload
+                    toastSuccess("Programa creado correctamente");
+                    closeCreateModal();
+                    setTimeout(() => location.reload(), 1500);
+                    return;
+                }
+            } catch (searchError) {
+                console.error("Error buscando programa:", searchError);
+                toastSuccess("Programa creado correctamente");
+                closeCreateModal();
+                setTimeout(() => location.reload(), 1500);
+                return;
+            }
+        }
+        
+        const programId = createResult.id_programa;
+        
+        // 2. Asociar instructores al programa (si hay instructores seleccionados)
+        if (selectedInstructors.length > 0) {
+            try {
+                const instructorsData = {
+                    id_programa: programId,
+                    instructores_ids: selectedInstructors
+                };
+                
+                const instructorsResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=asignar_instructores`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(instructorsData),
+                });
+                
+                const instructorsResult = await instructorsResponse.json();
+                console.log("Resultado asignación instructores:", instructorsResult);
+                
+                if (instructorsResult.error) {
+                    toastError("Programa creado pero error al asignar instructores: " + instructorsResult.error);
+                } else {
+                    toastSuccess("Programa creado e instructores asignados correctamente");
+                }
+            } catch (instructorError) {
+                console.error("Error asignando instructores:", instructorError);
+                toastError("Programa creado pero error al asignar instructores");
+            }
+        } else {
+            toastSuccess("Programa creado correctamente");
+        }
+        
+        // 3. Cerrar modal y recargar
+        closeCreateModal();
+        setTimeout(() => {
+            location.reload();
+        }, 1500);
+        
+    } catch (error) {
+        console.error("[v0] Error creando programa:", error);
+        toastError("Error de conexión al crear el programa");
+    }
+}
+
 // Function to switch between table and grid view
 function toggleView(view) {
   const tableView = document.getElementById("tableView")
@@ -728,7 +1123,7 @@ function hasChanges(originalData, currentData) {
   return JSON.stringify(originalNormalized) !== JSON.stringify(currentNormalized);
 }
 
-// ************************************** Programs Creation ***********************************************
+// ************************************** Main DOMContentLoaded ***********************************************
 
 document.addEventListener("DOMContentLoaded", () => {
   const pathParts = window.location.pathname.split("/")
@@ -759,7 +1154,26 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Create Program Form
+  // ========== MODAL DE CREACIÓN (2 PASOS) ==========
+  
+  // Agregar event listeners para los botones del modal de creación
+  const btnNextStep = document.getElementById('btnNextStep');
+  const btnPrevStep = document.getElementById('btnPrevStep');
+  const btnCreateProgram = document.getElementById('btnCreateProgram');
+  
+  if (btnNextStep) {
+    btnNextStep.addEventListener('click', nextStep);
+  }
+  
+  if (btnPrevStep) {
+    btnPrevStep.addEventListener('click', prevStep);
+  }
+  
+  if (btnCreateProgram) {
+    btnCreateProgram.addEventListener('click', createProgramWithInstructors);
+  }
+
+  // Create Program Form (paso 1)
   const createForm = document.getElementById("createProgramForm")
   if (createForm) {
     // Only allow numbers in the duration field
@@ -769,60 +1183,6 @@ document.addEventListener("DOMContentLoaded", () => {
         this.value = this.value.replace(/[^\d]/g, '');
       });
     }
-
-    createForm.addEventListener("submit", async (e) => {
-      e.preventDefault()
-
-      // Get form data
-      const codigo = document.getElementById("create_codigo").value.trim();
-      const nombre = document.getElementById("create_nombre").value.trim();
-      const nivel = document.getElementById("create_nivel").value;
-      const descripcion = document.getElementById("create_descripcion").value.trim();
-      const duracionText = document.getElementById("create_duracion").value.trim();
-      
-      // Extract hours number from text
-      const duracionHoras = Number.parseInt(duracionText.replace(/[^\d]/g, "")) || 0;
-      
-      const data = {
-        codigo_programa: codigo,
-        nombre_programa: nombre,
-        nivel_programa: nivel,
-        descripcion_programa: descripcion,
-        duracion_horas: duracionHoras,
-        estado: 1,
-      }
-
-      console.log("[v0] Creating program with data:", data)
-
-      // Validate data (no excludeIndex for create operation)
-      if (!validateProgramData(data, false, null)) {
-        return;
-      }
-
-      try {
-        const response = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=crear`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        })
-
-        const result = await response.json()
-        console.log("[v0] Create response:", result)
-
-        if (result.mensaje) {
-          toastSuccess("Programa creado correctamente");
-          closeCreateModal();
-          setTimeout(() => {
-            location.reload();
-          }, 1500);
-        } else {
-          toastError("Error: " + (result.error || "No se pudo crear el programa"));
-        }
-      } catch (error) {
-        console.error("[v0] Error creating program:", error);
-        toastError("Error de conexión al crear el programa");
-      }
-    })
   }
 
   // ************************************** Programs Update ***********************************************
@@ -1084,4 +1444,76 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
   });
+
+  // ========== RESETEAR ESTADO DEL MODAL CUANDO SE CIERRA ==========
+  // Resetear estado del modal cuando se cierra
+  const createModal = document.getElementById('createProgramModal');
+  if (createModal) {
+    // Override closeCreateModal para resetear estado
+    const originalCloseCreateModal = closeCreateModal;
+    window.closeCreateModal = function() {
+      // Resetear estado
+      currentStep = 1;
+      selectedInstructors = [];
+      allInstructors = [];
+      
+      // Resetear UI
+      const step1 = document.getElementById('createStep1');
+      const step2 = document.getElementById('createStep2');
+      const btnPrev = document.getElementById('btnPrevStep');
+      const btnNext = document.getElementById('btnNextStep');
+      const btnCreate = document.getElementById('btnCreateProgram');
+      
+      if (step1 && step2) {
+        step1.classList.remove('hidden');
+        step2.classList.add('hidden');
+      }
+      
+      if (btnPrev) btnPrev.classList.add('hidden');
+      if (btnNext) btnNext.classList.remove('hidden');
+      if (btnCreate) btnCreate.classList.add('hidden');
+      
+      // Resetear indicadores
+      const step1Indicators = document.querySelectorAll('.flex-1:nth-child(1) .w-8');
+      const step2Indicators = document.querySelectorAll('.flex-1:nth-child(3) .w-8');
+      const step1Texts = document.querySelectorAll('.flex-1:nth-child(1) .text-xs');
+      const step2Texts = document.querySelectorAll('.flex-1:nth-child(3) .text-xs');
+      
+      step1Indicators.forEach(el => {
+        el.classList.replace('bg-border', 'bg-primary');
+        el.classList.replace('text-muted-foreground', 'text-primary-foreground');
+      });
+      step1Texts.forEach(el => el.classList.replace('text-muted-foreground', 'text-primary'));
+      
+      step2Indicators.forEach(el => {
+        el.classList.replace('bg-primary', 'bg-border');
+        el.classList.replace('text-primary-foreground', 'text-muted-foreground');
+      });
+      step2Texts.forEach(el => el.classList.replace('text-primary', 'text-muted-foreground'));
+      
+      // Resetear formulario
+      const form = document.getElementById('createProgramForm');
+      if (form) form.reset();
+      
+      // Limpiar listas
+      const instructorsList = document.getElementById('instructorsListContainer');
+      const selectedList = document.getElementById('selectedInstructorsList');
+      const selectedCount = document.getElementById('selectedCount');
+      
+      if (instructorsList) {
+        instructorsList.innerHTML = '<div class="text-center py-4 text-muted-foreground"><i class="fas fa-spinner fa-spin"></i> Cargando instructores...</div>';
+      }
+      
+      if (selectedList) {
+        selectedList.innerHTML = '<p class="text-sm text-muted-foreground text-center py-4">No hay instructores seleccionados</p>';
+      }
+      
+      if (selectedCount) {
+        selectedCount.textContent = '0';
+      }
+      
+      // Llamar a la función original
+      originalCloseCreateModal();
+    };
+  }
 })
