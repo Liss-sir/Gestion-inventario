@@ -115,6 +115,70 @@ const selectores = {
 };
 
 // ============================================================
+// ✅ LÍMITES DE CARACTERES (front-end only)
+// ============================================================
+const LIMITES = {
+  // Ajusta a tu gusto / lo que soporte tu BD
+  observaciones: 500,      // textarea principal
+  motivoRechazo: 300,      // textarea del modal rechazo
+  cantidad: 6,             // input cantidad (ej: hasta 999999)
+};
+
+// Aplica maxlength + recorta en input/paste (por seguridad)
+function aplicarLimiteCaracteres(el, max, { onLimitMessage } = {}) {
+  if (!el || !max) return;
+
+  // maxlength nativo
+  el.setAttribute("maxlength", String(max));
+
+  const cortar = () => {
+    const v = String(el.value ?? "");
+    if (v.length > max) {
+      el.value = v.slice(0, max);
+      if (typeof onLimitMessage === "function") onLimitMessage(max);
+    }
+  };
+
+  // recorta al escribir/pegar
+  el.addEventListener("input", cortar);
+  el.addEventListener("paste", () => setTimeout(cortar, 0));
+}
+
+// Solo números y máximo dígitos (para cantidad)
+function aplicarLimiteNumerico(el, maxDigits = 6) {
+  if (!el) return;
+
+  el.setAttribute("inputmode", "numeric");
+  el.setAttribute("maxlength", String(maxDigits));
+
+  el.addEventListener("input", () => {
+    // deja solo dígitos
+    let v = String(el.value ?? "").replace(/\D+/g, "");
+    if (v.length > maxDigits) v = v.slice(0, maxDigits);
+    el.value = v;
+  });
+
+  el.addEventListener("paste", () => {
+    setTimeout(() => {
+      let v = String(el.value ?? "").replace(/\D+/g, "");
+      if (v.length > maxDigits) v = v.slice(0, maxDigits);
+      el.value = v;
+    }, 0);
+  });
+}
+
+// Inicializa límites para los campos existentes del formulario
+function initLimitesCaracteres() {
+  // Observaciones (form principal)
+  aplicarLimiteCaracteres(selectores.textareaObservaciones, LIMITES.observaciones, {
+    onLimitMessage: (max) => toastInfo(`Máximo ${max} caracteres en Observaciones.`),
+  });
+
+  // Cantidad (solo dígitos, máximo N dígitos)
+  aplicarLimiteNumerico(selectores.inputCantidad, LIMITES.cantidad);
+}
+
+// ============================================================
 //  ✅ UTILIDADES SEGURAS
 // ============================================================
 function safeLucideCreateIcons() {
@@ -323,6 +387,10 @@ function pedirMotivoRechazo() {
     root.classList.add("flex");
 
     const input = root.querySelector("#sol-motivo-input");
+    aplicarLimiteCaracteres(input, LIMITES.motivoRechazo, {
+      onLimitMessage: (max) => toastInfo(`Máximo ${max} caracteres en el motivo.`),
+    });
+
     const backdrop = root.querySelector("[data-motivo-backdrop]");
 
     const cleanup = () => {
@@ -1740,6 +1808,7 @@ const app = {
 document.addEventListener("DOMContentLoaded", () => {
   safeLucideCreateIcons();
   console.log("[SOLICITUDES] API =", API);
+  initLimitesCaracteres();
   app.inicializar();
 
   // ✅ Si no tiene permiso para crear, ocultamos el botón
