@@ -53,7 +53,7 @@ const USUARIO = (() => {
 
   return {
     raw: u,
-    id: id ? parseInt(id, 10) : null,
+    id: (id !== null && id !== undefined) ? parseInt(id, 10) : null,
     cargo: String(cargo || "").trim(),
   };
 })();
@@ -490,17 +490,17 @@ const utilidades = {
   },
 
   mostrarError(msg) {
-    console.error("❌", msg);
+    console.error(msg);
     toastError(msg);
   },
 
   mostrarExito(msg) {
-    console.log("✅", msg);
+    console.log(msg);
     toastSuccess(msg);
   },
 
   mostrarInfo(msg) {
-    console.log("ℹ️", msg);
+    console.log(msg);
     toastInfo(msg);
   },
 };
@@ -1686,7 +1686,7 @@ const modal = {
       return;
     }
 
-    if (!USUARIO?.id) {
+    if (!USUARIO?.id || USUARIO.id <= 0) {
       utilidades.mostrarError("No se pudo identificar el usuario en sesión.");
       return;
     }
