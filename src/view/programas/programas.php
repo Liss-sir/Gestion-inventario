@@ -73,7 +73,7 @@ try {
 <body class="bg-background text-foreground min-h-screen flex flex-col">
     
     <!-- MAIN CONTENT - Without header or sidebar (separate components) -->
-    <main class="p-6 transition-all duration-300"
+    <main class="p-6 pt-0 transition-all duration-300"
       style="margin-left: <?= $collapsed ? '70px' : '260px' ?>;">
         <?php
             // include_once __DIR__ . '/../../includes/footer.php';
