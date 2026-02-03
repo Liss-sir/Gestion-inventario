@@ -1101,6 +1101,38 @@ async function asignarRolFuncional() {
   }
 }
 
+/**
+ * Desasigna el rol funcional de un usuario (elimina la relación)
+ */
+async function desasignarRolFuncional() {
+  if (!hiddenAsignarRolUserId) return;
+
+  const id_usuario = String(hiddenAsignarRolUserId.value || "").trim();
+
+  if (!id_usuario) {
+    toastError("No se detectó el usuario para desasignar rol.");
+    return;
+  }
+
+  try {
+    const data = await callApi(`${API_URL}?accion=desasignar_rol_funcional`, { id_usuario });
+
+    console.log("Respuesta desasignar_rol_funcional:", data);
+
+    if (data?.success === false || data?.error) {
+      toastError(data?.error || "No se pudo quitar el rol funcional.");
+      return;
+    }
+
+    toastSuccess(data?.mensaje || "Rol funcional quitado correctamente");
+    closeModalAsignarRol();
+    await cargarUsuarios();
+  } catch (e) {
+    console.error("Error desasignando rol funcional:", e);
+    toastError("Error de red/servidor al quitar el rol funcional.");
+  }
+}
+
 
 async function obtenerRolFuncionalUsuario(id_usuario) {
   try {
@@ -2039,6 +2071,21 @@ tr.innerHTML = `
         </button>
         `}
 
+        ${user.id_rol_funcional ? `
+        <button
+          type="button"
+          class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
+          data-action="quitar_rol"
+          data-id="${user.id}"
+        >
+          <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          Quitar rol
+        </button>
+        ` : ''}
+
         <hr class="border-border my-1">
 
         <button
@@ -2168,6 +2215,21 @@ tr.innerHTML = `
         Asignar rol
       </button>
         `}
+
+        ${user.id_rol_funcional ? `
+        <button
+          type="button"
+          class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
+          data-action="quitar_rol"
+          data-id="${user.id}"
+        >
+          <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+          Quitar rol
+        </button>
+        ` : ''}
 
                 <hr class="border-border my-1">
                 <button
@@ -2409,6 +2471,10 @@ tr.innerHTML = `
       else if (action === "editar") openModalUsuario(user);
       else if (action === "toggle") toggleStatus(id);
       else if (action === "asignar_rol") openModalAsignarRol(user);
+      else if (action === "quitar_rol") {
+        // Abrir modal de confirmación (manejado por funciones abajo)
+        openConfirmarQuitarRol(user);
+      }
 
       closeAllMenus();
       return;
@@ -2502,6 +2568,9 @@ safeOn(btnGuardarAsignarRol, "click", async () => {
   await asignarRolFuncional();
 });
 
+// Listener para quitar rol desde el modal
+// (antes había un listener para btnQuitarAsignarRol, ahora usamos el modal de confirmación)
+
 // Cuando cambia el rol seleccionado en el modal de asignar rol
 safeOn(selectAsignarRol, "change", (e) => {
   const selectedText =
@@ -2552,6 +2621,114 @@ safeOn(selectBodegaAsignarRol, 'change', (e) => {
 if (modalAsignarRol) {
   modalAsignarRol.addEventListener("click", (e) => {
     if (e.target === modalAsignarRol) closeModalAsignarRol();
+  });
+}
+
+// =========================
+// MODAL CONFIRMACIÓN: QUITAR ROL FUNCIONAL
+// =========================
+const modalConfirmarQuitarRol = document.getElementById('modalConfirmarQuitarRol');
+const btnCerrarModalConfirmarQuitarRol = document.getElementById('btnCerrarModalConfirmarQuitarRol');
+const btnCancelarModalConfirmarQuitarRol = document.getElementById('btnCancelarModalConfirmarQuitarRol');
+const btnConfirmarQuitarRol = document.getElementById('btnConfirmarQuitarRol');
+const hiddenConfirmarQuitarUserId = document.getElementById('hiddenConfirmarQuitarUserId');
+const confirmarQuitarNombreUsuario = document.getElementById('confirmarQuitarNombreUsuario');
+const confirmarQuitarRolFuncional = document.getElementById('confirmarQuitarRolFuncional');
+
+function openConfirmarQuitarRol(user) {
+  if (!modalConfirmarQuitarRol) return;
+  modalConfirmarQuitarRol.classList.remove('hidden');
+  modalConfirmarQuitarRol.classList.add('active');
+
+  try {
+  if (window.lucide && typeof window.lucide.replace === "function") {
+    window.lucide.replace({
+      width: 18,
+      height: 18,
+      attrs: { "stroke-width": "1.5" } // ✅ más minimalista
+    });
+  }
+} catch (e) {}
+
+
+  // Animación de entrada (scale + fade)
+  try {
+    const inner = document.getElementById('modalConfirmarQuitarRolInner');
+    if (inner) {
+      inner.classList.remove('scale-95', 'opacity-0');
+      inner.classList.add('scale-100', 'opacity-100');
+    }
+  } catch (e) {}
+
+  if (hiddenConfirmarQuitarUserId) hiddenConfirmarQuitarUserId.value = String(user.id);
+  if (confirmarQuitarNombreUsuario) confirmarQuitarNombreUsuario.textContent = user.nombre_completo || '--';
+  // Mostrar rol funcional (si está disponible en el objeto user o en el mapa cargado)
+  if (typeof confirmarQuitarRolFuncional !== 'undefined' && confirmarQuitarRolFuncional) {
+    const rawRol = user.rol_funcional || user.nombre_rol_funcional || (user.id_rol_funcional ? rolesFuncionalesMap[String(user.id_rol_funcional)] : '') || '';
+    const rolText = rawRol ? formatRolFuncionalLabel(rawRol) : '';
+    confirmarQuitarRolFuncional.textContent = rolText || 'Sin rol asignado';
+  }
+
+  // Renderizar iconos Lucide si la librería está cargada
+  try {
+    if (window.lucide && typeof window.lucide.replace === 'function') {
+      window.lucide.replace({ width: 18, height: 18 });
+    }
+  } catch (e) {
+    // no-fatal
+  }
+}
+
+function closeConfirmarQuitarRol() {
+  if (!modalConfirmarQuitarRol) return;
+  // Animación de salida
+  try {
+    const inner = document.getElementById('modalConfirmarQuitarRolInner');
+    if (inner) {
+      inner.classList.add('scale-95', 'opacity-0');
+      inner.classList.remove('scale-100', 'opacity-100');
+    }
+  } catch (e) {}
+
+  setTimeout(() => {
+    modalConfirmarQuitarRol.classList.add('hidden');
+    modalConfirmarQuitarRol.classList.remove('active');
+  }, 180);
+  if (hiddenConfirmarQuitarUserId) hiddenConfirmarQuitarUserId.value = '';
+  if (confirmarQuitarNombreUsuario) confirmarQuitarNombreUsuario.textContent = '--';
+}
+
+safeOn(btnCerrarModalConfirmarQuitarRol, 'click', closeConfirmarQuitarRol);
+safeOn(btnCancelarModalConfirmarQuitarRol, 'click', closeConfirmarQuitarRol);
+
+safeOn(btnConfirmarQuitarRol, 'click', async () => {
+  const id = hiddenConfirmarQuitarUserId ? String(hiddenConfirmarQuitarUserId.value || '') : '';
+  if (!id) {
+    toastError('Usuario no identificado para quitar rol.');
+    closeConfirmarQuitarRol();
+    return;
+  }
+
+  try {
+    const data = await callApi(`${API_URL}?accion=desasignar_rol_funcional`, { id_usuario: id });
+    if (data?.success === false || data?.error) {
+      toastError(data?.error || 'No se pudo quitar el rol funcional.');
+    } else {
+      toastSuccess(data?.mensaje || 'Rol funcional quitado correctamente');
+      await cargarUsuarios();
+    }
+  } catch (e) {
+    console.error('Error en confirmar quitar rol:', e);
+    toastError('Error de red/servidor al quitar el rol funcional.');
+  } finally {
+    closeConfirmarQuitarRol();
+  }
+});
+
+// Cerrar modal confirmar si das click fuera del cuadro (overlay)
+if (modalConfirmarQuitarRol) {
+  modalConfirmarQuitarRol.addEventListener('click', (e) => {
+    if (e.target === modalConfirmarQuitarRol) closeConfirmarQuitarRol();
   });
 }
 
