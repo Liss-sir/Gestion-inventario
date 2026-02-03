@@ -260,7 +260,7 @@ function renderInstructorsList(instructors) {
                 </div>
                 <button type="button" 
                     onclick="toggleInstructorSelection(${instructor.id_usuario})"
-                    class="w-5 h-5 rounded border ${isSelected ? 'bg-primary border-primary' : 'border-input'} flex items-center justify-center">
+                    class="w-5 h-5 rounded border ${isSelected ? 'bg-secondary border-primary' : 'border-gray-400 border-2'} flex items-center justify-center">
                     ${isSelected ? '<i class="fas fa-check text-white text-xs"></i>' : ''}
                 </button>
             </div>
@@ -405,23 +405,23 @@ function nextStep() {
         
         // Actualizar indicadores visuales
         step1Indicators.forEach(el => {
-            el.classList.remove('bg-primary', 'text-primary-foreground');
+            el.classList.remove('bg-secondary', 'text-primary-foreground');
             el.classList.add('bg-border', 'text-muted-foreground');
         });
         
         step1Texts.forEach(el => {
-            el.classList.remove('text-primary');
+            el.classList.remove('text-secondary');
             el.classList.add('text-muted-foreground');
         });
         
         step2Indicators.forEach(el => {
             el.classList.remove('bg-border', 'text-muted-foreground');
-            el.classList.add('bg-primary', 'text-primary-foreground');
+            el.classList.add('bg-secondary', 'text-primary-foreground');
         });
         
         step2Texts.forEach(el => {
             el.classList.remove('text-muted-foreground');
-            el.classList.add('text-primary');
+            el.classList.add('text-secondary');
         });
         
         currentStep = 2;
@@ -460,13 +460,13 @@ function prevStep() {
         btnCreate.classList.add('hidden');
         
         // Actualizar indicadores
-        step1Indicators.forEach(el => el.classList.replace('bg-border', 'bg-primary'));
+        step1Indicators.forEach(el => el.classList.replace('bg-border', 'bg-secondary'));
         step1Indicators.forEach(el => el.classList.replace('text-muted-foreground', 'text-primary-foreground'));
-        step1Texts.forEach(el => el.classList.replace('text-muted-foreground', 'text-primary'));
+        step1Texts.forEach(el => el.classList.replace('text-muted-foreground', 'text-secondary'));
         
-        step2Indicators.forEach(el => el.classList.replace('bg-primary', 'bg-border'));
+        step2Indicators.forEach(el => el.classList.replace('bg-secondary', 'bg-border'));
         step2Indicators.forEach(el => el.classList.replace('text-primary-foreground', 'text-muted-foreground'));
-        step2Texts.forEach(el => el.classList.replace('text-primary', 'text-muted-foreground'));
+        step2Texts.forEach(el => el.classList.replace('text-secondary', 'text-muted-foreground'));
         
         currentStep = 1;
     }
@@ -501,10 +501,8 @@ async function createProgramWithInstructors() {
     
     // Validar que haya al menos un instructor seleccionado
     if (selectedInstructors.length === 0) {
-        const confirmResult = confirm("No ha seleccionado ningún instructor para este programa. ¿Desea continuar de todos modos?");
-        if (!confirmResult) {
+        toastError("El programa de formación a crear debe de contar con al menos un instructor vinculado");
             return;
-        }
     }
     
     try {
@@ -590,6 +588,555 @@ async function createProgramWithInstructors() {
         console.error("[v0] Error creando programa:", error);
         toastError("Error de conexión al crear el programa");
     }
+}
+
+// ========== VARIABLES GLOBALES PARA EL MODAL DE EDICIÓN ==========
+let currentEditStep = 1;
+let selectedEditInstructors = [];
+let allEditInstructors = [];
+let editingProgramId = null;
+let originalInstructorCount = 0; // Guardar cantidad original de instructores
+
+// ========== FUNCIONES PARA EL MODAL DE EDICIÓN (2 PASOS) ==========
+
+// Función para abrir el modal de edición con 2 pasos
+async function openEditModal(index) {
+    const row = document.querySelector(`tr[data-index="${index}"]`) || document.querySelector(`div[data-index="${index}"]`);
+    
+    if (!row) {
+        toastError("No se encontró el programa para editar");
+        return;
+    }
+
+    // Obtener datos del programa
+    const idPrograma = row.dataset.idPrograma;
+    const codigo = row.dataset.codigo;
+    const nombre = row.dataset.nombre;
+    const descripcion = row.dataset.descripcion;
+    const nivel = row.dataset.nivel;
+    const duracion = row.dataset.duracion.replace(/[^\d]/g, '');
+    const estado = row.dataset.estado;
+
+    // Guardar ID del programa que estamos editando
+    editingProgramId = idPrograma;
+
+    // Resetear estado del modal
+    currentEditStep = 1;
+    selectedEditInstructors = [];
+    allEditInstructors = [];
+    originalInstructorCount = 0;
+
+    // Llenar campos del formulario
+    document.getElementById("edit_id_programa").value = idPrograma;
+    document.getElementById("edit_index").value = index;
+    document.getElementById("edit_codigo").value = codigo;
+    document.getElementById("edit_nombre").value = nombre;
+    document.getElementById("edit_descripcion").value = descripcion;
+    document.getElementById("edit_nivel").value = nivel;
+    document.getElementById("edit_duracion").value = duracion;
+
+    // Actualizar UI del paso 1
+    document.getElementById('editStep1').classList.remove('hidden');
+    document.getElementById('editStep2').classList.add('hidden');
+    document.getElementById('editBtnPrevStep').classList.add('hidden');
+    document.getElementById('editBtnNextStep').classList.remove('hidden');
+    document.getElementById('editBtnSaveProgram').classList.add('hidden');
+
+    // Actualizar indicadores
+    document.getElementById('editStep1Indicator').classList.replace('bg-border', 'bg-secondary');
+    document.getElementById('editStep1Indicator').classList.replace('text-muted-foreground', 'text-primary-foreground');
+    document.getElementById('editStep2Indicator').classList.replace('bg-secondary', 'bg-border');
+    document.getElementById('editStep2Indicator').classList.replace('text-primary-foreground', 'text-muted-foreground');
+
+    // Cargar instructores existentes del programa
+    await loadProgramInstructors(idPrograma);
+
+    // Mostrar modal
+    const modal = document.getElementById("editProgramModal");
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+}
+
+// Función para cargar instructores del programa
+async function loadProgramInstructors(programId) {
+    try {
+        // Obtener instructores actuales del programa
+        const programInstructorsResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_instructores_programa&id_programa=${programId}`);
+        const programInstructors = await programInstructorsResponse.json();
+
+        // Obtener todos los instructores disponibles
+        const allInstructorsResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_instructores`);
+        const allInstructors = await allInstructorsResponse.json();
+
+        if (programInstructors.error || allInstructors.error) {
+            toastError("Error al cargar instructores: " + (programInstructors.error || allInstructors.error));
+            return;
+        }
+
+        // Guardar instructores
+        allEditInstructors = Array.isArray(allInstructors) ? allInstructors : [];
+        
+        // Establecer instructores seleccionados
+        selectedEditInstructors = Array.isArray(programInstructors) 
+            ? programInstructors.map(instructor => instructor.id_usuario)
+            : [];
+        
+        // Guardar cantidad original de instructores
+        originalInstructorCount = selectedEditInstructors.length;
+
+        // Renderizar listas
+        renderEditInstructorsList(allEditInstructors);
+        renderEditSelectedInstructorsList();
+        
+    } catch (error) {
+        console.error("Error loading program instructors:", error);
+        toastError("Error de conexión al cargar instructores");
+    }
+}
+
+// Función para renderizar la lista de instructores en edición
+function renderEditInstructorsList(instructors) {
+    const container = document.getElementById('editInstructorsListContainer');
+    if (!container) return;
+    
+    if (!instructors || instructors.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4 text-muted-foreground">
+                <i class="fas fa-users-slash text-lg mb-2"></i>
+                <p>No hay instructores disponibles</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    instructors.forEach(instructor => {
+        const isSelected = selectedEditInstructors.includes(instructor.id_usuario);
+        // Deshabilitar botón si solo queda 1 instructor seleccionado y este es el último
+        const isDisabled = selectedEditInstructors.length === 1 && isSelected;
+        
+        html += `
+            <div class="flex items-center justify-between p-2 hover:bg-muted rounded-md transition-colors">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-primary text-sm"></i>
+                    </div>
+                    <div>
+                        <div class="text-sm font-medium">${instructor.nombre_completo}</div>
+                        <div class="text-xs text-muted-foreground">${instructor.correo}</div>
+                    </div>
+                </div>
+                <button type="button" 
+                    onclick="toggleEditInstructorSelection(${instructor.id_usuario})"
+                    class="w-5 h-5 rounded border ${isSelected ? 'bg-secondary border-primary' : 'border-gray-400 border-2'} flex items-center justify-center ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}"
+                    ${isDisabled ? 'disabled' : ''}>
+                    ${isSelected ? '<i class="fas fa-check text-white text-xs"></i>' : ''}
+                </button>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// Función para renderizar la lista de instructores seleccionados en edición
+function renderEditSelectedInstructorsList() {
+    const container = document.getElementById('editSelectedInstructorsList');
+    const countElement = document.getElementById('editSelectedCount');
+    
+    if (!container || !countElement) return;
+    
+    countElement.textContent = selectedEditInstructors.length;
+    
+    if (selectedEditInstructors.length === 0) {
+        container.innerHTML = '<p class="text-sm text-muted-foreground text-center py-4">No hay instructores seleccionados</p>';
+        return;
+    }
+    
+    let html = '<div class="space-y-2">';
+    selectedEditInstructors.forEach(instructorId => {
+        const instructor = allEditInstructors.find(inst => inst.id_usuario == instructorId);
+        if (instructor) {
+            // Verificar si es el último instructor (no se puede eliminar)
+            const isLastInstructor = selectedEditInstructors.length === 1;
+            
+            html += `
+                <div class="flex items-center justify-between p-2 ${isLastInstructor ? 'bg-warning/10 border border-warning/20' : 'bg-primary/5'} rounded-md">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-user ${isLastInstructor ? 'text-warning' : 'text-primary'} text-sm"></i>
+                        <span class="text-sm ${isLastInstructor ? 'text-warning font-medium' : ''}">${instructor.nombre_completo}</span>
+                        ${isLastInstructor ? '<span class="text-xs bg-warning/20 text-warning px-2 py-0.5 rounded">Último</span>' : ''}
+                    </div>
+                    <button type="button" 
+                        onclick="${isLastInstructor ? '' : `toggleEditInstructorSelection(${instructor.id_usuario})`}"
+                        class="${isLastInstructor ? 'text-warning cursor-not-allowed opacity-50' : 'text-muted-foreground hover:text-destructive'}"
+                        ${isLastInstructor ? 'disabled' : ''}>
+                        <i class="fas ${isLastInstructor ? 'fa-info-circle' : 'fa-times'}"></i>
+                    </button>
+                </div>
+            `;
+        }
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+// Función para alternar la selección de un instructor en edición
+function toggleEditInstructorSelection(instructorId) {
+    const index = selectedEditInstructors.indexOf(instructorId);
+    
+    // Validar que no sea el último instructor
+    if (selectedEditInstructors.length === 1 && index !== -1) {
+        toastError("Debe quedar al menos un instructor vinculado al programa");
+        return;
+    }
+    
+    if (index === -1) {
+        // Agregar instructor
+        selectedEditInstructors.push(instructorId);
+    } else {
+        // Remover instructor (siempre y cuando no sea el último)
+        selectedEditInstructors.splice(index, 1);
+    }
+    
+    // Re-renderizar ambas listas
+    renderEditInstructorsList(allEditInstructors);
+    renderEditSelectedInstructorsList();
+}
+
+// Función para avanzar al siguiente paso en edición
+function nextEditStep() {
+    if (currentEditStep === 1) {
+        // Validar datos del paso 1
+        const codigo = document.getElementById('edit_codigo').value.trim();
+        const nombre = document.getElementById('edit_nombre').value.trim();
+        const descripcion = document.getElementById('edit_descripcion').value.trim();
+        const duracion = document.getElementById('edit_duracion').value.trim();
+        const nivel = document.getElementById('edit_nivel').value;
+        
+        // Validar que no estén vacíos
+        if (!codigo || !nombre || !descripcion || !duracion || !nivel) {
+            toastError('Todos los campos del paso 1 son obligatorios');
+            
+            // Resaltar campos vacíos
+            if (!codigo) document.getElementById('edit_codigo').classList.add('border-red-500');
+            if (!nombre) document.getElementById('edit_nombre').classList.add('border-red-500');
+            if (!descripcion) document.getElementById('edit_descripcion').classList.add('border-red-500');
+            if (!duracion) document.getElementById('edit_duracion').classList.add('border-red-500');
+            
+            // Remover clase de error después de 2 segundos
+            setTimeout(() => {
+                document.getElementById('edit_codigo').classList.remove('border-red-500');
+                document.getElementById('edit_nombre').classList.remove('border-red-500');
+                document.getElementById('edit_descripcion').classList.remove('border-red-500');
+                document.getElementById('edit_duracion').classList.remove('border-red-500');
+            }, 2000);
+            
+            return;
+        }
+        
+        // Validar duración numérica
+        const duracionNum = parseInt(duracion.replace(/[^\d]/g, ''));
+        if (isNaN(duracionNum) || duracionNum <= 0) {
+            toastError('La duración debe ser un número positivo');
+            document.getElementById('edit_duracion').classList.add('border-red-500');
+            setTimeout(() => {
+                document.getElementById('edit_duracion').classList.remove('border-red-500');
+            }, 2000);
+            return;
+        }
+        
+        // Si pasa todas las validaciones, cambiar al paso 2
+        document.getElementById('editStep1').classList.add('hidden');
+        document.getElementById('editStep2').classList.remove('hidden');
+        document.getElementById('editBtnPrevStep').classList.remove('hidden');
+        document.getElementById('editBtnNextStep').classList.add('hidden');
+        document.getElementById('editBtnSaveProgram').classList.remove('hidden');
+        
+        // Actualizar indicadores visuales
+        document.getElementById('editStep1Indicator').classList.replace('bg-secondary', 'bg-border');
+        document.getElementById('editStep1Indicator').classList.replace('text-primary-foreground', 'text-muted-foreground');
+        document.getElementById('editStep2Indicator').classList.replace('bg-border', 'bg-secondary');
+        document.getElementById('editStep2Indicator').classList.replace('text-muted-foreground', 'text-primary-foreground');
+        
+        currentEditStep = 2;
+    }
+}
+
+// Función para retroceder al paso anterior en edición
+function prevEditStep() {
+    if (currentEditStep === 2) {
+        // Cambiar al paso 1
+        document.getElementById('editStep2').classList.add('hidden');
+        document.getElementById('editStep1').classList.remove('hidden');
+        document.getElementById('editBtnPrevStep').classList.add('hidden');
+        document.getElementById('editBtnNextStep').classList.remove('hidden');
+        document.getElementById('editBtnSaveProgram').classList.add('hidden');
+        
+        // Actualizar indicadores
+        document.getElementById('editStep1Indicator').classList.replace('bg-border', 'bg-secondary');
+        document.getElementById('editStep1Indicator').classList.replace('text-muted-foreground', 'text-primary-foreground');
+        document.getElementById('editStep2Indicator').classList.replace('bg-secondary', 'bg-border');
+        document.getElementById('editStep2Indicator').classList.replace('text-primary-foreground', 'text-muted-foreground');
+        
+        currentEditStep = 1;
+    }
+}
+
+// Función para guardar los cambios del programa (ambos pasos)
+async function saveEditedProgram() {
+    const idPrograma = document.getElementById('edit_id_programa').value;
+    const index = document.getElementById('edit_index').value;
+    
+    // Obtener datos del formulario (paso 1)
+    const codigo = document.getElementById('edit_codigo').value.trim();
+    const nombre = document.getElementById('edit_nombre').value.trim();
+    const nivel = document.getElementById('edit_nivel').value;
+    const descripcion = document.getElementById('edit_descripcion').value.trim();
+    const duracionText = document.getElementById('edit_duracion').value.trim();
+    const duracionHoras = parseInt(duracionText.replace(/[^\d]/g, '')) || 0;
+    
+    // Validar que haya al menos un instructor seleccionado
+    if (selectedEditInstructors.length === 0) {
+        toastError("El programa debe contar con al menos un instructor vinculado");
+        return;
+    }
+    
+    const programData = {
+        id_programa: idPrograma,
+        codigo_programa: codigo,
+        nombre_programa: nombre,
+        nivel_programa: nivel,
+        descripcion_programa: descripcion,
+        duracion_horas: duracionHoras,
+    };
+    
+    // Obtener datos originales para comparar cambios
+    const row = document.querySelector(`tr[data-index="${index}"]`) || document.querySelector(`div[data-index="${index}"]`);
+    const originalData = {
+        codigo: row.dataset.codigo,
+        nombre: row.dataset.nombre,
+        descripcion: row.dataset.descripcion,
+        nivel: row.dataset.nivel,
+        duracion: row.dataset.duracion.replace(/[^\d]/g, '')
+    };
+    
+    // Verificar si hay cambios en la información básica
+    const hasBasicChanges = !(
+        originalData.codigo === codigo &&
+        originalData.nombre === nombre &&
+        originalData.descripcion === descripcion &&
+        originalData.nivel === nivel &&
+        originalData.duracion === duracionText
+    );
+    
+    // Verificar cambios en instructores
+    const hasInstructorChanges = await hasChangesInInstructors(row, selectedEditInstructors);
+    
+    // Si no hay cambios en nada, mostrar mensaje
+    if (!hasBasicChanges && !hasInstructorChanges) {
+        toastInfo("Para actualizar el programa es necesario modificar al menos un dato.");
+        return;
+    }
+    
+    try {
+        // 1. Actualizar información básica del programa si hay cambios
+        if (hasBasicChanges) {
+            // Primero validar los datos
+            if (!validateProgramData(programData, true, index)) {
+                return;
+            }
+            
+            const updateResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=actualizar&id_programa=${idPrograma}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(programData),
+            });
+            
+            const updateResult = await updateResponse.json();
+            
+            if (updateResult.error) {
+                toastError("Error al actualizar programa: " + updateResult.error);
+                return;
+            }
+        }
+        
+        // 2. Actualizar instructores (siempre ejecutar para asegurar sincronización)
+        const instructorsData = {
+            id_programa: idPrograma,
+            instructores_ids: selectedEditInstructors
+        };
+        
+        const instructorsResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=asignar_instructores`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(instructorsData),
+        });
+        
+        const instructorsResult = await instructorsResponse.json();
+        
+        if (instructorsResult.error) {
+            toastError("Error al actualizar instructores: " + instructorsResult.error);
+        } else {
+            toastSuccess("Programa actualizado correctamente");
+            closeEditModal();
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        }
+        
+    } catch (error) {
+        console.error("Error actualizando programa:", error);
+        toastError("Error de conexión al actualizar el programa");
+    }
+}
+
+// Función auxiliar para verificar cambios en instructores
+async function hasChangesInInstructors(row, newInstructorIds) {
+    // Obtener instructores originales del programa
+    const programId = row.dataset.idPrograma;
+    
+    try {
+        const response = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_instructores_programa&id_programa=${programId}`);
+        const originalInstructors = await response.json();
+        
+        if (originalInstructors.error) {
+            return true; // Asumir que hay cambios si hay error
+        }
+        
+        const originalIds = Array.isArray(originalInstructors) 
+            ? originalInstructors.map(instructor => instructor.id_usuario)
+            : [];
+        
+        // Comparar arrays
+        if (originalIds.length !== newInstructorIds.length) {
+            return true;
+        }
+        
+        // Ordenar y comparar
+        const sortedOriginal = [...originalIds].sort();
+        const sortedNew = [...newInstructorIds].sort();
+        
+        return JSON.stringify(sortedOriginal) !== JSON.stringify(sortedNew);
+        
+    } catch (error) {
+        console.error("Error verificando cambios en instructores:", error);
+        return true; // Asumir que hay cambios si hay error
+    }
+}
+
+// Función para cerrar el modal de edición
+function closeEditModal() {
+    const modal = document.getElementById("editProgramModal");
+    
+    // Resetear estado
+    currentEditStep = 1;
+    selectedEditInstructors = [];
+    allEditInstructors = [];
+    editingProgramId = null;
+    originalInstructorCount = 0;
+    
+    // Resetear UI
+    document.getElementById('editStep1').classList.remove('hidden');
+    document.getElementById('editStep2').classList.add('hidden');
+    document.getElementById('editBtnPrevStep').classList.add('hidden');
+    document.getElementById('editBtnNextStep').classList.remove('hidden');
+    document.getElementById('editBtnSaveProgram').classList.add('hidden');
+    
+    // Resetear indicadores
+    document.getElementById('editStep1Indicator').classList.replace('bg-border', 'bg-secondary');
+    document.getElementById('editStep1Indicator').classList.replace('text-muted-foreground', 'text-primary-foreground');
+    document.getElementById('editStep2Indicator').classList.replace('bg-secondary', 'bg-border');
+    document.getElementById('editStep2Indicator').classList.replace('text-primary-foreground', 'text-muted-foreground');
+    
+    // Limpiar listas
+    const instructorsList = document.getElementById('editInstructorsListContainer');
+    const selectedList = document.getElementById('editSelectedInstructorsList');
+    const selectedCount = document.getElementById('editSelectedCount');
+    
+    if (instructorsList) {
+        instructorsList.innerHTML = '<div class="text-center py-4 text-muted-foreground"><i class="fas fa-spinner fa-spin"></i> Cargando instructores...</div>';
+    }
+    
+    if (selectedList) {
+        selectedList.innerHTML = '<p class="text-sm text-muted-foreground text-center py-4">No hay instructores seleccionados</p>';
+    }
+    
+    if (selectedCount) {
+        selectedCount.textContent = '0';
+    }
+    
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+}
+
+// Función para cerrar el modal de creación
+function closeCreateModal() {
+    const modal = document.getElementById("createProgramModal");
+    
+    // Resetear estado
+    currentStep = 1;
+    selectedInstructors = [];
+    allInstructors = [];
+    
+    // Resetear UI
+    const step1 = document.getElementById('createStep1');
+    const step2 = document.getElementById('createStep2');
+    const btnPrev = document.getElementById('btnPrevStep');
+    const btnNext = document.getElementById('btnNextStep');
+    const btnCreate = document.getElementById('btnCreateProgram');
+    
+    if (step1 && step2) {
+        step1.classList.remove('hidden');
+        step2.classList.add('hidden');
+    }
+    
+    if (btnPrev) btnPrev.classList.add('hidden');
+    if (btnNext) btnNext.classList.remove('hidden');
+    if (btnCreate) btnCreate.classList.add('hidden');
+    
+    // Resetear indicadores
+    const step1Indicators = document.querySelectorAll('.flex-1:nth-child(1) .w-8');
+    const step2Indicators = document.querySelectorAll('.flex-1:nth-child(3) .w-8');
+    const step1Texts = document.querySelectorAll('.flex-1:nth-child(1) .text-xs');
+    const step2Texts = document.querySelectorAll('.flex-1:nth-child(3) .text-xs');
+    
+    step1Indicators.forEach(el => {
+        el.classList.replace('bg-border', 'bg-secondary');
+        el.classList.replace('text-muted-foreground', 'text-primary-foreground');
+    });
+    step1Texts.forEach(el => el.classList.replace('text-muted-foreground', 'text-secondary'));
+    
+    step2Indicators.forEach(el => {
+        el.classList.replace('bg-secondary', 'bg-border');
+        el.classList.replace('text-primary-foreground', 'text-muted-foreground');
+    });
+    step2Texts.forEach(el => el.classList.replace('text-secondary', 'text-muted-foreground'));
+    
+    // Resetear formulario
+    const form = document.getElementById('createProgramForm');
+    if (form) form.reset();
+    
+    // Limpiar listas
+    const instructorsList = document.getElementById('instructorsListContainer');
+    const selectedList = document.getElementById('selectedInstructorsList');
+    const selectedCount = document.getElementById('selectedCount');
+    
+    if (instructorsList) {
+        instructorsList.innerHTML = '<div class="text-center py-4 text-muted-foreground"><i class="fas fa-spinner fa-spin"></i> Cargando instructores...</div>';
+    }
+    
+    if (selectedList) {
+        selectedList.innerHTML = '<p class="text-sm text-muted-foreground text-center py-4">No hay instructores seleccionados</p>';
+    }
+    
+    if (selectedCount) {
+        selectedCount.textContent = '0';
+    }
+    
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
 }
 
 // Function to switch between table and grid view
@@ -726,15 +1273,6 @@ function applyFilterAndUpdateEmptyStates() {
   checkAndShowEmptyStates(currentView)
 }
 
-// In the DOMContentLoaded event, add this initialization:
-document.addEventListener("DOMContentLoaded", () => {
-  
-  // Initialize the correct state when loading the page
-  const tableView = document.getElementById("tableView")
-  const initialView = tableView.classList.contains("hidden") ? "grid" : "table"
-  checkAndShowEmptyStates(initialView)
-})
-
 // Function to toggle action menu
 function toggleActionMenu(index) {
   const menu = document.getElementById("actionMenu" + index)
@@ -766,34 +1304,6 @@ document.addEventListener("click", (event) => {
     closeAllMenus()
   }
 })
-
-// ========== MODAL FUNCTIONS ==========
-
-// Open edit program modal
-function openEditModal(index) {
-  const modal = document.getElementById("editProgramModal")
-  const row =
-    document.querySelector(`tr[data-index="${index}"]`) || document.querySelector(`div[data-index="${index}"]`)
-
-  if (row) {
-    document.getElementById("edit_index").value = index
-    document.getElementById("edit_codigo").value = row.dataset.codigo
-    document.getElementById("edit_nombre").value = row.dataset.nombre
-    document.getElementById("edit_descripcion").value = row.dataset.descripcion
-    document.getElementById("edit_nivel").value = row.dataset.nivel
-    document.getElementById("edit_duracion").value = row.dataset.duracion.replace(/[^\d]/g, '')
-  }
-
-  modal.classList.remove("hidden")
-  modal.classList.add("flex")
-}
-
-// Close edit program modal
-function closeEditModal() {
-  const modal = document.getElementById("editProgramModal")
-  modal.classList.add("hidden")
-  modal.classList.remove("flex")
-}
 
 // ========== FUNCTION TO ASSIGN COLORS ACCORDING TO LEVEL ==========
 function getLevelStyles(nivel) {
@@ -978,13 +1488,6 @@ function openCreateModal() {
   modal.classList.add("flex")
 }
 
-// Close create program modal
-function closeCreateModal() {
-  const modal = document.getElementById("createProgramModal")
-  modal.classList.add("hidden")
-  modal.classList.remove("flex")
-}
-
 // =========================
 // VALIDATION FUNCTIONS
 // =========================
@@ -1070,7 +1573,7 @@ function validateProgramData(data, isEdit = false, excludeIndex = null) {
   }
 
   // Check if code already exists (excluding current program in edit mode)
-  if (codeAlreadyExists(data.codigo_programa, excludeIndex)) {
+  if (codeAlreadyExists(data.codigo_programa, isEdit ? excludeIndex : null)) {
     toastError("Ya hay un programa de formación con el código ingresado");
     return false;
   }
@@ -1185,121 +1688,23 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // ************************************** Programs Update ***********************************************
-
-  // Edit Program Form
-  const editForm = document.getElementById("editProgramForm")
-  if (editForm) {
-    // Only allow numbers in the duration field
-    const editDuracionInput = document.getElementById("edit_duracion");
-    if (editDuracionInput) {
-      editDuracionInput.addEventListener("input", function(e) {
-        this.value = this.value.replace(/[^\d]/g, '');
-      });
-    }
-
-    editForm.addEventListener("submit", async (e) => {
-      e.preventDefault()
-
-      const index = document.getElementById("edit_index").value
-      const row =
-        document.querySelector(`tr[data-index="${index}"]`) || document.querySelector(`div[data-index="${index}"]`)
-
-      if (!row) {
-        toastError("No se encontró el programa para editar");
-        return
-      }
-
-      const idPrograma = row.dataset.idPrograma
-      if (!idPrograma) {
-        console.error("[v0] No id_programa found in row:", row)
-        toastError("No se pudo obtener el ID del programa");
-        return
-      }
-
-      // Get form values
-      const codigo = document.getElementById("edit_codigo").value.trim();
-      const nombre = document.getElementById("edit_nombre").value.trim();
-      const nivelSelect = document.getElementById("edit_nivel").value;
-      const descripcion = document.getElementById("edit_descripcion").value.trim();
-      const duracionText = document.getElementById("edit_duracion").value.trim();
-      
-      // Normalize level
-      const nivelNormalized = document.getElementById("edit_nivel").value;
-      
-      // Extract hours number from text
-      const duracionHoras = Number.parseInt(duracionText.replace(/[^\d]/g, "")) || 0;
-
-      // Actual State from the dataset (supports '1'/'0' or 'Active'/'Inactive')
-      const estadoAttrEdit = String(row.dataset.estado ?? '').trim()
-      const estadoValue = (estadoAttrEdit === '1' || estadoAttrEdit === '0')
-        ? Number(estadoAttrEdit)
-        : (estadoAttrEdit.toLowerCase() === 'activo' ? 1 : 0)
-
-      const currentData = {
-        codigo_programa: codigo,
-        nombre_programa: nombre,
-        nivel_programa: nivelNormalized,
-        descripcion_programa: descripcion,
-        duracion_horas: duracionHoras,
-      }
-
-      // Validate data (pass current index to exclude from duplicate check)
-      if (!validateProgramData({...currentData, estado: estadoValue}, true, index)) {
-        return;
-      }
-
-      // Check if there are any changes (only for editing)
-      if (originalEditData) {
-        const currentDataForComparison = {
-          codigo: codigo,
-          nombre: nombre,
-          descripcion: descripcion,
-          nivel: nivelNormalized,
-          duracion: duracionText
-        };
-
-        if (!hasChanges(originalEditData, currentDataForComparison)) {
-          toastInfo("Para actualizar el programa es necesario modificar al menos un dato.");
-          return;
-        }
-      }
-
-      const data = {
-        id_programa: idPrograma,
-        ...currentData,
-        estado: estadoValue
-      }
-
-      console.log("[v0] Updating program with data:", data)
-
-      try {
-        const response = await fetch(
-          `${BASE_URL}src/controllers/programa_controller.php?accion=actualizar&id_programa=${idPrograma}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
-          },
-        )
-
-        const result = await response.json()
-        console.log("[v0] Update response:", result)
-
-        if (result.mensaje) {
-          toastSuccess("Programa actualizado correctamente");
-          closeEditModal();
-          setTimeout(() => {
-            location.reload();
-          }, 1500);
-        } else {
-          toastError("Error: " + (result.error || "No se pudo actualizar el programa"));
-        }
-      } catch (error) {
-        console.error("[v0] Error updating program:", error);
-        toastError("Error de conexión al actualizar el programa");
-      }
-    })
+  // ========== MODAL DE EDICIÓN (2 PASOS) ==========
+  
+  // Agregar event listeners para los botones del modal de edición
+  const editBtnNextStep = document.getElementById('editBtnNextStep');
+  const editBtnPrevStep = document.getElementById('editBtnPrevStep');
+  const editBtnSaveProgram = document.getElementById('editBtnSaveProgram');
+  
+  if (editBtnNextStep) {
+    editBtnNextStep.addEventListener('click', nextEditStep);
+  }
+  
+  if (editBtnPrevStep) {
+    editBtnPrevStep.addEventListener('click', prevEditStep);
+  }
+  
+  if (editBtnSaveProgram) {
+    editBtnSaveProgram.addEventListener('click', saveEditedProgram);
   }
 
   // State toggle buttons (use data-action="toggle-state")
@@ -1445,75 +1850,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ========== RESETEAR ESTADO DEL MODAL CUANDO SE CIERRA ==========
-  // Resetear estado del modal cuando se cierra
-  const createModal = document.getElementById('createProgramModal');
-  if (createModal) {
-    // Override closeCreateModal para resetear estado
-    const originalCloseCreateModal = closeCreateModal;
-    window.closeCreateModal = function() {
-      // Resetear estado
-      currentStep = 1;
-      selectedInstructors = [];
-      allInstructors = [];
-      
-      // Resetear UI
-      const step1 = document.getElementById('createStep1');
-      const step2 = document.getElementById('createStep2');
-      const btnPrev = document.getElementById('btnPrevStep');
-      const btnNext = document.getElementById('btnNextStep');
-      const btnCreate = document.getElementById('btnCreateProgram');
-      
-      if (step1 && step2) {
-        step1.classList.remove('hidden');
-        step2.classList.add('hidden');
-      }
-      
-      if (btnPrev) btnPrev.classList.add('hidden');
-      if (btnNext) btnNext.classList.remove('hidden');
-      if (btnCreate) btnCreate.classList.add('hidden');
-      
-      // Resetear indicadores
-      const step1Indicators = document.querySelectorAll('.flex-1:nth-child(1) .w-8');
-      const step2Indicators = document.querySelectorAll('.flex-1:nth-child(3) .w-8');
-      const step1Texts = document.querySelectorAll('.flex-1:nth-child(1) .text-xs');
-      const step2Texts = document.querySelectorAll('.flex-1:nth-child(3) .text-xs');
-      
-      step1Indicators.forEach(el => {
-        el.classList.replace('bg-border', 'bg-primary');
-        el.classList.replace('text-muted-foreground', 'text-primary-foreground');
-      });
-      step1Texts.forEach(el => el.classList.replace('text-muted-foreground', 'text-primary'));
-      
-      step2Indicators.forEach(el => {
-        el.classList.replace('bg-primary', 'bg-border');
-        el.classList.replace('text-primary-foreground', 'text-muted-foreground');
-      });
-      step2Texts.forEach(el => el.classList.replace('text-primary', 'text-muted-foreground'));
-      
-      // Resetear formulario
-      const form = document.getElementById('createProgramForm');
-      if (form) form.reset();
-      
-      // Limpiar listas
-      const instructorsList = document.getElementById('instructorsListContainer');
-      const selectedList = document.getElementById('selectedInstructorsList');
-      const selectedCount = document.getElementById('selectedCount');
-      
-      if (instructorsList) {
-        instructorsList.innerHTML = '<div class="text-center py-4 text-muted-foreground"><i class="fas fa-spinner fa-spin"></i> Cargando instructores...</div>';
-      }
-      
-      if (selectedList) {
-        selectedList.innerHTML = '<p class="text-sm text-muted-foreground text-center py-4">No hay instructores seleccionados</p>';
-      }
-      
-      if (selectedCount) {
-        selectedCount.textContent = '0';
-      }
-      
-      // Llamar a la función original
-      originalCloseCreateModal();
-    };
-  }
+  // In the DOMContentLoaded event, add this initialization:
+  const tableView = document.getElementById("tableView")
+  const initialView = tableView.classList.contains("hidden") ? "grid" : "table"
+  checkAndShowEmptyStates(initialView)
 })
