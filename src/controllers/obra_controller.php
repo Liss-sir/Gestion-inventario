@@ -49,6 +49,19 @@ class ObraController {
         }
     }
 
+    public function obtenerRaesPorFicha() {
+    // Obtener id_ficha de GET o POST
+    $idFicha = $_GET['id_ficha'] ?? ($_POST['id_ficha'] ?? null);
+    
+    if (!$idFicha || !is_numeric($idFicha)) {
+        echo json_encode(["error" => "ID de ficha inválido o no proporcionado"]);
+        return;
+    }
+    
+    $raes = $this->model->obtenerRaesPorFicha((int)$idFicha);
+    echo json_encode($raes);
+}
+
     public function obtenerAprendicesFicha($idFicha) {
         echo json_encode($this->model->obtenerAprendicesFicha($idFicha));
     }
