@@ -1,8 +1,14 @@
 <?php
-// =====================================
-// USER MANAGEMENT – PHP VIEW
-// =====================================
+// =====================================================
+// USER MANAGEMENT — PHP VIEW
+// =====================================================
 
+// Session is required to access authenticated user data (e.g., $_SESSION variables)
+if (session_status() === PHP_SESSION_NONE) {
+  session_start();
+}
+
+// UI layout configuration based on the sidebar collapse state
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 ?>
@@ -23,9 +29,9 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   <!-- Custom styles for the Users management module -->
   <link rel="stylesheet" href="src/assets/css/usuarios/usuarios.css" />
 
-  <!-- Expose authenticated user ID to JavaScript logic -->
+  <!-- Provide the authenticated user ID to the client-side script -->
   <script>
-    const AUTH_USER_ID = <?= $_SESSION['usuario_id']; ?>;
+    const AUTH_USER_ID = <?= (int)($_SESSION['usuario_id'] ?? 0); ?>;
   </script>
 </head>
 
@@ -47,15 +53,15 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </p>
         </div>
 
-        <!-- Right-side controls: view switch and "New User" button -->
+        <!-- Right-side actions: view mode toggle and "New User" button -->
         <div class="flex items-center gap-3">
-          <!-- View switch: table / cards -->
+          <!-- View mode toggle: table / cards -->
           <div class="inline-flex rounded-lg border border-border bg-card shadow-sm overflow-hidden">
             <!-- Table view button -->
             <button
               type="button"
               id="btnVistaTabla"
-              class="px-3 py-2 text-xs sm:text-sm flex items-center gap-1 bg-muted text-foreground"
+              class="px-3 py-2 text-xs sm:text-sm flex items-center gap-1 bg-muted text-foreground "
             >
               <!-- List icon -->
               <svg
@@ -97,7 +103,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             </button>
           </div>
 
-          <!-- "New User" primary action -->
+          <!-- Primary action: open create-user modal -->
           <button
             id="btnNuevoUsuario"
             class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2"
@@ -128,100 +134,94 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       <!-- ================================== -->
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between my-6">
 
-  <!-- SEARCH -->
-  <div class="relative w-full sm:max-w-xs">
-    <!-- Lupa dentro -->
-    <svg
-      class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      stroke-width="2"
-    >
-      <circle cx="11" cy="11" r="8"></circle>
-      <path d="m21 21-4.35-4.35"></path>
-    </svg>
+        <!-- Search input -->
+        <div class="relative w-full sm:max-w-xs" data-char-wrap>
+          <!-- Search icon inside the input -->
+          <svg
+            class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
 
-    <input
-      id="inputBuscar"
-      type="text"
-      placeholder="Buscar por nombre..."
-      class="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm"
-    />
-  </div>
+          <input
+            id="inputBuscar"
+            type="text"
+            maxlength="60"
+            placeholder="Buscar por nombre..."
+            class="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm"
+          />
+        </div>
 
-  <!-- ROLE FILTER -->
-  <div class="flex items-center gap-2">
-    <svg
-      class="h-4 w-4"
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-    >
-      <path
-        d="M5 5h14a1 1 0 0 1 .8 1.6L15 12v4.5a1 1 0 0 1-.553.894l-3 1.5A1 1 0 0 1 10 18v-6L4.2 6.6A1 1 0 0 1 5 5z"
-        stroke="currentColor"
-        stroke-width="1.8"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      />
-    </svg>
+        <!-- Role filter dropdown -->
+        <div class="flex items-center gap-2">
+          <svg
+            class="h-4 w-4"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
+            <path
+              d="M5 5h14a1 1 0 0 1 .8 1.6L15 12v4.5a1 1 0 0 1-.553.894l-3 1.5A1 1 0 0 1 10 18v-6L4.2 6.6A1 1 0 0 1 5 5z"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
 
-    <select
-      id="selectFiltroRol"
-      class="rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm"
-    >
-      <option value="">Todos</option>
-      <option value="Coordinador">Coordinador</option>
-      <option value="Subcoordinador">Subcoordinador</option>
-      <option value="Instructor">Instructor</option>
-      <option value="Pasante">Pasante</option>
-      <option value="Aprendiz">Aprendiz</option>
-    </select>
-  </div>
+          <select
+            id="selectFiltroRol"
+            class="rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm"
+          >
+            <option value="">Todos</option>
+            <option value="Coordinador">Coordinador</option>
+            <option value="Subcoordinador">Subcoordinador</option>
+            <option value="Instructor">Instructor</option>
+            <option value="Pasante">Pasante</option>
+            <option value="Aprendiz">Aprendiz</option>
+          </select>
+        </div>
 
-</div>
+      </div>
 
       <!-- ================================== -->
       <!-- TABLE VIEW CONTAINER               -->
       <!-- ================================== -->
-      <!-- overflow-visible + relative: avoids cutting dropdown menus from actions -->
+      <!-- Table wrapper configured to prevent dropdown clipping and preserve border radius -->
       <div
-        id="vistaTabla"
-        class="overflow-visible rounded-xl border border-border bg-card relative"
-      >
-        <table class="min-w-full divide-y divide-border text-sm">
-          <thead class="bg-gray-100">
-            <tr>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">
-                Usuario
-              </th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">
-                Documento
-              </th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">
-                Rol
-              </th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">
-                Teléfono
-              </th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground">
-                Estado
-              </th>
-              <th class="px-4 py-3 text-right font-medium text-xs text-muted-foreground">
-                Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody
-            id="tbodyUsuarios"
-            class="divide-y divide-border bg-card"
-          >
-            <!-- Rows are rendered dynamically via JavaScript -->
-          </tbody>
-        </table>
-      </div>
+  id="vistaTabla"
+  class="relative rounded-[14px] border border-border bg-card overflow-x-hidden overflow-y-visible"
+>
+  <table class="min-w-full border-separate border-spacing-0 text-sm bg-card">
+
+    <thead class="bg-[#f3f4f6]">
+  <tr>
+    <th class="px-4 py-3 text-left font-normal rounded-tl-[14px]">Usuario</th>
+    <th class="px-4 py-3 text-left font-normal">Documento</th>
+    <th class="px-4 py-3 text-left font-normal">Cargo</th>
+    <th class="px-4 py-3 text-left font-normal">Rol funcional</th>
+    <th class="px-4 py-3 text-left font-normal">Teléfono</th>
+    <th class="px-4 py-3 text-left font-normal">Estado</th>
+    <th class="px-4 py-3 text-right font-normal rounded-tr-[14px]">Acciones</th>
+  </tr>
+</thead>
+
+
+    <tbody
+      id="tbodyUsuarios"
+      class="divide-y divide-border bg-card
+             [&>tr:last-child>td:first-child]:rounded-bl-[14px]
+             [&>tr:last-child>td:last-child]:rounded-br-[14px]"
+    ></tbody>
+
+  </table>
+</div>
 
       <!-- ================================== -->
       <!-- CARDS VIEW CONTAINER               -->
@@ -231,7 +231,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           id="cardsContainer"
           class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
         >
-          <!-- Cards are rendered dynamically via JavaScript -->
+          <!-- User cards are injected dynamically via JavaScript -->
         </div>
       </div>
     </div>
@@ -252,7 +252,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             Complete los datos para registrar un nuevo usuario
           </p>
         </div>
-        <!-- Close button -->
+        <!-- Close modal button -->
         <button
           type="button"
           id="btnCerrarModalUsuario"
@@ -278,7 +278,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
       <!-- Modal form body -->
       <form id="formUsuario" class="space-y-4" novalidate>
-        <!-- Hidden field used to distinguish between create and edit -->
+        <!-- Hidden field used to distinguish between create and edit mode -->
         <input type="hidden" id="hiddenUserId" value="">
 
         <div class="grid gap-4 sm:grid-cols-2">
@@ -290,12 +290,15 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             >
               Nombre completo *
             </label>
-            <input
-              id="nombre_completo"
-              type="text"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
-              placeholder="Ej: Juan Pablo Hernández Castro"
-            />
+            <div class="relative" data-char-wrap>
+              <input
+                id="nombre_completo"
+                type="text"
+                maxlength="70"
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
+                placeholder="Ej: Juan Pablo Hernández Castro"
+              />
+            </div>
           </div>
 
           <!-- Document type -->
@@ -310,7 +313,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               id="tipo_documento"
               class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input-siga"
             >
-              <!-- Document types must match database values -->
+              <!-- The values below must match the database enum values -->
               <option value="CC">CC</option>
               <option value="TI">TI</option>
               <option value="CE">CE</option>
@@ -325,12 +328,16 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             >
               Número de documento *
             </label>
-            <input
-              id="numero_documento"
-              type="text"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
-              placeholder="1098765432"
-            />
+            <div class="relative" data-char-wrap>
+              <input
+                id="numero_documento"
+                type="text"
+                maxlength="15"
+                inputmode="numeric"
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
+                placeholder="1098765432"
+              />
+            </div>
           </div>
 
           <!-- Phone number -->
@@ -341,12 +348,16 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             >
               Teléfono *
             </label>
-            <input
-              id="telefono"
-              type="text"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
-              placeholder="3101234567"
-            />
+            <div class="relative" data-char-wrap>
+              <input
+                id="telefono"
+                type="text"
+                maxlength="10"
+                inputmode="numeric"
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
+                placeholder="3101234567"
+              />
+            </div>
           </div>
 
           <!-- Role (position) -->
@@ -361,7 +372,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               id="cargo"
               class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input-siga"
             >
-              <!-- Role values must be consistent with the database -->
+              <!-- Role values must be consistent with the database records -->
               <option value="Coordinador">Coordinador</option>
               <option value="Subcoordinador">Subcoordinador</option>
               <option value="Instructor">Instructor</option>
@@ -370,7 +381,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             </select>
           </div>
 
-          <!-- Training program (only visible for specific roles, e.g. Instructor) -->
+          <!-- Training program selector (visible only for specific roles, such as Instructor) -->
           <div class="space-y-2 sm:col-span-2 hidden" id="wrapper_programa">
             <label
               for="id_programa"
@@ -394,62 +405,64 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             >
               Correo electrónico *
             </label>
-            <input
-              id="correo"
-              type="email"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
-              placeholder="usuario@sena.edu.co"
-            />
+            <div class="relative" data-char-wrap>
+              <input
+                id="correo"
+                type="email"
+                maxlength="120"
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
+                placeholder="usuario@sena.edu.co"
+              />
+            </div>
           </div>
 
           <!-- Password (full width) -->
-<div class="space-y-2 sm:col-span-2">
-  <label for="password" class="text-sm font-medium">
-    Contraseña *
-  </label>
+          <div class="space-y-2 sm:col-span-2">
+            <label for="password" class="text-sm font-medium">
+              Contraseña *
+            </label>
 
-  <div class="relative">
-    <input
-      id="password"
-      type="password"
-      readonly
-      class="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm input-siga"
-      placeholder="Ingrese una contraseña segura"
-    />
+            <div class="relative" data-char-wrap>
+              <input
+                id="password"
+                type="password"
+                readonly
+                class="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm input-siga"
+                placeholder="Ingrese una contraseña segura"
+              />
 
-    <!-- Ojito -->
-    <button
-      id="btnTogglePassword"
-      type="button"
-      class="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
-      title="Ver contraseña"
-      aria-label="Ver contraseña"
-    >
-      <!-- eye -->
-      <svg id="iconEye" class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-           viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-        <path stroke-linecap="round" stroke-linejoin="round"
-              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-        <path stroke-linecap="round" stroke-linejoin="round"
-              d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
-      </svg>
+              <!-- Password visibility toggle button -->
+              <button
+                id="btnTogglePassword"
+                type="button"
+                class="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+                title="Ver contraseña"
+                aria-label="Ver contraseña"
+              >
+                <!-- eye -->
+                <svg id="iconEye" class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+                </svg>
 
-      <!-- eye-off -->
-      <svg id="iconEyeOff" class="h-4 w-4 hidden" xmlns="http://www.w3.org/2000/svg" fill="none"
-           viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-        <path stroke-linecap="round" stroke-linejoin="round"
-              d="M3 3l18 18"/>
-        <path stroke-linecap="round" stroke-linejoin="round"
-              d="M10.5 10.677A2.5 2.5 0 0 0 13.323 13.5"/>
-        <path stroke-linecap="round" stroke-linejoin="round"
-              d="M7.362 7.561C5.274 8.74 3.772 10.6 3 12c1.274 4.057 5.064 7 9.542 7 1.46 0 2.85-.313 4.107-.88"/>
-        <path stroke-linecap="round" stroke-linejoin="round"
-              d="M9.88 5.12A9.67 9.67 0 0 1 12 5c4.478 0 8.268 2.943 9.542 7-.448 1.427-1.23 2.72-2.25 3.77"/>
-      </svg>
-    </button>
-  </div>
-</div>
-
+                <!-- eye-off -->
+                <svg id="iconEyeOff" class="h-4 w-4 hidden" xmlns="http://www.w3.org/2000/svg" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M3 3l18 18"/>
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M10.5 10.677A2.5 2.5 0 0 0 13.323 13.5"/>
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M7.362 7.561C5.274 8.74 3.772 10.6 3 12c1.274 4.057 5.064 7 9.542 7 1.46 0 2.85-.313 4.107-.88"/>
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M9.88 5.12A9.67 9.67 0 0 1 12 5c4.478 0 8.268 2.943 9.542 7-.448 1.427-1.23 2.72-2.25 3.77"/>
+                </svg>
+              </button>
+            </div>
+          </div>
 
           <!-- Address (full width) -->
           <div class="space-y-2 sm:col-span-2">
@@ -459,12 +472,15 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             >
               Dirección *
             </label>
-            <input
-              id="direccion"
-              type="text"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
-              placeholder="Calle 45 #23-10, Bogotá"
-            />
+            <div class="relative" data-char-wrap>
+              <input
+                id="direccion"
+                type="text"
+                maxlength="60"
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
+                placeholder="Calle 45 #23-10, Bogotá"
+              />
+            </div>
           </div>
         </div>
 
@@ -496,7 +512,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       <!-- Modal header -->
       <div class="flex items-start justify-between gap-4 mb-4">
         <h2 class="text-lg font-semibold">Detalles del Usuario</h2>
-        <!-- Close button -->
+        <!-- Close modal button -->
         <button
           type="button"
           id="btnCerrarModalVerUsuario"
@@ -520,12 +536,141 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </button>
       </div>
 
-      <!-- User details content, populated dynamically via JavaScript -->
+      <!-- User details section populated dynamically via JavaScript -->
       <div id="detalleUsuarioContent" class="space-y-4">
-        <!-- Filled when a user is selected -->
+        <!-- Content is injected when a user is selected -->
       </div>
     </div>
   </div>
+
+  <!-- ========================================= -->
+<!-- MODAL: ASIGNAR ROL                        -->
+<!-- ========================================= -->
+<div id="modalAsignarRol" class="modal-overlay hidden">
+  <div class="relative w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
+    
+    <!-- Header -->
+    <div class="flex items-start justify-between gap-4 mb-4">
+      <div>
+        <h2 class="text-lg font-semibold">Asignar Rol</h2>
+        <p class="text-sm text-muted-foreground">
+          Selecciona el rol que deseas asignar a este usuario
+        </p>
+      </div>
+
+      <button
+        type="button"
+        id="btnCerrarModalAsignarRol"
+        class="rounded-full p-1 hover:bg-muted"
+      >
+        <span class="sr-only">Cerrar</span>
+        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="space-y-4">
+      
+      <!-- Hidden user id -->
+      <input type="hidden" id="hiddenAsignarRolUserId" value="" />
+
+      <!-- Nombre usuario -->
+      <div class="rounded-lg border border-border bg-muted/40 p-3">
+        <p class="text-xs text-muted-foreground">Usuario:</p>
+        <p id="asignarRolNombreUsuario" class="text-sm font-semibold text-foreground">
+          --
+        </p>
+      </div>
+
+      <!-- Cargo visual (solo lectura) -->
+<div class="rounded-lg border border-border bg-muted/40 p-3">
+  <p class="text-xs text-muted-foreground">Cargo actual:</p>
+  <p id="asignarRolCargoUsuario" class="text-sm font-semibold text-foreground">
+    --
+  </p>
+</div>
+
+
+      <!-- Select Rol -->
+      <div class="space-y-2">
+        <label for="selectAsignarRol" class="text-sm font-medium">
+          Rol / Cargo *
+        </label>
+        <select
+          id="selectAsignarRol"
+          class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input-siga"
+        >
+          <option value="">Cargando roles...</option>
+        </select>
+
+      </div>
+
+      <!-- Programa (solo si Instructor) -->
+      <div class="space-y-2 hidden" id="wrapper_programa_asignar_rol">
+        <label for="selectProgramaAsignarRol" class="text-sm font-medium">
+          Programa de formación *
+        </label>
+        <select
+          id="selectProgramaAsignarRol"
+          class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input-siga"
+        >
+          <option value="">Seleccione un programa</option>
+        </select>
+      </div>
+
+      <!-- Bodega (solo si rol es Encargado Bodega) -->
+      <div class="space-y-2 hidden" id="wrapper_bodega_asignar_rol">
+        <label for="selectBodegaAsignarRol" class="text-sm font-medium">
+          Bodega asignada *
+        </label>
+        <select
+          id="selectBodegaAsignarRol"
+          class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input-siga"
+        >
+          <option value="">Cargando bodegas...</option>
+        </select>
+      </div>
+
+      <!-- Sub-bodega (solo si rol es Encargado Subbodega) -->
+      <div class="space-y-2 hidden" id="wrapper_subbodega_asignar_rol">
+        <label for="selectSubbodegaAsignarRol" class="text-sm font-medium">
+          Sub-bodega asignada *
+        </label>
+        <select
+          id="selectSubbodegaAsignarRol"
+          class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input-siga"
+        >
+          <option value="">Seleccione una bodega primero</option>
+        </select>
+      </div>
+
+      <!-- Footer -->
+      <div class="flex justify-end gap-2 pt-2">
+        <button
+          type="button"
+          id="btnCancelarModalAsignarRol"
+          class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
+        >
+          Cancelar
+        </button>
+
+        <button
+          type="button"
+          id="btnGuardarAsignarRol"
+          class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:opacity-90"
+        >
+          Guardar Rol
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 
   <!-- ========================================= -->
   <!-- ALERT CONTAINER (FLOWBITE-LIKE TOASTS)    -->
@@ -540,6 +685,159 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   <!-- ========================================= -->
   <script src="src/assets/js/usuarios/usuarios.js"></script>
 
+  <!-- ===================================================== -->
+  <!-- NUEVO: LIMITES + MENSAJE AL LLEGAR AL LIMITE + SOLO NUMEROS (DOC/TEL) -->
+  <!-- ===================================================== -->
+  <script>
+    (function () {
+      // ------------------------------
+      // 1) Limite de caracteres (SIN numerito)
+      //    - Solo muestra mensaje debajo cuando llega al max
+      // ------------------------------
+      function initCharCounters() {
+        const fields = document.querySelectorAll("input[maxlength], textarea[maxlength]");
+
+        fields.forEach((el) => {
+          if (!el || el.dataset.noCounter === "1") return;
+
+          const max = parseInt(el.getAttribute("maxlength"), 10);
+          if (!max || max <= 0) return;
+
+          // Wrapper preferido: data-char-wrap (si no, usa el padre)
+          const wrapper = el.closest("[data-char-wrap]") || el.parentElement;
+          if (!wrapper) return;
+
+          const key = el.id || el.name || "field";
+
+          // ✅ Crear/obtener mensaje (debajo del input)
+          let msg = wrapper.querySelector(`[data-char-limit-msg-for="${key}"]`);
+          if (!msg) {
+            msg = document.createElement("p");
+            msg.setAttribute("data-char-limit-msg-for", key);
+
+            // Debajo del input (no absolute)
+            msg.className = "mt-1 text-[11px] text-muted-foreground select-none hidden";
+            msg.textContent = "Limite de caracteres alcanzados";
+
+            // Accesibilidad: anunciar cuando aparezca
+            msg.setAttribute("aria-live", "polite");
+
+            wrapper.appendChild(msg);
+          }
+
+          const update = () => {
+            const len = (el.value || "").length;
+
+            // Mostrar SOLO al alcanzar el máximo
+            if (len >= max) msg.classList.remove("hidden");
+            else msg.classList.add("hidden");
+          };
+
+          el.addEventListener("input", update);
+          update();
+        });
+      }
+
+      // ------------------------------
+      // 2) Solo números: documento/teléfono
+      //    - evita letras al escribir
+      //    - limpia al pegar
+      // ------------------------------
+      function onlyDigits(value) {
+        return (value || "").replace(/\D+/g, "");
+      }
+
+      function bindOnlyNumbers(inputEl) {
+        if (!inputEl) return;
+
+        // Teclado numérico en móvil (ya tienes inputmode, esto refuerza)
+        inputEl.setAttribute("inputmode", "numeric");
+
+        // Bloquear teclas no permitidas (manteniendo navegación/atajos)
+        inputEl.addEventListener("keydown", function (e) {
+          const allowedKeys = [
+            "Backspace", "Delete", "Tab", "Escape", "Enter",
+            "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+            "Home", "End"
+          ];
+
+          // Permitir: Ctrl/Cmd + (A,C,V,X,Z,Y)
+          if ((e.ctrlKey || e.metaKey) && ["a", "c", "v", "x", "z", "y"].includes((e.key || "").toLowerCase())) {
+            return;
+          }
+
+          // Permitir teclas especiales
+          if (allowedKeys.includes(e.key)) return;
+
+          // Permitir dígitos
+          if (/^\d$/.test(e.key)) return;
+
+          // Bloquear lo demás
+          e.preventDefault();
+        });
+
+        // Limpieza final (por si el navegador mete algo raro)
+        inputEl.addEventListener("input", function () {
+          const cleaned = onlyDigits(inputEl.value);
+
+          if (inputEl.value !== cleaned) {
+            const pos = inputEl.selectionStart || cleaned.length;
+            inputEl.value = cleaned;
+            try { inputEl.setSelectionRange(pos, pos); } catch (e) {}
+          }
+        });
+
+        // Al pegar: limpiar y respetar maxlength
+        inputEl.addEventListener("paste", function (e) {
+          e.preventDefault();
+          const text = (e.clipboardData || window.clipboardData).getData("text") || "";
+          const cleaned = onlyDigits(text);
+
+          const max = parseInt(inputEl.getAttribute("maxlength") || "9999", 10);
+          const current = inputEl.value || "";
+          const start = inputEl.selectionStart ?? current.length;
+          const end = inputEl.selectionEnd ?? current.length;
+
+          const before = current.slice(0, start);
+          const after = current.slice(end);
+
+          let next = (before + cleaned + after);
+          if (next.length > max) next = next.slice(0, max);
+
+          inputEl.value = next;
+
+          // Disparar input para que el mensaje se actualice
+          inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        // ✅ MAXLENGTHS (sin tocar tu base, solo atributos ya puestos en HTML)
+        // Nota: si algún input no tuviera maxlength, lo seteamos aquí por seguridad.
+        const setMax = (id, n) => {
+          const el = document.getElementById(id);
+          if (el && !el.getAttribute("maxlength")) el.setAttribute("maxlength", String(n));
+        };
+
+        setMax("inputBuscar", 60);
+        setMax("nombre_completo", 70);
+        setMax("numero_documento", 15);
+        setMax("telefono", 10);
+        setMax("correo", 120);
+        setMax("direccion", 60);
+
+        // Iniciar mensaje al llegar al límite (sin numerito)
+        initCharCounters();
+
+        // Solo números
+        bindOnlyNumbers(document.getElementById("numero_documento"));
+        bindOnlyNumbers(document.getElementById("telefono"));
+
+        // Extra: si en algún momento cambias a otro modal/dinamismo y reemplazas nodos,
+        // puedes volver a llamar initCharCounters() desde tu usuarios.js si lo necesitas.
+      });
+    })();
+  </script>
+
 </body>
 </html>
- 

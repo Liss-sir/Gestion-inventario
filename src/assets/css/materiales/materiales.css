@@ -33,6 +33,33 @@
   display: flex;
 }
 
+/* Bordes redondeados para la tabla principal */
+#tableView > div {
+  border-radius: 12px;
+  overflow: visible;
+}
+
+#tableView table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+#tableView thead th:first-child {
+  border-top-left-radius: 12px;
+}
+
+#tableView thead th:last-child {
+  border-top-right-radius: 12px;
+}
+
+#tableView tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 12px;
+}
+
+#tableView tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 12px;
+}
+
 /* Estado inicial de los modales */
 #createModal > div,
 #editModal > div,
@@ -212,45 +239,6 @@ select {
 /* ===========================
    DROPDOWN MENU
    =========================== */
-/* Estilos actualizados de dropdown con animación */
-.dropdown-menu {
-  position: absolute;
-  z-index: 50;
-  min-width: 12rem;
-  top: 100%;
-  right: 0;
-  margin-top: 0.5rem;
-  animation: slideDown 0.2s ease-out;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.dropdown-menu button {
-  transition: all 0.2s ease;
-}
-
-.dropdown-menu button:hover {
-  background-color: var(--muted);
-  padding-left: 1.25rem;
-}
-
-.dropdown-menu button.toggle-status-btn {
-  color: #dc2626;
-}
-
-.dropdown-menu button.toggle-status-btn:hover {
-  background-color: rgba(248, 113, 113, 0.1);
-}
-
 /* ===========================
    PAGINATION
    =========================== */
@@ -555,3 +543,49 @@ select {
   border-color: hsl(var(--primary));
   box-shadow: 0 0 0 2px hsla(var(--primary), 0.1);
 }
+
+/* ===========================
+   SEARCHABLE SELECT DROPDOWN
+   =========================== */
+/* Estilos para el dropdown de búsqueda de unidades */
+#unidadDropdown,
+#editUnidadDropdown {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+#unidadDropdown::-webkit-scrollbar,
+#editUnidadDropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+#unidadDropdown::-webkit-scrollbar-track,
+#editUnidadDropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#unidadDropdown::-webkit-scrollbar-thumb,
+#editUnidadDropdown::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+}
+
+#unidadDropdown::-webkit-scrollbar-thumb:hover,
+#editUnidadDropdown::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.8);
+}
+
+.unidad-option,
+.edit-unidad-option {
+  transition: background-color 0.15s ease;
+}
+
+.unidad-option:hover,
+.edit-unidad-option:hover {
+  background-color: var(--muted);
+}
+
+.no-results-message {
+  font-style: italic;
+}
+

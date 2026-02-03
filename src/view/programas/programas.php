@@ -1,48 +1,28 @@
+﻿[file content begin]
 <?php
-require_once __DIR__ . '../../../../Config/database.php';
+// Incluir configuración y modelo
+include_once __DIR__ . '/../../../Config/database.php';
+include_once __DIR__ . '/../../models/programa.php';
 
-// Final array that will be used by the HTML
-$programas = [];
+// Crear instancia del modelo
+$programaModel = new Programa($conn);
 
+// Obtener todos los programas
 try {
-    $sql = "SELECT 
-                p.id_programa, 
-                p.codigo_programa, 
-                p.nombre_programa, 
-                p.nivel_programa, 
-                p.descripcion_programa, 
-                p.duracion_horas, 
-                p.estado,
-                COUNT(DISTINCT u.id_usuario) as num_instructores
-            FROM programas_formacion p
-            LEFT JOIN usuarios u ON p.id_programa = u.id_programa 
-                AND u.cargo = 'Instructor'
-                AND u.estado = 1
-            GROUP BY p.id_programa
-            ORDER BY p.nombre_programa";
-
-    $stmt = $conn->prepare($sql);
-    $stmt->execute();
-
-    // Fetch raw DB results
-    $raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // Map DB fields → HTML expected fields
-    foreach ($raw as $r) {
-        $programas[] = [
-            'id_programa' => $r['id_programa'],
-            'codigo'      => $r['codigo_programa'],
-            'nombre'      => $r['nombre_programa'],
-            'descripcion' => $r['descripcion_programa'],
-            'nivel'       => $r['nivel_programa'],
-            'duracion'    => $r['duracion_horas'] . ' horas',
-            'instructores'=> (int)$r['num_instructores'],
-            'estado'      => $r['estado']
-        ];
+    $programas = $programaModel->listar();
+    
+    // Verificar si hay error en la consulta
+    if (isset($programas['error'])) {
+        error_log("Error al listar programas: " . $programas['error']);
+        $programas = []; // Asegurar que sea un array vacío
     }
-
-} catch (PDOException $e) {
-    die("Error al cargar programas: " . $e->getMessage());
+    
+    // Debug: Ver qué datos se obtienen
+    error_log("Programas obtenidos: " . print_r($programas, true));
+    
+} catch (Exception $e) {
+    error_log("Excepción al listar programas: " . $e->getMessage());
+    $programas = [];
 }
 ?>
 
@@ -93,7 +73,7 @@ try {
 <body class="bg-background text-foreground min-h-screen flex flex-col">
     
     <!-- MAIN CONTENT - Without header or sidebar (separate components) -->
-    <main class="p-6 transition-all duration-300"
+    <main class="p-6 pt-0 transition-all duration-300"
       style="margin-left: <?= $collapsed ? '70px' : '260px' ?>;">
         <?php
             // include_once __DIR__ . '/../../includes/footer.php';
@@ -150,7 +130,17 @@ try {
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between my-6">
                 <!-- Search bar (left) -->
                 <div class="relative w-full sm:max-w-xs">
-                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"></i>
+                   <svg
+                        class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
                     <input 
                         type="text" 
                         placeholder="Buscar por nombre..." 
@@ -185,7 +175,7 @@ try {
 
             <!-- Empty State: No programas in system -->
             <div id="emptyStateProgramas" class="hidden overflow-visible rounded-lg border border-border bg-card relative p-6 mb-6">
-                <div class="flex flex-col items-center justify-center py-12 px-4">
+                <div class="flex flex-col items-center justify-center py-8 px-4">
                     <div class="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
                         <i class="fas fa-inbox text-2xl text-muted-foreground"></i>
                     </div>
@@ -198,7 +188,7 @@ try {
 
             <!-- Empty State: Search results empty -->
             <div id="emptySearchProgramas" class="hidden overflow-visible rounded-lg border border-border bg-card relative p-6 mb-6">
-                <div class="flex flex-col items-center justify-center py-12 px-4">
+                <div class="flex flex-col items-center justify-center py-8 px-4">
                     <div class="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
                         <i class="fas fa-search text-2xl text-muted-foreground"></i>
                     </div>
@@ -210,28 +200,34 @@ try {
             </div>
 
             <!-- TABLE VIEW -->
-            <div id="tableView" class="border border-border rounded-lg">
-                <table class="w-full border-collapse">
+            <!-- ✅ CORREGIDO: bordes y esquinas como "Usuarios" + dropdown sin recorte -->
+            <div id="tableView" class="relative rounded-xl border border-border bg-card p-[1px] overflow-visible">
+                <table class="min-w-full border-separate border-spacing-0 text-sm rounded-[11px] bg-card">
                     
                     <!-- Table headers -->
                     <thead>
-                        <tr class="border-b border-border bg-muted">
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Código</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Programas de Formación</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Nivel</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Duración</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Instructores</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Estado</th>
-                            <th class="text-left py-3 px-4 font-medium text-muted-foreground text-sm">Acciones</th>
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted first:rounded-tl-[11px]">Código</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted">Programas de Formación</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted">Nivel</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted">Duración</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted">Instructores</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted">Estado</th>
+                            <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-muted last:rounded-tr-[11px]">Acciones</th>
                         </tr>
                     </thead>
                     
                     <!-- Data rows -->
-                    <tbody>
+                    <tbody
+                        class="divide-y divide-border bg-card
+                               [&>tr>td]:bg-card
+                               [&>tr:last-child>td:first-child]:rounded-bl-[11px]
+                               [&>tr:last-child>td:last-child]:rounded-br-[11px]"
+                    >
                         <?php foreach ($programas as $index => $programa): ?>
                         <?php $isActive = (isset($programa['estado']) && (strtolower(trim((string)$programa['estado'])) === 'activo' || (string)$programa['estado'] === '1' || $programa['estado'] == 1)); ?>
                         <tr 
-                            class="border-b border-border hover:bg-muted transition-colors"
+                            class="hover:bg-muted transition-colors"
                             data-index="<?php echo $index; ?>"
                             data-id-programa="<?php echo htmlspecialchars($programa['id_programa']); ?>"
                             data-codigo="<?php echo htmlspecialchars($programa['codigo']); ?>"
@@ -239,7 +235,8 @@ try {
                             data-descripcion="<?php echo htmlspecialchars($programa['descripcion']); ?>"
                             data-nivel="<?php echo htmlspecialchars($programa['nivel']); ?>"
                             data-duracion="<?php echo htmlspecialchars($programa['duracion']); ?>"
-                            data-instructores="<?php echo htmlspecialchars($programa['instructores']); ?>"
+                            data-instructores="<?php echo htmlspecialchars($programa['instructores_nombres']); ?>"
+                            data-num-instructores="<?php echo htmlspecialchars($programa['instructores']); ?>"
                             data-estado="<?php echo $isActive ? 1 : 0; ?>"
                         >
                             <!-- Program code -->
@@ -265,7 +262,7 @@ try {
                                 </div>
                             </td>
 
-                            <!-- Level badge (Técnico/Tecnólogo) -->
+                            <!-- Level badge (Technical/Technologist) -->
                             <td class="py-4 px-4">
                                 <span class="js-nivel">
                                 <?php if (strtolower($programa['nivel']) === 'técnico'): ?>
@@ -292,11 +289,12 @@ try {
                             <td class="py-4 px-4">
                                 <div class="flex items-center gap-2 text-sm text-muted-foreground opacity-75">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-icon lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>
-                                    <span class="js-instructores"><?php echo $programa['instructores']; ?></span>
+                                    <span class="js-instructores" title="<?php echo htmlspecialchars($programa['instructores_nombres']); ?>">
+                                        <?php echo $programa['instructores']; ?>
+                                    </span>
                                 </div>
                             </td>
 
-                            
                             <!-- Status badge (Active/Inactive) -->
                             <td class="py-4 px-4">
                                 <span class="js-estado">
@@ -327,7 +325,6 @@ try {
                                     </button>
                                     
                                     <div id="actionMenu<?php echo $index; ?>" class="hidden absolute right-0 mt-2 w-48 rounded-xl border border-border bg-popover shadow-md py-1 z-50">
-
                                         <button onclick="openViewModal(<?php echo $index; ?>)" class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted transition-colors">
                                             <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M1 12S4.5 5 12 5s11 7 11 7-3.5 7-11 7S1 12 1 12z"/>
@@ -377,10 +374,11 @@ try {
                     data-descripcion="<?php echo htmlspecialchars($programa['descripcion']); ?>"
                     data-nivel="<?php echo htmlspecialchars($programa['nivel']); ?>"
                     data-duracion="<?php echo htmlspecialchars($programa['duracion']); ?>"
-                    data-instructores="<?php echo htmlspecialchars($programa['instructores']); ?>"
+                    data-instructores="<?php echo htmlspecialchars($programa['instructores_nombres']); ?>"
+                    data-num-instructores="<?php echo htmlspecialchars($programa['instructores']); ?>"
                     data-estado="<?php echo $isActive ? 1 : 0; ?>">
                     
-                    <!-- ICONO + TÍTULO + EDIT -->
+                    <!-- ICON + TITLE + EDIT -->
                     <div class="flex justify-between items-start mb-3 flex-shrink-0">
                         <!-- Info + Icon -->
                         <div class="flex items-start gap-3 flex-1 min-w-0">
@@ -405,7 +403,7 @@ try {
                         <button onclick="openEditModal(<?php echo $index; ?>)" 
                         class="text-muted-foreground hover:text-foreground transition flex-shrink-0 ml-2">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
                             </svg>
                         </button>
                     </div>
@@ -452,7 +450,7 @@ try {
                     <div class="flex items-center justify-between mt-auto flex-shrink-0">
                         <div class="flex items-center gap-2 text-sm text-muted-foreground opacity-75">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-icon lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>
-                            <span class="js-instructores truncate max-w-[80px]">
+                            <span class="js-instructores truncate max-w-[80px]" title="<?php echo htmlspecialchars($programa['instructores_nombres']); ?>">
                                 <?php echo $programa['instructores']; ?>
                             </span>
                         </div>
@@ -460,10 +458,12 @@ try {
                         <div class="flex flex-col items-end flex-shrink-0">
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" class="sr-only peer" <?php echo $isActive ? 'checked' : ''; ?>>
-
-                                <div class="w-11 h-6 bg-gray-500/20 rounded-full peer-checked:bg-secondary transition-all"></div>
-
-                                <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-all peer-checked:translate-x-5"></div>
+                                
+                                <!-- Checkbox con borde más oscuro -->
+                                <div class="w-11 h-6 bg-gray-500/20 border border-gray-300/50 rounded-full peer-checked:bg-secondary transition-all"></div>
+                                
+                                <!-- Puntito interior -->
+                                <div class="absolute left-1 top-1 w-4 h-4 bg-white border border-gray-300/70 rounded-full transition-all peer-checked:translate-x-5"></div>
                             </label>
                         </div>
                     </div>
@@ -472,51 +472,115 @@ try {
             </div>
         </div>
 
-        <!-- Program edit modal -->
+        <!-- Reemplaza el modal de edición existente con este: -->
         <div id="editProgramModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
             <div class="absolute inset-0 bg-black/40" onclick="closeEditModal()"></div>
-            <div class="relative max-w-lg w-full bg-card rounded-lg shadow-lg border border-border p-6">
-                <div class="flex items-start justify-between">
-                    <div class="flex items-start justify-between flex-col">
+            <div class="relative max-w-lg w-full bg-card rounded-lg shadow-lg border border-border p-6 max-h-[90vh] overflow-y-auto">
+                <!-- Step indicator -->
+                <div class="flex mb-6">
+                    <div class="flex-1 text-center">
+                        <div id="editStep1Indicator" class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-secondary text-primary-foreground text-sm font-semibold">
+                            1
+                        </div>
+                        <p class="text-xs mt-1 text-muted-foreground">Información</p>
+                    </div>
+                    <div class="flex-1 flex items-center justify-center">
+                        <div class="h-0.5 w-full bg-border"></div>
+                    </div>
+                    <div class="flex-1 text-center">
+                        <div id="editStep2Indicator" class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-border text-muted-foreground text-sm font-semibold">
+                            2
+                        </div>
+                        <p class="text-xs mt-1 text-muted-foreground">Instructores</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start justify-between mb-4">
+                    <div>
                         <h3 class="text-2xl font-bold tracking-tight">Editar Programa</h3>
-                        <b class="text-xs text-muted-foreground js-descripcion opacity-75">Modifica la información del programa</b>
+                        <p class="text-xs text-muted-foreground js-descripcion opacity-75">Modifica la información del programa</p>
                     </div>
                     <button onclick="closeEditModal()" class="text-muted-foreground hover:text-foreground"><i class="fas fa-times"></i></button>
                 </div>
-                <form id="editProgramForm" class="space-y-3">
-                    <input type="hidden" id="edit_index">
-                    <div>
-                        <label class="block text-xs text-muted-foreground mb-1">Código *</label>
-                        <input id="edit_codigo" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" required>
-                    </div>
-                    <div class="relative">
-                        <label class="block text-xs text-muted-foreground mb-1">Nivel *</label>
-                        <select id="edit_nivel" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga">
-                            <option value="Técnico">Técnico</option>
-                            <option value="Tecnólogo">Tecnólogo</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs text-muted-foreground mb-1">Nombre del programa *</label>
-                        <input id="edit_nombre" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" required>
-                    </div>
-                    <div>
-                        <label class="block text-xs text-muted-foreground mb-1">Descripción *</label>
-                        <textarea id="edit_descripcion" rows="3" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"></textarea>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
+                
+                <!-- Step 1: Program Information -->
+                <div id="editStep1" class="space-y-3">
+                    <form id="editProgramForm" class="space-y-3">
+                        <input type="hidden" id="edit_id_programa">
+                        <input type="hidden" id="edit_index">
+                        
                         <div>
-                            <label class="block text-xs text-muted-foreground mb-1">Duración (horas) *</label>
-                            <input id="edit_duracion" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="Ej: 1200">
-                            <p class="text-xs text-muted-foreground mt-1">Solo números, sin texto</p>
+                            <label class="block text-xs text-muted-foreground mb-1">Código *</label>
+                            <input id="edit_codigo" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" required>
+                        </div>
+                        <div class="relative">
+                            <label class="block text-xs text-muted-foreground mb-1">Nivel *</label>
+                            <select id="edit_nivel" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga">
+                                <option value="Técnico">Técnico</option>
+                                <option value="Tecnólogo">Tecnólogo</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs text-muted-foreground mb-1">Nombre del programa *</label>
+                            <input id="edit_nombre" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-muted-foreground mb-1">Descripción *</label>
+                            <textarea id="edit_descripcion" rows="3" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"></textarea>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-muted-foreground mb-1">Duración (horas) *</label>
+                                <input id="edit_duracion" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="Ej: 1200">
+                                <p class="text-xs text-muted-foreground mt-1">Solo números, sin texto</p>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Step 2: Instructors Selection -->
+                <div id="editStep2" class="space-y-3 hidden">
+                    <div>
+                        <p class="text-xs text-muted-foreground mb-3">Seleccione los instructores que estarán relacionados con este programa</p>
+                        
+                        <!-- Instructors list -->
+                        <div id="editInstructorsListContainer" class="space-y-2 max-h-60 overflow-y-auto border border-border rounded-md p-3">
+                            <!-- Instructors will be loaded here -->
+                            <div class="text-center py-4 text-muted-foreground">
+                                <i class="fas fa-spinner fa-spin"></i> Cargando instructores...
+                            </div>
+                        </div>
+                        
+                        <!-- Selected instructors summary -->
+                        <div class="mt-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs text-muted-foreground">Total seleccionados:</span>
+                                <span id="editSelectedCount" class="text-sm font-semibold">0</span>
+                            </div>
+                            <div id="editSelectedInstructorsList" class="border border-border rounded-md p-3 min-h-20">
+                                <p class="text-sm text-muted-foreground text-center py-4">No hay instructores seleccionados</p>
+                            </div>
                         </div>
                     </div>
-                    <div class="flex items-center justify-end gap-3 mt-4">
+                </div>
+
+                <!-- Navigation buttons -->
+                <div class="flex items-center justify-between gap-3 mt-6">
+                    <button type="button" id="editBtnPrevStep" class="px-4 py-2 border border-border rounded-lg hidden" onclick="prevEditStep()">
+                        <i class="fas fa-arrow-left mr-2"></i> Anterior
+                    </button>
+                    
+                    <div class="flex items-center gap-3 ml-auto">
                         <button type="button" onclick="closeEditModal()" class="px-4 py-2 border border-border rounded-lg">Cancelar</button>
-                        <button type="submit" class="inline-flex items-center justify-center rounded-sm bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2">Guardar Cambios</button>
+                        <button type="button" id="editBtnNextStep" class="px-4 py-2 bg-secondary text-primary-foreground rounded-lg" onclick="nextEditStep()">
+                            Siguiente <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                        <button type="button" id="editBtnSaveProgram" class="px-4 py-2 bg-secondary text-primary-foreground rounded-lg hidden" onclick="saveEditedProgram()">
+                            Guardar Cambios
+                        </button>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
         
@@ -553,9 +617,16 @@ try {
                         <span class="text-xs text-muted-foreground">Duración:</span>
                         <span id="view_duracion" class="text-sm font-medium text-foreground">0 Horas</span>
                     </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs text-muted-foreground">Instructor:</span>
-                        <span id="view_instructor" class="text-sm font-medium text-foreground">Juan Guillermo Crespo</span>
+                    <div>
+                        <span class="text-xs text-muted-foreground block mb-2">Instructores vinculados:</span>
+                        <div id="view_instructores_container" class="max-h-32 overflow-y-auto pr-2">
+                            <!-- Mensaje cuando no hay instructores -->
+                            <div id="view_no_instructores" class="text-sm text-muted-foreground italic py-2">
+                                No hay instructores vinculados a este programa
+                            </div>
+                            <!-- Lista de instructores -->
+                            <ul id="view_instructores_list" class="space-y-2 text-sm hidden"></ul>
+                        </div>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-xs text-muted-foreground">Estado:</span>
@@ -564,11 +635,11 @@ try {
                 </div>
             </div>
         </div>
-
-        <!-- Create New Program Modal (UI only) -->
+        <!-- Create New Program Modal (2 steps) -->
         <div id="createProgramModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
             <div class="absolute inset-0 bg-black/40" onclick="closeCreateModal()"></div>
             <div class="relative max-w-lg w-full bg-card rounded-lg shadow-lg border border-border p-6">
+                <!-- Step indicator -->
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <h3 class="text-lg font-semibold">Crear Nuevo Programa</h3>
@@ -576,43 +647,104 @@ try {
                     </div>
                     <button onclick="closeCreateModal()" class="text-muted-foreground hover:text-foreground"><i class="fas fa-times"></i></button>
                 </div>
-
-                <form id="createProgramForm" class="space-y-3">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs text-muted-foreground mb-1">Código *</label>
-                            <input id="create_codigo" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="TEC-001">
+                
+                <!-- Step indicator -->
+                <div class="flex mb-6">
+                    <div class="flex-1 text-center">
+                        <div class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-secondary text-primary-foreground text-sm font-semibold">
+                            1
                         </div>
+                        <p class="text-xs mt-1 text-muted-foreground">Información</p>
+                    </div>
+                    <div class="flex-1 flex items-center justify-center">
+                        <div class="h-0.5 w-full bg-border"></div>
+                    </div>
+                    <div class="flex-1 text-center">
+                        <div class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-border text-muted-foreground text-sm font-semibold">
+                            2
+                        </div>
+                        <p class="text-xs mt-1 text-muted-foreground">Instructores</p>
+                    </div>
+                </div>
+
+                <!-- Step 1: Program Information -->
+                <div id="createStep1" class="space-y-3">
+                    <form id="createProgramForm" class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-muted-foreground mb-1">Código *</label>
+                                <input id="create_codigo" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="TEC-001" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-muted-foreground mb-1">Nivel *</label>
+                                <select id="create_nivel" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" required>
+                                    <option value="Técnico">Técnico</option>
+                                    <option value="Tecnólogo">Tecnólogo</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div>
-                            <label class="block text-xs text-muted-foreground mb-1">Nivel *</label>
-                            <select id="create_nivel" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga">
-                                <option value="Técnico">Técnico</option>
-                                <option value="Tecnólogo">Tecnólogo</option>
-                            </select>
+                            <label class="block text-xs text-muted-foreground mb-1">Nombre del programa *</label>
+                            <input id="create_nombre" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="Técnico en Construcción" required>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs text-muted-foreground mb-1">Descripción *</label>
+                            <textarea id="create_descripcion" rows="4" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="Formación técnica de procesos constructivos" required></textarea>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs text-muted-foreground mb-1">Duración (horas) *</label>
+                            <input id="create_duracion" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="Ej: 1200" required>
+                            <p class="text-xs text-muted-foreground mt-1">Solo números, sin texto</p>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Step 2: Instructors Selection -->
+                <div id="createStep2" class="space-y-3 hidden">
+                    <div>
+                        <label class="block text-xs text-muted-foreground mb-1">Seleccionar instructores</label>
+                        <p class="text-xs text-muted-foreground mb-3">Seleccione los instructores que estarán relacionados con este programa</p>
+                        
+                        <!-- Instructors list -->
+                        <div id="instructorsListContainer" class="space-y-2 max-h-60 overflow-y-auto border border-border rounded-md p-3">
+                            <!-- Instructors will be loaded here -->
+                            <div class="text-center py-4 text-muted-foreground">
+                                <i class="fas fa-spinner fa-spin"></i> Cargando instructores...
+                            </div>
+                        </div>
+                        
+                        <!-- Selected instructors summary -->
+                        <div class="mt-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs text-muted-foreground">Total seleccionados:</span>
+                                <span id="selectedCount" class="text-sm font-semibold">0</span>
+                            </div>
+                            <div id="selectedInstructorsList" class="border border-border rounded-md p-3 min-h-20">
+                                <p class="text-sm text-muted-foreground text-center py-4">No hay instructores seleccionados</p>
+                            </div>
                         </div>
                     </div>
+                </div>
 
-                    <div>
-                        <label class="block text-xs text-muted-foreground mb-1">Nombre del programa *</label>
-                        <input id="create_nombre" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="Técnico en Construcción">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs text-muted-foreground mb-1">Descripción *</label>
-                        <textarea id="create_descripcion" rows="4" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="Formación técnica de procesos constructivos"></textarea>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs text-muted-foreground mb-1">Duración (horas) *</label>
-                        <input id="create_duracion" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" placeholder="Ej: 1200">
-                        <p class="text-xs text-muted-foreground mt-1">Solo números, sin texto</p>
-                    </div>
-
-                    <div class="flex items-center justify-end gap-3 mt-4">
+                <!-- Navigation buttons -->
+                <div class="flex items-center justify-between gap-3 mt-6">
+                    <button type="button" id="btnPrevStep" class="px-4 py-2 border border-border rounded-lg hidden">
+                        <i class="fas fa-arrow-left mr-2"></i> Anterior
+                    </button>
+                    
+                    <div class="flex items-center gap-3 ml-auto">
                         <button type="button" onclick="closeCreateModal()" class="px-4 py-2 border border-border rounded-lg">Cancelar</button>
-                        <button type="submit" class="px-4 py-2 bg-secondary text-primary-foreground rounded-lg">Crear Programa</button>
+                        <button type="button" id="btnNextStep" class="px-4 py-2 bg-secondary text-primary-foreground rounded-lg">
+                            Siguiente <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                        <button type="button" id="btnCreateProgram" class="px-4 py-2 bg-secondary text-primary-foreground rounded-lg hidden">
+                            Crear Programa
+                        </button>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
     </main>

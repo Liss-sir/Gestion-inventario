@@ -4,20 +4,27 @@ if (!defined('ACCESO_PERMITIDO')) {
     exit('Acceso directo no permitido');
 }
 
+require_once "src/utils/permisos_helper.php";
+
 $page = $_GET['page'] ?? 'dashboard';
 $page = basename($page);
 
 // Mapeamos las páginas a sus archivos reales
 switch ($page) {
-    case 'dashboard':
-        $viewFile = BASE_PATH . '/src/view/dashboard/dashboard.php';
-        break;
+case 'dashboard':
+  permisos_protegerModulo("dashboard"); // ✅ BLOQUEO PRO
+  $viewFile = BASE_PATH . '/src/view/dashboard/dashboard.php';
+  break;
+
+
 
     case 'usuarios':
         $viewFile = BASE_PATH . '/src/view/usuarios/usuarios.php'; // o el nombre que tengas
         break;
-
+    
+    
     case 'bodegas':
+        permisos_protegerModulo("bodegas");
         $viewFile = BASE_PATH . '/src/view/bodegas/bodegas.php';  // ajusta al archivo real
         break;
 
@@ -58,8 +65,13 @@ switch ($page) {
     case 'materiales':
             $viewFile = BASE_PATH . '/src/view/materiales/materiales.php';  // ajusta al archivo real
             break;
+    case 'historial':
+            $viewFile = BASE_PATH . '/src/view/historial/historial.php';  // ajusta al archivo real
+            break;
     // ...agrega aquí más casos según tus carpetas/vistas...
-
+    case 'evidencias':
+            $viewFile = BASE_PATH . '/src/view/evidencias/evidencias.php';  // ajusta al archivo real
+            break;
     default:
         // Por defecto intentamos src/view/$page.php (para cosas como landing, etc.)
         $viewFile = BASE_PATH . "/src/view/$page.php";

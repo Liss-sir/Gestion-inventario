@@ -12,7 +12,7 @@ const cardsPerPage = 9
 let currentView = "table"
 
 // API endpoints
-const API_URL = window.location.origin + "/Gestion-inventario/src/controllers/material_formacion_controller.php"
+const API_URL = `${window.BASE_URL}src/controllers/material_formacion_controller.php`;
 
 function getMaterialesBaseUrl() {
   if (window.MATERIALES_BASE_URL) return window.MATERIALES_BASE_URL
@@ -23,13 +23,40 @@ function getMaterialesBaseUrl() {
 function getMaterialImageUrl(foto) {
   if (!foto) return ""
   if (foto.startsWith("http")) return foto
-  return `${getMaterialesBaseUrl()}/src/uploads/materiales/${foto}`
+  const baseUrl = getMaterialesBaseUrl()
+  // Asegurar que no haya doble slash
+  const cleanBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl
+  return `${cleanBase}/src/uploads/materiales/${foto}`
 }
 
 function parsePriceValue(raw) {
   if (raw === undefined || raw === null) return ""
-  const cleaned = raw.toString().replace(/[^0-9,.-]/g, "").replace(/\./g, "").replace(/,/g, ".")
-  const num = Number.parseFloat(cleaned)
+  const cleaned = raw.toString().replace(/[^0-9,.,-]/g, "").trim()
+  if (!cleaned) return ""
+
+  const hasComma = cleaned.includes(",")
+  const hasDot = cleaned.includes(".")
+  let decimalSep = null
+
+  if (hasComma && hasDot) {
+    decimalSep = cleaned.lastIndexOf(",") > cleaned.lastIndexOf(".") ? "," : "."
+  } else if (hasComma) {
+    decimalSep = ","
+  } else if (hasDot) {
+    decimalSep = "."
+  }
+
+  let normalized = cleaned
+  if (decimalSep) {
+    const parts = normalized.split(decimalSep)
+    const intPart = parts.slice(0, -1).join("").replace(/[.,]/g, "")
+    const decPart = parts.slice(-1)[0].replace(/[.,]/g, "")
+    normalized = decPart ? `${intPart}.${decPart}` : intPart
+  } else {
+    normalized = cleaned.replace(/[.,]/g, "")
+  }
+
+  const num = Number.parseFloat(normalized)
   return Number.isFinite(num) ? num : ""
 }
 
@@ -53,12 +80,31 @@ function attachCurrencyMask(inputId) {
   })
 
   input.addEventListener("blur", () => {
-    const num = parsePriceValue(input.value)
+    const rawTyped = (input.value ?? "").toString().trim()
+
+    // No permitir puntos ni comas
+    if (rawTyped && /[.,]/.test(rawTyped)) {
+      input.dataset.rawPrice = ""
+      input.value = ""
+      showAlert("No se admiten puntos ni comas en el precio. Escríbelo sin separadores (ej: 2000).", "error")
+      return
+    }
+
+    const num = parsePriceValue(rawTyped)
     if (num === "") {
       input.dataset.rawPrice = ""
       input.value = ""
       return
     }
+
+    // Validar mínimo de 100
+    if (num < 100) {
+      input.dataset.rawPrice = ""
+      input.value = ""
+      showAlert("El precio debe ser mínimo 100", "error")
+      return
+    }
+
     input.dataset.rawPrice = num.toString()
     input.value = formatCOPValue(num)
   })
@@ -80,6 +126,7 @@ async function fetchMaterials() {
       codigo: material.codigo_inventario,
       unit: material.unidad_medida,
       precio: material.precio,
+      stock_maximo: material.stock_maximo,
       foto: material.foto,
       enabled: material.estado === "Disponible",
     }))
@@ -123,16 +170,130 @@ async function updateMaterialAPI(id, formData) {
   }
 }
 
+/* ✅ CORREGIDA PARA TU BACKEND:
+   - TU CONTROLLER NO TIENE accion=toggleEstado
+   - Se debe hacer toggle usando accion=actualizar&id=...
+   - El modelo update() exige TODOS los campos (nombre, descripcion, unidad_medida, clasificacion, codigo_inventario, precio, foto, estado)
+   - Aquí enviamos TODO desde materialsData (sin subir foto nueva)
+*/
 async function toggleMaterialStatusAPI(id) {
+  const safeReadJson = async (res) => {
+    const txt = await res.text()
+    try {
+      return { ok: res.ok, status: res.status, data: JSON.parse(txt), raw: txt }
+    } catch {
+      return { ok: res.ok, status: res.status, data: null, raw: txt }
+    }
+  }
+
+  // ✅ construye una URL REAL del controller (evita undefined, dobles rutas, etc.)
+  const resolveControllerUrl = () => {
+    const fromWindow = (window.BASE_URL || window.MATERIALES_BASE_URL || "").toString().trim()
+
+    // si BASE_URL existe, asegurar slash final
+    if (fromWindow) {
+      const base = fromWindow.endsWith("/") ? fromWindow : fromWindow + "/"
+      return `${base}src/controllers/material_formacion_controller.php`
+    }
+
+    // fallback: inferir desde la URL actual
+    const origin = window.location.origin
+    const pathname = window.location.pathname // ej: /gestion_inventario/Gestion-inventario/src/view/...
+    const idx = pathname.toLowerCase().indexOf("/src/")
+    const root = idx !== -1 ? pathname.slice(0, idx + 1) : pathname.replace(/\/[^/]*$/, "/")
+    return `${origin}${root}src/controllers/material_formacion_controller.php`
+  }
+
   try {
-    const response = await fetch(`${API_URL}?accion=toggleEstado&id=${id}`, {
-      method: "GET",
+    const controllerUrl = resolveControllerUrl()
+
+    // ✅ material desde memoria (ya está cargado por fetchMaterials)
+    let mat = materialsData.find((m) => Number(m.id) === Number(id))
+
+    // fallback (solo si por alguna razón no está en memoria)
+    if (!mat) {
+      const getUrl = `${controllerUrl}?accion=obtener&id=${encodeURIComponent(String(id))}`
+      const resGet = await fetch(getUrl, { method: "GET", credentials: "include", cache: "no-store" })
+      const parsedGet = await safeReadJson(resGet)
+      if (parsedGet.data && parsedGet.ok) {
+        mat = {
+          id: Number.parseInt(parsedGet.data.id_material),
+          name: parsedGet.data.nombre,
+          description: parsedGet.data.descripcion,
+          clasificacion: parsedGet.data.clasificacion,
+          codigo: parsedGet.data.codigo_inventario,
+          unit: parsedGet.data.unidad_medida,
+          precio: parsedGet.data.precio,
+          foto: parsedGet.data.foto,
+          enabled: parsedGet.data.estado === "Disponible",
+        }
+      }
+    }
+
+    if (!mat) {
+      return { status: "error", success: false, message: "No se encontró el material para cambiar estado." }
+    }
+
+    const currentEstado = mat.enabled ? "Disponible" : "Agotado"
+    const nextEstado = currentEstado === "Disponible" ? "Agotado" : "Disponible"
+
+    // ✅ TU CONTROLLER: case "actualizar" -> $data = $_POST; sendJSON($controller->actualizar($id, $data));
+    const postUrl = `${controllerUrl}?accion=actualizar&id=${encodeURIComponent(String(id))}`
+
+    // ✅ enviar TODOS los campos que tu modelo update() espera
+    const fd = new FormData()
+    fd.append("nombre", (mat.name ?? "").toString())
+    fd.append("descripcion", (mat.description ?? "").toString())
+    fd.append("clasificacion", (mat.clasificacion ?? "").toString())
+    fd.append("codigo_inventario", (mat.codigo ?? "").toString())
+    fd.append("unidad_medida", (mat.unit ?? "").toString())
+
+    // precio: tu modelo lo requiere, enviamos num limpio
+    const precioNum = parsePriceValue(mat.precio)
+    fd.append("precio", precioNum === "" ? "" : String(precioNum))
+
+    // stock_maximo: requerido por el modelo
+    fd.append("stock_maximo", (mat.stock_maximo ?? 100).toString())
+
+    // estado nuevo
+    fd.append("estado", nextEstado)
+
+    // ❌ NO enviamos foto: tu controller conservará la actual (porque ya hace getById y la mantiene)
+    const res = await fetch(postUrl, {
+      method: "POST",
+      body: fd,
+      credentials: "include",
+      cache: "no-store",
+      redirect: "follow",
     })
-    const result = await response.json()
-    return result
+
+    const parsed = await safeReadJson(res)
+    if (parsed.data) return parsed.data
+
+    return {
+      success: false,
+      status: "error",
+      message:
+        parsed.status === 400
+          ? "Bad Request (400). El backend rechazó los parámetros en actualizar."
+          : "El servidor devolvió una respuesta inválida (no JSON).",
+      http_status: parsed.status,
+      raw: parsed.raw,
+      debug: { controllerUrl, postUrl, id: String(id), nextEstado },
+    }
   } catch (error) {
-    console.error("Error:", error)
-    return { success: false, message: "Error de conexión" }
+    console.error("toggleEstado via actualizar error:", error)
+    return {
+      success: false,
+      status: "error",
+      message: "No se pudo conectar con el controller (fetch falló).",
+      debug: {
+        id: String(id),
+        API_URL,
+        BASE_URL: window.BASE_URL,
+        MATERIALES_BASE_URL: window.MATERIALES_BASE_URL,
+      },
+    }
   }
 }
 
@@ -241,52 +402,105 @@ function showAlert(message, type = "success") {
 
 function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
   const nameRegex = /^[A-Za-z0-9ÁÉÍÓÚÜÑñáéíóúüñ\s\-.]{3,80}$/
-  const codeRegex = /^[A-Za-z0-9_-]{3,30}$/
+  const codeRegex = /^[0-9]{3,30}$/
 
   if (!data.nombre) {
-    showAlert("El nombre es obligatorio", "error")
+    showAlert("El nombre es obligatorio", "info")
     document.getElementById(isEdit ? "editNombre" : "nombre")?.focus()
     return false
   }
 
   if (!nameRegex.test(data.nombre)) {
-    showAlert("El nombre solo puede tener letras/números y 3-80 caracteres", "error")
+    showAlert("El nombre solo puede tener letras/números y 3-80 caracteres", "info")
     document.getElementById(isEdit ? "editNombre" : "nombre")?.focus()
     return false
   }
 
   if (!data.descripcion || data.descripcion.length < 5) {
-    showAlert("La descripción debe tener al menos 5 caracteres", "error")
+    showAlert("La descripción debe tener al menos 5 caracteres", "info")
     document.getElementById(isEdit ? "editDescripcion" : "descripcion")?.focus()
     return false
   }
 
   if (!data.clasificacion) {
-    showAlert("Seleccione la clasificación", "error")
+    showAlert("Seleccione la clasificación", "info")
     document.getElementById(isEdit ? "editClasificacion" : "clasificacion")?.focus()
     return false
   }
 
   if (!data.unidad_medida) {
-    showAlert("Seleccione la unidad de medida", "error")
+    showAlert("Seleccione la unidad de medida", "info")
     document.getElementById(isEdit ? "editUnidad" : "unidad")?.focus()
     return false
   }
 
   if (data.precio === "" || data.precio === null || data.precio === undefined || Number.isNaN(Number(data.precio))) {
-    showAlert("Ingrese un precio válido", "error")
+    showAlert("Ingrese un precio válido", "info")
     document.getElementById(isEdit ? "editPrecio" : "precio")?.focus()
+    return false
+  }
+
+  // Validaciones para stock_maximo
+  if (!data.stock_maximo || data.stock_maximo === "") {
+    showAlert("El stock máximo es obligatorio", "info")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  const stockMaximoStr = data.stock_maximo.toString().trim()
+
+  // Validar que no contenga letras
+  if (/[a-zA-Z]/.test(stockMaximoStr)) {
+    showAlert("El stock máximo no puede contener letras", "info")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  // Validar que no contenga caracteres especiales
+  if (!/^\d+$/.test(stockMaximoStr)) {
+    showAlert("El stock máximo solo puede contener números enteros (sin decimales ni caracteres)", "info")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  const stockMaximoNum = Number(stockMaximoStr)
+
+  // Validar que sea un número válido
+  if (Number.isNaN(stockMaximoNum)) {
+    showAlert("El stock máximo debe ser un número válido", "info")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  // Validar que sea positivo
+  if (stockMaximoNum <= 0) {
+    showAlert("El stock máximo debe ser mayor a 0", "info")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  // Validar que sea entero (sin decimales)
+  if (!Number.isInteger(stockMaximoNum)) {
+    showAlert("El stock máximo debe ser un número entero (sin decimales)", "info")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
+    return false
+  }
+
+  // Validar máximo 6 dígitos
+  if (stockMaximoNum > 999999) {
+    showAlert("El stock máximo no puede exceder 999,999 (máximo 6 dígitos)", "info")
+    document.getElementById(isEdit ? "editStockMaximo" : "stock_maximo")?.focus()
     return false
   }
 
   if (data.clasificacion === "Inventariado") {
     if (!data.codigo_inventario) {
-      showAlert("El código es obligatorio para inventariados", "error")
+      showAlert("El código es obligatorio para inventariados", "info")
       document.getElementById(isEdit ? "editCodigo" : "codigo")?.focus()
       return false
     }
     if (!codeRegex.test(data.codigo_inventario)) {
-      showAlert("Código inválido: 3-30 caracteres alfanuméricos, guion o guion bajo", "error")
+      showAlert("Código inválido: solo números (3-30 dígitos)", "info")
       document.getElementById(isEdit ? "editCodigo" : "codigo")?.focus()
       return false
     }
@@ -297,7 +511,7 @@ function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
   )
 
   if (nombreDuplicado) {
-    showAlert("Ya existe un material con ese nombre", "error")
+    showAlert("Ya existe un material con ese nombre", "info")
     return false
   }
 
@@ -306,7 +520,7 @@ function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
       (m) => m.codigo && m.codigo.toLowerCase() === data.codigo_inventario.toLowerCase() && (!isEdit || m.id !== id),
     )
     if (codigoDuplicado) {
-      showAlert("Ya existe un material con ese código", "error")
+      showAlert("Ya existe un material con ese código", "info")
       return false
     }
   }
@@ -316,6 +530,104 @@ function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
 
 function getDataToRender() {
   return filteredData
+}
+
+/* =========================
+   Empty States (fichas-style)
+   ========================= */
+let emptyStateTable = null
+let emptySearchTable = null
+let emptyStateCards = null
+let emptySearchCards = null
+
+function initEmptyStates() {
+  const tableView = document.getElementById("tableView")
+  const tableWrapper = tableView ? tableView.querySelector(":scope > div") : null
+
+  if (!emptyStateTable && tableWrapper && tableWrapper.parentNode) {
+    emptyStateTable = document.createElement("div")
+    emptyStateTable.id = "emptyStateMaterialesTable"
+    emptyStateTable.className =
+      "hidden mt-10 mb-6 flex flex-col items-center justify-center text-center border border-border rounded-2xl p-10 w-full"
+    emptyStateTable.innerHTML = `
+      <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
+        <svg class="h-7 w-7 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+          <line x1="12" y1="22.08" x2="12" y2="12"></line>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold mt-4">Aún no hay materiales registrados</h3>
+      <p class="text-sm text-muted-foreground mt-1 max-w-md">
+        Crea un material para empezar a gestionar tu inventario.
+      </p>
+    `
+    tableWrapper.parentNode.insertBefore(emptyStateTable, tableWrapper)
+  }
+
+  if (!emptySearchTable && tableWrapper && tableWrapper.parentNode) {
+    emptySearchTable = document.createElement("div")
+    emptySearchTable.id = "emptySearchMaterialesTable"
+    emptySearchTable.className =
+      "hidden mt-10 mb-6 flex flex-col items-center justify-center text-center border border-border rounded-2xl p-10 w-full"
+    emptySearchTable.innerHTML = `
+      <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
+        <svg class="h-7 w-7 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <circle cx="11" cy="11" r="6" stroke-linecap="round" stroke-linejoin="round"></circle>
+          <line x1="16" y1="16" x2="20" y2="20" stroke-linecap="round" stroke-linejoin="round"></line>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold mt-4">No se encontraron resultados</h3>
+      <p class="text-sm text-muted-foreground mt-1 max-w-md">
+        No se encontraron materiales que coincidan con los criterios de búsqueda actuales.
+      </p>
+    `
+    tableWrapper.parentNode.insertBefore(emptySearchTable, tableWrapper)
+  }
+
+  const cardView = document.getElementById("cardView")
+  const cardsContainerEl = document.getElementById("cardsContainer")
+
+  if (!emptyStateCards && cardsContainerEl && cardView) {
+    emptyStateCards = document.createElement("div")
+    emptyStateCards.id = "emptyStateMaterialesCards"
+    emptyStateCards.className =
+      "hidden mt-10 mb-6 flex flex-col items-center justify-center text-center border border-border rounded-2xl p-10 w-full"
+    emptyStateCards.innerHTML = `
+      <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
+        <svg class="h-7 w-7 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+          <line x1="12" y1="22.08" x2="12" y2="12"></line>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold mt-4">Aún no hay materiales registrados</h3>
+      <p class="text-sm text-muted-foreground mt-1 max-w-md">
+        Crea un material para empezar a gestionar tu inventario.
+      </p>
+    `
+    cardView.insertBefore(emptyStateCards, cardsContainerEl)
+  }
+
+  if (!emptySearchCards && cardsContainerEl && cardView) {
+    emptySearchCards = document.createElement("div")
+    emptySearchCards.id = "emptySearchMaterialesCards"
+    emptySearchCards.className =
+      "hidden mt-10 mb-6 flex flex-col items-center justify-center text-center border border-border rounded-2xl p-10 w-full"
+    emptySearchCards.innerHTML = `
+      <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
+        <svg class="h-7 w-7 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <circle cx="11" cy="11" r="6" stroke-linecap="round" stroke-linejoin="round"></circle>
+          <line x1="16" y1="16" x2="20" y2="20" stroke-linecap="round" stroke-linejoin="round"></line>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold mt-4">No se encontraron resultados</h3>
+      <p class="text-sm text-muted-foreground mt-1 max-w-md">
+        No se encontraron materiales que coincidan con los criterios de búsqueda actuales.
+      </p>
+    `
+    cardView.insertBefore(emptySearchCards, cardsContainerEl)
+  }
 }
 
 /* =========================
@@ -330,7 +642,7 @@ const icons = {
     '<svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>',
   menu: '<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="19" cy="12" r="1.5"></circle></svg>',
   package:
-    '<svg class="w-6 h-6 text-primary" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>',
+    '<svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#007832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>',
   email:
     '<svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16v12H4z"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 6l8 6 8-6"/></svg>',
   ruler:
@@ -350,26 +662,49 @@ function renderTable() {
 
   const tableBody = document.getElementById("tableBody")
   tableBody.innerHTML = ""
+  const tableView = document.getElementById("tableView")
+  let tableWrapper = tableView ? tableView.querySelector(":scope > div") : null
+  const tableEl = tableView ? tableView.querySelector(":scope > div > table") : null
+  if (!tableWrapper && tableEl) {
+    tableWrapper = tableEl.parentElement
+  }
+  const paginationEl = document.getElementById("pagination")
 
   if (!dataToRender.length) {
-    const reason = searchTerm || filterValue ? "No se encontraron materiales para el criterio seleccionado" : "Aún no hay materiales registrados"
-    const row = document.createElement("tr")
-    row.innerHTML = `
-      <td class="px-4 py-6 text-center text-sm text-muted-foreground" colspan="7">${reason}</td>
-    `
-    tableBody.appendChild(row)
-    renderPagination()
-    if (window.lucide && typeof lucide.createIcons === "function") {
-      lucide.createIcons(tableBody)
+    if (tableWrapper) tableWrapper.classList.add("hidden")
+    if (tableEl) tableEl.classList.add("hidden")
+    if (paginationEl) {
+      paginationEl.innerHTML = ""
+      paginationEl.parentElement?.classList.add("hidden")
     }
+
+    const hasFilters = Boolean(searchTerm || filterValue)
+    if (hasFilters) {
+      if (emptySearchTable) emptySearchTable.classList.remove("hidden")
+      if (emptyStateTable) emptyStateTable.classList.add("hidden")
+    } else {
+      if (emptyStateTable) emptyStateTable.classList.remove("hidden")
+      if (emptySearchTable) emptySearchTable.classList.add("hidden")
+    }
+
     return
+  } else {
+    if (tableWrapper) tableWrapper.classList.remove("hidden")
+    if (tableEl) tableEl.classList.remove("hidden")
+    if (emptyStateTable) emptyStateTable.classList.add("hidden")
+    if (emptySearchTable) emptySearchTable.classList.add("hidden")
+    if (paginationEl) paginationEl.parentElement?.classList.remove("hidden")
   }
 
   paginatedData.forEach((material) => {
     const statusText = material.enabled ? "Disponible" : "Agotado"
-    const codigoDisplay = material.codigo || "-"
+    const codigoDisplay = material.codigo || (material.clasificacion === "Consumible" ? "N/C" : "-")
+    const fotoUrl = getMaterialImageUrl(material.foto)
+    const avatarHtml = fotoUrl
+      ? `<img src="${fotoUrl}" alt="${material.name}" class="h-full w-full object-cover rounded-lg" />`
+      : '<i data-lucide="box" class="lucide lucide-box h-4 w-4 text-[#007832]"></i>'
 
-    const row = document.createElement("tr")
+    const row = document.createElement("tr")            
     row.className = "hover:bg-muted/40"
     row.dataset.materialId = material.id
 
@@ -377,8 +712,8 @@ function renderTable() {
       <td class="px-4 py-3 align-middle text-sm font-medium">${codigoDisplay}</td>
       <td class="px-4 py-3 align-middle">
         <div class="flex items-center gap-3">
-          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-avatar-secondary-39 text-secondary flex-shrink-0">
-            <i data-lucide="box" class="lucide lucide-box h-4 w-4 text-[#007832]"></i>
+          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-avatar-secondary-39 text-secondary flex-shrink-0 overflow-hidden">
+            ${avatarHtml}
           </div>
           <div>
             <p class="font-medium text-sm">${material.name}</p>
@@ -444,10 +779,9 @@ function renderTable() {
   })
 
   renderPagination()
-    // Initialize Lucide icons in newly rendered table rows
-    if (window.lucide && typeof lucide.createIcons === "function") {
-      lucide.createIcons(tableBody)
-    }
+  if (window.lucide && typeof lucide.createIcons === "function") {
+    lucide.createIcons(tableBody)
+  }
 }
 
 function renderCards() {
@@ -460,23 +794,38 @@ function renderCards() {
 
   const cardsContainer = document.getElementById("cardsContainer")
   cardsContainer.innerHTML = ""
+  const cardPaginationEl = document.getElementById("cardPagination")
 
   if (!dataToRender.length) {
-    const reason = searchTerm || filterValue ? "No se encontraron materiales para el criterio seleccionado" : "Aún no hay materiales registrados"
-    const empty = document.createElement("div")
-    empty.className = "flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card p-6 text-center text-sm text-muted-foreground col-span-full"
-    empty.innerHTML = `
-      <p class="font-medium text-foreground">${reason}</p>
-      <p class="text-xs text-muted-foreground">Intenta crear un nuevo material o ajusta los filtros.</p>
-    `
-    cardsContainer.appendChild(empty)
-    renderPagination()
+    cardsContainer.classList.add("hidden")
+    if (cardPaginationEl) {
+      cardPaginationEl.innerHTML = ""
+      cardPaginationEl.parentElement?.classList.add("hidden")
+    }
+
+    const hasFilters = Boolean(searchTerm || filterValue)
+    if (hasFilters) {
+      if (emptySearchCards) emptySearchCards.classList.remove("hidden")
+      if (emptyStateCards) emptyStateCards.classList.add("hidden")
+    } else {
+      if (emptyStateCards) emptyStateCards.classList.remove("hidden")
+      if (emptySearchCards) emptySearchCards.classList.add("hidden")
+    }
     return
+  } else {
+    cardsContainer.classList.remove("hidden")
+    if (emptyStateCards) emptyStateCards.classList.add("hidden")
+    if (emptySearchCards) emptySearchCards.classList.add("hidden")
+    if (cardPaginationEl) cardPaginationEl.parentElement?.classList.remove("hidden")
   }
 
   paginatedData.forEach((material) => {
     const statusText = material.enabled ? "Disponible" : "Agotado"
-    const codigoDisplay = material.codigo || "Sin código"
+    const codigoDisplay = material.codigo || (material.clasificacion === "Consumible" ? "N/C" : "Sin código")
+    const fotoUrl = getMaterialImageUrl(material.foto)
+    const avatarHtml = fotoUrl
+      ? `<img src="${fotoUrl}" alt="${material.name}" class="h-full w-full object-cover rounded-lg" />`
+      : icons.package
 
     const card = document.createElement("div")
     card.className = "rounded-2xl border border-border bg-card p-2.5 shadow-sm flex flex-col gap-1.5"
@@ -485,8 +834,8 @@ function renderCards() {
     card.innerHTML = `
       <div class="flex items-start justify-between gap-2">
         <div class="flex items-center gap-2">
-          <div class="flex h-10 w-10 items-center justify-center rounded-full material-icon-bg" style="background-color: rgba(57, 169, 0, 0.1);">
-            ${icons.package}
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-avatar-secondary-39 text-secondary flex-shrink-0 overflow-hidden">
+            ${avatarHtml}
           </div>
           <div class="space-y-0.5">
             <p class="font-semibold text-xs sm:text-sm leading-snug">${material.name}</p>
@@ -539,12 +888,16 @@ function renderCards() {
       </div>
 
       <div class="space-y-0.5 text-[11px] sm:text-xs text-muted-foreground">
-        <div class="flex items-center gap-2">
-          ${icons.email}
+        <div class="flex items-start gap-2">
+          <div class="flex-shrink-0">
+            ${icons.email}
+          </div>
           <span class="truncate">${material.description}</span>
         </div>
         <div class="flex items-center gap-2">
-          ${icons.ruler}
+          <div class="flex-shrink-0">
+            ${icons.ruler}
+          </div>
           <span>${material.unit}</span>
         </div>
       </div>
@@ -685,8 +1038,7 @@ function closeCreateModal() {
   if (precioInput) precioInput.dataset.rawPrice = ""
   document.getElementById("imagen").value = ""
   document.getElementById("codigoContainer").style.display = "none"
-  
-  // Limpiar vista previa de imagen
+
   const previewImagen = document.getElementById("previewImagen")
   if (previewImagen) {
     previewImagen.src = ""
@@ -698,38 +1050,38 @@ function openDetailsModal(id) {
   const material = materialsData.find((m) => m.id === id)
   if (!material) return
 
-  // Obtener iniciales del nombre del material
-  const getInitials = (name) => {
-    return name
-      .split(" ")
-      .filter(Boolean)
-      .map((n) => n[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase()
-  }
-
   const estadoBadgeClass = material.enabled ? "badge-estado-activo" : "badge-estado-inactivo"
-  const clasificacionBadgeClass = material.clasificacion === "Inventariado" ? "badge-clasificacion-inventariado" : "badge-clasificacion-consumible"
+  const clasificacionBadgeClass =
+    material.clasificacion === "Inventariado" ? "badge-clasificacion-inventariado" : "badge-clasificacion-consumible"
+  const fotoUrl = getMaterialImageUrl(material.foto)
 
   const detailsContent = document.getElementById("detailsContent")
   detailsContent.innerHTML = `
     <div class="flex items-start gap-4 pb-4 border-b border-border">
-      <div class="flex h-14 w-14 items-center justify-center rounded-full bg-avatar-secondary-39 text-secondary flex-shrink-0">
-        <i data-lucide="box" class="lucide lucide-box h-5 w-5 text-[#007832]"></i>
+      <div class="flex h-20 w-20 items-center justify-center rounded-xl overflow-hidden bg-avatar-secondary-39 text-secondary flex-shrink-0">
+        ${
+          fotoUrl
+            ? `<img src="${fotoUrl}" alt="${material.name}" class="h-full w-full object-cover" />`
+            : `<i data-lucide="box" class="lucide lucide-box h-8 w-8 text-[#007832]"></i>`
+        }
       </div>
       <div class="flex-1">
         <h3 class="font-semibold text-lg">${material.name}</h3>
-        <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium badge-clasificacion-base ${clasificacionBadgeClass}">
-          ${material.clasificacion}
-        </span>
+        <div class="flex items-center gap-2 mt-1">
+          <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium badge-clasificacion-base ${clasificacionBadgeClass}">
+            ${material.clasificacion}
+          </span>
+          <span class="badge-estado-base ${estadoBadgeClass}">
+            ${material.enabled ? "Disponible" : "Agotado"}
+          </span>
+        </div>
       </div>
     </div>
     
     <div class="grid gap-3 text-sm">
       <div class="grid grid-cols-3 gap-2">
         <span class="text-muted-foreground">Código:</span>
-        <span class="col-span-2 font-medium">${material.codigo || "Sin código"}</span>
+        <span class="col-span-2 font-medium">${material.codigo || (material.clasificacion === "Consumible" ? "N/C" : "Sin código")}</span>
       </div>
       <div class="grid grid-cols-3 gap-2">
         <span class="text-muted-foreground">Descripción:</span>
@@ -744,12 +1096,8 @@ function openDetailsModal(id) {
         <span class="col-span-2 font-medium">${material.precio ? formatCOPValue(material.precio) : "Sin precio"}</span>
       </div>
       <div class="grid grid-cols-3 gap-2">
-        <span class="text-muted-foreground">Estado:</span>
-        <div class="col-span-2">
-          <span class="badge-estado-base ${estadoBadgeClass}">
-            ${material.enabled ? "Disponible" : "Agotado"}
-          </span>
-        </div>
+        <span class="text-muted-foreground">Stock Máximo:</span>
+        <span class="col-span-2 font-medium">${material.stock_maximo || "0"}</span>
       </div>
     </div>
   `
@@ -774,13 +1122,18 @@ function openEditModal(id) {
   document.getElementById("editClasificacion").value = material.clasificacion
   document.getElementById("editCodigo").value = material.codigo || ""
   document.getElementById("editUnidad").value = material.unit
+  
   const editPrecioInput = document.getElementById("editPrecio")
   if (editPrecioInput) {
     editPrecioInput.dataset.rawPrice = material.precio ?? ""
     editPrecioInput.value = material.precio ? formatCOPValue(material.precio) : ""
   }
+   
+  const editStockMaximoInput = document.getElementById("editStockMaximo")
+  if (editStockMaximoInput) {
+    editStockMaximoInput.value = material.stock_maximo || ""
+  }
 
-  // Resetear input y pintar vista previa con la foto actual si existe
   const editImagenInput = document.getElementById("editImagen")
   if (editImagenInput) editImagenInput.value = ""
 
@@ -819,30 +1172,52 @@ function closeEditModal() {
 function toggleCodigoField() {
   const clasificacion = document.getElementById("clasificacion").value
   const codigoContainer = document.getElementById("codigoContainer")
+  const codigoHelpText = document.getElementById("codigoHelpText")
   const codigoInput = document.getElementById("codigo")
+  const precioCodigoGrid = document.getElementById("precioCodigoGrid")
 
   if (clasificacion === "Inventariado") {
     codigoContainer.style.display = "block"
-    codigoInput.required = true
+    codigoHelpText.style.display = "block"
+    codigoInput.required = false
+    precioCodigoGrid.style.gridTemplateColumns = "1fr 1fr"
   } else {
     codigoContainer.style.display = "none"
+    codigoHelpText.style.display = "none"
     codigoInput.required = false
     codigoInput.value = ""
+    precioCodigoGrid.style.gridTemplateColumns = "1fr"
   }
 }
 
+/* ✅ CORREGIDA: no rompe si falta el grid o algún id (evita classList of null) */
 function toggleEditCodigoField() {
-  const clasificacion = document.getElementById("editClasificacion").value
+  const clasificacionEl = document.getElementById("editClasificacion")
   const codigoContainer = document.getElementById("editCodigoContainer")
   const codigoInput = document.getElementById("editCodigo")
+  const editPrecioCodigoGrid = document.getElementById("editPrecioCodigoGrid")
+
+  if (!clasificacionEl || !codigoContainer || !codigoInput) return
+
+  const clasificacion = clasificacionEl.value
 
   if (clasificacion === "Inventariado") {
     codigoContainer.style.display = "block"
-    codigoInput.required = true
+    codigoInput.required = false
+
+    if (editPrecioCodigoGrid && editPrecioCodigoGrid.classList) {
+      editPrecioCodigoGrid.classList.remove("grid-cols-1")
+      editPrecioCodigoGrid.classList.add("grid-cols-2")
+    }
   } else {
     codigoContainer.style.display = "none"
     codigoInput.required = false
     codigoInput.value = ""
+
+    if (editPrecioCodigoGrid && editPrecioCodigoGrid.classList) {
+      editPrecioCodigoGrid.classList.remove("grid-cols-2")
+      editPrecioCodigoGrid.classList.add("grid-cols-1")
+    }
   }
 }
 
@@ -850,18 +1225,28 @@ function toggleEditCodigoField() {
    CRUD OPERATIONS
    ========================= */
 async function createMaterial() {
+  const precioEl = document.getElementById("precio")
+  const precioTyped = (precioEl?.value ?? "").toString().trim()
+  const precioRaw = (precioEl?.dataset.rawPrice ?? "").toString().trim()
+
+  if (!precioRaw && precioTyped && /[.,]/.test(precioTyped)) {
+    showAlert("No se admiten puntos ni comas en el precio. Escríbelo sin separadores (ej: 2000).", "error")
+    precioEl?.focus()
+    return
+  }
+
   const materialData = {
     nombre: document.getElementById("nombre").value.trim(),
     descripcion: document.getElementById("descripcion").value.trim(),
     clasificacion: document.getElementById("clasificacion").value,
     codigo_inventario: document.getElementById("codigo").value.trim() || null,
-    unidad_medida: document.getElementById("unidad").value,
-    precio: parsePriceValue(document.getElementById("precio")?.dataset.rawPrice ?? document.getElementById("precio")?.value),
+    unidad_medida: document.getElementById("unidad")?.value.trim() || "",
+    precio: parsePriceValue(precioRaw || precioTyped),
+    stock_maximo: document.getElementById("stock_maximo").value,
   }
 
   if (!validateMaterialPayload(materialData)) return
 
-  // Crear FormData (igual que en usuario_controller)
   const formData = new FormData()
   formData.append("nombre", materialData.nombre)
   formData.append("descripcion", materialData.descripcion)
@@ -869,8 +1254,8 @@ async function createMaterial() {
   formData.append("codigo_inventario", materialData.codigo_inventario || "")
   formData.append("unidad_medida", materialData.unidad_medida)
   formData.append("precio", materialData.precio)
-  
-  // Agregar la imagen
+  formData.append("stock_maximo", materialData.stock_maximo)
+
   const imagenInput = document.getElementById("imagen")
   if (imagenInput.files.length > 0) {
     formData.append("foto", imagenInput.files[0])
@@ -889,24 +1274,58 @@ async function createMaterial() {
 
 async function updateMaterial() {
   const id = Number.parseInt(document.getElementById("editId").value)
+
+  const editPrecioEl = document.getElementById("editPrecio")
+  const precioTyped = (editPrecioEl?.value ?? "").toString().trim()
+  const precioRaw = (editPrecioEl?.dataset.rawPrice ?? "").toString().trim()
+
   const materialData = {
     nombre: document.getElementById("editNombre").value.trim(),
     descripcion: document.getElementById("editDescripcion").value.trim(),
     clasificacion: document.getElementById("editClasificacion").value,
     codigo_inventario: document.getElementById("editCodigo").value.trim() || null,
-    unidad_medida: document.getElementById("editUnidad").value,
-    precio: parsePriceValue(document.getElementById("editPrecio")?.dataset.rawPrice ?? document.getElementById("editPrecio")?.value),
+    unidad_medida: document.getElementById("editUnidad")?.value.trim() || "",
+    precio: parsePriceValue(precioRaw || precioTyped),
+    stock_maximo: document.getElementById("editStockMaximo").value,
     estado: materialsData.find((m) => m.id === id)?.enabled ? "Disponible" : "Agotado",
   }
 
   const editImagenInput = document.getElementById("editImagen")
   const hasNewPhoto = editImagenInput && editImagenInput.files.length > 0
 
-  // Bloquear envío si no hay cambios respecto al original
+  // Validar si no hay cambios ANTES de validar los datos
   const original = materialsData.find((m) => m.id === id)
   if (original) {
-    const norm = (v) => (v ?? "").toString().trim()
+    // Función mejorada para normalizar y limpiar valores
+    const norm = (v) => {
+      if (v === null || v === undefined) return ""
+      return v.toString()
+        .trim()
+        .replace(/\s+/g, " ") // Reemplazar múltiples espacios/saltos de línea por un solo espacio
+        .replace(/\r\n/g, " ") // Reemplazar saltos de línea Windows
+        .replace(/\n/g, " ") // Reemplazar saltos de línea Unix
+        .replace(/\r/g, " ") // Reemplazar retornos de carro
+        .trim()
+    }
+    
     const samePrecio = Number(parsePriceValue(original.precio)) === Number(parsePriceValue(materialData.precio))
+    
+    // Normalizar stock_maximo para comparación correcta
+    const originalStock = original.stock_maximo ? Number(original.stock_maximo) : 0
+    const newStock = materialData.stock_maximo ? Number(materialData.stock_maximo) : 0
+    const sameStockMaximo = originalStock === newStock
+
+    // Debug para materiales creados manualmente en DB
+    console.log("Comparación de cambios:", {
+      nombre: { original: norm(original.name), nuevo: norm(materialData.nombre), igual: norm(original.name) === norm(materialData.nombre) },
+      descripcion: { original: norm(original.description), nuevo: norm(materialData.descripcion), igual: norm(original.description) === norm(materialData.descripcion) },
+      clasificacion: { original: norm(original.clasificacion), nuevo: norm(materialData.clasificacion), igual: norm(original.clasificacion) === norm(materialData.clasificacion) },
+      codigo: { original: norm(original.codigo), nuevo: norm(materialData.codigo_inventario), igual: norm(original.codigo) === norm(materialData.codigo_inventario) },
+      unidad: { original: norm(original.unit), nuevo: norm(materialData.unidad_medida), igual: norm(original.unit) === norm(materialData.unidad_medida) },
+      precio: { original: Number(parsePriceValue(original.precio)), nuevo: Number(parsePriceValue(materialData.precio)), igual: samePrecio },
+      stock: { original: originalStock, nuevo: newStock, igual: sameStockMaximo },
+      hasNewPhoto
+    })
 
     const noChanges =
       norm(original.name) === norm(materialData.nombre) &&
@@ -915,23 +1334,31 @@ async function updateMaterial() {
       norm(original.codigo) === norm(materialData.codigo_inventario) &&
       norm(original.unit) === norm(materialData.unidad_medida) &&
       samePrecio &&
+      sameStockMaximo &&
       !hasNewPhoto
 
     if (noChanges) {
-      showAlert("No realizaste cambios. Usa Cancelar o cierra el modal.", "warning")
+      showAlert("No realizaste cambios en el material", "info")
       return
     }
   }
 
+  // Validar puntos y comas en precio
+  if (!precioRaw && precioTyped && /[.,]/.test(precioTyped)) {
+    showAlert("No se admiten puntos ni comas en el precio. Escríbelo sin separadores (ej: 2000).", "error")
+    editPrecioEl?.focus()
+    return
+  }
+
   if (!validateMaterialPayload(materialData, { isEdit: true, id })) return
 
-  // FormData para permitir actualizar foto opcionalmente
   const formData = new FormData()
   formData.append("nombre", materialData.nombre)
   formData.append("descripcion", materialData.descripcion)
   formData.append("clasificacion", materialData.clasificacion)
   formData.append("codigo_inventario", materialData.codigo_inventario || "")
   formData.append("unidad_medida", materialData.unidad_medida)
+  formData.append("stock_maximo", materialData.stock_maximo || "")
   formData.append("precio", materialData.precio || "")
   formData.append("estado", materialData.estado)
 
@@ -950,16 +1377,19 @@ async function updateMaterial() {
   }
 }
 
+/* ✅ CORREGIDA: ahora usa actualizar (porque tu backend no tiene toggleEstado) */
 async function toggleMaterialStatus(id, event) {
   event?.stopPropagation()
 
   const result = await toggleMaterialStatusAPI(id)
+  const ok = result?.success === true || result?.status === "success"
 
-  if (result.success) {
+  if (ok) {
     showAlert(result.message || "Estado actualizado", "success")
     await fetchMaterials()
   } else {
-    showAlert(result.message || "Error al cambiar el estado", "error")
+    showAlert(result?.message || "Error al cambiar el estado", "error")
+    // console.log("toggleEstado RAW:", result?.raw)
   }
 }
 
@@ -1075,9 +1505,10 @@ function applyFilters() {
    INIT
    ========================= */
 document.addEventListener("DOMContentLoaded", async () => {
+  initEmptyStates()
   await fetchMaterials()
   setupEventListeners()
-  // await cargarProgramas() // This line seems to be from another module and might be a leftover
+  // await cargarProgramas()
 })
 
 function setupEventListeners() {
@@ -1086,49 +1517,53 @@ function setupEventListeners() {
 
   attachCurrencyMask("precio")
   attachCurrencyMask("editPrecio")
-  
-  // Vista previa de imagen en el modal de crear
+
+  // Inicializar selects buscadores de unidad
+  initSearchableSelect("unidad", "unidadDropdown", "unidad-option")
+  initSearchableSelect("editUnidad", "editUnidadDropdown", "edit-unidad-option")
+
   const imagenInput = document.getElementById("imagen")
   const dropzoneImagen = document.getElementById("dropzoneImagen")
   const previewImagen = document.getElementById("previewImagen")
-  
+
   if (imagenInput && dropzoneImagen && previewImagen) {
-    // Click en el dropzone abre el selector de archivos
     dropzoneImagen.addEventListener("click", () => {
       imagenInput.click()
     })
-    
-    // Prevenir comportamiento por defecto en drag & drop
+
     dropzoneImagen.addEventListener("dragover", (e) => {
       e.preventDefault()
       dropzoneImagen.classList.add("bg-muted")
     })
-    
+
     dropzoneImagen.addEventListener("dragleave", () => {
       dropzoneImagen.classList.remove("bg-muted")
     })
-    
-    // Manejar drop de archivos
+
     dropzoneImagen.addEventListener("drop", (e) => {
       e.preventDefault()
       dropzoneImagen.classList.remove("bg-muted")
-      
+
       const files = e.dataTransfer.files
       if (files.length > 0) {
-        imagenInput.files = files
-        mostrarVistaPrevia(files[0])
+        if (validarImagen(files[0])) {
+          imagenInput.files = files
+          mostrarVistaPrevia(files[0])
+        }
       }
     })
-    
-    // Manejar selección de archivo
+
     imagenInput.addEventListener("change", (e) => {
       if (e.target.files.length > 0) {
-        mostrarVistaPrevia(e.target.files[0])
+        if (validarImagen(e.target.files[0])) {
+          mostrarVistaPrevia(e.target.files[0])
+        } else {
+          e.target.value = ""
+        }
       }
     })
   }
 
-  // Vista previa en el modal de editar
   const editImagenInput = document.getElementById("editImagen")
   const editDropzoneImagen = document.getElementById("editDropzoneImagen")
   const editPreviewImagen = document.getElementById("editPreviewImagen")
@@ -1153,17 +1588,45 @@ function setupEventListeners() {
 
       const files = e.dataTransfer.files
       if (files.length > 0) {
-        editImagenInput.files = files
-        mostrarVistaPrevia(files[0], "editPreviewImagen")
+        if (validarImagen(files[0])) {
+          editImagenInput.files = files
+          mostrarVistaPrevia(files[0], "editPreviewImagen")
+        }
       }
     })
 
     editImagenInput.addEventListener("change", (e) => {
       if (e.target.files.length > 0) {
-        mostrarVistaPrevia(e.target.files[0], "editPreviewImagen")
+        if (validarImagen(e.target.files[0])) {
+          mostrarVistaPrevia(e.target.files[0], "editPreviewImagen")
+        } else {
+          e.target.value = ""
+        }
       }
     })
   }
+}
+
+function validarImagen(file) {
+  const maxSize = 2 * 1024 * 1024
+  const allowedTypes = ["image/jpeg", "image/jpg", "image/png"]
+
+  if (!file) {
+    showAlert("No se seleccionó ningún archivo", "error")
+    return false
+  }
+
+  if (!allowedTypes.includes(file.type)) {
+    showAlert("Solo se permiten archivos JPG, JPEG o PNG", "error")
+    return false
+  }
+
+  if (file.size > maxSize) {
+    showAlert("La imagen no puede superar los 2MB", "error")
+    return false
+  }
+
+  return true
 }
 
 function mostrarVistaPrevia(file, previewId = "previewImagen") {
@@ -1179,3 +1642,95 @@ function mostrarVistaPrevia(file, previewId = "previewImagen") {
 
   reader.readAsDataURL(file)
 }
+
+/* =========================
+   SEARCHABLE SELECT - Unidad de medida
+   ========================= */
+function initSearchableSelect(inputId, dropdownId, optionClass) {
+  const input = document.getElementById(inputId)
+  const dropdown = document.getElementById(dropdownId)
+  
+  if (!input || !dropdown) return
+
+  const options = dropdown.querySelectorAll(`.${optionClass}`)
+  let selectedValue = ""
+
+  // Mostrar dropdown al hacer clic en el input
+  input.addEventListener("click", (e) => {
+    e.stopPropagation()
+    dropdown.classList.remove("hidden")
+    filterOptions("")
+  })
+
+  // Filtrar opciones mientras se escribe
+  input.addEventListener("input", (e) => {
+    const searchTerm = e.target.value
+    dropdown.classList.remove("hidden")
+    filterOptions(searchTerm)
+  })
+
+  // Seleccionar opción
+  options.forEach(option => {
+    option.addEventListener("click", (e) => {
+      e.stopPropagation()
+      const value = option.dataset.value
+      input.value = value
+      selectedValue = value
+      dropdown.classList.add("hidden")
+    })
+  })
+
+  // Cerrar dropdown al hacer clic fuera
+  document.addEventListener("click", (e) => {
+    if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+      dropdown.classList.add("hidden")
+      
+      // Si el input no coincide con una opción válida, restaurar el último valor válido o vaciar
+      const currentValue = input.value.trim().toUpperCase()
+      const validOptions = Array.from(options).map(opt => opt.dataset.value.toUpperCase())
+      
+      if (currentValue && !validOptions.includes(currentValue)) {
+        input.value = selectedValue
+      }
+    }
+  })
+
+  // Función para filtrar opciones
+  function filterOptions(searchTerm) {
+    const term = searchTerm.toLowerCase().trim()
+    let hasVisible = false
+
+    options.forEach(option => {
+      const value = option.dataset.value.toLowerCase()
+      if (value.includes(term)) {
+        option.style.display = "block"
+        hasVisible = true
+      } else {
+        option.style.display = "none"
+      }
+    })
+
+    // Mostrar mensaje si no hay resultados
+    const existingMsg = dropdown.querySelector(".no-results-message")
+    if (existingMsg) existingMsg.remove()
+
+    if (!hasVisible && term) {
+      const noResultsDiv = document.createElement("div")
+      noResultsDiv.className = "no-results-message px-3 py-2 text-sm text-muted-foreground text-center"
+      noResultsDiv.textContent = "No se encontraron resultados"
+      dropdown.querySelector("div").appendChild(noResultsDiv)
+    }
+  }
+
+  // Método público para establecer valor
+  input.setUnidadValue = (value) => {
+    input.value = value
+    selectedValue = value
+  }
+
+  // Método público para obtener valor
+  input.getUnidadValue = () => {
+    return input.value.trim()
+  }
+}
+

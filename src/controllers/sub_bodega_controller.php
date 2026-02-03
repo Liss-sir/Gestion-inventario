@@ -40,6 +40,20 @@ class SubBodegaController {
         $this->response($data);
     }
 
+    /* GET BY BODEGA */
+    public function porBodega() {
+        $idBodega = $_GET["id_bodega"] ?? null;
+
+        if (!$idBodega) {
+            $this->response(["success" => false, "error" => "ID de bodega requerido"], 400);
+        }
+
+        $idBodega = (int)$idBodega;
+        $subbodegas = $this->model->obtenerPorBodega($idBodega);
+
+        $this->response(["success" => true, "data" => $subbodegas]);
+    }
+
     /* CREATE */
     public function crear() {
         $input = json_decode(file_get_contents("php://input"), true);
@@ -57,7 +71,7 @@ class SubBodegaController {
         $this->response(["error" => "No se pudo crear"], 500);
     }
 
-    /* UPDATE*/
+   /* UPDATE */
     public function actualizar() {
         $id = $_GET["id"] ?? null;
 
@@ -65,16 +79,36 @@ class SubBodegaController {
             $this->response(["error" => "ID requerido"], 400);
         }
 
+        $id = (int)$id;
+
         $input = json_decode(file_get_contents("php://input"), true);
 
-        if (!$input) {
+        if (!$input || !is_array($input)) {
             $this->response(["error" => "Datos inválidos"], 400);
         }
 
-        $ok = $this->model->actualizar($id, $input);
+        // 1) Traer el registro actual (para no exigir campos que no editas)
+        $actual = $this->model->obtenerPorId($id);
+        if (!$actual) {
+            $this->response(["error" => "Subbodega no encontrada"], 404);
+        }
+
+        // 2) Merge: lo que llega del front sobrescribe lo existente
+        $payload = array_merge($actual, $input);
+
+        // 3) Validación mínima de los campos editables
+        if (
+            empty($payload["codigo_subbodega"]) ||
+            empty($payload["nombre_subbodega"]) ||
+            empty($payload["clasificacion_subbodegas"])
+        ) {
+            $this->response(["error" => "Faltan campos obligatorios"], 400);
+        }
+
+        $ok = $this->model->actualizar($id, $payload);
 
         if ($ok) {
-            $this->response(["message" => "Subbodega actualizada correctamente"]);
+            $this->response(["message" => "Subbodega actualizada correctamente", "success" => true]);
         }
 
         $this->response(["error" => "No se pudo actualizar"], 500);
@@ -126,6 +160,10 @@ switch ($accion) {
 
     case "obtener":
         $controller->obtener();
+        break;
+
+    case "por_bodega":
+        $controller->porBodega();
         break;
 
     case "crear":
