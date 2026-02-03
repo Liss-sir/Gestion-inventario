@@ -7,6 +7,23 @@ const PROGRAMAS_API_URL = "src/controllers/programa_controller.php";
 // Variables globales
 let currentRaes = [];
 let originalEditData = null; // For change validation during editing
+let currentRaeHasActiveActivities = false;
+
+async function verificarActividadesActivas(idRae) {
+    try {
+        const res = await fetch(`${RAE_API_URL}?accion=verificar_actividades&id_rae=${idRae}`, {
+            headers: { Accept: "application/json" },
+        });
+        
+        if (!res.ok) throw new Error("Error al verificar actividades");
+        
+        const data = await res.json();
+        return data.tiene_actividades_activas || false;
+    } catch (err) {
+        console.error("Error verificando actividades:", err);
+        return false;
+    }
+}
 
 // =========================
 // INPUT VALIDATION ONLY NUMBERS
@@ -332,14 +349,8 @@ function closeDetailsModal() {
     document.getElementById("detailsModal").classList.add("hidden");
 }
 
-function openEditModal(id, descripcion, programa, codigo, programId) {
-    // ✅ GUARD: si no puede editar, NO abrir modal (Instructor: solo listar/ver detalles)
-    const p = window.RAES_PERMS || {};
-    if (!p.canEditar) {
-        toastError("No tienes permisos para editar RAEs");
-        return;
-    }
-
+// Función auxiliar para abrir el modal de edición
+function abrirModalEdicion(id, descripcion, programa, codigo, programId, tieneActividades) {
     // Close all dropdown menus
     const allMenus = document.querySelectorAll('[id^="actionMenu"]');
     allMenus.forEach((menu) => menu.classList.add("hidden"));
@@ -363,7 +374,68 @@ function openEditModal(id, descripcion, programa, codigo, programId) {
 
     document.getElementById("editRaeDescription").value = descripcion;
     const programSelect = document.getElementById("editRaeProgram");
+    
     if (programSelect) {
+        // Si tiene actividades activas, aplicar estilos directamente
+        if (tieneActividades) {
+            // Deshabilitar completamente el select
+            programSelect.disabled = true;
+            
+            // Aplicar clases de Tailwind para aspecto deshabilitado
+            programSelect.classList.add(
+                "bg-gray-100", 
+                "cursor-not-allowed", 
+                "opacity-75",
+                "border-gray-300"
+            );
+            programSelect.classList.remove(
+                "bg-card",
+                "cursor-pointer"
+            );
+            
+            // Agregar icono de advertencia al label si existe
+            const programLabel = document.querySelector('label[for="editRaeProgram"]');
+            if (programLabel) {
+                // Verificar si ya existe el span de advertencia
+                let warningSpan = programLabel.querySelector('.text-amber-600');
+                if (!warningSpan) {
+                    warningSpan = document.createElement("span");
+                    warningSpan.className = "ml-2 text-xs text-amber-600 font-normal flex items-center gap-1";
+                    warningSpan.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.72-1.36 3.485 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                        Bloqueado por actividades activas
+                    `;
+                    programLabel.appendChild(warningSpan);
+                }
+            }
+        } else {
+            // Habilitar el select
+            programSelect.disabled = false;
+            
+            // Restaurar estilos normales
+            programSelect.classList.remove(
+                "bg-gray-100", 
+                "cursor-not-allowed", 
+                "opacity-75",
+                "border-gray-300"
+            );
+            programSelect.classList.add(
+                "bg-card",
+                "cursor-pointer"
+            );
+            
+            // Remover mensaje de advertencia si existe
+            const programLabel = document.querySelector('label[for="editRaeProgram"]');
+            if (programLabel) {
+                const warningSpan = programLabel.querySelector('.text-amber-600');
+                if (warningSpan) {
+                    warningSpan.remove();
+                }
+            }
+        }
+        
         // Prefer programId if it comes (numeric value that matches option.value)
         if (programId !== undefined && programId !== null && programId !== "") {
             programSelect.value = programId;
@@ -397,8 +469,63 @@ function openEditModal(id, descripcion, programa, codigo, programId) {
 }
 
 function closeEditModal() {
+    // Limpiar el estado de actividades activas
+    currentRaeHasActiveActivities = false;
+    
+    // Restaurar select completamente
+    const programSelect = document.getElementById("editRaeProgram");
+    if (programSelect) {
+        programSelect.disabled = false;
+        programSelect.classList.remove(
+            "bg-gray-100", 
+            "cursor-not-allowed", 
+            "opacity-75",
+            "border-gray-300"
+        );
+        programSelect.classList.add(
+            "bg-card",
+            "cursor-pointer"
+        );
+    }
+    
+    // Remover mensaje de advertencia del label si existe
+    const programLabel = document.querySelector('label[for="editRaeProgram"]');
+    if (programLabel) {
+        const warningSpan = programLabel.querySelector('.text-amber-600');
+        if (warningSpan) {
+            warningSpan.remove();
+        }
+    }
+    
     document.getElementById("editModal").classList.add("hidden");
     originalEditData = null; // Clear original data
+}
+
+function openEditModal(id, descripcion, programa, codigo, programId) {
+    // GUARD: si no puede editar, NO abrir modal (Instructor: solo listar/ver detalles)
+    const p = window.RAES_PERMS || {};
+    if (!p.canEditar) {
+        toastError("No tienes permisos para editar RAEs");
+        return;
+    }
+
+    // Primero verificar si tiene actividades activas
+    verificarActividadesActivas(id).then((tieneActividades) => {
+        currentRaeHasActiveActivities = tieneActividades;
+        
+        // Si tiene actividades activas, mostrar advertencia informativa
+        if (tieneActividades) {
+            toastInfo("Este RAE tiene actividades activas asociadas. El cambio de programa de formación está deshabilitado para evitar conflictos en el sistema.");
+        }
+        
+        // Abrir el modal después de verificar
+        abrirModalEdicion(id, descripcion, programa, codigo, programId, tieneActividades);
+    }).catch((err) => {
+        console.error("Error verificando actividades:", err);
+        // Si hay error, abrir modal igual pero asumiendo que no tiene actividades
+        currentRaeHasActiveActivities = false;
+        abrirModalEdicion(id, descripcion, programa, codigo, programId, false);
+    });
 }
 
 function openCreateModal() {
@@ -642,6 +769,15 @@ async function updateRae() {
         toastError("La descripción del RAE es obligatoria");
         document.getElementById("editRaeDescription").focus();
         return;
+    }
+
+    // Si tiene actividades activas y está intentando cambiar el programa, mostrar error
+    if (currentRaeHasActiveActivities) {
+        // Verificar si el programa está cambiando
+        if (originalEditData && id_programa && originalEditData.id_programa !== id_programa) {
+            toastError("No se puede cambiar el programa de formación porque este RAE tiene actividades activas asociadas. Esto podría causar conflictos en el sistema.");
+            return;
+        }
     }
 
     // Validating changes in edit mode
