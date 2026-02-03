@@ -669,6 +669,57 @@ function renderRolFuncionalBadgeHTML(user) {
   return [];
 }
 
+// =====================================================
+// ✅ VALIDAR BLOQUEO DE CAMBIO DE CARGO (Instructor)
+// =====================================================
+async function validarCambioCargoInstructor(id_usuario, nuevoCargo) {
+  // Primero intentar con fetchJSONSafe para tolerar warnings/espacios en la respuesta
+  const acciones = ["validar_cambio_cargo", "puede_cambiar_cargo", "validarCambioCargo"];
+
+  for (const accion of acciones) {
+    try {
+      const url = `${API_URL}?accion=${accion}&t=${Date.now()}`;
+
+      // Usamos fetchJSONSafe que extrae JSON incluso si hay ruido en la respuesta
+      const { parsed, text } = await fetchJSONSafe(url, { method: "POST",
+        body: JSON.stringify({ id_usuario, nuevo_cargo: nuevoCargo }),
+      });
+
+      // Si no parseó, seguir con la siguiente acción
+      if (!parsed) continue;
+
+      // Normalizar distintos nombres de campo que pudiera devolver el backend
+      const canChange =
+        typeof parsed.can_change !== "undefined"
+          ? parsed.can_change
+          : typeof parsed.puede_cambiar !== "undefined"
+          ? parsed.puede_cambiar
+          : typeof parsed.canChange !== "undefined"
+          ? parsed.canChange
+          : null;
+
+      const successFlag = typeof parsed.success !== "undefined" ? !!parsed.success : true;
+      const message = parsed.message || parsed.mensaje || parsed.error || "";
+
+      if (canChange !== null) {
+        return { success: successFlag, can_change: Number(canChange), message };
+      }
+
+      // Si la respuesta tiene el formato esperado 'success' y 'message' pero no el flag,
+      // interpretar success===false como bloqueo conservador
+      if (typeof parsed.success !== "undefined" && parsed.success === false) {
+        return { success: false, can_change: 0, message: message || "No es posible cambiar el cargo." };
+      }
+    } catch (e) {
+      // ignorar y probar la siguiente acción
+      console.error('validarCambioCargoInstructor error para accion', accion, e);
+    }
+  }
+
+  return null;
+}
+
+
 
     /**
      * ✅ ADDED (NO-DELETE): Fetch helper that tolerates extra output
@@ -1252,11 +1303,160 @@ async function obtenerRolFuncionalUsuario(id_usuario) {
         modalUsuarioDescripcion.textContent = "Modifica la información del usuario";
         hiddenUserId.value = editUser.id;
 
+        // DEBUG: mostrar objeto editUser y estado inicial del select cargo
+        try {
+          console.log("openModalUsuario -> editUser:", editUser);
+          console.log("openModalUsuario -> inputCargo before init:", inputCargo ? { value: inputCargo.value, disabled: inputCargo.disabled, dataset: { lockedInstructorChange: inputCargo.dataset.lockedInstructorChange } } : null);
+          console.log("openModalUsuario -> editUser.id_programa:", editUser.id_programa ?? editUser.idPrograma ?? editUser.programa ?? null);
+        } catch (e) { /* no-fatal */ }
+
         inputNombreCompleto.value = editUser.nombre_completo;
         inputTipoDocumento.value = editUser.tipo_documento;
         inputNumeroDocumento.value = editUser.numero_documento;
         inputTelefono.value = editUser.telefono;
         inputCargo.value = editUser.cargo;
+        // =====================================================
+// ✅ BLOQUEO: si es Instructor con vínculos, no permitir cambiar cargo
+// =====================================================
+(async () => {
+  try {
+      if (inputCargo && editUser?.id) {
+      // Guardar cargo original para revertir cambios
+      inputCargo.dataset.originalCargo = String(editUser.cargo || "");
+
+      // Bandera de bloqueo (por defecto no)
+      inputCargo.dataset.lockedInstructorChange = "0";
+
+      // Normalizamos cargo actual
+      const cargoActualNormalized = String(editUser.cargo || "").trim().toLowerCase();
+
+      // Handler reutilizable que revierte cambios si está bloqueado
+      const original = String(inputCargo.dataset.originalCargo || "");
+      const preventChangeHandler = function (e) {
+        try {
+          if (String(inputCargo.dataset.lockedInstructorChange) === "1") {
+            inputCargo.value = original;
+            const msg = inputCargo.title ||
+              "No es posible cambiar el cargo porque este instructor tiene vinculaciones activas.";
+            toastError(msg);
+          }
+        } catch (err) {
+          // ignore
+        }
+      };
+
+      // Attach immediately to prevent quick user changes before validation completes
+      try {
+        inputCargo.addEventListener("change", preventChangeHandler);
+        inputCargo.addEventListener("input", preventChangeHandler);
+        // store ref so we can remove it later if needed
+        inputCargo._preventChangeHandler = preventChangeHandler;
+      } catch (e) {}
+
+      // If cargo es Instructor, deshabilitamos temporalmente mientras validamos el backend
+      if (cargoActualNormalized === "instructor") {
+        // Si editUser ya trae id_programa, eso es vínculo: bloquear inmediatamente
+        if (editUser && (editUser.id_programa || editUser.idPrograma || editUser.programa)) {
+          inputCargo.dataset.lockedInstructorChange = "1";
+          try {
+            inputCargo.disabled = true;
+            inputCargo.classList.add("opacity-60", "cursor-not-allowed");
+            inputCargo.title = "No se puede cambiar el cargo porque el instructor tiene un programa asignado.";
+            try { toastError(inputCargo.title); } catch (e) {}
+          } catch (e) {}
+        }
+
+        // marcar checking para UX y evitar interacción si no bloqueado por id_programa
+        if (String(inputCargo.dataset.lockedInstructorChange) !== "1") {
+          try {
+            inputCargo.disabled = true;
+            inputCargo.classList.add("opacity-60", "cursor-not-allowed");
+            inputCargo.title = "Verificando vinculaciones...";
+          } catch (e) {}
+        }
+
+        // Intentar validar; si la respuesta es nula la tratamos como "no bloqueo" para no romper UX
+  const resp = await validarCambioCargoInstructor(String(editUser.id), "Aprendiz");
+  try { console.log("openModalUsuario -> validarCambioCargoInstructor resp:", resp); } catch (e) {}
+
+        // COMPROBACION ADICIONAL: consultar instructores_programas directamente
+        try {
+          const res = await fetch(`${API_URL}?accion=esta_vinculado_programa`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_usuario: String(editUser.id) })
+          });
+
+          const txt = await res.text();
+          const parsed = (function (t) { try { return JSON.parse(t); } catch (e) { return null; } })(txt);
+          try { console.log('openModalUsuario -> esta_vinculado_programa resp:', parsed, txt); } catch (e) {}
+
+          if (parsed && (parsed.vinculado === 1 || parsed.vinculado === '1')) {
+            inputCargo.dataset.lockedInstructorChange = "1";
+            inputCargo.disabled = true;
+            inputCargo.classList.add("opacity-60", "cursor-not-allowed");
+            inputCargo.title = "No se puede cambiar el cargo porque el instructor está vinculado a un programa.";
+            try { toastError(inputCargo.title); } catch (e) {}
+          }
+        } catch (e) {
+          // ignore
+        }
+
+        if (resp && resp.success === true && Number(resp.can_change) === 0) {
+          inputCargo.dataset.lockedInstructorChange = "1";
+          inputCargo.disabled = true;
+          inputCargo.classList.add("opacity-60", "cursor-not-allowed");
+          inputCargo.title = resp.message || "No se puede cambiar el cargo porque tiene vínculos activos.";
+          try { toastError(inputCargo.title); } catch (e) {}
+        } else if (resp && (resp.success === false || Number(resp.can_change) === 0)) {
+          inputCargo.dataset.lockedInstructorChange = "1";
+          inputCargo.disabled = true;
+          inputCargo.classList.add("opacity-60", "cursor-not-allowed");
+          inputCargo.title = resp.message || "No se puede cambiar el cargo porque tiene vínculos activos.";
+          try { toastError(inputCargo.title); } catch (e) {}
+        } else {
+          // permitir cambio: removemos bloqueo y título SOLO si no fue bloqueado por otra comprobación
+          if (String(inputCargo.dataset.lockedInstructorChange) !== "1") {
+            inputCargo.dataset.lockedInstructorChange = "0";
+            inputCargo.disabled = false;
+            inputCargo.classList.remove("opacity-60", "cursor-not-allowed");
+            inputCargo.removeAttribute("title");
+
+            // removemos el preventChangeHandler porque ahora no es necesario
+            try {
+              if (inputCargo._preventChangeHandler) {
+                inputCargo.removeEventListener("change", inputCargo._preventChangeHandler);
+                inputCargo.removeEventListener("input", inputCargo._preventChangeHandler);
+                delete inputCargo._preventChangeHandler;
+              }
+            } catch (e) {}
+          } else {
+            // Si ya fue bloqueado por otra comprobación (ej. instructores_programas), mantenemos bloqueo
+            inputCargo.disabled = true;
+            inputCargo.classList.add("opacity-60", "cursor-not-allowed");
+          }
+        }
+      } else {
+        // No es instructor -> habilitar y quitar prevent handler si estaba
+        try {
+          inputCargo.dataset.lockedInstructorChange = "0";
+          inputCargo.disabled = false;
+          inputCargo.classList.remove("opacity-60", "cursor-not-allowed");
+          inputCargo.removeAttribute("title");
+          if (inputCargo._preventChangeHandler) {
+            inputCargo.removeEventListener("change", inputCargo._preventChangeHandler);
+            inputCargo.removeEventListener("input", inputCargo._preventChangeHandler);
+            delete inputCargo._preventChangeHandler;
+          }
+        } catch (e) {}
+      }
+    }
+  } catch (e) {
+    // no-fatal
+  }
+})();
+
         inputCorreo.value = editUser.correo;
         inputPassword.value = "";
         inputDireccion.value = editUser.direccion;
@@ -1298,6 +1498,17 @@ async function obtenerRolFuncionalUsuario(id_usuario) {
         if (inputPrograma) inputPrograma.value = "";
         actualizarVisibilidadPrograma();
 
+        // Force update of char-limit messages (they were initialized on DOMContentLoaded)
+        // Resetting the form does not fire input events, so dispatch them to refresh UI.
+        try {
+          const toUpdate = [inputNumeroDocumento, inputTelefono, inputNombreCompleto, inputCorreo, inputDireccion];
+          toUpdate.forEach((el) => {
+            if (el) el.dispatchEvent(new Event('input', { bubbles: true }));
+          });
+        } catch (e) {
+          // no-fatal
+        }
+
         // ✅ Forzar que el select se cargue bien desde el modal
         setTimeout(() => {
           actualizarVisibilidadPrograma();
@@ -1322,7 +1533,13 @@ async function obtenerRolFuncionalUsuario(id_usuario) {
     function closeModalUsuario() {
       if (!modalUsuario) return;
       modalUsuario.classList.remove("active");
-      selectedUser = null;
+      // Only clear selectedUser when the profile viewer is NOT open.
+      // If the user details modal (`modalVerUsuario`) is open we want to
+      // preserve `selectedUser` so the profile stays visible and can be
+      // refreshed after an edit.
+      if (!modalVerUsuario || !modalVerUsuario.classList.contains("active")) {
+        selectedUser = null;
+      }
       if (hiddenUserId) hiddenUserId.value = "";
       originalEditData = null;
     }
@@ -2896,12 +3113,49 @@ if (modalConfirmarQuitarRol) {
         }
       }
 
+      // PREVENT SUBMIT: Si el select de cargo está marcado como bloqueado (Instructor con vínculos)
+      try {
+        if (inputCargo && inputCargo.dataset && String(inputCargo.dataset.lockedInstructorChange) === "1") {
+          // Mostrar mensaje y evitar guardar
+          const msg = inputCargo.title ||
+            "No es posible cambiar el cargo de este Instructor porque tiene asignaciones activas (programa, ficha u otras vinculaciones).";
+          toastError(msg);
+          // Enfocar el select para indicar al usuario dónde está el bloqueo
+          try { inputCargo.focus(); } catch (e) {}
+          return;
+        }
+      } catch (e) {
+        // no-fatal
+      }
+
       if (isEdit && hiddenUserId) {
         payload.id_usuario = hiddenUserId.value;
       }
 
       try {
-        const data = isEdit ? await actualizarUsuario(payload) : await crearUsuario(payload);
+        // Show spinner on the submit button while the request is in progress
+        const submitBtn = formUsuario.querySelector('button[type="submit"]');
+        let _origBtnHTML = null;
+        let _spinnerAdded = false;
+
+        try {
+          if (submitBtn) {
+            _origBtnHTML = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-70', 'cursor-wait');
+            // spinner only (no text)
+            submitBtn.innerHTML = `<svg role="status" aria-label="Cargando" class="animate-spin h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>`;
+            _spinnerAdded = true;
+          }
+
+          var data = isEdit ? await actualizarUsuario(payload) : await crearUsuario(payload);
+        } finally {
+          if (submitBtn && _spinnerAdded) {
+            submitBtn.innerHTML = _origBtnHTML;
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-70', 'cursor-wait');
+          }
+        }
 
         console.log("Respuesta procesada:", data);
 
@@ -2916,6 +3170,23 @@ if (modalConfirmarQuitarRol) {
 
         closeModalUsuario();
         await cargarUsuarios();
+
+        // If the user details modal is open, refresh its content using the
+        // latest data from the in-memory `users` array so changes appear
+        // immediately without forcing a full page reload.
+        try {
+          if (modalVerUsuario && modalVerUsuario.classList.contains("active") && selectedUser) {
+            const updated = users.find((u) => String(u.id) === String(selectedUser.id));
+            if (updated) {
+              // Re-open the viewer with the updated object (this replaces innerHTML)
+              openModalVerUsuario(updated);
+              // keep selectedUser pointing to the updated object
+              selectedUser = updated;
+            }
+          }
+        } catch (e) {
+          console.error('Error refrescando modal de usuario después de guardar:', e);
+        }
 
         // ✅ NUEVO: Actualizar notificaciones después de crear/editar usuario
         if (typeof window.actualizarContadorNotificaciones === "function") {

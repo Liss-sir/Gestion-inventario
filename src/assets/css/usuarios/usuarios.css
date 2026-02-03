@@ -155,12 +155,12 @@ select.input-siga,
 /* =========================
    ICONOS MÁS MINIMALISTAS (Lucide)
    ========================= */
-.lucide,
-.lucide-icon svg {
+#modalConfirmarQuitarRol .lucide,
+#modalConfirmarQuitarRol .lucide-icon svg {
   stroke-width: 1.5 !important;   /* más fino */
 }
 
-.lucide {
+#modalConfirmarQuitarRol .lucide {
   width: 18px;
   height: 18px;
 }

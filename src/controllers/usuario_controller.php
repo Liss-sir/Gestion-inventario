@@ -530,6 +530,26 @@ function obtenerColSolicitanteNotif(PDO $conn): string
     return ''; // no hay columna referencia en la tabla
 }
 
+function tableExists(PDO $conn, string $table): bool {
+  try {
+    $stmt = $conn->prepare("SHOW TABLES LIKE :t");
+    $stmt->execute([":t" => $table]);
+    return (bool) $stmt->fetchColumn();
+  } catch (Throwable $e) {
+    return false;
+  }
+}
+
+function existsRows(PDO $conn, string $sql, array $params): bool {
+  try {
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    return (bool) $stmt->fetchColumn();
+  } catch (Throwable $e) {
+    return false;
+  }
+}
+
 
 
 /* ============================ */
@@ -1446,6 +1466,63 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
 
         if ($correo !== $usuarioActual['correo'] && $usuario->obtenerPorCorreo($correo)) {
             enviarJSON(['error' => 'El correo ya está registrado'], 409);
+        }
+
+        // ==========================
+        // SERVER-SIDE GUARD: impedir cambiar cargo de Instructor si tiene vinculaciones
+        // ==========================
+        $debug_mode = ($data['_debug'] ?? false) === true;
+        $debug_logs = [];
+
+        $cargoActual = trim((string)($usuarioActual['cargo'] ?? ""));
+        $debug_logs[] = ['cargoActual' => $cargoActual, 'nuevoCargo' => $cargo];
+
+        if (strcasecmp($cargoActual, 'Instructor') === 0 && strcasecmp(trim((string)$cargo), 'Instructor') !== 0) {
+            $tieneVinculos = false;
+
+            // 1) Si en usuarios existe id_programa y está asignado -> ya es vínculo
+            if (!empty($usuarioActual['id_programa'])) {
+                $tieneVinculos = true;
+                $debug_logs[] = ['found' => 'usuarios.id_programa', 'value' => $usuarioActual['id_programa']];
+            }
+
+            // 2) Validaciones adicionales en tablas típicas (si existen)
+            $checks = [];
+            $candidates = [
+                ['table' => 'instructor_programa', 'sql' => "SELECT 1 FROM instructor_programa WHERE id_instructor = :id OR id_usuario = :id LIMIT 1"],
+                ['table' => 'instructores_programas', 'sql' => "SELECT 1 FROM instructores_programas WHERE id_instructor = :id OR id_usuario = :id LIMIT 1"],
+                ['table' => 'fichas_instructores', 'sql' => "SELECT 1 FROM fichas_instructores WHERE id_instructor = :id OR id_usuario = :id LIMIT 1"],
+                ['table' => 'instructor_ficha', 'sql' => "SELECT 1 FROM instructor_ficha WHERE id_instructor = :id OR id_usuario = :id LIMIT 1"],
+            ];
+
+            foreach ($candidates as $cand) {
+                $table = $cand['table'];
+                $debug_logs[] = ['check_table' => $table, 'exists' => tableExists($conn, $table)];
+                if (tableExists($conn, $table)) {
+                    $sql = $cand['sql'];
+                    $found = existsRows($conn, $sql, [':id' => $id_usuario]);
+                    $debug_logs[] = ['table' => $table, 'found' => $found, 'sql' => $sql];
+                    if ($found) {
+                        $tieneVinculos = true;
+                        break;
+                    }
+                }
+            }
+
+            if ($tieneVinculos) {
+                if ($debug_mode) {
+                    enviarJSON([
+                        'success' => false,
+                        'error' => 'No es posible cambiar el cargo porque el usuario tiene asignaciones activas (programa, ficha u otras vinculaciones). Desasigne primero dichas vinculaciones.',
+                        'debug' => $debug_logs
+                    ], 400);
+                } else {
+                    enviarJSON([
+                        'success' => false,
+                        'error' => 'No es posible cambiar el cargo porque el usuario tiene asignaciones activas (programa, ficha u otras vinculaciones). Desasigne primero dichas vinculaciones.'
+                    ], 400);
+                }
+            }
         }
 
         $ok = $usuario->actualizar(
@@ -2429,8 +2506,166 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
 
         break;
 
+    case 'validar_cambio_cargo': {
+  header("Content-Type: application/json; charset=utf-8");
+  header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+  header("Pragma: no-cache");
+
+  if (session_status() === PHP_SESSION_NONE) session_start();
+
+  if (!isset($_SESSION['usuario_id'])) {
+    echo json_encode([
+      "success" => false,
+      "can_change" => 0,
+      "message" => "No autorizado."
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+  }
+
+  $raw = file_get_contents("php://input");
+  $body = json_decode($raw, true) ?: [];
+
+  $idUsuario  = (int)($body["id_usuario"] ?? 0);
+  $nuevoCargo = trim((string)($body["nuevo_cargo"] ?? ""));
+
+  if ($idUsuario <= 0 || $nuevoCargo === "") {
+    echo json_encode([
+      "success" => false,
+      "can_change" => 0,
+      "message" => "Solicitud inválida. No se identificó el usuario o el cargo destino."
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+  }
+
+  try {
+    // 1) Consultar cargo actual + id_programa (si aplica en tu tabla usuarios)
+    $stmt = $conn->prepare("SELECT cargo, id_programa FROM usuarios WHERE id_usuario = :id LIMIT 1");
+    $stmt->execute([":id" => $idUsuario]);
+    $u = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$u) {
+      echo json_encode([
+        "success" => false,
+        "can_change" => 0,
+        "message" => "El usuario no existe o no se pudo verificar."
+      ], JSON_UNESCAPED_UNICODE);
+      exit;
+    }
+
+    $cargoActual = trim((string)($u["cargo"] ?? ""));
+    $idPrograma  = $u["id_programa"] ?? null;
+
+    // 2) Solo bloqueamos si:
+    //    - era Instructor
+    //    - y lo quieren cambiar a otro cargo distinto
+    if ($cargoActual !== "Instructor" || $nuevoCargo === "Instructor") {
+      echo json_encode([
+        "success" => true,
+        "can_change" => 1,
+        "message" => "OK"
+      ], JSON_UNESCAPED_UNICODE);
+      exit;
+    }
+
+        // 3) Validar vinculaciones (con debug para identificar dónde se encuentra el vínculo)
+        $tieneVinculos = false;
+        $debugChecks = [];
+
+        // 3.1) Si en usuarios existe id_programa y está asignado -> ya es vínculo
+        if (!empty($idPrograma)) {
+            $tieneVinculos = true;
+            $debugChecks[] = ['table' => 'usuarios.id_programa', 'found' => true, 'note' => 'id_programa en tabla usuarios'];
+        } else {
+            $debugChecks[] = ['table' => 'usuarios.id_programa', 'found' => false, 'note' => 'campo null o vacío'];
+        }
+
+        // 3.2) Validación extra por tablas comunes (si existen en tu BD)
+        $checks = [];
+
+        if (tableExists($conn, "instructor_programa")) {
+                $checks[] = ['table' => 'instructor_programa', 'sql' => "SELECT 1 FROM instructor_programa WHERE id_instructor = :id OR id_usuario = :id LIMIT 1", 'params' => [":id" => $idUsuario]];
+        }
+        if (tableExists($conn, "instructores_programas")) {
+                $checks[] = ['table' => 'instructores_programas', 'sql' => "SELECT 1 FROM instructores_programas WHERE id_instructor = :id OR id_usuario = :id LIMIT 1", 'params' => [":id" => $idUsuario]];
+        }
+        if (tableExists($conn, "fichas_instructores")) {
+                $checks[] = ['table' => 'fichas_instructores', 'sql' => "SELECT 1 FROM fichas_instructores WHERE id_instructor = :id OR id_usuario = :id LIMIT 1", 'params' => [":id" => $idUsuario]];
+        }
+        if (tableExists($conn, "instructor_ficha")) {
+                $checks[] = ['table' => 'instructor_ficha', 'sql' => "SELECT 1 FROM instructor_ficha WHERE id_instructor = :id OR id_usuario = :id LIMIT 1", 'params' => [":id" => $idUsuario]];
+        }
+
+        foreach ($checks as $c) {
+            $found = false;
+            try {
+                if (existsRows($conn, $c['sql'], $c['params'])) {
+                    $found = true;
+                    $tieneVinculos = true;
+                }
+            } catch (Throwable $e) {
+                // ignore individual check errors
+            }
+
+            $debugChecks[] = ['table' => $c['table'], 'found' => $found];
+            if ($found) break;
+        }
+
+        if ($tieneVinculos) {
+            echo json_encode([
+                'success' => true,
+                'can_change' => 0,
+                'message' => 'No es posible cambiar el cargo porque el usuario tiene asignaciones activas (programa, ficha u otras vinculaciones). Para continuar, primero desasigne o cierre dichas vinculaciones.',
+                'debug_checks' => $debugChecks
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'can_change' => 1,
+            'message' => 'OK',
+            'debug_checks' => $debugChecks
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+
+  } catch (Throwable $e) {
+    echo json_encode([
+      "success" => false,
+      "can_change" => 0,
+      "message" => "No se pudo validar el cambio de cargo. Intente nuevamente."
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+  }
+}
 
 
+
+
+    /* =====================================================
+       ✅ CASE: ESTA VINCULADO A PROGRAMA (auxiliar)
+       POST JSON: { id_usuario }
+       Response: { success:true, vinculado: 1|0 }
+    ===================================================== */
+    case 'esta_vinculado_programa':
+        $raw = file_get_contents('php://input');
+        $data = json_decode($raw, true) ?: [];
+        $id = (int)($data['id_usuario'] ?? 0);
+
+        if ($id <= 0) enviarJSON(['success' => false, 'error' => 'id_usuario inválido'], 400);
+
+        try {
+            $found = false;
+            if (tableExists($conn, 'instructores_programas')) {
+                $stmt = $conn->prepare('SELECT 1 FROM instructores_programas WHERE id_usuario = :id LIMIT 1');
+                $stmt->execute([':id' => $id]);
+                if ($stmt->fetchColumn()) $found = true;
+            }
+
+            enviarJSON(['success' => true, 'vinculado' => $found ? 1 : 0]);
+        } catch (Throwable $e) {
+            enviarJSON(['success' => false, 'error' => 'error comprobando vinculo'], 500);
+        }
+        break;
 
     /* =====================================================
        ✅ DEFAULT
