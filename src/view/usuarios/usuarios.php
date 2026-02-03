@@ -135,7 +135,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between my-6">
 
         <!-- Search input -->
-        <div class="relative w-full sm:max-w-xs">
+        <div class="relative w-full sm:max-w-xs" data-char-wrap>
           <!-- Search icon inside the input -->
           <svg
             class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
@@ -152,6 +152,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           <input
             id="inputBuscar"
             type="text"
+            maxlength="60"
             placeholder="Buscar por nombre..."
             class="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm"
           />
@@ -222,11 +223,6 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   </table>
 </div>
 
-
-
-
-      
-
       <!-- ================================== -->
       <!-- CARDS VIEW CONTAINER               -->
       <!-- ================================== -->
@@ -294,12 +290,15 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             >
               Nombre completo *
             </label>
-            <input
-              id="nombre_completo"
-              type="text"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
-              placeholder="Ej: Juan Pablo Hernández Castro"
-            />
+            <div class="relative" data-char-wrap>
+              <input
+                id="nombre_completo"
+                type="text"
+                maxlength="70"
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
+                placeholder="Ej: Juan Pablo Hernández Castro"
+              />
+            </div>
           </div>
 
           <!-- Document type -->
@@ -329,12 +328,16 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             >
               Número de documento *
             </label>
-            <input
-              id="numero_documento"
-              type="text"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
-              placeholder="1098765432"
-            />
+            <div class="relative" data-char-wrap>
+              <input
+                id="numero_documento"
+                type="text"
+                maxlength="15"
+                inputmode="numeric"
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
+                placeholder="1098765432"
+              />
+            </div>
           </div>
 
           <!-- Phone number -->
@@ -345,12 +348,16 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             >
               Teléfono *
             </label>
-            <input
-              id="telefono"
-              type="text"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
-              placeholder="3101234567"
-            />
+            <div class="relative" data-char-wrap>
+              <input
+                id="telefono"
+                type="text"
+                maxlength="10"
+                inputmode="numeric"
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
+                placeholder="3101234567"
+              />
+            </div>
           </div>
 
           <!-- Role (position) -->
@@ -398,12 +405,15 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             >
               Correo electrónico *
             </label>
-            <input
-              id="correo"
-              type="email"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
-              placeholder="usuario@sena.edu.co"
-            />
+            <div class="relative" data-char-wrap>
+              <input
+                id="correo"
+                type="email"
+                maxlength="120"
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
+                placeholder="usuario@sena.edu.co"
+              />
+            </div>
           </div>
 
           <!-- Password (full width) -->
@@ -412,7 +422,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               Contraseña *
             </label>
 
-            <div class="relative">
+            <div class="relative" data-char-wrap>
               <input
                 id="password"
                 type="password"
@@ -462,12 +472,15 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             >
               Dirección *
             </label>
-            <input
-              id="direccion"
-              type="text"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
-              placeholder="Calle 45 #23-10, Bogotá"
-            />
+            <div class="relative" data-char-wrap>
+              <input
+                id="direccion"
+                type="text"
+                maxlength="60"
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
+                placeholder="Calle 45 #23-10, Bogotá"
+              />
+            </div>
           </div>
         </div>
 
@@ -671,6 +684,160 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   <!-- MODULE SCRIPT: USERS MANAGEMENT LOGIC     -->
   <!-- ========================================= -->
   <script src="src/assets/js/usuarios/usuarios.js"></script>
+
+  <!-- ===================================================== -->
+  <!-- NUEVO: LIMITES + MENSAJE AL LLEGAR AL LIMITE + SOLO NUMEROS (DOC/TEL) -->
+  <!-- ===================================================== -->
+  <script>
+    (function () {
+      // ------------------------------
+      // 1) Limite de caracteres (SIN numerito)
+      //    - Solo muestra mensaje debajo cuando llega al max
+      // ------------------------------
+      function initCharCounters() {
+        const fields = document.querySelectorAll("input[maxlength], textarea[maxlength]");
+
+        fields.forEach((el) => {
+          if (!el || el.dataset.noCounter === "1") return;
+
+          const max = parseInt(el.getAttribute("maxlength"), 10);
+          if (!max || max <= 0) return;
+
+          // Wrapper preferido: data-char-wrap (si no, usa el padre)
+          const wrapper = el.closest("[data-char-wrap]") || el.parentElement;
+          if (!wrapper) return;
+
+          const key = el.id || el.name || "field";
+
+          // ✅ Crear/obtener mensaje (debajo del input)
+          let msg = wrapper.querySelector(`[data-char-limit-msg-for="${key}"]`);
+          if (!msg) {
+            msg = document.createElement("p");
+            msg.setAttribute("data-char-limit-msg-for", key);
+
+            // Debajo del input (no absolute)
+            msg.className = "mt-1 text-[11px] text-muted-foreground select-none hidden";
+            msg.textContent = "Limite de caracteres alcanzados";
+
+            // Accesibilidad: anunciar cuando aparezca
+            msg.setAttribute("aria-live", "polite");
+
+            wrapper.appendChild(msg);
+          }
+
+          const update = () => {
+            const len = (el.value || "").length;
+
+            // Mostrar SOLO al alcanzar el máximo
+            if (len >= max) msg.classList.remove("hidden");
+            else msg.classList.add("hidden");
+          };
+
+          el.addEventListener("input", update);
+          update();
+        });
+      }
+
+      // ------------------------------
+      // 2) Solo números: documento/teléfono
+      //    - evita letras al escribir
+      //    - limpia al pegar
+      // ------------------------------
+      function onlyDigits(value) {
+        return (value || "").replace(/\D+/g, "");
+      }
+
+      function bindOnlyNumbers(inputEl) {
+        if (!inputEl) return;
+
+        // Teclado numérico en móvil (ya tienes inputmode, esto refuerza)
+        inputEl.setAttribute("inputmode", "numeric");
+
+        // Bloquear teclas no permitidas (manteniendo navegación/atajos)
+        inputEl.addEventListener("keydown", function (e) {
+          const allowedKeys = [
+            "Backspace", "Delete", "Tab", "Escape", "Enter",
+            "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+            "Home", "End"
+          ];
+
+          // Permitir: Ctrl/Cmd + (A,C,V,X,Z,Y)
+          if ((e.ctrlKey || e.metaKey) && ["a", "c", "v", "x", "z", "y"].includes((e.key || "").toLowerCase())) {
+            return;
+          }
+
+          // Permitir teclas especiales
+          if (allowedKeys.includes(e.key)) return;
+
+          // Permitir dígitos
+          if (/^\d$/.test(e.key)) return;
+
+          // Bloquear lo demás
+          e.preventDefault();
+        });
+
+        // Limpieza final (por si el navegador mete algo raro)
+        inputEl.addEventListener("input", function () {
+          const cleaned = onlyDigits(inputEl.value);
+
+          if (inputEl.value !== cleaned) {
+            const pos = inputEl.selectionStart || cleaned.length;
+            inputEl.value = cleaned;
+            try { inputEl.setSelectionRange(pos, pos); } catch (e) {}
+          }
+        });
+
+        // Al pegar: limpiar y respetar maxlength
+        inputEl.addEventListener("paste", function (e) {
+          e.preventDefault();
+          const text = (e.clipboardData || window.clipboardData).getData("text") || "";
+          const cleaned = onlyDigits(text);
+
+          const max = parseInt(inputEl.getAttribute("maxlength") || "9999", 10);
+          const current = inputEl.value || "";
+          const start = inputEl.selectionStart ?? current.length;
+          const end = inputEl.selectionEnd ?? current.length;
+
+          const before = current.slice(0, start);
+          const after = current.slice(end);
+
+          let next = (before + cleaned + after);
+          if (next.length > max) next = next.slice(0, max);
+
+          inputEl.value = next;
+
+          // Disparar input para que el mensaje se actualice
+          inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        // ✅ MAXLENGTHS (sin tocar tu base, solo atributos ya puestos en HTML)
+        // Nota: si algún input no tuviera maxlength, lo seteamos aquí por seguridad.
+        const setMax = (id, n) => {
+          const el = document.getElementById(id);
+          if (el && !el.getAttribute("maxlength")) el.setAttribute("maxlength", String(n));
+        };
+
+        setMax("inputBuscar", 60);
+        setMax("nombre_completo", 70);
+        setMax("numero_documento", 15);
+        setMax("telefono", 10);
+        setMax("correo", 120);
+        setMax("direccion", 60);
+
+        // Iniciar mensaje al llegar al límite (sin numerito)
+        initCharCounters();
+
+        // Solo números
+        bindOnlyNumbers(document.getElementById("numero_documento"));
+        bindOnlyNumbers(document.getElementById("telefono"));
+
+        // Extra: si en algún momento cambias a otro modal/dinamismo y reemplazas nodos,
+        // puedes volver a llamar initCharCounters() desde tu usuarios.js si lo necesitas.
+      });
+    })();
+  </script>
 
 </body>
 </html>

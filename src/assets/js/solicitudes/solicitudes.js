@@ -40,6 +40,28 @@ let estadoApp = {
 };
 
 // ============================================================
+// ✅ USUARIO EN SESIÓN (inyectado desde PHP) - similar a OBRAS
+// ============================================================
+const USUARIO = (() => {
+  const u = window.USUARIO_SESION || window.SIGA_USUARIO || window.SIGA_USER || {};
+  // soportar distintos nombres de campo que suelen venir del backend
+  const id =
+    u.usuarioId ?? u.id_usuario ?? u.id ?? u.user_id ?? null;
+
+  const cargo =
+    u.cargo ?? u.rol ?? u.role ?? "";
+
+  return {
+    raw: u,
+    id: id ? parseInt(id, 10) : null,
+    cargo: String(cargo || "").trim(),
+  };
+})();
+
+const CARGOS_FILTRAN_PROPIAS = new Set(["Instructor", "Pasante"]);
+
+
+// ============================================================
 // ✅ PERMISOS (inyectados desde PHP)
 // ============================================================
 const PERMS = (() => {
@@ -93,6 +115,70 @@ const selectores = {
 };
 
 // ============================================================
+// ✅ LÍMITES DE CARACTERES (front-end only)
+// ============================================================
+const LIMITES = {
+  // Ajusta a tu gusto / lo que soporte tu BD
+  observaciones: 500,      // textarea principal
+  motivoRechazo: 300,      // textarea del modal rechazo
+  cantidad: 6,             // input cantidad (ej: hasta 999999)
+};
+
+// Aplica maxlength + recorta en input/paste (por seguridad)
+function aplicarLimiteCaracteres(el, max, { onLimitMessage } = {}) {
+  if (!el || !max) return;
+
+  // maxlength nativo
+  el.setAttribute("maxlength", String(max));
+
+  const cortar = () => {
+    const v = String(el.value ?? "");
+    if (v.length > max) {
+      el.value = v.slice(0, max);
+      if (typeof onLimitMessage === "function") onLimitMessage(max);
+    }
+  };
+
+  // recorta al escribir/pegar
+  el.addEventListener("input", cortar);
+  el.addEventListener("paste", () => setTimeout(cortar, 0));
+}
+
+// Solo números y máximo dígitos (para cantidad)
+function aplicarLimiteNumerico(el, maxDigits = 6) {
+  if (!el) return;
+
+  el.setAttribute("inputmode", "numeric");
+  el.setAttribute("maxlength", String(maxDigits));
+
+  el.addEventListener("input", () => {
+    // deja solo dígitos
+    let v = String(el.value ?? "").replace(/\D+/g, "");
+    if (v.length > maxDigits) v = v.slice(0, maxDigits);
+    el.value = v;
+  });
+
+  el.addEventListener("paste", () => {
+    setTimeout(() => {
+      let v = String(el.value ?? "").replace(/\D+/g, "");
+      if (v.length > maxDigits) v = v.slice(0, maxDigits);
+      el.value = v;
+    }, 0);
+  });
+}
+
+// Inicializa límites para los campos existentes del formulario
+function initLimitesCaracteres() {
+  // Observaciones (form principal)
+  aplicarLimiteCaracteres(selectores.textareaObservaciones, LIMITES.observaciones, {
+    onLimitMessage: (max) => toastInfo(`Máximo ${max} caracteres en Observaciones.`),
+  });
+
+  // Cantidad (solo dígitos, máximo N dígitos)
+  aplicarLimiteNumerico(selectores.inputCantidad, LIMITES.cantidad);
+}
+
+// ============================================================
 //  ✅ UTILIDADES SEGURAS
 // ============================================================
 function safeLucideCreateIcons() {
@@ -104,6 +190,31 @@ function safeLucideCreateIcons() {
     console.warn("[SOLICITUDES] lucide error:", e);
   }
 }
+
+function filtrarSolicitudesPorUsuario(listado) {
+  if (!Array.isArray(listado)) return [];
+
+  // Solo aplicar para Instructor y Pasante (como pediste)
+  if (!CARGOS_FILTRAN_PROPIAS.has(USUARIO.cargo)) return listado;
+
+  // Si no hay ID, por seguridad no mostramos nada (evita fuga de info)
+  if (!USUARIO.id) return [];
+
+  // Importante: tu backend debe traer el id del creador en el listado
+  // Probables nombres: id_usuario, id_solicitante, usuario_id, etc.
+  return listado.filter((s) => {
+    const creador =
+      s.id_usuario_solicitante ??
+      s.id_usuario ??
+      s.id_solicitante ??
+      s.usuario_id ??
+      s.usuarioId ??
+      null;
+
+    return String(creador) === String(USUARIO.id);
+  });
+}
+
 
 // ============================================================
 //  FLOWBITE-STYLE TOASTS (igual al módulo Usuarios)
@@ -276,6 +387,10 @@ function pedirMotivoRechazo() {
     root.classList.add("flex");
 
     const input = root.querySelector("#sol-motivo-input");
+    aplicarLimiteCaracteres(input, LIMITES.motivoRechazo, {
+      onLimitMessage: (max) => toastInfo(`Máximo ${max} caracteres en el motivo.`),
+    });
+
     const backdrop = root.querySelector("[data-motivo-backdrop]");
 
     const cleanup = () => {
@@ -369,6 +484,8 @@ const utilidades = {
       observaciones: s.observaciones ?? "",
       fecha_respuesta: this.formatearFecha(s.fecha_respuesta),
       materiales: s.materiales ?? [],
+      id_usuario_solicitante: s.id_usuario_solicitante ?? null,
+      id_usuario: s.id_usuario ?? s.id_solicitante ?? s.usuario_id ?? s.usuarioId ?? null,
     };
   },
 
@@ -642,7 +759,7 @@ const api = {
       body: JSON.stringify({
         id_solicitud: parseInt(idSolicitud, 10),
         estado,
-        id_usuario_aprobador: 1,
+        id_usuario_aprobador: USUARIO.id,
         observaciones,
       }),
     });
@@ -664,7 +781,7 @@ const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id_solicitud: parseInt(idSolicitud, 10),
-        id_usuario: 1,
+        id_usuario: USUARIO.id,
       }),
     });
 
@@ -1568,6 +1685,12 @@ const modal = {
       selectores.selectActividad?.focus();
       return;
     }
+
+    if (!USUARIO?.id) {
+      utilidades.mostrarError("No se pudo identificar el usuario en sesión.");
+      return;
+    }
+
     try {
       if (selectores.btnGuardar) {
         selectores.btnGuardar.disabled = true;
@@ -1577,7 +1700,7 @@ const modal = {
       safeLucideCreateIcons();
 
       const payload = {
-        id_usuario: 1,
+        id_usuario: USUARIO.id,
         id_programa: parseInt(estadoApp.datosFormulario.programa, 10),
         id_rae: parseInt(estadoApp.datosFormulario.rae, 10),
         id_ficha: parseInt(estadoApp.datosFormulario.ficha, 10),
@@ -1672,16 +1795,20 @@ const app = {
   },
 
   async cargarSolicitudes() {
-    estadoApp.solicitudes = await api.listarSolicitudes();
-    render.actualizarResumen();
-    render.actualizarFiltros();
-    render.renderizarSolicitudes();
-  },
+  const todas = await api.listarSolicitudes();
+  estadoApp.solicitudes = filtrarSolicitudesPorUsuario(todas);
+
+  render.actualizarResumen();
+  render.actualizarFiltros();
+  render.renderizarSolicitudes();
+},
+
 };
 
 document.addEventListener("DOMContentLoaded", () => {
   safeLucideCreateIcons();
   console.log("[SOLICITUDES] API =", API);
+  initLimitesCaracteres();
   app.inicializar();
 
   // ✅ Si no tiene permiso para crear, ocultamos el botón

@@ -553,31 +553,15 @@ function renderRolFuncionalBadgeHTML(user) {
      */
     function actualizarVisibilidadPrograma() {
   if (!inputPrograma || !wrapperPrograma || !inputCargo) return;
-
-  const esInstructor = inputCargo.value === "Instructor";
-
-  if (esInstructor) {
-    wrapperPrograma.classList.remove("hidden");
-
-    // Si todavía no han llegado, muestra loading + carga
-    if (!Array.isArray(programas) || programas.length === 0) {
-      inputPrograma.disabled = true;
-      inputPrograma.innerHTML = `<option value="">Cargando programas...</option>`;
-      cargarProgramas();
-      return;
-    }
-
-    // Ya hay programas -> pintar opciones y habilitar
-    renderOpcionesPrograma();
-    return;
+  // Decide no mostrar el selector de programa incluso si el cargo es Instructor.
+  // El sistema mantiene las opciones en memoria pero el UI no las muestra.
+  try {
+    wrapperPrograma.classList.add("hidden");
+    inputPrograma.value = "";
+    inputPrograma.disabled = true;
+  } catch (e) {
+    // no-fatal
   }
-
-  // No instructor -> ocultar PERO NO BORRAR LAS OPCIONES
-  wrapperPrograma.classList.add("hidden");
-  inputPrograma.value = "";
-  inputPrograma.disabled = true;
-
-  // ✅ Importante: NO vuelvas a poner innerHTML aquí porque pisas lo cargado
 }
 
 
@@ -765,88 +749,7 @@ function renderRolFuncionalBadgeHTML(user) {
       _sessionGuardTimer = setInterval(checkSessionGuard, SESSION_CHECK_INTERVAL_SECONDS * 1000);
     }
 
-    /**
-     * Loads training programs from the backend and refreshes the select options.
-     * ✅ CORREGIDO: acepta múltiples nombres de acciones y múltiples formatos de respuesta
-     * ✅ FIX CRÍTICO: NO hacer break si parsed es null (antes se quedaba con [])
-     */
-    async function cargarProgramas() {
-  if (!inputPrograma) return;
-
-  const posiblesAcciones = ["listar"];
-
-  try {
-    inputPrograma.disabled = true;
-    inputPrograma.innerHTML = `<option value="">Cargando programas...</option>`;
-
-    let lista = [];
-
-    for (const accion of posiblesAcciones) {
-      const url = `${PROGRAMAS_API_URL}?accion=${accion}&t=${Date.now()}`;
-      const { parsed, text } = await fetchJSONSafe(url, { method: "GET" });
-
-      console.log(`Respuesta listar programas (accion=${accion}) cruda:`, text);
-
-      if (!parsed) continue;
-      if (typeof parsed === "object" && !Array.isArray(parsed) && parsed.error) continue;
-
-      const arr = normalizeListResponse(parsed);
-      if (Array.isArray(arr)) {
-        lista = arr;
-        break;
-      }
-    }
-
-    // ✅ MAP robusto
-    const mapped = lista
-      .map((p) => {
-        const id = p.id_programa ?? p.id ?? null;
-        const nombre = p.nombre_programa ?? p.nombre ?? "";
-        return {
-          id_programa: id !== null ? String(id) : null,
-          nombre_programa: String(nombre || ""),
-        };
-      })
-      .filter((p) => p.id_programa && p.id_programa !== "null");
-
-    // ✅ Si mapped trae data -> reemplazamos
-    if (mapped.length > 0) {
-      programas = mapped;
-
-      programasMap = {};
-      programas.forEach((p) => {
-        programasMap[String(p.id_programa)] = p.nombre_programa;
-      });
-
-      // ✅ Pintar opciones SIEMPRE
-      renderOpcionesPrograma();
-
-      // ✅ Si en este momento el cargo es Instructor, mostrar
-      if (inputCargo && inputCargo.value === "Instructor") {
-        wrapperPrograma?.classList.remove("hidden");
-        inputPrograma.disabled = false;
-        inputPrograma.removeAttribute("disabled");
-      }
-
-      return;
-    }
-
-    // ✅ Si no hay programas reales
-    programas = [];
-    programasMap = {};
-    inputPrograma.disabled = true;
-    inputPrograma.innerHTML = `<option value="">No hay programas disponibles</option>`;
-    toastInfo("No hay programas de formación registrados aún.");
-  } catch (error) {
-    console.error("Error al cargar programas:", error);
-
-    programas = [];
-    programasMap = {};
-    inputPrograma.disabled = true;
-    inputPrograma.innerHTML = `<option value="">No hay programas disponibles</option>`;
-    toastError("Ocurrió un error al cargar los programas de formación.");
-  }
-}
+   
 
 // =========================
 // ROLES FUNCIONALES (DB: roles_funcionales)
@@ -1347,19 +1250,10 @@ async function obtenerRolFuncionalUsuario(id_usuario) {
         }
 
         if (inputPrograma && wrapperPrograma) {
-          if (editUser.cargo === "Instructor") {
-            wrapperPrograma.classList.remove("hidden");
-            renderOpcionesPrograma();
-
-            if (editUser.id_programa) {
-              inputPrograma.value = String(editUser.id_programa);
-            } else {
-              inputPrograma.value = "";
-            }
-          } else {
-            wrapperPrograma.classList.add("hidden");
-            inputPrograma.value = "";
-          }
+          // By design, the program selector should not be shown in the modal
+          // even if the user cargo is Instructor. Keep it hidden and reset value.
+          wrapperPrograma.classList.add("hidden");
+          inputPrograma.value = "";
         }
       } else {
         // Create mode
@@ -2763,7 +2657,7 @@ if (modalAsignarRol) {
       }
 
       if (!emailRegex.test(payload.correo)) {
-        toastError("Ingrese un correo electrónico válido (debe contener '@').");
+        toastError("Ingrese un correo electrónico válido (debe contener ej: '@expale.com').");
         if (inputCorreo) inputCorreo.focus();
         return;
       }
@@ -2798,10 +2692,9 @@ if (modalAsignarRol) {
         return;
       }
 
-      if (payload.cargo === "Instructor" && !payload.id_programa) {
-        toastError("Debe seleccionar un programa de formación para el Instructor.");
-        return;
-      }
+      // Note: programa selector was removed from the UI for Instructors by design.
+      // If you still need to enforce assignment of a program to Instructors,
+      // re-enable this validation or implement it server-side.
 
       // Edit mode validation: prevent saving if there are no changes
       if (isEdit && originalEditData) {

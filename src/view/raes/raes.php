@@ -1,7 +1,27 @@
 ﻿<?php
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
+
+// ✅ Permisos
+require_once __DIR__ . "/../../utils/permisos_helper.php"; // ajusta la ruta si tu view está en otra carpeta
+
+$CAN_CREAR_RAE = function_exists("hasPermiso")
+  ? (hasPermiso("raes.crear") || hasPermiso("raes.gestionar"))
+  : false;
+
+$CAN_EDITAR_RAE = function_exists("hasPermiso")
+  ? (hasPermiso("raes.editar") || hasPermiso("raes.gestionar"))
+  : false;
+
+$CAN_CAMBIAR_ESTADO_RAE = function_exists("hasPermiso")
+  ? (hasPermiso("raes.activar_desactivar") || hasPermiso("raes.gestionar"))
+  : false;
+
+
+  $CAN_EDITAR_RAE = function_exists("hasPermiso") ? hasPermiso("raes.editar") : false;
+  $CAN_CAMBIAR_ESTADO_RAE = function_exists("hasPermiso") ? hasPermiso("raes.activar_desactivar") : false;
 ?>
+
 
 <!DOCTYPE html>
 <html lang="es">
@@ -102,10 +122,14 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 </div>
                 
                 <!-- New RAE button -->
-                <button onclick="openCreateModal()" class="inline-flex items-center justify-center rounded-sm bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2">
+                <?php if ($CAN_CREAR_RAE): ?>
+                <button onclick="openCreateModal()"
+                    class="inline-flex items-center justify-center rounded-sm bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2">
                     <i class="fas fa-plus"></i>
                     Nuevo RAE
                 </button>
+                <?php endif; ?>
+
             </div>
         </div>
 
@@ -410,6 +434,15 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             </div>
         </div>
     </div>
-    <script src="<?= ASSETS_URL ?>js/raes/raes.js"></script>
+
+    <script>
+  window.RAES_PERMS = {
+    canCrear: <?= $CAN_CREAR_RAE ? "true" : "false" ?>,
+    canEditar: <?= $CAN_EDITAR_RAE ? "true" : "false" ?>,
+    canCambiarEstado: <?= $CAN_CAMBIAR_ESTADO_RAE ? "true" : "false" ?>
+  };
+</script>
+
+<script src="<?= ASSETS_URL ?>js/raes/raes.js"></script>
 </body>
 </html>

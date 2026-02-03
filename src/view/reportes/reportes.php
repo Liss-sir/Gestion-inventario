@@ -369,9 +369,25 @@ try {
                                     </p>
                                 </div>
                                 <div class="p-6 pt-3">
-                                    <div class="h-[300px]">
-                                        <canvas id="chartConsumoMensual"></canvas>
-                                    </div>
+                                        <?php $totalConsumoMes = array_sum(array_column($consumoPorMes ?? [], 'consumo')) ?: 0; ?>
+                                        <?php if (empty($consumoPorMes) || $totalConsumoMes <= 0): ?>
+                                            <div class="h-[300px] flex items-center justify-center">
+                                                <div class="text-center">
+                                                    <div class="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto">
+                                                        <svg class="w-5 h-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3v18h18"/>
+                                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 13l3-3 4 4 6-6"/>
+                                                        </svg>
+                                                    </div>
+                                                    <p class="mt-4 text-sm font-medium text-slate-700">Sin datos de consumo</p>
+                                                    <p class="text-xs text-slate-500">Cuando haya movimientos, la gráfica mostrará el consumo automáticamente.</p>
+                                                </div>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="h-[300px]">
+                                                <canvas id="chartConsumoMensual"></canvas>
+                                            </div>
+                                        <?php endif; ?>
                                 </div>
                             </div>
 
@@ -384,26 +400,42 @@ try {
                                     </p>
                                 </div>
                                 <div class="p-6 pt-3">
-                                    <div class="flex flex-col md:flex-row items-center justify-between gap-6">
-                                        <div class="h-[250px] w-[250px]">
-                                            <canvas id="chartPrograma"></canvas>
-                                        </div>
-                                        <div class="space-y-3">
-                                            <?php foreach ($consumoPorPrograma as $item): ?>
-                                                <div class="flex items-center gap-3">
-                                                    <span class="h-3 w-3 rounded-full"
-                                                          style="background-color: <?= $item['color'] ?>"></span>
-                                                    <span class="text-sm font-medium"
-                                                          style="color: <?= $item['color'] ?>">
-                                                        <?= htmlspecialchars($item['name']) ?>
-                                                    </span>
-                                                    <span class="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground">
-                                                        <?= $item['value'] ?>%
-                                                    </span>
+                                    <?php $totalPrograma = array_sum(array_column($consumoPorPrograma ?? [], 'value')) ?: 0; ?>
+                                    <?php if (empty($consumoPorPrograma) || $totalPrograma <= 0): ?>
+                                        <div class="h-[250px] flex items-center justify-center">
+                                            <div class="text-center">
+                                                <div class="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto">
+                                                    <svg class="w-5 h-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3"/>
+                                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12A9 9 0 1 1 3 12a9 9 0 0 1 18 0z"/>
+                                                    </svg>
                                                 </div>
-                                            <?php endforeach; ?>
+                                                <p class="mt-4 text-sm font-medium text-slate-700">Sin datos</p>
+                                                <p class="text-xs text-slate-500">Cuando haya actividades, se mostrará la distribución por programa.</p>
+                                            </div>
                                         </div>
-                                    </div>
+                                    <?php else: ?>
+                                        <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                                            <div class="h-[250px] w-[250px]">
+                                                <canvas id="chartPrograma"></canvas>
+                                            </div>
+                                            <div class="space-y-3">
+                                                <?php foreach ($consumoPorPrograma as $item): ?>
+                                                    <div class="flex items-center gap-3">
+                                                        <span class="h-3 w-3 rounded-full"
+                                                              style="background-color: <?= $item['color'] ?>"></span>
+                                                        <span class="text-sm font-medium"
+                                                              style="color: <?= $item['color'] ?>">
+                                                            <?= htmlspecialchars($item['name']) ?>
+                                                        </span>
+                                                        <span class="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground">
+                                                            <?= $item['value'] ?>%
+                                                        </span>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
@@ -417,9 +449,24 @@ try {
                                 </p>
                             </div>
                             <div class="p-6 pt-3">
-                                <div class="h-[250px]">
-                                    <canvas id="chartMateriales"></canvas>
-                                </div>
+                                <?php $totalMaterialesUsed = array_sum(array_column($materialesMasUsados ?? [], 'cantidad')) ?: 0; ?>
+                                <?php if (empty($materialesMasUsados) || $totalMaterialesUsed <= 0): ?>
+                                    <div class="h-[250px] flex items-center justify-center">
+                                        <div class="text-center">
+                                            <div class="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto">
+                                                <svg class="w-5 h-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h18"/>
+                                                </svg>
+                                            </div>
+                                            <p class="mt-4 text-sm font-medium text-slate-700">Sin datos</p>
+                                            <p class="text-xs text-slate-500">Cuando haya consumos, aparecerán los materiales más usados.</p>
+                                        </div>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="h-[250px]">
+                                        <canvas id="chartMateriales"></canvas>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -451,51 +498,66 @@ try {
                                 </div>
                             </div>
                             <div class="p-6 pt-3">
-                                <div class="rounded-lg border border-border overflow-hidden">
-                                    <table class="w-full">
-                                        <thead>
-                                            <tr class="bg-muted/50">
-                                                <th class="text-left p-3 text-sm font-semibold text-foreground">Ficha</th>
-                                                <th class="text-left p-3 text-sm font-semibold text-foreground">Programa</th>
-                                                <th class="text-right p-3 text-sm font-semibold text-foreground">Consumo</th>
-                                                <th class="text-right p-3 text-sm font-semibold text-foreground">Costo Total</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($consumoPorFicha as $item): ?>
-                                                <tr class="border-t border-border hover:bg-muted/30 transition-colors">
-                                                    <td class="p-3">
-                                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-border">
-                                                            <?= htmlspecialchars($item['ficha']) ?>
-                                                        </span>
+                                <?php if (empty($consumoPorFicha)): ?>
+                                    <div class="h-[180px] flex items-center justify-center">
+                                        <div class="text-center">
+                                            <div class="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto">
+                                                <svg class="w-5 h-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6"/>
+                                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10"/>
+                                                </svg>
+                                            </div>
+                                            <p class="mt-4 text-sm font-medium text-slate-700">Sin registros</p>
+                                            <p class="text-xs text-slate-500">Cuando haya consumos por ficha, se listarán aquí.</p>
+                                        </div>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="rounded-lg border border-border overflow-hidden">
+                                        <table class="w-full">
+                                            <thead>
+                                                <tr class="bg-muted/50">
+                                                    <th class="text-left p-3 text-sm font-semibold text-foreground">Ficha</th>
+                                                    <th class="text-left p-3 text-sm font-semibold text-foreground">Programa</th>
+                                                    <th class="text-right p-3 text-sm font-semibold text-foreground">Consumo</th>
+                                                    <th class="text-right p-3 text-sm font-semibold text-foreground">Costo Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($consumoPorFicha as $item): ?>
+                                                    <tr class="border-t border-border hover:bg-muted/30 transition-colors">
+                                                        <td class="p-3">
+                                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-border">
+                                                                <?= htmlspecialchars($item['ficha']) ?>
+                                                            </span>
+                                                        </td>
+                                                        <td class="p-3 text-sm text-foreground">
+                                                            <?= htmlspecialchars($item['programa']) ?>
+                                                        </td>
+                                                        <td class="p-3 text-sm text-right font-medium text-foreground">
+                                                            <?= $item['consumo'] ?> uds
+                                                        </td>
+                                                        <td class="p-3 text-sm text-right font-medium text-foreground">
+                                                            <?= formatCOP($item['costo']) ?>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                            <tfoot>
+                                                <tr class="border-t border-border bg-muted/30">
+                                                    <td colspan="2" class="p-3 text-sm font-semibold text-foreground">
+                                                        Total
                                                     </td>
-                                                    <td class="p-3 text-sm text-foreground">
-                                                        <?= htmlspecialchars($item['programa']) ?>
+                                                    <td class="p-3 text-sm text-right font-semibold text-foreground">
+                                                        <?= $totalConsumo ?> uds
                                                     </td>
-                                                    <td class="p-3 text-sm text-right font-medium text-foreground">
-                                                        <?= $item['consumo'] ?> uds
-                                                    </td>
-                                                    <td class="p-3 text-sm text-right font-medium text-foreground">
-                                                        <?= formatCOP($item['costo']) ?>
+                                                    <td class="p-3 text-sm text-right font-semibold text-foreground">
+                                                        <?= formatCOP($totalCosto) ?>
                                                     </td>
                                                 </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                        <tfoot>
-                                            <tr class="border-t border-border bg-muted/30">
-                                                <td colspan="2" class="p-3 text-sm font-semibold text-foreground">
-                                                    Total
-                                                </td>
-                                                <td class="p-3 text-sm text-right font-semibold text-foreground">
-                                                    <?= $totalConsumo ?> uds
-                                                </td>
-                                                <td class="p-3 text-sm text-right font-semibold text-foreground">
-                                                    <?= formatCOP($totalCosto) ?>
-                                                </td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -780,9 +842,10 @@ try {
         };
 
         <?php if ($activeTab === 'estadisticas'): ?>
-        // Gráfico de Consumo vs Devoluciones
-        const ctxConsumo = document.getElementById('chartConsumoMensual').getContext('2d');
-        new Chart(ctxConsumo, {
+    // Gráfico de Consumo vs Devoluciones
+    if (document.getElementById('chartConsumoMensual') && Array.isArray(consumoPorMes) && consumoPorMes.length > 0 && consumoPorMes.some(d => (d.consumo || 0) > 0 || (d.devoluciones || 0) > 0)) {
+    const ctxConsumo = document.getElementById('chartConsumoMensual').getContext('2d');
+    new Chart(ctxConsumo, {
             type: 'bar',
             data: {
                 labels: consumoPorMes.map(d => d.mes),
@@ -826,9 +889,10 @@ try {
             }
         });
 
-        // Gráfico de Distribución por Programa (Dona)
-        const ctxPrograma = document.getElementById('chartPrograma').getContext('2d');
-        new Chart(ctxPrograma, {
+    // Gráfico de Distribución por Programa (Dona)
+    if (document.getElementById('chartPrograma') && Array.isArray(consumoPorPrograma) && consumoPorPrograma.length > 0 && consumoPorPrograma.some(d => (d.value || 0) > 0)) {
+    const ctxPrograma = document.getElementById('chartPrograma').getContext('2d');
+    new Chart(ctxPrograma, {
             type: 'doughnut',
             data: {
                 labels: consumoPorPrograma.map(d => d.name),
@@ -851,9 +915,10 @@ try {
             }
         });
 
-        // Gráfico de Materiales más usados (Barras horizontales)
-        const ctxMateriales = document.getElementById('chartMateriales').getContext('2d');
-        new Chart(ctxMateriales, {
+    // Gráfico de Materiales más usados (Barras horizontales)
+    if (document.getElementById('chartMateriales') && Array.isArray(materialesMasUsados) && materialesMasUsados.length > 0 && materialesMasUsados.some(d => (d.cantidad || 0) > 0)) {
+    const ctxMateriales = document.getElementById('chartMateriales').getContext('2d');
+    new Chart(ctxMateriales, {
             type: 'bar',
             data: {
                 labels: materialesMasUsados.map(d => d.nombre),

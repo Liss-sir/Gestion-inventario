@@ -462,11 +462,26 @@ $maxConsumo = max(array_column($consumoData, 'consumo')) ?: 0;
             <i data-lucide="trending-up" class="h-5 w-5 text-muted-foreground"></i>
         </div>
 
-        <div class="px-6 pb-6">
-            <div class="border-t border-border pt-4 h-44">
-                <canvas id="consumoChart" class="w-full h-full"></canvas>
-            </div>
+    <div class="px-6 pb-6">
+  <?php if (empty($consumoData) || ($maxConsumo ?? 0) <= 0): ?>
+    <div class="border-t border-border h-44 flex items-center justify-center text-center ">
+      <div class="flex flex-col items-center justify-center">
+        <div class="h-11 w-11 rounded-full bg-slate-100 flex items-center justify-center">
+          <i data-lucide="trending-up" class="h-5 w-5 text-slate-500"></i>
         </div>
+        <p class="mt-3 text-sm font-medium text-slate-700">Sin datos de consumo</p>
+        <p class="text-xs text-slate-500">
+          Cuando haya movimientos, la gráfica mostrará el consumo automáticamente.
+        </p>
+      </div>
+    </div>
+  <?php else: ?>
+    <div class="border-t border-border pt-4 h-44">
+      <canvas id="consumoChart" class="w-full h-full"></canvas>
+    </div>
+  <?php endif; ?>
+</div>
+
     </div>
 
     <!-- Categorías Chart -->
@@ -477,30 +492,43 @@ $maxConsumo = max(array_column($consumoData, 'consumo')) ?: 0;
                 <p class="text-sm text-muted-foreground">Actividades por nombre de obra</p>
             </div>
         </div>
-        <div class="px-6 pb-6">
-            <div class="border-t border-border pt-4">
-                <div class="flex items-center justify-center gap-6">
-                    <!-- Gráfica de pastel -->
-                    <div class="h-40 w-40">
-                        <canvas id="categoriaChart" class="w-full h-full"></canvas>
-                    </div>
-
-                    <!-- Leyenda a la derecha -->
-                    <div class="space-y-2 text-sm">
-                        <?php foreach ($categoriaData as $item): ?>
-                            <div class="flex items-center gap-2">
-                                <span class="h-3 w-3 rounded-full"
-                                    style="background-color: <?php echo $item['color']; ?>;"></span>
-                                <span><?php echo htmlspecialchars($item['name']); ?>:</span>
-                                <span class="font-medium text-muted-foreground">
-                                    <?php echo $item['value']; ?>
-                                </span>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            </div>
+    <div class="px-6 pb-6">
+      <?php $totalCategoriaValues = array_sum(array_column($categoriaData ?? [], 'value')) ?: 0; ?>
+      <?php if ($totalCategoriaValues <= 0): ?>
+      <div class="border-t border-border pt-4">
+        <div class="flex flex-col items-center justify-center py-8 w-full">
+          <div class="h-40 w-40 rounded-full bg-slate-100 flex items-center justify-center">
+            <div class="h-24 w-24 rounded-full bg-white"></div>
+          </div>
+          <p class="mt-4 text-sm font-medium text-slate-700">Sin datos</p>
+          <p class="text-xs text-slate-500">Cuando haya actividades, se mostrará la distribución por obra.</p>
         </div>
+      </div>
+      <?php else: ?>
+      <div class="border-t border-border pt-4">
+        <div class="flex items-center justify-center gap-6">
+          <!-- Gráfica de pastel -->
+          <div class="h-40 w-40">
+            <canvas id="categoriaChart" class="w-full h-full"></canvas>
+          </div>
+
+          <!-- Leyenda a la derecha -->
+          <div class="space-y-2 text-sm">
+            <?php foreach ($categoriaData as $item): ?>
+              <div class="flex items-center gap-2">
+                <span class="h-3 w-3 rounded-full"
+                  style="background-color: <?php echo $item['color']; ?>;"></span>
+                <span><?php echo htmlspecialchars($item['name']); ?>:</span>
+                <span class="font-medium text-muted-foreground">
+                  <?php echo $item['value']; ?>
+                </span>
+              </div>
+            <?php endforeach; ?>
+          </div>
+        </div>
+      </div>
+      <?php endif; ?>
+    </div>
     </div>
 </div>
 
@@ -522,7 +550,13 @@ $maxConsumo = max(array_column($consumoData, 'consumo')) ?: 0;
     </div>
     <div class="px-6 pb-4 space-y-4">
         <?php if (count($stockAlerts) === 0): ?>
-        <p class="text-center text-sm text-muted-foreground py-4">No hay alertas de stock</p>
+        <div class="flex flex-col items-center justify-center py-6 text-center">
+          <div class="h-11 w-11 rounded-full bg-slate-100 flex items-center justify-center">
+            <i data-lucide="alert-triangle" class="h-5 w-5 text-slate-500"></i>
+          </div>
+          <p class="mt-3 text-sm font-medium text-slate-700">No hay alertas de stock</p>
+          <p class="text-xs text-slate-500">Cuando algún material esté por debajo del mínimo, aparecerá aquí automáticamente.</p>
+        </div>
         <?php else: ?>
         <?php foreach ($stockAlerts as $alert):
             $percent = ($alert["stock_actual"] / $alert["stock_minimo"]) * 100;
