@@ -63,6 +63,36 @@ class ObraModel {
         }
     }
 
+    /* OBTENER RAES POR FICHA */
+    public function obtenerRaesPorFicha($idFicha) {
+        $sqlPrograma = "SELECT id_programa FROM fichas WHERE id_ficha = ?";
+        $stmtPrograma = $this->conn->prepare($sqlPrograma);
+        $stmtPrograma->execute([$idFicha]);
+        $ficha = $stmtPrograma->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$ficha || !isset($ficha['id_programa'])) {
+            error_log("No se encontró la ficha o su programa: " . $idFicha);
+            return [];
+        }
+        
+        $idPrograma = $ficha['id_programa'];
+        
+        // Ahora obtenemos los RAEs de ese programa
+        $sql = "SELECT id_rae, codigo_rae, descripcion_rae 
+                FROM raes 
+                WHERE id_programa = ? AND estado = 'Activo' 
+                ORDER BY codigo_rae, descripcion_rae";
+        
+        try {
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([$idPrograma]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Error obteniendo RAEs para la ficha {$idFicha}: " . $e->getMessage());
+            return [];
+        }
+    }
+
     /* OBTENER INSTRUCTORES ACTIVOS */
     public function obtenerInstructoresActivos() {
         $sql = "SELECT id_usuario, nombre_completo
