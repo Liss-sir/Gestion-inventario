@@ -59,7 +59,7 @@ if (!defined('BASE_URL')) {
     $host = $_SERVER['HTTP_HOST'];
 
     $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
-    $project   = preg_replace('#/src/.*$#', '/', $scriptDir);
+    $project = preg_replace('#/src/.*$#', '/', $scriptDir);
 
     define('BASE_URL', $protocol . $host . $project);
 }
@@ -70,7 +70,8 @@ if (!isset($conn) || !($conn instanceof PDO)) {
     header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
     header("Pragma: no-cache");
 
-    if (ob_get_length()) ob_clean();
+    if (ob_get_length())
+        ob_clean();
     echo json_encode(['error' => 'No se pudo establecer conexión con la base de datos'], JSON_UNESCAPED_UNICODE);
     exit;
 }
@@ -83,7 +84,8 @@ function enviarJSON($data, int $codigo = 200): void
     header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
     header("Pragma: no-cache");
 
-    if (ob_get_length()) ob_clean();
+    if (ob_get_length())
+        ob_clean();
     echo json_encode($data, JSON_UNESCAPED_UNICODE);
     exit;
 }
@@ -91,12 +93,13 @@ function enviarJSON($data, int $codigo = 200): void
 /* ================= HELPERS ================= */
 function validarSoloTexto($s): bool
 {
-    return preg_match('/^[A-Za-zÁÉÍÓÚÜáéíóúüñ\s]+$/u', (string)$s) === 1;
+    return preg_match('/^[A-Za-zÁÉÍÓÚÜáéíóúüñ\s]+$/u', (string) $s) === 1;
 }
+
 
 function colapsarEspacios($s): string
 {
-    return trim(preg_replace('/\s{2,}/u', ' ', (string)$s));
+    return trim(preg_replace('/\s{2,}/u', ' ', (string) $s));
 }
 
 /**
@@ -105,7 +108,7 @@ function colapsarEspacios($s): string
  */
 function estadoEsActivo($rawEstado): bool
 {
-    $val = strtolower(trim((string)$rawEstado));
+    $val = strtolower(trim((string) $rawEstado));
     return ($val === 'activo' || $val === '1' || $val === 'true');
 }
 
@@ -136,13 +139,13 @@ function crearTokenSesionBD(PDO $conn, int $idUsuario): ?string
 {
     try {
         $token = bin2hex(random_bytes(32));
-        $stmt  = $conn->prepare("
+        $stmt = $conn->prepare("
             INSERT INTO sesiones_usuarios (id_usuario, token_sesion, activa)
             VALUES (:id, :t, 1)
         ");
         $stmt->execute([
             ':id' => $idUsuario,
-            ':t'  => $token
+            ':t' => $token
         ]);
         return $token;
     } catch (\Exception $e) {
@@ -157,10 +160,11 @@ function crearTokenSesionBD(PDO $conn, int $idUsuario): ?string
  */
 function validarSesionActivaEnBD(PDO $conn): bool
 {
-    $uid   = isset($_SESSION['usuario_id']) ? (int)$_SESSION['usuario_id'] : 0;
-    $token = isset($_SESSION['token_sesion']) ? (string)$_SESSION['token_sesion'] : '';
+    $uid = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
+    $token = isset($_SESSION['token_sesion']) ? (string) $_SESSION['token_sesion'] : '';
 
-    if ($uid <= 0 || $token === '') return false;
+    if ($uid <= 0 || $token === '')
+        return false;
 
     try {
         $stmt = $conn->prepare("
@@ -173,9 +177,9 @@ function validarSesionActivaEnBD(PDO $conn): bool
         ");
         $stmt->execute([
             ':id' => $uid,
-            ':t'  => $token
+            ':t' => $token
         ]);
-        return (bool)$stmt->fetchColumn();
+        return (bool) $stmt->fetchColumn();
     } catch (\Exception $e) {
         return false;
     }
@@ -197,16 +201,16 @@ function enviarCorreoResetPassword($toEmail, $toName, $resetLink): bool
 {
     $mail = new PHPMailer(true);
 
-    $mail->CharSet  = 'UTF-8';
+    $mail->CharSet = 'UTF-8';
     $mail->Encoding = 'base64';
 
     $mail->isSMTP();
-    $mail->Host       = 'smtp.gmail.com';
-    $mail->SMTPAuth   = true;
-    $mail->Username   = 'sigainvetario2025@gmail.com';
-    $mail->Password   = 'dwltqzowfouydwgf'; // app password
+    $mail->Host = 'smtp.gmail.com';
+    $mail->SMTPAuth = true;
+    $mail->Username = 'sigainvetario2025@gmail.com';
+    $mail->Password = 'dwltqzowfouydwgf'; // app password
     $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-    $mail->Port       = 587;
+    $mail->Port = 587;
 
     $mail->setFrom('sigainvetario2025@gmail.com', 'Gestion Inventario');
     $mail->addAddress($toEmail, $toName ?: $toEmail);
@@ -240,12 +244,12 @@ function enviarCorreoResetPassword($toEmail, $toName, $resetLink): bool
 function mapearCampo($campoFormulario): ?string
 {
     $mapeo = [
-        'nombre'            => 'nombre_completo',
-        'correo'            => 'correo',
-        'telefono'          => 'telefono',
-        'direccion'         => 'direccion',
-        'tipo_documento'    => 'tipo_documento',
-        'numero_documento'  => 'numero_documento'
+        'nombre' => 'nombre_completo',
+        'correo' => 'correo',
+        'telefono' => 'telefono',
+        'direccion' => 'direccion',
+        'tipo_documento' => 'tipo_documento',
+        'numero_documento' => 'numero_documento'
     ];
     return $mapeo[$campoFormulario] ?? null;
 }
@@ -254,7 +258,8 @@ function mapearCampo($campoFormulario): ?string
    HELPERS EXTRA (NOTIFICACIONES: PK Y COLUMNAS)
    ===================================================== */
 
-function obtenerPKNotificaciones(PDO $conn): string {
+function obtenerPKNotificaciones(PDO $conn): string
+{
     try {
         $cols = [];
         $stmt = $conn->query("SHOW COLUMNS FROM notificaciones");
@@ -264,8 +269,10 @@ function obtenerPKNotificaciones(PDO $conn): string {
             $cols[] = $r['Field'];
         }
 
-        if (in_array('id_notificacion', $cols, true)) return 'id_notificacion';
-        if (in_array('id', $cols, true)) return 'id';
+        if (in_array('id_notificacion', $cols, true))
+            return 'id_notificacion';
+        if (in_array('id', $cols, true))
+            return 'id';
 
         return 'id_notificacion';
     } catch (\Exception $e) {
@@ -273,16 +280,21 @@ function obtenerPKNotificaciones(PDO $conn): string {
     }
 }
 
-function obtenerColRefNotificaciones(PDO $conn): string {
+function obtenerColRefNotificaciones(PDO $conn): string
+{
     try {
         $cols = [];
         $stmt = $conn->query("SHOW COLUMNS FROM notificaciones");
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($rows as $r) $cols[] = $r['Field'];
+        foreach ($rows as $r)
+            $cols[] = $r['Field'];
 
-        if (in_array('referencia_id', $cols, true)) return 'referencia_id';
-        if (in_array('reference_id', $cols, true)) return 'reference_id';
-        if (in_array('ref_id', $cols, true)) return 'ref_id';
+        if (in_array('referencia_id', $cols, true))
+            return 'referencia_id';
+        if (in_array('reference_id', $cols, true))
+            return 'reference_id';
+        if (in_array('ref_id', $cols, true))
+            return 'ref_id';
 
         return 'referencia_id';
     } catch (\Exception $e) {
@@ -291,15 +303,19 @@ function obtenerColRefNotificaciones(PDO $conn): string {
 }
 
 /* ✅ FIX EXTRA: detectar columna fecha en notificaciones */
-function obtenerColFechaNotificaciones(PDO $conn): string {
+function obtenerColFechaNotificaciones(PDO $conn): string
+{
     try {
         $cols = [];
         $stmt = $conn->query("SHOW COLUMNS FROM notificaciones");
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($rows as $r) $cols[] = $r['Field'];
+        foreach ($rows as $r)
+            $cols[] = $r['Field'];
 
-        if (in_array('fecha_creacion', $cols, true)) return 'fecha_creacion';
-        if (in_array('created_at', $cols, true)) return 'created_at';
+        if (in_array('fecha_creacion', $cols, true))
+            return 'fecha_creacion';
+        if (in_array('created_at', $cols, true))
+            return 'created_at';
 
         return ''; // sin fecha
     } catch (\Exception $e) {
@@ -308,7 +324,8 @@ function obtenerColFechaNotificaciones(PDO $conn): string {
 }
 
 /* ✅ FIX EXTRA: obtener columnas disponibles de notificaciones */
-function obtenerColsNotificaciones(PDO $conn): array {
+function obtenerColsNotificaciones(PDO $conn): array
+{
     try {
         $stmt = $conn->query("SHOW COLUMNS FROM notificaciones");
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -322,7 +339,8 @@ function obtenerColsNotificaciones(PDO $conn): array {
    ✅ NUEVO (SIN TOCAR DB): HELPERS EXTRA USUARIOS
    - Para poder traer notificaciones + usuarios
 ===================================================== */
-function obtenerColsUsuarios(PDO $conn): array {
+function obtenerColsUsuarios(PDO $conn): array
+{
     try {
         $stmt = $conn->query("SHOW COLUMNS FROM usuarios");
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -332,13 +350,18 @@ function obtenerColsUsuarios(PDO $conn): array {
     }
 }
 
-function obtenerColFotoUsuarios(PDO $conn): string {
+function obtenerColFotoUsuarios(PDO $conn): string
+{
     $cols = obtenerColsUsuarios($conn);
 
-    if (in_array('foto_perfil', $cols, true)) return 'foto_perfil';
-    if (in_array('foto', $cols, true)) return 'foto';
-    if (in_array('imagen', $cols, true)) return 'imagen';
-    if (in_array('avatar', $cols, true)) return 'avatar';
+    if (in_array('foto_perfil', $cols, true))
+        return 'foto_perfil';
+    if (in_array('foto', $cols, true))
+        return 'foto';
+    if (in_array('imagen', $cols, true))
+        return 'imagen';
+    if (in_array('avatar', $cols, true))
+        return 'avatar';
 
     return ''; // no existe columna de foto
 }
@@ -351,12 +374,12 @@ function insertarNotificacionSimple(PDO $conn, array $data): bool
 
         // Columnas base
         $colMensaje = in_array('mensaje', $cols, true) ? 'mensaje' : (in_array('descripcion', $cols, true) ? 'descripcion' : null);
-        $colTitulo  = in_array('titulo', $cols, true) ? 'titulo' : (in_array('asunto', $cols, true) ? 'asunto' : null);
-        $colFecha   = in_array('fecha_creacion', $cols, true) ? 'fecha_creacion' : (in_array('created_at', $cols, true) ? 'created_at' : null);
+        $colTitulo = in_array('titulo', $cols, true) ? 'titulo' : (in_array('asunto', $cols, true) ? 'asunto' : null);
+        $colFecha = in_array('fecha_creacion', $cols, true) ? 'fecha_creacion' : (in_array('created_at', $cols, true) ? 'created_at' : null);
 
         // Compat columnas referencia
         $tieneRefTipo = in_array('referencia_tipo', $cols, true);
-        $tieneRefId   = in_array('referencia_id', $cols, true);
+        $tieneRefId = in_array('referencia_id', $cols, true);
 
         if (!$colMensaje || !$colTitulo) {
             return false;
@@ -386,18 +409,18 @@ function insertarNotificacionSimple(PDO $conn, array $data): bool
         $stmt = $conn->prepare($sql);
 
         $params = [
-            ':id_usuario' => (int)$data['id_usuario'],
-            ':tipo'       => (string)$data['tipo'],
-            ':titulo'     => (string)$data['titulo'],
-            ':mensaje'    => (string)$data['mensaje'],
-            ':leida'      => (int)($data['leida'] ?? 0),
+            ':id_usuario' => (int) $data['id_usuario'],
+            ':tipo' => (string) $data['tipo'],
+            ':titulo' => (string) $data['titulo'],
+            ':mensaje' => (string) $data['mensaje'],
+            ':leida' => (int) ($data['leida'] ?? 0),
         ];
 
         if ($tieneRefTipo && isset($data['referencia_tipo'])) {
-            $params[':ref_tipo'] = (string)$data['referencia_tipo'];
+            $params[':ref_tipo'] = (string) $data['referencia_tipo'];
         }
         if ($tieneRefId && isset($data['referencia_id'])) {
-            $params[':ref_id'] = (int)$data['referencia_id'];
+            $params[':ref_id'] = (int) $data['referencia_id'];
         }
 
         return $stmt->execute($params);
@@ -418,11 +441,13 @@ function insertarNotificacionCambioDatos(PDO $conn, int $idDestinatario, string 
 
         // ✅ Detectar columna de fecha si existe
         $colFecha = null;
-        if (in_array('fecha_creacion', $cols, true)) $colFecha = 'fecha_creacion';
-        elseif (in_array('created_at', $cols, true)) $colFecha = 'created_at';
+        if (in_array('fecha_creacion', $cols, true))
+            $colFecha = 'fecha_creacion';
+        elseif (in_array('created_at', $cols, true))
+            $colFecha = 'created_at';
 
         // ✅ Detectar columnas reales para título y mensaje
-        $colTitulo  = in_array('titulo', $cols, true) ? 'titulo' : (in_array('asunto', $cols, true) ? 'asunto' : null);
+        $colTitulo = in_array('titulo', $cols, true) ? 'titulo' : (in_array('asunto', $cols, true) ? 'asunto' : null);
         $colMensaje = in_array('mensaje', $cols, true) ? 'mensaje' : (in_array('descripcion', $cols, true) ? 'descripcion' : null);
 
         if (!$colTitulo || !$colMensaje) {
@@ -463,10 +488,10 @@ function insertarNotificacionCambioDatos(PDO $conn, int $idDestinatario, string 
 
         $params = [
             ':id_usuario' => $idDestinatario,
-            ':tipo'       => 'CAMBIO_DATOS',
-            ':titulo'     => 'Solicitud de Cambio de Datos',
-            ':mensaje'    => $jsonMensaje,
-            ':leida'      => 0,
+            ':tipo' => 'CAMBIO_DATOS',
+            ':titulo' => 'Solicitud de Cambio de Datos',
+            ':mensaje' => $jsonMensaje,
+            ':leida' => 0,
         ];
 
         if ($tieneRefTipo) {
@@ -479,10 +504,10 @@ function insertarNotificacionCambioDatos(PDO $conn, int $idDestinatario, string 
 
         return $stmt->execute($params);
 
-} catch (\Exception $e) {
-    error_log("ERROR insertarNotificacionCambioDatos: " . $e->getMessage());
-    return false;
-}
+    } catch (\Exception $e) {
+        error_log("ERROR insertarNotificacionCambioDatos: " . $e->getMessage());
+        return false;
+    }
 
 }
 
@@ -490,7 +515,8 @@ function insertarNotificacionCambioDatos(PDO $conn, int $idDestinatario, string 
  * ✅ Detecta la columna real que guarda el ID del solicitante en notificaciones
  * Sin tocar la DB, solo lectura segura
  */
-function obtenerColSolicitanteNotif(PDO $conn): string {
+function obtenerColSolicitanteNotif(PDO $conn): string
+{
     $cols = obtenerColsNotificaciones($conn);
 
     $candidatas = ['referencia_id', 'reference_id', 'ref_id'];
@@ -502,6 +528,26 @@ function obtenerColSolicitanteNotif(PDO $conn): string {
     }
 
     return ''; // no hay columna referencia en la tabla
+}
+
+function tableExists(PDO $conn, string $table): bool {
+  try {
+    $stmt = $conn->prepare("SHOW TABLES LIKE :t");
+    $stmt->execute([":t" => $table]);
+    return (bool) $stmt->fetchColumn();
+  } catch (Throwable $e) {
+    return false;
+  }
+}
+
+function existsRows(PDO $conn, string $sql, array $params): bool {
+  try {
+    $stmt = $conn->prepare($sql);
+    $stmt->execute($params);
+    return (bool) $stmt->fetchColumn();
+  } catch (Throwable $e) {
+    return false;
+  }
 }
 
 
@@ -521,17 +567,17 @@ if (!$accion) {
 ===================================================== */
 $accionCompat = [
     // ✅ COMPAT: NOTIFICACIONES (usar nombres que NO choquen con usuarios)
-    'contador'              => 'contar_notificaciones',
+    'contador' => 'contar_notificaciones',
     'listar_notificaciones' => 'obtener_notificaciones',
-    'listarNotificaciones'  => 'obtener_notificaciones',
-    'marcar-leida'          => 'marcar_notificacion_leida',
-    'marcar-todas'          => 'marcar_todas_leidas',
+    'listarNotificaciones' => 'obtener_notificaciones',
+    'marcar-leida' => 'marcar_notificacion_leida',
+    'marcar-todas' => 'marcar_todas_leidas',
     'eliminar_notificacion' => 'eliminar_notificacion',
 
     // ✅ COMPAT: Perfil (tu frontend está enviando esto)
-    'editar_perfil_usuario'           => 'actualizar_perfil',
-    'actualizar_perfil_usuario'       => 'actualizar_perfil',
-    'editar_perfil'                   => 'actualizar_perfil',
+    'editar_perfil_usuario' => 'actualizar_perfil',
+    'actualizar_perfil_usuario' => 'actualizar_perfil',
+    'editar_perfil' => 'actualizar_perfil',
 
     // ✅ COMPAT: listar usuarios (por si tu JS usa otra variante)
     'listarUsuarios' => 'listar_usuarios',
@@ -539,7 +585,7 @@ $accionCompat = [
 
 
 
-$accionTrim = trim((string)$accion);
+$accionTrim = trim((string) $accion);
 if (isset($accionCompat[$accionTrim])) {
     $accion = $accionCompat[$accionTrim];
 }
@@ -547,8 +593,8 @@ if (isset($accionCompat[$accionTrim])) {
 /* =====================================================
    ✅ Detectores de columnas (notificaciones)
 ===================================================== */
-$NOTI_PK   = obtenerPKNotificaciones($conn);
-$NOTI_REF  = obtenerColRefNotificaciones($conn);
+$NOTI_PK = obtenerPKNotificaciones($conn);
+$NOTI_REF = obtenerColRefNotificaciones($conn);
 $NOTI_DATE = obtenerColFechaNotificaciones($conn);
 
 /* =====================================================
@@ -566,8 +612,8 @@ switch ($accion) {
             enviarJSON(['success' => false, 'error' => 'No autorizado'], 401);
         }
 
-        $idUsuario      = (int)$_SESSION['usuario_id'];
-        $esCoordinador  = ($_SESSION['usuario_cargo'] ?? '') === 'Coordinador';
+        $idUsuario = (int) $_SESSION['usuario_id'];
+        $esCoordinador = ($_SESSION['usuario_cargo'] ?? '') === 'Coordinador';
 
         try {
             if ($esCoordinador) {
@@ -592,15 +638,15 @@ switch ($accion) {
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
             enviarJSON([
-                'success'   => true,
-                'no_leidas' => (int)($row['no_leidas'] ?? 0),
-                'total'     => (int)($row['total'] ?? 0),
+                'success' => true,
+                'no_leidas' => (int) ($row['no_leidas'] ?? 0),
+                'total' => (int) ($row['total'] ?? 0),
                 'es_coordinador' => $esCoordinador
             ]);
         } catch (\Exception $e) {
             enviarJSON(['success' => false, 'error' => $e->getMessage()], 500);
         }
-    break;
+        break;
 
     /* =====================================================
        ✅ OBTENER NOTIFICACIONES (CORREGIDO: TAMBIÉN TRAE USUARIOS)
@@ -618,12 +664,12 @@ switch ($accion) {
             ], 401);
         }
 
-        $id_usuario     = (int)$_SESSION['usuario_id'];
-        $cargo_usuario  = $_SESSION['usuario_cargo'] ?? '';
+        $id_usuario = (int) $_SESSION['usuario_id'];
+        $cargo_usuario = $_SESSION['usuario_cargo'] ?? '';
         $solo_no_leidas = isset($_GET['solo_no_leidas']) && $_GET['solo_no_leidas'] == '1';
 
         try {
-            $where  = "WHERE n.id_usuario = ?";
+            $where = "WHERE n.id_usuario = ?";
             $params = [$id_usuario];
 
             // Si NO es coordinador, NO mostrar notificaciones de cambio de datos
@@ -638,12 +684,12 @@ switch ($accion) {
             $sql_sin_leer = "SELECT COUNT(*) as total FROM notificaciones n $where";
             $stmt_sin_leer = $conn->prepare($sql_sin_leer);
             $stmt_sin_leer->execute($params);
-            $sin_leer = (int)$stmt_sin_leer->fetchColumn();
+            $sin_leer = (int) $stmt_sin_leer->fetchColumn();
 
             $sql_total = "SELECT COUNT(*) as total FROM notificaciones WHERE id_usuario = ?";
             $stmt_total = $conn->prepare($sql_total);
             $stmt_total->execute([$id_usuario]);
-            $total = (int)$stmt_total->fetchColumn();
+            $total = (int) $stmt_total->fetchColumn();
 
             // ✅ FIX: orden por fecha si existe, si no por PK desc
             $orderBy = "";
@@ -729,7 +775,7 @@ switch ($accion) {
                 'total' => 0
             ], 500);
         }
-    break;
+        break;
 
     /* =====================================================
        ✅ ELIMINAR NOTIFICACIÓN
@@ -738,8 +784,8 @@ switch ($accion) {
     ===================================================== */
     case 'eliminar_notificacion':
         try {
-            $notificacion_id = (int)($_POST['notificacion_id'] ?? $_POST['id_notificacion'] ?? 0);
-            $usuario_id      = (int)($_SESSION['usuario_id'] ?? 0);
+            $notificacion_id = (int) ($_POST['notificacion_id'] ?? $_POST['id_notificacion'] ?? 0);
+            $usuario_id = (int) ($_SESSION['usuario_id'] ?? 0);
 
             if ($notificacion_id <= 0 || $usuario_id <= 0) {
                 throw new \Exception('Datos inválidos');
@@ -765,7 +811,7 @@ switch ($accion) {
         } catch (\Exception $e) {
             enviarJSON(['success' => false, 'message' => 'Error al eliminar: ' . $e->getMessage()], 500);
         }
-    break;
+        break;
 
     /* =====================================================
        ✅ MARCAR NOTIFICACIÓN COMO LEÍDA
@@ -774,8 +820,8 @@ switch ($accion) {
     ===================================================== */
     case 'marcar_notificacion_leida':
         try {
-            $notificacion_id = (int)($_POST['notificacion_id'] ?? $_POST['id_notificacion'] ?? 0);
-            $usuario_id      = (int)($_SESSION['usuario_id'] ?? 0);
+            $notificacion_id = (int) ($_POST['notificacion_id'] ?? $_POST['id_notificacion'] ?? 0);
+            $usuario_id = (int) ($_SESSION['usuario_id'] ?? 0);
 
             if ($notificacion_id <= 0 || $usuario_id <= 0) {
                 throw new \Exception('ID inválido o no autorizado');
@@ -793,7 +839,7 @@ switch ($accion) {
         } catch (\Exception $e) {
             enviarJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
-    break;
+        break;
 
     /* =====================================================
        ✅ MARCAR TODAS COMO LEÍDAS
@@ -801,7 +847,7 @@ switch ($accion) {
     ===================================================== */
     case 'marcar_todas_leidas':
         try {
-            $usuario_id = (int)($_SESSION['usuario_id'] ?? 0);
+            $usuario_id = (int) ($_SESSION['usuario_id'] ?? 0);
             if ($usuario_id <= 0) {
                 enviarJSON(['success' => false, 'message' => 'No autorizado'], 401);
             }
@@ -812,12 +858,12 @@ switch ($accion) {
             enviarJSON([
                 'success' => true,
                 'message' => 'Todas las notificaciones marcadas como leídas',
-                'actualizadas' => (int)$stmt->rowCount()
+                'actualizadas' => (int) $stmt->rowCount()
             ]);
         } catch (\Exception $e) {
             enviarJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
-    break;
+        break;
 
     /* =====================================================
        ✅ SOLICITAR CAMBIO DATOS SENSIBLES (aprendiz -> coordinador)
@@ -826,85 +872,85 @@ switch ($accion) {
     ===================================================== */
     case 'solicitar_cambio_datos_sensibles':
 
-    if (!isset($_SESSION['usuario_id'])) {
-        enviarJSON(['success' => false, 'error' => 'No autorizado'], 401);
-    }
+        if (!isset($_SESSION['usuario_id'])) {
+            enviarJSON(['success' => false, 'error' => 'No autorizado'], 401);
+        }
 
-    $id_usuario_solicitante = (int)$_SESSION['usuario_id'];
+        $id_usuario_solicitante = (int) $_SESSION['usuario_id'];
 
-    // ✅ 1) Intentar capturar desde POST normal (FormData)
-    $datos_json = (string)($_POST['datos_cambiados'] ?? '');
+        // ✅ 1) Intentar capturar desde POST normal (FormData)
+        $datos_json = (string) ($_POST['datos_cambiados'] ?? '');
 
-    // ✅ 2) Si viene vacío, intentar capturar desde JSON (fetch application/json)
-    if ($datos_json === '') {
-        $rawBody = file_get_contents("php://input");
-        $jsonBody = json_decode($rawBody, true);
+        // ✅ 2) Si viene vacío, intentar capturar desde JSON (fetch application/json)
+        if ($datos_json === '') {
+            $rawBody = file_get_contents("php://input");
+            $jsonBody = json_decode($rawBody, true);
 
-        if (is_array($jsonBody) && isset($jsonBody['datos_cambiados'])) {
-            // Puede venir ya como string JSON o como array
-            if (is_string($jsonBody['datos_cambiados'])) {
-                $datos_json = $jsonBody['datos_cambiados'];
-            } else {
-                $datos_json = json_encode($jsonBody['datos_cambiados'], JSON_UNESCAPED_UNICODE);
+            if (is_array($jsonBody) && isset($jsonBody['datos_cambiados'])) {
+                // Puede venir ya como string JSON o como array
+                if (is_string($jsonBody['datos_cambiados'])) {
+                    $datos_json = $jsonBody['datos_cambiados'];
+                } else {
+                    $datos_json = json_encode($jsonBody['datos_cambiados'], JSON_UNESCAPED_UNICODE);
+                }
             }
         }
-    }
 
-    // ✅ 3) Validación final
-    if (trim($datos_json) === '') {
-        enviarJSON([
-            'success' => false,
-            'error'   => 'No se enviaron datos (datos_cambiados vacío)',
-        ], 400);
-    }
+        // ✅ 3) Validación final
+        if (trim($datos_json) === '') {
+            enviarJSON([
+                'success' => false,
+                'error' => 'No se enviaron datos (datos_cambiados vacío)',
+            ], 400);
+        }
 
-    try {
-        // ✅ Buscar coordinador real
-        $stmtCoord = $conn->prepare("
+        try {
+            // ✅ Buscar coordinador real
+            $stmtCoord = $conn->prepare("
             SELECT id_usuario 
             FROM usuarios 
             WHERE LOWER(cargo) = 'coordinador' 
             LIMIT 1
         ");
-        $stmtCoord->execute();
-        $coord = $stmtCoord->fetch(PDO::FETCH_ASSOC);
+            $stmtCoord->execute();
+            $coord = $stmtCoord->fetch(PDO::FETCH_ASSOC);
 
-        if (!$coord) {
-            enviarJSON(['success' => false, 'error' => 'No existe un coordinador registrado'], 404);
-        }
+            if (!$coord) {
+                enviarJSON(['success' => false, 'error' => 'No existe un coordinador registrado'], 404);
+            }
 
-        $id_destinatario = (int)$coord['id_usuario'];
+            $id_destinatario = (int) $coord['id_usuario'];
 
-        // ✅ Insertar notificación (CAMBIO_DATOS)
-        $ok = insertarNotificacionCambioDatos($conn, $id_destinatario, $datos_json, $id_usuario_solicitante);
+            // ✅ Insertar notificación (CAMBIO_DATOS)
+            $ok = insertarNotificacionCambioDatos($conn, $id_destinatario, $datos_json, $id_usuario_solicitante);
 
-        if (!$ok) {
+            if (!$ok) {
+                enviarJSON([
+                    'success' => false,
+                    'error' => 'No se pudo insertar la notificación en DB'
+                ], 500);
+            }
+
+            enviarJSON([
+                'success' => true,
+                'message' => 'Solicitud enviada al coordinador',
+                'debug' => [
+                    'destinatario' => $id_destinatario,
+                    'solicitante' => $id_usuario_solicitante
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            error_log("ERROR solicitud cambio datos: " . $e->getMessage());
+
             enviarJSON([
                 'success' => false,
-                'error'   => 'No se pudo insertar la notificación en DB'
+                'error' => 'Error del servidor',
+                'detalle' => $e->getMessage()
             ], 500);
         }
 
-        enviarJSON([
-            'success' => true,
-            'message' => 'Solicitud enviada al coordinador',
-            'debug'   => [
-                'destinatario' => $id_destinatario,
-                'solicitante'  => $id_usuario_solicitante
-            ]
-        ]);
-
-    } catch (\Exception $e) {
-        error_log("ERROR solicitud cambio datos: " . $e->getMessage());
-
-        enviarJSON([
-            'success' => false,
-            'error'   => 'Error del servidor',
-            'detalle' => $e->getMessage()
-        ], 500);
-    }
-
-break;
+        break;
 
 
     /* =====================================================
@@ -914,18 +960,18 @@ break;
     ===================================================== */
     case 'aprobar_cambio_datos':
 
-    if (!isset($_SESSION['usuario_id']) || ($_SESSION['usuario_cargo'] ?? '') !== 'Coordinador') {
-        enviarJSON(['success' => false, 'error' => 'No autorizado'], 401);
-    }
+        if (!isset($_SESSION['usuario_id']) || ($_SESSION['usuario_cargo'] ?? '') !== 'Coordinador') {
+            enviarJSON(['success' => false, 'error' => 'No autorizado'], 401);
+        }
 
-    $notif_id = (int)($_POST['notificacion_id'] ?? $_POST['id_notificacion'] ?? 0);
-    if ($notif_id <= 0) {
-        enviarJSON(['success' => false, 'error' => 'ID de notificación requerido'], 400);
-    }
+        $notif_id = (int) ($_POST['notificacion_id'] ?? $_POST['id_notificacion'] ?? 0);
+        if ($notif_id <= 0) {
+            enviarJSON(['success' => false, 'error' => 'ID de notificación requerido'], 400);
+        }
 
-    try {
-        // Traer notificación completa (CAMBIO_DATOS)
-        $stmt = $conn->prepare("
+        try {
+            // Traer notificación completa (CAMBIO_DATOS)
+            $stmt = $conn->prepare("
             SELECT {$NOTI_PK} AS pk,
                    id_usuario,
                    tipo,
@@ -936,76 +982,76 @@ break;
             WHERE {$NOTI_PK} = ?
             LIMIT 1
         ");
-        $stmt->execute([$notif_id]);
-        $notif = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt->execute([$notif_id]);
+            $notif = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$notif) {
-            enviarJSON(['success' => false, 'error' => 'Notificación no encontrada'], 404);
-        }
+            if (!$notif) {
+                enviarJSON(['success' => false, 'error' => 'Notificación no encontrada'], 404);
+            }
 
-        // Validar que sea CAMBIO_DATOS
-        $tipoNotif = strtoupper(trim((string)($notif['tipo'] ?? '')));
-        if ($tipoNotif !== 'CAMBIO_DATOS') {
-            enviarJSON(['success' => false, 'error' => 'Esta notificación no es de CAMBIO_DATOS'], 400);
-        }
+            // Validar que sea CAMBIO_DATOS
+            $tipoNotif = strtoupper(trim((string) ($notif['tipo'] ?? '')));
+            if ($tipoNotif !== 'CAMBIO_DATOS') {
+                enviarJSON(['success' => false, 'error' => 'Esta notificación no es de CAMBIO_DATOS'], 400);
+            }
 
-        $id_coordinador = (int)($_SESSION['usuario_id'] ?? 0);
+            $id_coordinador = (int) ($_SESSION['usuario_id'] ?? 0);
 
-        // ✅ ESTE ES EL ID REAL DEL APRENDIZ (SOLICITANTE)
-        $id_aprendiz = (int)($notif['referencia_id'] ?? 0);
-        $refTipo     = strtolower(trim((string)($notif['referencia_tipo'] ?? '')));
+            // ✅ ESTE ES EL ID REAL DEL APRENDIZ (SOLICITANTE)
+            $id_aprendiz = (int) ($notif['referencia_id'] ?? 0);
+            $refTipo = strtolower(trim((string) ($notif['referencia_tipo'] ?? '')));
 
-        // Si referencia_tipo existe y NO es usuario, igual intentamos usar referencia_id
-        if ($id_aprendiz <= 0) {
-            enviarJSON(['success' => false, 'error' => 'No se encontró el id del aprendiz (referencia_id vacío)'], 500);
-        }
+            // Si referencia_tipo existe y NO es usuario, igual intentamos usar referencia_id
+            if ($id_aprendiz <= 0) {
+                enviarJSON(['success' => false, 'error' => 'No se encontró el id del aprendiz (referencia_id vacío)'], 500);
+            }
 
-        // ✅ PROTECCIÓN: si por algún motivo referencia_id terminó siendo el coordinador, NO insertes mal
-        if ($id_aprendiz === $id_coordinador) {
+            // ✅ PROTECCIÓN: si por algún motivo referencia_id terminó siendo el coordinador, NO insertes mal
+            if ($id_aprendiz === $id_coordinador) {
+                enviarJSON([
+                    'success' => false,
+                    'error' => 'referencia_id apunta al coordinador. No se puede notificar al aprendiz.',
+                    'debug' => [
+                        'id_aprendiz' => $id_aprendiz,
+                        'id_coordinador' => $id_coordinador
+                    ]
+                ], 500);
+            }
+
+            // Marcar la solicitud como leída (para el coordinador)
+            $conn->prepare("UPDATE notificaciones SET leida = 1 WHERE {$NOTI_PK} = ?")->execute([$notif_id]);
+
+            // ✅ Insertar notificación de respuesta AL APRENDIZ
+            $okInsert = insertarNotificacionSimple($conn, [
+                'id_usuario' => $id_aprendiz,
+                'tipo' => 'SOLICITUD_APROBADA', // ✅ ENUM válido en tu BD
+                'titulo' => 'Cambio de Datos Aprobado',
+                'mensaje' => 'Tu solicitud de cambio de datos fue aprobada. El coordinador realizará los cambios manualmente.',
+                'leida' => 0,
+
+                // ✅ Para que el aprendiz vea quién respondió
+                'referencia_tipo' => 'usuario',
+                'referencia_id' => $id_coordinador
+            ]);
+
+            if (!$okInsert) {
+                enviarJSON(['success' => false, 'error' => 'No se pudo insertar la notificación al aprendiz'], 500);
+            }
+
             enviarJSON([
-                'success' => false,
-                'error' => 'referencia_id apunta al coordinador. No se puede notificar al aprendiz.',
+                'success' => true,
+                'message' => 'Solicitud aprobada. Notificación enviada al aprendiz.',
                 'debug' => [
-                    'id_aprendiz' => $id_aprendiz,
-                    'id_coordinador' => $id_coordinador
+                    'aprendiz_destino' => $id_aprendiz,
+                    'coordinador_origen' => $id_coordinador
                 ]
-            ], 500);
+            ]);
+
+        } catch (\Exception $e) {
+            enviarJSON(['success' => false, 'error' => $e->getMessage()], 500);
         }
 
-        // Marcar la solicitud como leída (para el coordinador)
-        $conn->prepare("UPDATE notificaciones SET leida = 1 WHERE {$NOTI_PK} = ?")->execute([$notif_id]);
-
-        // ✅ Insertar notificación de respuesta AL APRENDIZ
-        $okInsert = insertarNotificacionSimple($conn, [
-            'id_usuario'       => $id_aprendiz,
-            'tipo'             => 'SOLICITUD_APROBADA', // ✅ ENUM válido en tu BD
-            'titulo'           => 'Cambio de Datos Aprobado',
-            'mensaje'          => 'Tu solicitud de cambio de datos fue aprobada. El coordinador realizará los cambios manualmente.',
-            'leida'            => 0,
-
-            // ✅ Para que el aprendiz vea quién respondió
-            'referencia_tipo'  => 'usuario',
-            'referencia_id'    => $id_coordinador
-        ]);
-
-        if (!$okInsert) {
-            enviarJSON(['success' => false, 'error' => 'No se pudo insertar la notificación al aprendiz'], 500);
-        }
-
-        enviarJSON([
-            'success' => true,
-            'message' => 'Solicitud aprobada. Notificación enviada al aprendiz.',
-            'debug'   => [
-                'aprendiz_destino' => $id_aprendiz,
-                'coordinador_origen' => $id_coordinador
-            ]
-        ]);
-
-    } catch (\Exception $e) {
-        enviarJSON(['success' => false, 'error' => $e->getMessage()], 500);
-    }
-
-break;
+        break;
 
 
 
@@ -1016,90 +1062,90 @@ break;
     ===================================================== */
     case 'rechazar_cambio_datos':
 
-    if (!isset($_SESSION['usuario_id']) || ($_SESSION['usuario_cargo'] ?? '') !== 'Coordinador') {
-        enviarJSON(['success' => false, 'error' => 'No autorizado'], 401);
-    }
-
-    $notif_id = (int)($_POST['notificacion_id'] ?? $_POST['id_notificacion'] ?? 0);
-    $motivo   = (string)($_POST['motivo'] ?? 'No especificado');
-
-    if ($notif_id <= 0) {
-        enviarJSON(['success' => false, 'error' => 'ID de notificación requerido'], 400);
-    }
-
-    try {
-
-        // ✅ Detectar columna real donde está el ID del solicitante
-        $COL_SOLICITANTE = obtenerColSolicitanteNotif($conn);
-
-        if ($COL_SOLICITANTE === '') {
-            enviarJSON([
-                'success' => false,
-                'error' => 'Tu tabla notificaciones no tiene columna de referencia (referencia_id / ref_id).'
-            ], 500);
+        if (!isset($_SESSION['usuario_id']) || ($_SESSION['usuario_cargo'] ?? '') !== 'Coordinador') {
+            enviarJSON(['success' => false, 'error' => 'No autorizado'], 401);
         }
 
-        // ✅ Traer el ID del aprendiz solicitante
-        $stmt = $conn->prepare("
+        $notif_id = (int) ($_POST['notificacion_id'] ?? $_POST['id_notificacion'] ?? 0);
+        $motivo = (string) ($_POST['motivo'] ?? 'No especificado');
+
+        if ($notif_id <= 0) {
+            enviarJSON(['success' => false, 'error' => 'ID de notificación requerido'], 400);
+        }
+
+        try {
+
+            // ✅ Detectar columna real donde está el ID del solicitante
+            $COL_SOLICITANTE = obtenerColSolicitanteNotif($conn);
+
+            if ($COL_SOLICITANTE === '') {
+                enviarJSON([
+                    'success' => false,
+                    'error' => 'Tu tabla notificaciones no tiene columna de referencia (referencia_id / ref_id).'
+                ], 500);
+            }
+
+            // ✅ Traer el ID del aprendiz solicitante
+            $stmt = $conn->prepare("
             SELECT {$COL_SOLICITANTE} AS solicitante_id
             FROM notificaciones
             WHERE {$NOTI_PK} = ?
             LIMIT 1
         ");
-        $stmt->execute([$notif_id]);
-        $notif = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt->execute([$notif_id]);
+            $notif = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$notif) {
-            enviarJSON(['success' => false, 'error' => 'Notificación no encontrada'], 404);
-        }
+            if (!$notif) {
+                enviarJSON(['success' => false, 'error' => 'Notificación no encontrada'], 404);
+            }
 
-        $id_aprendiz = (int)($notif['solicitante_id'] ?? 0);
+            $id_aprendiz = (int) ($notif['solicitante_id'] ?? 0);
 
-        // ✅ Marcar la solicitud original como leída
-        $conn->prepare("UPDATE notificaciones SET leida = 1 WHERE {$NOTI_PK} = ?")->execute([$notif_id]);
+            // ✅ Marcar la solicitud original como leída
+            $conn->prepare("UPDATE notificaciones SET leida = 1 WHERE {$NOTI_PK} = ?")->execute([$notif_id]);
 
-        // ✅ Insertar respuesta al aprendiz (NO al coordinador)
-        if ($id_aprendiz > 0) {
+            // ✅ Insertar respuesta al aprendiz (NO al coordinador)
+            if ($id_aprendiz > 0) {
 
-            $msg = "Tu solicitud de cambio de datos ha sido rechazada. Motivo: " . $motivo;
+                $msg = "Tu solicitud de cambio de datos ha sido rechazada. Motivo: " . $motivo;
 
-            $ok2 = insertarNotificacionSimple($conn, [
-                'id_usuario' => $id_aprendiz,
-                'tipo'       => 'SOLICITUD_RECHAZADA',
-                'titulo'     => 'Solicitud Rechazada',
-                'mensaje'    => $msg,
-                'leida'      => 0
-            ]);
+                $ok2 = insertarNotificacionSimple($conn, [
+                    'id_usuario' => $id_aprendiz,
+                    'tipo' => 'SOLICITUD_RECHAZADA',
+                    'titulo' => 'Solicitud Rechazada',
+                    'mensaje' => $msg,
+                    'leida' => 0
+                ]);
 
-            if (!$ok2) {
+                if (!$ok2) {
+                    enviarJSON([
+                        'success' => false,
+                        'error' => 'La solicitud fue rechazada, pero no se pudo notificar al aprendiz.'
+                    ], 500);
+                }
+
+            } else {
                 enviarJSON([
                     'success' => false,
-                    'error' => 'La solicitud fue rechazada, pero no se pudo notificar al aprendiz.'
+                    'error' => 'No se encontró el aprendiz solicitante (referencia vacía).'
                 ], 500);
             }
 
-        } else {
             enviarJSON([
-                'success' => false,
-                'error' => 'No se encontró el aprendiz solicitante (referencia vacía).'
-            ], 500);
+                'success' => true,
+                'message' => 'Solicitud rechazada. Se ha notificado al aprendiz.',
+                'debug' => [
+                    'notif_id' => $notif_id,
+                    'id_aprendiz' => $id_aprendiz,
+                    'col_solicitante' => $COL_SOLICITANTE
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            enviarJSON(['success' => false, 'error' => $e->getMessage()], 500);
         }
 
-        enviarJSON([
-            'success' => true,
-            'message' => 'Solicitud rechazada. Se ha notificado al aprendiz.',
-            'debug'   => [
-                'notif_id' => $notif_id,
-                'id_aprendiz' => $id_aprendiz,
-                'col_solicitante' => $COL_SOLICITANTE
-            ]
-        ]);
-
-    } catch (\Exception $e) {
-        enviarJSON(['success' => false, 'error' => $e->getMessage()], 500);
-    }
-
-break;
+        break;
 
     /* =====================================================
        ✅ LISTAR USUARIOS
@@ -1107,11 +1153,11 @@ break;
     ===================================================== */
     case 'listar':
         enviarJSON($usuario->listar());
-    break;
+        break;
 
     case 'listar_usuarios':
         enviarJSON($usuario->listar());
-    break;
+        break;
 
     /* =====================================================
        ✅ OBTENER USUARIO POR ID
@@ -1126,7 +1172,7 @@ break;
 
         $res = $usuario->obtenerPorId($id_usuario);
         enviarJSON($res ? $res : ['error' => 'Usuario no encontrado'], $res ? 200 : 404);
-    break;
+        break;
 
     /* =====================================================
        ✅ CREAR USUARIO + TOKEN + CORREO ACTIVACIÓN
@@ -1136,15 +1182,15 @@ break;
 
         $data = json_decode(file_get_contents("php://input"), true);
 
-        $nombre           = $data['nombre_completo']   ?? null;
-        $tipo_documento   = $data['tipo_documento']    ?? null;
-        $numero_documento = $data['numero_documento']  ?? null;
-        $telefono         = $data['telefono']          ?? null;
-        $cargo            = $data['cargo']             ?? null;
-        $correo           = $data['correo']            ?? null;
-        $direccion        = $data['direccion']         ?? null;
-        $password         = $data['password']          ?? null;
-        $id_programa      = $data['id_programa']       ?? null;
+        $nombre = $data['nombre_completo'] ?? null;
+        $tipo_documento = $data['tipo_documento'] ?? null;
+        $numero_documento = $data['numero_documento'] ?? null;
+        $telefono = $data['telefono'] ?? null;
+        $cargo = $data['cargo'] ?? null;
+        $correo = $data['correo'] ?? null;
+        $direccion = $data['direccion'] ?? null;
+        $password = $data['password'] ?? null;
+        $id_programa = $data['id_programa'] ?? null;
 
         if (!$nombre || !$correo || !$password) {
             enviarJSON(['error' => 'Datos incompletos'], 400);
@@ -1155,7 +1201,7 @@ break;
             enviarJSON(['error' => 'El nombre solo puede contener letras y espacios'], 400);
         }
 
-        $cargosValidos = ['Coordinador','Subcoordinador','Instructor','Pasante','Aprendiz'];
+        $cargosValidos = ['Coordinador', 'Subcoordinador', 'Instructor', 'Pasante', 'Aprendiz'];
         if ($cargo && !in_array($cargo, $cargosValidos, true)) {
             enviarJSON(['error' => 'Cargo no válido'], 400);
         }
@@ -1203,16 +1249,16 @@ break;
             try {
                 $mail = new PHPMailer(true);
 
-                $mail->CharSet  = 'UTF-8';
+                $mail->CharSet = 'UTF-8';
                 $mail->Encoding = 'base64';
 
                 $mail->isSMTP();
-                $mail->Host       = 'smtp.gmail.com';
-                $mail->SMTPAuth   = true;
-                $mail->Username   = 'sigainvetario2025@gmail.com';
-                $mail->Password   = 'dwltqzowfouydwgf';
+                $mail->Host = 'smtp.gmail.com';
+                $mail->SMTPAuth = true;
+                $mail->Username = 'sigainvetario2025@gmail.com';
+                $mail->Password = 'dwltqzowfouydwgf';
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                $mail->Port       = 587;
+                $mail->Port = 587;
 
                 $mail->setFrom('sigainvetario2025@gmail.com', 'Gestion Inventario');
                 $mail->addAddress($correo, $nombre);
@@ -1249,7 +1295,7 @@ break;
                 ";
 
                 $mail->AltBody =
-"Hola $nombre,
+                    "Hola $nombre,
 
 Tu cuenta en el Sistema de Gestión de Inventario ha sido creada correctamente.
 
@@ -1280,7 +1326,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             }
 
         } catch (PDOException $e) {
-            if ((string)$e->getCode() === '23000') {
+            if ((string) $e->getCode() === '23000') {
                 if (strpos($e->getMessage(), 'numero_documento') !== false) {
                     enviarJSON(['error' => 'El número de documento ya está registrado'], 409);
                 } elseif (strpos($e->getMessage(), 'correo') !== false) {
@@ -1292,7 +1338,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 enviarJSON(['error' => 'Error en base de datos: ' . $e->getMessage()], 500);
             }
         }
-    break;
+        break;
 
     /* =====================================================
        ✅ ACTIVAR CUENTA POR TOKEN (SIN AUTO-LOGIN)
@@ -1302,12 +1348,14 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         $token = $_GET['token'] ?? null;
 
         if (!$token) {
-            echo "Token inválido";
+            // Mostrar página amigable cuando no se recibe token 
+            echo "<!doctype html>\n<html lang=\"es\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>Activación - Token inválido</title>\n<script src=\"https://cdn.tailwindcss.com\"></script>\n<link rel=\"stylesheet\" href=\"" . htmlspecialchars(BASE_URL, ENT_QUOTES, 'UTF-8') . "src/assets/css/globals.css\">\n</head>\n<body class=\"min-h-screen bg-gray-50 flex items-center justify-center p-4\">\n  <div class=\"max-w-md w-full bg-white border border-gray-200 rounded-xl shadow p-6 text-center\">\n    <div class=\"mx-auto h-12 w-12 rounded-full bg-red-50 flex items-center justify-center\">\n      <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-6 w-6 text-red-600\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\">\n        <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 9v2m0 4h.01M21 12A9 9 0 11 3 12a9 9 0 0118 0z\" />\n      </svg>\n    </div>\n    <h1 class=\"mt-4 text-lg font-semibold text-gray-900\">Token inválido</h1>\n    <p class=\"mt-2 text-sm text-gray-600\">No se recibió un token de activación válido. Verifica el enlace que recibiste por correo o solicita un nuevo enlace.</p>\n  </div>\n</body>\n</html>";
             exit;
         }
 
         if (!$usuario->activarCuenta($token)) {
-            echo "Token inválido o expirado. Contacta al administrador.";
+            // Mostrar página amigable cuando la activación falla 
+            echo "<!doctype html>\n<html lang=\"es\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n<title>Activación - Error</title>\n<script src=\"https://cdn.tailwindcss.com\"></script>\n<link rel=\"stylesheet\" href=\"" . htmlspecialchars(BASE_URL, ENT_QUOTES, 'UTF-8') . "src/assets/css/globals.css\">\n</head>\n<body class=\"min-h-screen bg-gray-50 flex items-center justify-center p-4\">\n  <div class=\"max-w-md w-full bg-white border border-gray-200 rounded-xl shadow p-6 text-center\">\n    <div class=\"mx-auto h-12 w-12 rounded-full bg-amber-50 flex items-center justify-center\">\n      <svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-6 w-6 text-amber-600\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\">\n        <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z\" />\n      </svg>\n    </div>\n    <h1 class=\"mt-4 text-lg font-semibold text-gray-900\">Token inválido o expirado</h1>\n    <p class=\"mt-2 text-sm text-gray-600\">El token de activación no es válido o ha expirado. Contacta al administrador o solicita un nuevo enlace de activación.</p>\n  </div>\n</body>\n</html>";
             exit;
         }
 
@@ -1338,19 +1386,19 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 WHERE id_usuario = :uid
                   AND token LIKE 'FORCE_%'
                   AND usado = 0
-            ")->execute([':uid' => (int)$u['id_usuario']]);
+            ")->execute([':uid' => (int) $u['id_usuario']]);
 
             $forceToken = FORCE_TOKEN_PREFIX . bin2hex(random_bytes(32));
-            $forceExp   = (new DateTime('now'))->modify('+1 day')->format('Y-m-d H:i:s');
+            $forceExp = (new DateTime('now'))->modify('+1 day')->format('Y-m-d H:i:s');
 
             $conn->prepare("
                 INSERT INTO tokens_correo (id_usuario, token, tipo, fecha_expiracion, usado)
                 VALUES (:uid, :t, 'reset_password', :exp, 0)
             ")->execute([
-                ':uid' => (int)$u['id_usuario'],
-                ':t'   => $forceToken,
-                ':exp' => $forceExp
-            ]);
+                        ':uid' => (int) $u['id_usuario'],
+                        ':t' => $forceToken,
+                        ':exp' => $forceExp
+                    ]);
 
             if (session_status() === PHP_SESSION_ACTIVE) {
                 session_unset();
@@ -1368,7 +1416,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             header("Location: " . BASE_URL . "src/view/login/login.php?activacion=ok");
             exit;
         }
-    break;
+        break;
 
     /* =====================================================
        ✅ ACTUALIZAR USUARIO (EDITAR)
@@ -1388,22 +1436,22 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             enviarJSON(['error' => 'Usuario no encontrado'], 404);
         }
 
-        $nombre      = $data['nombre_completo']  ?? $usuarioActual['nombre_completo'];
-        $tipo_doc    = $data['tipo_documento']   ?? $usuarioActual['tipo_documento'];
-        $num_doc     = $data['numero_documento'] ?? $usuarioActual['numero_documento'];
-        $telefono    = $data['telefono']         ?? $usuarioActual['telefono'];
-        $cargo       = $data['cargo']            ?? $usuarioActual['cargo'];
-        $correo      = $data['correo']           ?? $usuarioActual['correo'];
-        $direccion   = $data['direccion']        ?? $usuarioActual['direccion'];
-        $password    = $data['password']         ?? null;
-        $id_programa = $data['id_programa']      ?? ($usuarioActual['id_programa'] ?? null);
+        $nombre = $data['nombre_completo'] ?? $usuarioActual['nombre_completo'];
+        $tipo_doc = $data['tipo_documento'] ?? $usuarioActual['tipo_documento'];
+        $num_doc = $data['numero_documento'] ?? $usuarioActual['numero_documento'];
+        $telefono = $data['telefono'] ?? $usuarioActual['telefono'];
+        $cargo = $data['cargo'] ?? $usuarioActual['cargo'];
+        $correo = $data['correo'] ?? $usuarioActual['correo'];
+        $direccion = $data['direccion'] ?? $usuarioActual['direccion'];
+        $password = $data['password'] ?? null;
+        $id_programa = $data['id_programa'] ?? ($usuarioActual['id_programa'] ?? null);
 
         $nombre = colapsarEspacios($nombre);
         if ($nombre === '' || !validarSoloTexto($nombre)) {
             enviarJSON(['error' => 'El nombre solo puede contener letras y espacios'], 400);
         }
 
-        $cargosValidos = ['Coordinador','Subcoordinador','Instructor','Pasante','Aprendiz'];
+        $cargosValidos = ['Coordinador', 'Subcoordinador', 'Instructor', 'Pasante', 'Aprendiz'];
         if (!in_array($cargo, $cargosValidos, true)) {
             enviarJSON(['error' => 'Cargo no válido'], 400);
         }
@@ -1411,13 +1459,70 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
 
         if ($num_doc !== $usuarioActual['numero_documento']) {
             $existeDoc = $usuario->obtenerPorDocumento($num_doc);
-            if ($existeDoc && (int)$existeDoc['id_usuario'] !== (int)$id_usuario) {
+            if ($existeDoc && (int) $existeDoc['id_usuario'] !== (int) $id_usuario) {
                 enviarJSON(['error' => 'El número de documento ya está registrado'], 409);
             }
         }
 
         if ($correo !== $usuarioActual['correo'] && $usuario->obtenerPorCorreo($correo)) {
             enviarJSON(['error' => 'El correo ya está registrado'], 409);
+        }
+
+        // ==========================
+        // SERVER-SIDE GUARD: impedir cambiar cargo de Instructor si tiene vinculaciones
+        // ==========================
+        $debug_mode = ($data['_debug'] ?? false) === true;
+        $debug_logs = [];
+
+        $cargoActual = trim((string)($usuarioActual['cargo'] ?? ""));
+        $debug_logs[] = ['cargoActual' => $cargoActual, 'nuevoCargo' => $cargo];
+
+        if (strcasecmp($cargoActual, 'Instructor') === 0 && strcasecmp(trim((string)$cargo), 'Instructor') !== 0) {
+            $tieneVinculos = false;
+
+            // 1) Si en usuarios existe id_programa y está asignado -> ya es vínculo
+            if (!empty($usuarioActual['id_programa'])) {
+                $tieneVinculos = true;
+                $debug_logs[] = ['found' => 'usuarios.id_programa', 'value' => $usuarioActual['id_programa']];
+            }
+
+            // 2) Validaciones adicionales en tablas típicas (si existen)
+            $checks = [];
+            $candidates = [
+                ['table' => 'instructor_programa', 'sql' => "SELECT 1 FROM instructor_programa WHERE id_instructor = :id OR id_usuario = :id LIMIT 1"],
+                ['table' => 'instructores_programas', 'sql' => "SELECT 1 FROM instructores_programas WHERE id_instructor = :id OR id_usuario = :id LIMIT 1"],
+                ['table' => 'fichas_instructores', 'sql' => "SELECT 1 FROM fichas_instructores WHERE id_instructor = :id OR id_usuario = :id LIMIT 1"],
+                ['table' => 'instructor_ficha', 'sql' => "SELECT 1 FROM instructor_ficha WHERE id_instructor = :id OR id_usuario = :id LIMIT 1"],
+            ];
+
+            foreach ($candidates as $cand) {
+                $table = $cand['table'];
+                $debug_logs[] = ['check_table' => $table, 'exists' => tableExists($conn, $table)];
+                if (tableExists($conn, $table)) {
+                    $sql = $cand['sql'];
+                    $found = existsRows($conn, $sql, [':id' => $id_usuario]);
+                    $debug_logs[] = ['table' => $table, 'found' => $found, 'sql' => $sql];
+                    if ($found) {
+                        $tieneVinculos = true;
+                        break;
+                    }
+                }
+            }
+
+            if ($tieneVinculos) {
+                if ($debug_mode) {
+                    enviarJSON([
+                        'success' => false,
+                        'error' => 'No es posible cambiar el cargo porque el usuario tiene asignaciones activas (programa, ficha u otras vinculaciones). Desasigne primero dichas vinculaciones.',
+                        'debug' => $debug_logs
+                    ], 400);
+                } else {
+                    enviarJSON([
+                        'success' => false,
+                        'error' => 'No es posible cambiar el cargo porque el usuario tiene asignaciones activas (programa, ficha u otras vinculaciones). Desasigne primero dichas vinculaciones.'
+                    ], 400);
+                }
+            }
         }
 
         $ok = $usuario->actualizar(
@@ -1433,24 +1538,24 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             $id_programa
         );
 
-        if ($ok && isset($_SESSION['usuario_id']) && (int)$_SESSION['usuario_id'] === (int)$id_usuario) {
+        if ($ok && isset($_SESSION['usuario_id']) && (int) $_SESSION['usuario_id'] === (int) $id_usuario) {
             $_SESSION['usuario_nombre'] = $nombre;
             $_SESSION['usuario_correo'] = $correo;
-            $_SESSION['usuario_cargo']  = $cargo;
+            $_SESSION['usuario_cargo'] = $cargo;
 
-            $_SESSION['usuario_tipo_documento']   = $tipo_doc;
+            $_SESSION['usuario_tipo_documento'] = $tipo_doc;
             $_SESSION['usuario_numero_documento'] = $num_doc;
-            $_SESSION['usuario_telefono']         = $telefono;
-            $_SESSION['usuario_direccion']        = $direccion;
+            $_SESSION['usuario_telefono'] = $telefono;
+            $_SESSION['usuario_direccion'] = $direccion;
         }
 
         enviarJSON(
             $ok
-                ? ['success' => true, 'mensaje' => 'Usuario actualizado correctamente']
-                : ['success' => false, 'error' => 'No se pudo actualizar el usuario'],
+            ? ['success' => true, 'mensaje' => 'Usuario actualizado correctamente']
+            : ['success' => false, 'error' => 'No se pudo actualizar el usuario'],
             $ok ? 200 : 500
         );
-    break;
+        break;
 
     /* =====================================================
        ✅ CAMBIAR ESTADO
@@ -1462,13 +1567,13 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         $data = json_decode(file_get_contents("php://input"), true);
 
         $id_usuario = $data['id_usuario'] ?? $_POST['id_usuario'] ?? $_GET['id_usuario'] ?? null;
-        $estado     = $data['estado']     ?? $_POST['estado']     ?? $_GET['estado']     ?? null;
+        $estado = $data['estado'] ?? $_POST['estado'] ?? $_GET['estado'] ?? null;
 
         if ($id_usuario === null || $estado === null) {
             enviarJSON(['error' => 'Debe enviar id_usuario y estado (1 o 0)'], 400);
         }
 
-        if ((int)$estado !== 1 && (int)$estado !== 0) {
+        if ((int) $estado !== 1 && (int) $estado !== 0) {
             enviarJSON(['error' => 'El estado debe ser 1 o 0'], 400);
         }
 
@@ -1478,17 +1583,17 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
 
         $ok = $usuario->cambiarEstado($id_usuario, $estado);
 
-        if ($ok && (int)$estado === 0) {
-            revocarSesionesUsuario($conn, (int)$id_usuario);
+        if ($ok && (int) $estado === 0) {
+            revocarSesionesUsuario($conn, (int) $id_usuario);
         }
 
         enviarJSON(
             $ok
-                ? ['success' => true, 'mensaje' => 'Estado actualizado']
-                : ['success' => false, 'error' => 'Error al actualizar estado'],
+            ? ['success' => true, 'mensaje' => 'Estado actualizado']
+            : ['success' => false, 'error' => 'Error al actualizar estado'],
             $ok ? 200 : 500
         );
-    break;
+        break;
 
     /* =====================================================
        ✅ CHECK SESSION (valida token_sesion en BD)
@@ -1519,12 +1624,12 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 WHERE id_usuario = :id
                 LIMIT 1
             ");
-            $stmt->execute([':id' => (int)$_SESSION['usuario_id']]);
+            $stmt->execute([':id' => (int) $_SESSION['usuario_id']]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$row || !estadoEsActivo($row['estado'] ?? null)) {
 
-                revocarSesionesUsuario($conn, (int)$_SESSION['usuario_id']);
+                revocarSesionesUsuario($conn, (int) $_SESSION['usuario_id']);
 
                 session_unset();
                 session_destroy();
@@ -1549,7 +1654,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 'message' => 'Error validando estado de la cuenta.'
             ], 500);
         }
-    break;
+        break;
 
     /* =====================================================
        ✅ LOGIN (JSON) + SESSION TOKEN BD + FORCE_ detection
@@ -1559,7 +1664,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
 
         $data = json_decode(file_get_contents("php://input"), true);
 
-        $correo   = $data['correo'] ?? null;
+        $correo = $data['correo'] ?? null;
         $password = $data['password'] ?? null;
 
         if (!$correo || !$password) {
@@ -1582,20 +1687,20 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             ], 401);
         }
 
-        revocarSesionesUsuario($conn, (int)$user['id_usuario']);
-        $newToken = crearTokenSesionBD($conn, (int)$user['id_usuario']);
+        revocarSesionesUsuario($conn, (int) $user['id_usuario']);
+        $newToken = crearTokenSesionBD($conn, (int) $user['id_usuario']);
 
         $_SESSION['usuario'] = [
-            'id'     => $user['id_usuario'],
+            'id' => $user['id_usuario'],
             'nombre' => $user['nombre_completo'],
             'correo' => $user['correo'],
-            'cargo'  => $user['cargo']
+            'cargo' => $user['cargo']
         ];
 
-        $_SESSION['usuario_id']     = (int)$user['id_usuario'];
+        $_SESSION['usuario_id'] = (int) $user['id_usuario'];
         $_SESSION['usuario_nombre'] = $user['nombre_completo'] ?? '';
         $_SESSION['usuario_correo'] = $user['correo'] ?? '';
-        $_SESSION['usuario_cargo']  = $user['cargo'] ?? '';
+        $_SESSION['usuario_cargo'] = $user['cargo'] ?? '';
 
         $_SESSION['token_sesion'] = $newToken ?: '';
 
@@ -1610,7 +1715,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             ORDER BY id_token DESC
             LIMIT 1
         ");
-        $stmt->execute([':uid' => (int)$user['id_usuario']]);
+        $stmt->execute([':uid' => (int) $user['id_usuario']]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $_SESSION['force_password_change'] = $row ? 1 : 0;
@@ -1618,14 +1723,14 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         enviarJSON([
             'success' => true,
             'mensaje' => 'Login exitoso',
-            'force_password_change' => (int)$_SESSION['force_password_change'],
+            'force_password_change' => (int) $_SESSION['force_password_change'],
             'usuario' => [
-                'id'     => $user['id_usuario'],
+                'id' => $user['id_usuario'],
                 'nombre' => $user['nombre_completo'],
-                'cargo'  => $user['cargo']
+                'cargo' => $user['cargo']
             ]
         ]);
-    break;
+        break;
 
     /* =====================================================
        ✅ LOGOUT (REDIRECCIÓN) + baja token en BD
@@ -1634,8 +1739,8 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     case 'logout':
 
         try {
-            $uid   = isset($_SESSION['usuario_id']) ? (int)$_SESSION['usuario_id'] : 0;
-            $token = isset($_SESSION['token_sesion']) ? (string)$_SESSION['token_sesion'] : '';
+            $uid = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
+            $token = isset($_SESSION['token_sesion']) ? (string) $_SESSION['token_sesion'] : '';
 
             if ($uid > 0 && $token !== '') {
                 $stmt = $conn->prepare("
@@ -1647,7 +1752,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 ");
                 $stmt->execute([
                     ':id' => $uid,
-                    ':t'  => $token
+                    ':t' => $token
                 ]);
             }
         } catch (\Exception $e) {
@@ -1659,7 +1764,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
 
         header("Location: " . BASE_URL . "src/view/login/login.php");
         exit;
-    break;
+        break;
 
     /* =====================================================
        ✅ RESET PASSWORD (VALIDA TOKEN + CAMBIA PASSWORD)
@@ -1668,8 +1773,8 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     case 'reset_password':
 
         $token = trim($_POST['token'] ?? '');
-        $p1    = (string)($_POST['password'] ?? '');
-        $p2    = (string)($_POST['password2'] ?? '');
+        $p1 = (string) ($_POST['password'] ?? '');
+        $p2 = (string) ($_POST['password2'] ?? '');
 
         if ($token === '') {
             header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=token");
@@ -1701,21 +1806,21 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 exit;
             }
 
-            if ((int)$row['usado'] === 1) {
+            if ((int) $row['usado'] === 1) {
                 header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=used");
                 exit;
             }
 
             if (strtotime($row['fecha_expiracion']) < time()) {
                 $conn->prepare("UPDATE tokens_correo SET usado = 1 WHERE id_token = :id")
-                     ->execute([':id' => (int)$row['id_token']]);
+                    ->execute([':id' => (int) $row['id_token']]);
 
                 header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=expired");
                 exit;
             }
 
-            $idUsuario = (int)$row['id_usuario'];
-            $idToken   = (int)$row['id_token'];
+            $idUsuario = (int) $row['id_usuario'];
+            $idToken = (int) $row['id_token'];
 
             $newHash = password_hash($p1, PASSWORD_DEFAULT);
 
@@ -1725,9 +1830,9 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 WHERE id_usuario = :uid
                 LIMIT 1
             ")->execute([
-                ':ph'  => $newHash,
-                ':uid' => $idUsuario
-            ]);
+                        ':ph' => $newHash,
+                        ':uid' => $idUsuario
+                    ]);
 
             $conn->prepare("
                 UPDATE tokens_correo
@@ -1745,7 +1850,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=server");
             exit;
         }
-    break;
+        break;
 
     /* =====================================================
        ✅ SOLICITAR RESET PASSWORD (GUARDA TOKEN + ENVÍA CORREO)
@@ -1753,67 +1858,67 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     ===================================================== */
     case 'request_reset_password':
 
-    $correo = trim($_POST['correo'] ?? '');
+        $correo = trim($_POST['correo'] ?? '');
 
-    if ($correo === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
-        header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=correo");
-        exit;
-    }
-
-    try {
-        $stmt = $conn->prepare("SELECT id_usuario, nombre_completo, correo FROM usuarios WHERE correo = :c LIMIT 1");
-        $stmt->execute([':c' => $correo]);
-        $u = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        // ✅ SI NO EXISTE -> decirle que NO está registrado
-        if (!$u) {
-            header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=not_registered");
+        if ($correo === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+            header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=correo");
             exit;
         }
 
-        $idUsuario = (int)$u['id_usuario'];
-        $nombre    = $u['nombre_completo'] ?? $correo;
+        try {
+            $stmt = $conn->prepare("SELECT id_usuario, nombre_completo, correo FROM usuarios WHERE correo = :c LIMIT 1");
+            $stmt->execute([':c' => $correo]);
+            $u = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        // Inhabilitar tokens anteriores activos
-        $conn->prepare("
+            // ✅ SI NO EXISTE -> decirle que NO está registrado
+            if (!$u) {
+                header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=not_registered");
+                exit;
+            }
+
+            $idUsuario = (int) $u['id_usuario'];
+            $nombre = $u['nombre_completo'] ?? $correo;
+
+            // Inhabilitar tokens anteriores activos
+            $conn->prepare("
             UPDATE tokens_correo
             SET usado = 1
             WHERE id_usuario = :uid AND tipo = 'reset_password' AND usado = 0
         ")->execute([':uid' => $idUsuario]);
 
-        // Crear token nuevo
-        $token = bin2hex(random_bytes(32));
-        $fechaExp = (new DateTime('now'))->modify('+30 minutes')->format('Y-m-d H:i:s');
+            // Crear token nuevo
+            $token = bin2hex(random_bytes(32));
+            $fechaExp = (new DateTime('now'))->modify('+30 minutes')->format('Y-m-d H:i:s');
 
-        $ins = $conn->prepare("
+            $ins = $conn->prepare("
             INSERT INTO tokens_correo (id_usuario, token, tipo, fecha_expiracion, usado)
             VALUES (:uid, :t, 'reset_password', :exp, 0)
         ");
-        $ins->execute([
-            ':uid' => $idUsuario,
-            ':t'   => $token,
-            ':exp' => $fechaExp
-        ]);
+            $ins->execute([
+                ':uid' => $idUsuario,
+                ':t' => $token,
+                ':exp' => $fechaExp
+            ]);
 
-        $resetLink = BASE_URL . "src/view/login/reset_password.php?token=" . urlencode($token);
+            $resetLink = BASE_URL . "src/view/login/reset_password.php?token=" . urlencode($token);
 
-        // ✅ Si tu función retorna true/false, validamos. Si no retorna nada, esto no estorba.
-        $enviado = enviarCorreoResetPassword($correo, $nombre, $resetLink);
+            // ✅ Si tu función retorna true/false, validamos. Si no retorna nada, esto no estorba.
+            $enviado = enviarCorreoResetPassword($correo, $nombre, $resetLink);
 
-        if ($enviado === false) {
+            if ($enviado === false) {
+                header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=send");
+                exit;
+            }
+
+            // ✅ SI EXISTE -> mensaje profesional de enviado
+            header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?ok=sent");
+            exit;
+
+        } catch (\Exception $e) {
             header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=send");
             exit;
         }
-
-        // ✅ SI EXISTE -> mensaje profesional de enviado
-        header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?ok=sent");
-        exit;
-
-    } catch (\Exception $e) {
-        header("Location: " . BASE_URL . "src/view/login/recuperar_contrasena.php?err=send");
-        exit;
-    }
-    break;
+        break;
 
 
     /* =====================================================
@@ -1831,9 +1936,9 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             enviarJSON(['error' => 'Sesión expirada o revocada. Inicia sesión nuevamente.'], 401);
         }
 
-        $id_usuario = (int)$_SESSION['usuario_id'];
+        $id_usuario = (int) $_SESSION['usuario_id'];
 
-        $telefono  = isset($_POST['telefono'])  ? colapsarEspacios($_POST['telefono'])  : '';
+        $telefono = isset($_POST['telefono']) ? colapsarEspacios($_POST['telefono']) : '';
         $direccion = isset($_POST['direccion']) ? colapsarEspacios($_POST['direccion']) : '';
 
         if ($telefono !== '' && !preg_match('/^[0-9+\s\-()]{7,20}$/', $telefono)) {
@@ -1848,16 +1953,16 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 enviarJSON(['error' => 'Error subiendo la foto.'], 400);
             }
 
-            $tmp  = $_FILES['foto_perfil']['tmp_name'];
+            $tmp = $_FILES['foto_perfil']['tmp_name'];
             $name = $_FILES['foto_perfil']['name'] ?? '';
-            $size = (int)($_FILES['foto_perfil']['size'] ?? 0);
+            $size = (int) ($_FILES['foto_perfil']['size'] ?? 0);
 
             if ($size > 2 * 1024 * 1024) {
                 enviarJSON(['error' => 'La foto supera el límite de 2MB.'], 400);
             }
 
             $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-            $allowed = ['jpg','jpeg','png','webp'];
+            $allowed = ['jpg', 'jpeg', 'png', 'webp'];
 
             if (!in_array($ext, $allowed, true)) {
                 enviarJSON(['error' => 'Formato no permitido. Usa JPG, PNG o WEBP.'], 400);
@@ -1869,7 +1974,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             }
 
             $fileName = 'perfil_' . $id_usuario . '_' . time() . '.' . $ext;
-            $destAbs  = $uploadDirAbs . $fileName;
+            $destAbs = $uploadDirAbs . $fileName;
 
             if (!move_uploaded_file($tmp, $destAbs)) {
                 enviarJSON(['error' => 'No se pudo guardar la foto.'], 500);
@@ -1882,18 +1987,19 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             $sql = "UPDATE usuarios 
                     SET telefono = :t,
                         direccion = :d"
-                    . ($fotoPathDB ? ", foto_perfil = :f" : "") .
-                   " WHERE id_usuario = :id
+                . ($fotoPathDB ? ", foto_perfil = :f" : "") .
+                " WHERE id_usuario = :id
                      LIMIT 1";
 
             $stmt = $conn->prepare($sql);
 
             $params = [
-                ':t'  => $telefono,
-                ':d'  => $direccion,
+                ':t' => $telefono,
+                ':d' => $direccion,
                 ':id' => $id_usuario
             ];
-            if ($fotoPathDB) $params[':f'] = $fotoPathDB;
+            if ($fotoPathDB)
+                $params[':f'] = $fotoPathDB;
 
             $ok = $stmt->execute($params);
 
@@ -1901,7 +2007,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 enviarJSON(['error' => 'No se pudo actualizar el perfil.'], 500);
             }
 
-            $_SESSION['usuario_telefono']  = $telefono;
+            $_SESSION['usuario_telefono'] = $telefono;
             $_SESSION['usuario_direccion'] = $direccion;
 
             if ($fotoPathDB) {
@@ -1912,7 +2018,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         } catch (\Exception $e) {
             enviarJSON(['error' => 'Error del servidor al actualizar perfil', 'detalle' => $e->getMessage()], 500);
         }
-    break;
+        break;
 
     /* =====================================================
        ✅ CAMBIAR PASSWORD DESDE PERFIL
@@ -1930,11 +2036,11 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             enviarJSON(['error' => 'Sesión expirada o revocada. Inicia sesión nuevamente.'], 401);
         }
 
-        $id_usuario = (int)$_SESSION['usuario_id'];
+        $id_usuario = (int) $_SESSION['usuario_id'];
 
-        $actual    = (string)($_POST['password_actual'] ?? '');
-        $nueva     = (string)($_POST['password_nueva'] ?? '');
-        $confirmar = (string)($_POST['password_confirmar'] ?? '');
+        $actual = (string) ($_POST['password_actual'] ?? '');
+        $nueva = (string) ($_POST['password_nueva'] ?? '');
+        $confirmar = (string) ($_POST['password_confirmar'] ?? '');
 
         if ($actual === '' || $nueva === '' || $confirmar === '') {
             enviarJSON(['error' => 'Complete todos los campos.'], 400);
@@ -1957,7 +2063,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 enviarJSON(['error' => 'Usuario no encontrado.'], 404);
             }
 
-            $hashActual = (string)$row['password'];
+            $hashActual = (string) $row['password'];
 
             if (!password_verify($actual, $hashActual)) {
                 enviarJSON(['error' => 'La contraseña actual es incorrecta.'], 401);
@@ -1970,7 +2076,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             $newHash = password_hash($nueva, PASSWORD_DEFAULT);
 
             $upd = $conn->prepare("UPDATE usuarios SET password = :ph WHERE id_usuario = :id LIMIT 1");
-            $ok  = $upd->execute([':ph' => $newHash, ':id' => $id_usuario]);
+            $ok = $upd->execute([':ph' => $newHash, ':id' => $id_usuario]);
 
             if ($ok) {
                 $conn->prepare("
@@ -1991,81 +2097,81 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         } catch (\Exception $e) {
             enviarJSON(['error' => 'Error del servidor al cambiar contraseña', 'detalle' => $e->getMessage()], 500);
         }
-    break;
+        break;
 
     /* =====================================================
    ✅ CAMBIO DE CONTRASEÑA OBLIGATORIO (FORCE_%)
    POST: password_actual, password_nueva, password_confirmacion
    ?accion=cambiar_password_obligatorio
 ===================================================== */
-case 'cambiar_password_obligatorio':
+    case 'cambiar_password_obligatorio':
 
-    if (!isset($_SESSION['usuario_id'])) {
-        enviarJSON(['ok' => false, 'message' => 'Sesión no válida.'], 401);
-    }
+        if (!isset($_SESSION['usuario_id'])) {
+            enviarJSON(['ok' => false, 'message' => 'Sesión no válida.'], 401);
+        }
 
-    $uid = (int)$_SESSION['usuario_id'];
+        $uid = (int) $_SESSION['usuario_id'];
 
-    $passwordActual = trim($_POST['password_actual'] ?? '');
-    $passwordNueva  = trim($_POST['password_nueva'] ?? '');
-    $passwordConf   = trim($_POST['password_confirmacion'] ?? '');
+        $passwordActual = trim($_POST['password_actual'] ?? '');
+        $passwordNueva = trim($_POST['password_nueva'] ?? '');
+        $passwordConf = trim($_POST['password_confirmacion'] ?? '');
 
-    if ($passwordActual === '' || $passwordNueva === '' || $passwordConf === '') {
-        enviarJSON(['ok' => false, 'message' => 'Debes completar todos los campos.'], 400);
-    }
+        if ($passwordActual === '' || $passwordNueva === '' || $passwordConf === '') {
+            enviarJSON(['ok' => false, 'message' => 'Debes completar todos los campos.'], 400);
+        }
 
-    if (strlen($passwordNueva) < 8) {
-        enviarJSON(['ok' => false, 'message' => 'La nueva contraseña debe tener mínimo 8 caracteres.'], 400);
-    }
+        if (strlen($passwordNueva) < 8) {
+            enviarJSON(['ok' => false, 'message' => 'La nueva contraseña debe tener mínimo 8 caracteres.'], 400);
+        }
 
-    // ✅ Regla fuerte: 1 número, 1 mayúscula, 1 especial
-    $hasUpper   = preg_match('/[A-Z]/', $passwordNueva);
-    $hasNumber  = preg_match('/[0-9]/', $passwordNueva);
-    $hasSpecial = preg_match('/[^A-Za-z0-9]/', $passwordNueva);
+        // ✅ Regla fuerte: 1 número, 1 mayúscula, 1 especial
+        $hasUpper = preg_match('/[A-Z]/', $passwordNueva);
+        $hasNumber = preg_match('/[0-9]/', $passwordNueva);
+        $hasSpecial = preg_match('/[^A-Za-z0-9]/', $passwordNueva);
 
-    if (!$hasUpper || !$hasNumber || !$hasSpecial) {
-        enviarJSON(['ok' => false, 'message' => 'Debe tener mínimo 1 número, 1 mayúscula y 1 caracter especial.'], 400);
-    }
+        if (!$hasUpper || !$hasNumber || !$hasSpecial) {
+            enviarJSON(['ok' => false, 'message' => 'Debe tener mínimo 1 número, 1 mayúscula y 1 caracter especial.'], 400);
+        }
 
-    if ($passwordNueva !== $passwordConf) {
-        enviarJSON(['ok' => false, 'message' => 'La confirmación no coincide con la nueva contraseña.'], 400);
-    }
+        if ($passwordNueva !== $passwordConf) {
+            enviarJSON(['ok' => false, 'message' => 'La confirmación no coincide con la nueva contraseña.'], 400);
+        }
 
-    if ($passwordActual === $passwordNueva) {
-        enviarJSON(['ok' => false, 'message' => 'La nueva contraseña no puede ser igual a la actual.'], 400);
-    }
+        if ($passwordActual === $passwordNueva) {
+            enviarJSON(['ok' => false, 'message' => 'La nueva contraseña no puede ser igual a la actual.'], 400);
+        }
 
-    // 1) traer hash actual
-    $stmt = $conn->prepare("SELECT password FROM usuarios WHERE id_usuario = ? LIMIT 1");
-    $stmt->execute([$uid]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        // 1) traer hash actual
+        $stmt = $conn->prepare("SELECT password FROM usuarios WHERE id_usuario = ? LIMIT 1");
+        $stmt->execute([$uid]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$row) {
-        enviarJSON(['ok' => false, 'message' => 'Usuario no encontrado.'], 404);
-    }
+        if (!$row) {
+            enviarJSON(['ok' => false, 'message' => 'Usuario no encontrado.'], 404);
+        }
 
-    $hashActual = (string)$row['password'];
+        $hashActual = (string) $row['password'];
 
-    // 2) validar contraseña actual (hash o texto plano legacy)
-    $okActual = false;
-    if (password_verify($passwordActual, $hashActual)) {
-        $okActual = true;
-    } elseif ($passwordActual === $hashActual) {
-        $okActual = true;
-    }
+        // 2) validar contraseña actual (hash o texto plano legacy)
+        $okActual = false;
+        if (password_verify($passwordActual, $hashActual)) {
+            $okActual = true;
+        } elseif ($passwordActual === $hashActual) {
+            $okActual = true;
+        }
 
-    if (!$okActual) {
-        enviarJSON(['ok' => false, 'message' => 'La contraseña actual no es correcta.'], 401);
-    }
+        if (!$okActual) {
+            enviarJSON(['ok' => false, 'message' => 'La contraseña actual no es correcta.'], 401);
+        }
 
-    // 3) actualizar password (hash)
-    $nuevoHash = password_hash($passwordNueva, PASSWORD_DEFAULT);
-    $stmtUp = $conn->prepare("UPDATE usuarios SET password = ? WHERE id_usuario = ? LIMIT 1");
-    $stmtUp->execute([$nuevoHash, $uid]);
+        // 3) actualizar password (hash)
+        $nuevoHash = password_hash($passwordNueva, PASSWORD_DEFAULT);
+        $stmtUp = $conn->prepare("UPDATE usuarios SET password = ? WHERE id_usuario = ? LIMIT 1");
+        $stmtUp->execute([$nuevoHash, $uid]);
 
-    // 4) marcar FORCE_% como usado
-    try {
-        $stmtToken = $conn->prepare("
+        // 4) marcar FORCE_% como usado
+        try {
+            $stmtToken = $conn->prepare("
             UPDATE tokens_correo
             SET usado = 1
             WHERE id_usuario = :uid
@@ -2073,62 +2179,62 @@ case 'cambiar_password_obligatorio':
               AND token LIKE 'FORCE_%'
               AND usado = 0
         ");
-        $stmtToken->execute([':uid' => $uid]);
-    } catch (Throwable $e) {
-        // no romper
-    }
+            $stmtToken->execute([':uid' => $uid]);
+        } catch (Throwable $e) {
+            // no romper
+        }
 
-    // 5) apagar flag
-    $_SESSION['force_password_change'] = 0;
+        // 5) apagar flag
+        $_SESSION['force_password_change'] = 0;
 
-    enviarJSON(['ok' => true, 'message' => 'Contraseña actualizada correctamente.']);
-break;
+        enviarJSON(['ok' => true, 'message' => 'Contraseña actualizada correctamente.']);
+        break;
 
-/* =====================================================
-   ✅ LISTAR ROLES FUNCIONALES
-   GET: ?accion=listar_roles_funcionales
-===================================================== */
-case 'listar_roles_funcionales':
+    /* =====================================================
+       ✅ LISTAR ROLES FUNCIONALES
+       GET: ?accion=listar_roles_funcionales
+    ===================================================== */
+    case 'listar_roles_funcionales':
 
-    try {
-        $stmt = $conn->prepare("
+        try {
+            $stmt = $conn->prepare("
             SELECT id_rol, nombre_rol
             FROM roles_funcionales
             ORDER BY id_rol ASC
         ");
-        $stmt->execute();
+            $stmt->execute();
 
-        $roles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $roles = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        enviarJSON([
-            'success' => true,
-            'roles' => $roles
-        ]);
+            enviarJSON([
+                'success' => true,
+                'roles' => $roles
+            ]);
 
-    } catch (\Exception $e) {
-        enviarJSON([
-            'success' => false,
-            'error' => 'Error listando roles funcionales',
-            'detalle' => $e->getMessage()
-        ], 500);
-    }
+        } catch (\Exception $e) {
+            enviarJSON([
+                'success' => false,
+                'error' => 'Error listando roles funcionales',
+                'detalle' => $e->getMessage()
+            ], 500);
+        }
 
-break;
+        break;
 
-/* =====================================================
-   ✅ OBTENER ROL FUNCIONAL DE UN USUARIO
-   GET: ?accion=obtener_rol_funcional_usuario&id_usuario=#
-===================================================== */
-case 'obtener_rol_funcional_usuario':
+    /* =====================================================
+       ✅ OBTENER ROL FUNCIONAL DE UN USUARIO
+       GET: ?accion=obtener_rol_funcional_usuario&id_usuario=#
+    ===================================================== */
+    case 'obtener_rol_funcional_usuario':
 
-    $id_usuario = (int)($_GET['id_usuario'] ?? 0);
+        $id_usuario = (int) ($_GET['id_usuario'] ?? 0);
 
-    if ($id_usuario <= 0) {
-        enviarJSON(['success' => false, 'error' => 'id_usuario requerido'], 400);
-    }
+        if ($id_usuario <= 0) {
+            enviarJSON(['success' => false, 'error' => 'id_usuario requerido'], 400);
+        }
 
-    try {
-        $stmt = $conn->prepare("
+        try {
+            $stmt = $conn->prepare("
             SELECT urf.id_rol, rf.nombre_rol
             FROM usuario_roles_funcionales urf
             INNER JOIN roles_funcionales rf ON rf.id_rol = urf.id_rol
@@ -2136,215 +2242,435 @@ case 'obtener_rol_funcional_usuario':
             ORDER BY urf.fecha_asignacion DESC
             LIMIT 1
         ");
-        $stmt->execute([$id_usuario]);
-        $rol = $stmt->fetch(PDO::FETCH_ASSOC);
+            $stmt->execute([$id_usuario]);
+            $rol = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        enviarJSON([
-            'success' => true,
-            'rol' => $rol ?: null
-        ]);
+            enviarJSON([
+                'success' => true,
+                'rol' => $rol ?: null
+            ]);
 
-    } catch (\Exception $e) {
-        enviarJSON([
-            'success' => false,
-            'error' => 'Error obteniendo rol funcional',
-            'detalle' => $e->getMessage()
-        ], 500);
-    }
+        } catch (\Exception $e) {
+            enviarJSON([
+                'success' => false,
+                'error' => 'Error obteniendo rol funcional',
+                'detalle' => $e->getMessage()
+            ], 500);
+        }
 
-break;
+        break;
 
-        /* =====================================================
-           ✅ OBTENER ASIGNACIONES (BODEGAS / SUBBODEGAS) DE UN USUARIO
-           GET: ?accion=obtener_asignaciones_usuario&id_usuario=#
-           Retorna: { success:true, data: { bodegas: [...], subbodegas: [...] } }
-        ===================================================== */
-        case 'obtener_asignaciones_usuario':
+    /* =====================================================
+       ✅ OBTENER ASIGNACIONES (BODEGAS / SUBBODEGAS) DE UN USUARIO
+       GET: ?accion=obtener_asignaciones_usuario&id_usuario=#
+       Retorna: { success:true, data: { bodegas: [...], subbodegas: [...] } }
+    ===================================================== */
+    case 'obtener_asignaciones_usuario':
 
-            $id_usuario = (int)($_GET['id_usuario'] ?? 0);
+        $id_usuario = (int) ($_GET['id_usuario'] ?? 0);
 
-            if ($id_usuario <= 0) {
-                enviarJSON(['success' => false, 'error' => 'id_usuario requerido'], 400);
-            }
+        if ($id_usuario <= 0) {
+            enviarJSON(['success' => false, 'error' => 'id_usuario requerido'], 400);
+        }
 
-            // Permisos: permitir solo Coordinador o el propio usuario ver sus asignaciones
-            $esCoordinador = isset($_SESSION['usuario_cargo']) && $_SESSION['usuario_cargo'] === 'Coordinador';
-            $esPropio = isset($_SESSION['usuario_id']) && (int)$_SESSION['usuario_id'] === $id_usuario;
+        // Permisos: permitir solo Coordinador o el propio usuario ver sus asignaciones
+        $esCoordinador = isset($_SESSION['usuario_cargo']) && $_SESSION['usuario_cargo'] === 'Coordinador';
+        $esPropio = isset($_SESSION['usuario_id']) && (int) $_SESSION['usuario_id'] === $id_usuario;
 
-            if (!$esCoordinador && !$esPropio) {
-                enviarJSON(['success' => false, 'error' => 'No autorizado'], 401);
-            }
+        if (!$esCoordinador && !$esPropio) {
+            enviarJSON(['success' => false, 'error' => 'No autorizado'], 401);
+        }
 
+        try {
+            // Bodegas: buscar en bodega_encargados (si la tabla existe)
+            $bodegas = [];
             try {
-                // Bodegas: buscar en bodega_encargados (si la tabla existe)
-                $bodegas = [];
-                try {
-                    $stmtB = $conn->prepare(
-                        "SELECT be.id_bodega, b.nombre AS nombre_bodega, be.id_usuario_encargado, be.asignado_por, u.nombre_completo AS asignado_por_nombre, be.fecha_asignacion
+                $stmtB = $conn->prepare(
+                    "SELECT be.id_bodega, b.nombre AS nombre_bodega, be.id_usuario_encargado, be.asignado_por, u.nombre_completo AS asignado_por_nombre, be.fecha_asignacion
                          FROM bodega_encargados be
                          LEFT JOIN bodegas b ON b.id_bodega = be.id_bodega
                          LEFT JOIN usuarios u ON u.id_usuario = be.asignado_por
                          WHERE be.id_usuario_encargado = ?"
-                    );
-                    $stmtB->execute([$id_usuario]);
-                    $bodegas = $stmtB->fetchAll(PDO::FETCH_ASSOC);
-                } catch (\Exception $e) {
-                    // Tabla puede no existir o fallar; no romper la respuesta
-                    error_log('Error leyendo bodega_encargados: ' . $e->getMessage());
-                    $bodegas = [];
-                }
+                );
+                $stmtB->execute([$id_usuario]);
+                $bodegas = $stmtB->fetchAll(PDO::FETCH_ASSOC);
+            } catch (\Exception $e) {
+                // Tabla puede no existir o fallar; no romper la respuesta
+                error_log('Error leyendo bodega_encargados: ' . $e->getMessage());
+                $bodegas = [];
+            }
 
-                // Subbodegas: buscar en subbodega_encargados (activo = 1)
-                $subbodegas = [];
-                try {
-                    $stmtS = $conn->prepare(
-                        "SELECT sb.id_subbodega, sb.nombre_subbodega, sbe.id_usuario, sbe.fecha_asignacion, sbe.activo
+            // Subbodegas: buscar en subbodega_encargados (activo = 1)
+            $subbodegas = [];
+            try {
+                $stmtS = $conn->prepare(
+                    "SELECT sb.id_subbodega, sb.nombre_subbodega, sbe.id_usuario, sbe.fecha_asignacion, sbe.activo
                          FROM subbodega_encargados sbe
                          LEFT JOIN sub_bodegas sb ON sb.id_subbodega = sbe.id_subbodega
                          WHERE sbe.id_usuario = ? AND (sbe.activo IS NULL OR sbe.activo = 1)"
-                    );
-                    $stmtS->execute([$id_usuario]);
-                    $subbodegas = $stmtS->fetchAll(PDO::FETCH_ASSOC);
-                } catch (\Exception $e) {
-                    error_log('Error leyendo subbodega_encargados: ' . $e->getMessage());
-                    $subbodegas = [];
-                }
-
-                enviarJSON([
-                    'success' => true,
-                    'data' => [
-                        'bodegas' => $bodegas,
-                        'subbodegas' => $subbodegas,
-                    ]
-                ]);
+                );
+                $stmtS->execute([$id_usuario]);
+                $subbodegas = $stmtS->fetchAll(PDO::FETCH_ASSOC);
             } catch (\Exception $e) {
-                enviarJSON([
-                    'success' => false,
-                    'error' => 'Error obteniendo asignaciones',
-                    'detalle' => $e->getMessage()
-                ], 500);
+                error_log('Error leyendo subbodega_encargados: ' . $e->getMessage());
+                $subbodegas = [];
             }
+
+            enviarJSON([
+                'success' => true,
+                'data' => [
+                    'bodegas' => $bodegas,
+                    'subbodegas' => $subbodegas,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            enviarJSON([
+                'success' => false,
+                'error' => 'Error obteniendo asignaciones',
+                'detalle' => $e->getMessage()
+            ], 500);
+        }
 
         break;
 
-/* =====================================================
-   ✅ ASIGNAR ROL FUNCIONAL (TABLA PUENTE)
-   POST JSON: ?accion=asignar_rol_funcional
-   Body: { id_usuario, id_rol }
-===================================================== */
-case 'asignar_rol_funcional':
+    /* =====================================================
+       ✅ ASIGNAR ROL FUNCIONAL (TABLA PUENTE)
+       POST JSON: ?accion=asignar_rol_funcional
+       Body: { id_usuario, id_rol }
+    ===================================================== */
+    case 'asignar_rol_funcional':
 
-    // ✅ Solo Coordinador puede asignar rol funcional
-    if (!isset($_SESSION['usuario_id']) || ($_SESSION['usuario_cargo'] ?? '') !== 'Coordinador') {
-        enviarJSON(['success' => false, 'error' => 'No autorizado'], 401);
-    }
-
-    $data = json_decode(file_get_contents("php://input"), true);
-
-    $id_usuario = (int)($data['id_usuario'] ?? 0);
-    $id_rol     = (int)($data['id_rol'] ?? 0);
-
-    if ($id_usuario <= 0 || $id_rol <= 0) {
-        enviarJSON(['success' => false, 'error' => 'Datos incompletos (id_usuario / id_rol)'], 400);
-    }
-
-    $asignado_por = (int)$_SESSION['usuario_id'];
-
-    try {
-        $conn->beginTransaction();
-
-        // ✅ Verificar usuario existe
-        $stmtU = $conn->prepare("SELECT id_usuario FROM usuarios WHERE id_usuario = ? LIMIT 1");
-        $stmtU->execute([$id_usuario]);
-        if (!$stmtU->fetch()) {
-            $conn->rollBack();
-            enviarJSON(['success' => false, 'error' => 'Usuario no encontrado'], 404);
+        // ✅ Solo Coordinador puede asignar rol funcional
+        if (!isset($_SESSION['usuario_id']) || ($_SESSION['usuario_cargo'] ?? '') !== 'Coordinador') {
+            enviarJSON(['success' => false, 'error' => 'No autorizado'], 401);
         }
 
-        // ✅ Verificar rol funcional existe
-        $stmtR = $conn->prepare("SELECT id_rol FROM roles_funcionales WHERE id_rol = ? LIMIT 1");
-        $stmtR->execute([$id_rol]);
-        if (!$stmtR->fetch()) {
-            $conn->rollBack();
-            enviarJSON(['success' => false, 'error' => 'Rol funcional no existe'], 404);
+        $data = json_decode(file_get_contents("php://input"), true);
+
+        $id_usuario = (int) ($data['id_usuario'] ?? 0);
+        $id_rol = (int) ($data['id_rol'] ?? 0);
+
+        if ($id_usuario <= 0 || $id_rol <= 0) {
+            enviarJSON(['success' => false, 'error' => 'Datos incompletos (id_usuario / id_rol)'], 400);
         }
 
-        // ✅ Si manejas 1 rol funcional por usuario -> reemplazar
-        $conn->prepare("DELETE FROM usuario_roles_funcionales WHERE id_usuario = ?")
-             ->execute([$id_usuario]);
+        $asignado_por = (int) $_SESSION['usuario_id'];
 
-        // ✅ Insertar nuevo rol funcional
-        $stmtIns = $conn->prepare("
+        try {
+            $conn->beginTransaction();
+
+            // ✅ Verificar usuario existe
+            $stmtU = $conn->prepare("SELECT id_usuario FROM usuarios WHERE id_usuario = ? LIMIT 1");
+            $stmtU->execute([$id_usuario]);
+            if (!$stmtU->fetch()) {
+                $conn->rollBack();
+                enviarJSON(['success' => false, 'error' => 'Usuario no encontrado'], 404);
+            }
+
+            // ✅ Verificar rol funcional existe
+            $stmtR = $conn->prepare("SELECT id_rol FROM roles_funcionales WHERE id_rol = ? LIMIT 1");
+            $stmtR->execute([$id_rol]);
+            if (!$stmtR->fetch()) {
+                $conn->rollBack();
+                enviarJSON(['success' => false, 'error' => 'Rol funcional no existe'], 404);
+            }
+
+            // ✅ Si manejas 1 rol funcional por usuario -> reemplazar
+            $conn->prepare("DELETE FROM usuario_roles_funcionales WHERE id_usuario = ?")
+                ->execute([$id_usuario]);
+
+            // ✅ Insertar nuevo rol funcional
+            $stmtIns = $conn->prepare("
             INSERT INTO usuario_roles_funcionales (id_usuario, id_rol, asignado_por)
             VALUES (?, ?, ?)
         ");
-        $stmtIns->execute([$id_usuario, $id_rol, $asignado_por]);
+            $stmtIns->execute([$id_usuario, $id_rol, $asignado_por]);
 
 
-        // ✅ Si mandaron id_bodega → registrar encargado en tabla bodega_encargados
-        if (!empty($data['id_bodega'])) {
-            $idBodega = (int)$data['id_bodega'];
+            // ✅ Si mandaron id_bodega → registrar encargado en tabla bodega_encargados
+            if (!empty($data['id_bodega'])) {
+                $idBodega = (int) $data['id_bodega'];
 
-            // Eliminar asignaciones previas del mismo usuario en bodega_encargados
-            $conn->prepare("DELETE FROM bodega_encargados WHERE id_usuario_encargado = ?")
-                 ->execute([$id_usuario]);
+                // Eliminar asignaciones previas del mismo usuario en bodega_encargados
+                $conn->prepare("DELETE FROM bodega_encargados WHERE id_usuario_encargado = ?")
+                    ->execute([$id_usuario]);
 
-            // Insertar la nueva asignación (si la tabla existe)
-            try {
-                $stmtBe = $conn->prepare("INSERT INTO bodega_encargados (id_bodega, id_usuario_encargado, asignado_por, fecha_asignacion) VALUES (?, ?, ?, NOW())");
-                $stmtBe->execute([$idBodega, $id_usuario, $asignado_por]);
-            } catch (\Exception $e) {
-                // Si la tabla no existe o falla, registramos en log pero no rompemos el flujo
-                error_log('Error asignando bodega_encargados: ' . $e->getMessage());
+                // Insertar la nueva asignación (si la tabla existe)
+                try {
+                    $stmtBe = $conn->prepare("INSERT INTO bodega_encargados (id_bodega, id_usuario_encargado, asignado_por, fecha_asignacion) VALUES (?, ?, ?, NOW())");
+                    $stmtBe->execute([$idBodega, $id_usuario, $asignado_por]);
+                } catch (\Exception $e) {
+                    // Si la tabla no existe o falla, registramos en log pero no rompemos el flujo
+                    error_log('Error asignando bodega_encargados: ' . $e->getMessage());
+                }
             }
+
+            // ✅ Si mandaron id_subbodega → registrar encargado en tabla subbodega_encargados
+            if (!empty($data['id_subbodega'])) {
+                $idSub = (int) $data['id_subbodega'];
+
+                // Eliminar asignaciones previas del mismo usuario en subbodega_encargados
+                $conn->prepare("DELETE FROM subbodega_encargados WHERE id_usuario = ?")
+                    ->execute([$id_usuario]);
+
+                try {
+                    $stmtSb = $conn->prepare("INSERT INTO subbodega_encargados (id_subbodega, id_usuario, fecha_asignacion, activo) VALUES (?, ?, NOW(), 1)");
+                    $stmtSb->execute([$idSub, $id_usuario]);
+                } catch (\Exception $e) {
+                    error_log('Error asignando subbodega_encargados: ' . $e->getMessage());
+                }
+            }
+            $conn->commit();
+
+            enviarJSON([
+                'success' => true,
+                'mensaje' => 'Rol funcional asignado correctamente',
+                'data' => [
+                    'id_usuario' => $id_usuario,
+                    'id_rol' => $id_rol,
+                    'asignado_por' => $asignado_por
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            if ($conn->inTransaction())
+                $conn->rollBack();
+
+            enviarJSON([
+                'success' => false,
+                'error' => 'Error asignando rol funcional',
+                'detalle' => $e->getMessage()
+            ], 500);
         }
 
-        // ✅ Si mandaron id_subbodega → registrar encargado en tabla subbodega_encargados
-        if (!empty($data['id_subbodega'])) {
-            $idSub = (int)$data['id_subbodega'];
+        break;
 
-            // Eliminar asignaciones previas del mismo usuario en subbodega_encargados
-            $conn->prepare("DELETE FROM subbodega_encargados WHERE id_usuario = ?")
-                 ->execute([$id_usuario]);
+
+    /* =====================================================
+       ✅ DESASIGNAR ROL FUNCIONAL (ELIMINAR RELACIÓN)
+       POST JSON: ?accion=desasignar_rol_funcional
+       Body: { id_usuario }
+    ===================================================== */
+    case 'desasignar_rol_funcional':
+
+        // Solo Coordinador puede desasignar rol funcional
+        if (!isset($_SESSION['usuario_id']) || ($_SESSION['usuario_cargo'] ?? '') !== 'Coordinador') {
+            enviarJSON(['success' => false, 'error' => 'No autorizado'], 401);
+        }
+
+        $data = json_decode(file_get_contents("php://input"), true);
+        $id_usuario = (int) ($data['id_usuario'] ?? 0);
+
+        if ($id_usuario <= 0) {
+            enviarJSON(['success' => false, 'error' => 'Datos incompletos (id_usuario)'], 400);
+        }
+
+        try {
+            $conn->beginTransaction();
+
+            // Verificar usuario existe
+            $stmtU = $conn->prepare("SELECT id_usuario FROM usuarios WHERE id_usuario = ? LIMIT 1");
+            $stmtU->execute([$id_usuario]);
+            if (!$stmtU->fetch()) {
+                $conn->rollBack();
+                enviarJSON(['success' => false, 'error' => 'Usuario no encontrado'], 404);
+            }
+
+            // Eliminar rol funcional
+            $conn->prepare("DELETE FROM usuario_roles_funcionales WHERE id_usuario = ?")
+                ->execute([$id_usuario]);
+
+            // Eliminar posibles encargos en bodegas y subbodegas relacionados
+            try {
+                $conn->prepare("DELETE FROM bodega_encargados WHERE id_usuario_encargado = ?")
+                    ->execute([$id_usuario]);
+            } catch (\Exception $e) {
+                // no fatal
+            }
 
             try {
-                $stmtSb = $conn->prepare("INSERT INTO subbodega_encargados (id_subbodega, id_usuario, fecha_asignacion, activo) VALUES (?, ?, NOW(), 1)");
-                $stmtSb->execute([$idSub, $id_usuario]);
+                $conn->prepare("DELETE FROM subbodega_encargados WHERE id_usuario = ?")
+                    ->execute([$id_usuario]);
             } catch (\Exception $e) {
-                error_log('Error asignando subbodega_encargados: ' . $e->getMessage());
+                // no fatal
             }
+
+            $conn->commit();
+
+            enviarJSON(['success' => true, 'mensaje' => 'Rol funcional quitado correctamente']);
+
+        } catch (\Exception $e) {
+            if ($conn->inTransaction()) $conn->rollBack();
+            enviarJSON(['success' => false, 'error' => 'Error quitando rol funcional', 'detalle' => $e->getMessage()], 500);
         }
-        $conn->commit();
 
-        enviarJSON([
-            'success' => true,
-            'mensaje' => 'Rol funcional asignado correctamente',
-            'data' => [
-                'id_usuario' => $id_usuario,
-                'id_rol' => $id_rol,
-                'asignado_por' => $asignado_por
-            ]
-        ]);
+        break;
 
-    } catch (\Exception $e) {
-        if ($conn->inTransaction()) $conn->rollBack();
+    case 'validar_cambio_cargo': {
+  header("Content-Type: application/json; charset=utf-8");
+  header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+  header("Pragma: no-cache");
 
-        enviarJSON([
-            'success' => false,
-            'error' => 'Error asignando rol funcional',
-            'detalle' => $e->getMessage()
-        ], 500);
+  if (session_status() === PHP_SESSION_NONE) session_start();
+
+  if (!isset($_SESSION['usuario_id'])) {
+    echo json_encode([
+      "success" => false,
+      "can_change" => 0,
+      "message" => "No autorizado."
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+  }
+
+  $raw = file_get_contents("php://input");
+  $body = json_decode($raw, true) ?: [];
+
+  $idUsuario  = (int)($body["id_usuario"] ?? 0);
+  $nuevoCargo = trim((string)($body["nuevo_cargo"] ?? ""));
+
+  if ($idUsuario <= 0 || $nuevoCargo === "") {
+    echo json_encode([
+      "success" => false,
+      "can_change" => 0,
+      "message" => "Solicitud inválida. No se identificó el usuario o el cargo destino."
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+  }
+
+  try {
+    // 1) Consultar cargo actual + id_programa (si aplica en tu tabla usuarios)
+    $stmt = $conn->prepare("SELECT cargo, id_programa FROM usuarios WHERE id_usuario = :id LIMIT 1");
+    $stmt->execute([":id" => $idUsuario]);
+    $u = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$u) {
+      echo json_encode([
+        "success" => false,
+        "can_change" => 0,
+        "message" => "El usuario no existe o no se pudo verificar."
+      ], JSON_UNESCAPED_UNICODE);
+      exit;
     }
 
-break;
+    $cargoActual = trim((string)($u["cargo"] ?? ""));
+    $idPrograma  = $u["id_programa"] ?? null;
+
+    // 2) Solo bloqueamos si:
+    //    - era Instructor
+    //    - y lo quieren cambiar a otro cargo distinto
+    if ($cargoActual !== "Instructor" || $nuevoCargo === "Instructor") {
+      echo json_encode([
+        "success" => true,
+        "can_change" => 1,
+        "message" => "OK"
+      ], JSON_UNESCAPED_UNICODE);
+      exit;
+    }
+
+        // 3) Validar vinculaciones (con debug para identificar dónde se encuentra el vínculo)
+        $tieneVinculos = false;
+        $debugChecks = [];
+
+        // 3.1) Si en usuarios existe id_programa y está asignado -> ya es vínculo
+        if (!empty($idPrograma)) {
+            $tieneVinculos = true;
+            $debugChecks[] = ['table' => 'usuarios.id_programa', 'found' => true, 'note' => 'id_programa en tabla usuarios'];
+        } else {
+            $debugChecks[] = ['table' => 'usuarios.id_programa', 'found' => false, 'note' => 'campo null o vacío'];
+        }
+
+        // 3.2) Validación extra por tablas comunes (si existen en tu BD)
+        $checks = [];
+
+        if (tableExists($conn, "instructor_programa")) {
+                $checks[] = ['table' => 'instructor_programa', 'sql' => "SELECT 1 FROM instructor_programa WHERE id_instructor = :id OR id_usuario = :id LIMIT 1", 'params' => [":id" => $idUsuario]];
+        }
+        if (tableExists($conn, "instructores_programas")) {
+                $checks[] = ['table' => 'instructores_programas', 'sql' => "SELECT 1 FROM instructores_programas WHERE id_instructor = :id OR id_usuario = :id LIMIT 1", 'params' => [":id" => $idUsuario]];
+        }
+        if (tableExists($conn, "fichas_instructores")) {
+                $checks[] = ['table' => 'fichas_instructores', 'sql' => "SELECT 1 FROM fichas_instructores WHERE id_instructor = :id OR id_usuario = :id LIMIT 1", 'params' => [":id" => $idUsuario]];
+        }
+        if (tableExists($conn, "instructor_ficha")) {
+                $checks[] = ['table' => 'instructor_ficha', 'sql' => "SELECT 1 FROM instructor_ficha WHERE id_instructor = :id OR id_usuario = :id LIMIT 1", 'params' => [":id" => $idUsuario]];
+        }
+
+        foreach ($checks as $c) {
+            $found = false;
+            try {
+                if (existsRows($conn, $c['sql'], $c['params'])) {
+                    $found = true;
+                    $tieneVinculos = true;
+                }
+            } catch (Throwable $e) {
+                // ignore individual check errors
+            }
+
+            $debugChecks[] = ['table' => $c['table'], 'found' => $found];
+            if ($found) break;
+        }
+
+        if ($tieneVinculos) {
+            echo json_encode([
+                'success' => true,
+                'can_change' => 0,
+                'message' => 'No es posible cambiar el cargo porque el usuario tiene asignaciones activas (programa, ficha u otras vinculaciones). Para continuar, primero desasigne o cierre dichas vinculaciones.',
+                'debug_checks' => $debugChecks
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'can_change' => 1,
+            'message' => 'OK',
+            'debug_checks' => $debugChecks
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+
+  } catch (Throwable $e) {
+    echo json_encode([
+      "success" => false,
+      "can_change" => 0,
+      "message" => "No se pudo validar el cambio de cargo. Intente nuevamente."
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+  }
+}
 
 
 
-    
+
+    /* =====================================================
+       ✅ CASE: ESTA VINCULADO A PROGRAMA (auxiliar)
+       POST JSON: { id_usuario }
+       Response: { success:true, vinculado: 1|0 }
+    ===================================================== */
+    case 'esta_vinculado_programa':
+        $raw = file_get_contents('php://input');
+        $data = json_decode($raw, true) ?: [];
+        $id = (int)($data['id_usuario'] ?? 0);
+
+        if ($id <= 0) enviarJSON(['success' => false, 'error' => 'id_usuario inválido'], 400);
+
+        try {
+            $found = false;
+            if (tableExists($conn, 'instructores_programas')) {
+                $stmt = $conn->prepare('SELECT 1 FROM instructores_programas WHERE id_usuario = :id LIMIT 1');
+                $stmt->execute([':id' => $id]);
+                if ($stmt->fetchColumn()) $found = true;
+            }
+
+            enviarJSON(['success' => true, 'vinculado' => $found ? 1 : 0]);
+        } catch (Throwable $e) {
+            enviarJSON(['success' => false, 'error' => 'error comprobando vinculo'], 500);
+        }
+        break;
+
     /* =====================================================
        ✅ DEFAULT
     ===================================================== */
     default:
         enviarJSON(['error' => 'Acción no válida'], 400);
-    break;
+        break;
 }

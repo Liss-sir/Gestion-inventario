@@ -338,6 +338,11 @@ class SolicitudMaterialController {
         return $this->model->getProgramas();
     }
 
+    public function programasPorUsuario($id_usuario) {
+        return $this->model->getProgramasUsuario($id_usuario);
+    }
+
+
     public function raes($id) {
         return $this->model->getRaesPorPrograma($id);
     }
@@ -345,6 +350,7 @@ class SolicitudMaterialController {
     public function fichas($id) {
         return $this->model->getFichasPorPrograma($id);
     }
+
 
     public function materiales($bodega, $subbodega) {
         if ($bodega > 0) {
@@ -521,6 +527,10 @@ switch ($accion) {
 
     case "obtenerCompleta":
         sendJSON($controller->obtenerCompleta($_GET['id']));
+        break;
+
+    case "programasPorUsuario":
+        sendJSON($controller->programasPorUsuario($_GET['usuario']));
         break;
 
     case "programas":
