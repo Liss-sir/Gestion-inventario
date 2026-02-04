@@ -53,7 +53,7 @@ const USUARIO = (() => {
 
   return {
     raw: u,
-    id: id ? parseInt(id, 10) : null,
+    id: (id !== null && id !== undefined) ? parseInt(id, 10) : null,
     cargo: String(cargo || "").trim(),
   };
 })();
