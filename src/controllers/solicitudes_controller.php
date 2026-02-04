@@ -338,6 +338,10 @@ class SolicitudMaterialController {
         return $this->model->getProgramas();
     }
 
+    public function programasPorUsuario($id_usuario) {
+        return $this->model->getProgramasUsuario($id_usuario);
+    }
+
     public function raes($id) {
         return $this->model->getRaesPorPrograma($id);
     }
@@ -521,6 +525,10 @@ switch ($accion) {
 
     case "obtenerCompleta":
         sendJSON($controller->obtenerCompleta($_GET['id']));
+        break;
+
+     case "programasPorUsuario":
+        sendJSON($controller->programasPorUsuario($_GET['usuario']));
         break;
 
     case "programas":

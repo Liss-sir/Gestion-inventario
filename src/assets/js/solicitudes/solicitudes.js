@@ -198,7 +198,7 @@ function filtrarSolicitudesPorUsuario(listado) {
   if (!CARGOS_FILTRAN_PROPIAS.has(USUARIO.cargo)) return listado;
 
   // Si no hay ID, por seguridad no mostramos nada (evita fuga de info)
-  if (!USUARIO.id) return [];
+  if (USUARIO.id === null || Number.isNaN(USUARIO.id)) return [];
 
   // Importante: tu backend debe traer el id del creador en el listado
   // Probables nombres: id_usuario, id_solicitante, usuario_id, etc.
@@ -888,20 +888,27 @@ const api = {
             if (!programaId) return;
 
             const [resRaes, resFichas] = await Promise.all([
-              fetch(`${API}?accion=raes&programa=${programaId}`),
-              fetch(`${API}?accion=fichas&programa=${programaId}`),
+              fetch(`${API}?accion=raes&programa=${encodeURIComponent(programaId)}`),
+              fetch(`${API}?accion=fichas&programa=${encodeURIComponent(programaId)}`),
             ]);
 
-            if (selectores.selectRae && resRaes.ok) {
-              const raes = await resRaes.json();
+            // ✅ ESTO ES LO QUE TE FALTA
+            let raes = [];
+            let fichas = [];
+
+            if (resRaes.ok) raes = await resRaes.json();
+            if (resFichas.ok) fichas = await resFichas.json();
+
+            // Render RAEs
+            if (selectores.selectRae) {
               selectores.selectRae.innerHTML = '<option value="">Seleccionar RAE</option>';
               if (Array.isArray(raes) && raes.length) {
                 raes.forEach((r) => {
                   const opt = document.createElement("option");
-                  opt.value = r.id_rae;
+                  opt.value = r.id_rae ?? r.id ?? "";
                   const fullText = `${r.codigo_rae} - ${r.descripcion_rae}`;
                   opt.textContent = truncateText(fullText, 27);
-                  opt.title = fullText; // Mostrar texto completo en tooltip
+                  opt.title = fullText;
                   selectores.selectRae.appendChild(opt);
                 });
               } else {
@@ -909,16 +916,16 @@ const api = {
               }
             }
 
-            if (selectores.selectFichas && resFichas.ok) {
-              const fichas = await resFichas.json();
+            // Render Fichas
+            if (selectores.selectFichas) {
               selectores.selectFichas.innerHTML = '<option value="">Seleccionar ficha</option>';
               if (Array.isArray(fichas) && fichas.length) {
                 fichas.forEach((f) => {
                   const opt = document.createElement("option");
-                  opt.value = f.id_ficha;
+                  opt.value = f.id_ficha ?? f.id ?? "";
                   const fullText = `${f.numero_ficha} - ${f.jornada}`;
                   opt.textContent = truncateText(fullText, 27);
-                  opt.title = fullText; // Mostrar texto completo en tooltip
+                  opt.title = fullText;
                   selectores.selectFichas.appendChild(opt);
                 });
               } else {
@@ -926,24 +933,22 @@ const api = {
               }
             }
 
-            // Si solo hay 1 RAE y 1 FICHA, autoseleccionarlas y cargar actividades
-            try {
-              if (Array.isArray(raes) && raes.length === 1 && Array.isArray(fichas) && fichas.length === 1) {
-                const rId = raes[0].id_rae;
-                const fId = fichas[0].id_ficha;
-                selectores.selectRae.value = rId;
-                selectores.selectFichas.value = fId;
-                api.cargarActividades(fId, rId);
-              }
-            } catch (eAuto) {
-              console.warn('[SOLICITUDES] autoseleccionar fallback error:', eAuto);
+            // ✅ Autoselección + cargar actividades
+            if (raes.length === 1 && fichas.length === 1) {
+              const rId = raes[0].id_rae ?? raes[0].id;
+              const fId = fichas[0].id_ficha ?? fichas[0].id;
+              selectores.selectRae.value = rId;
+              selectores.selectFichas.value = fId;
+              api.cargarActividades(fId, rId);
             }
           });
+        }
 
-          selectores.selectPrograma.dataset.boundChange = "1";
+        // ✅ Marcar que el listener del programa quedó ligado
+        selectores.selectPrograma.dataset.boundChange = "1";
 
-          // ✅ Cargar actividades al cambiar RAE
-          if (selectores.selectRae && !selectores.selectRae.dataset.boundAct) {
+        // ✅ Cargar actividades al cambiar RAE
+        if (selectores.selectRae && !selectores.selectRae.dataset.boundAct) {
             selectores.selectRae.addEventListener("change", () => {
               const fichaId = selectores.selectFichas?.value || "";
               const raeId = selectores.selectRae?.value || "";
@@ -959,10 +964,31 @@ const api = {
               const raeId = selectores.selectRae?.value || "";
               api.cargarActividades(fichaId, raeId);
             });
-            selectores.selectFichas.dataset.boundAct = "1";
+
+            // ✅ Marcar que el listener del programa quedó ligado
+            selectores.selectPrograma.dataset.boundChange = "1";
+
+            // ✅ Cargar actividades al cambiar RAE
+            if (selectores.selectRae && !selectores.selectRae.dataset.boundAct) {
+              selectores.selectRae.addEventListener("change", () => {
+                const fichaId = selectores.selectFichas?.value || "";
+                const raeId = selectores.selectRae?.value || "";
+                api.cargarActividades(fichaId, raeId);
+              });
+              selectores.selectRae.dataset.boundAct = "1";
+            }
+
+            // ✅ Cargar actividades al cambiar Ficha
+            if (selectores.selectFichas && !selectores.selectFichas.dataset.boundAct) {
+              selectores.selectFichas.addEventListener("change", () => {
+                const fichaId = selectores.selectFichas?.value || "";
+                const raeId = selectores.selectRae?.value || "";
+                api.cargarActividades(fichaId, raeId);
+              });
+              selectores.selectFichas.dataset.boundAct = "1";
+            }
           }
         }
-      }
 
       // ✅ NUEVO: BODEGAS
       if (selectores.selectBodega) {
@@ -1557,7 +1583,7 @@ async function marcarEntregada(idSolicitud) {
 //  MODAL
 // ============================================================
 const modal = {
-  abrir() {
+  async abrir() {
     if (!selectores.modal) return;
 
     selectores.modal.classList.add("sol-modal-show");
@@ -1568,7 +1594,7 @@ const modal = {
     this.limpiarFormulario();
     // Refrescar selectores al abrir modal para asegurar que bodegas/subbodegas/materiales están cargados
     try {
-      api.cargarSelectores();
+      await api.cargarSelectores();
     } catch (e) {
       console.warn('[SOLICITUDES] error refrescando selectores al abrir modal:', e);
     }
