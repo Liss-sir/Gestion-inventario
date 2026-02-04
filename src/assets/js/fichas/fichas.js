@@ -1750,10 +1750,14 @@ if (btnIrPaso2) {
     if (validarPaso1()) {
       // Verify if the ficha number already exists
       const numeroFicha = inputNumeroFicha.value.trim();
-      const fichaExistente = fichas.find(f => f.numero_ficha == numeroFicha);
+      const fichaExistente = fichas.find(f => String(f.numero_ficha) === String(numeroFicha));
+      const isEdit = hiddenFichaId.value !== "" && hiddenFichaId.value !== null && hiddenFichaId.value !== undefined;
 
-      if (fichaExistente) {
-        showFlowbiteAlert("warning", "El número de ficha que se intenta crear ya existe.");
+      if (fichaExistente && (!isEdit || String(fichaExistente.id) !== String(hiddenFichaId.value))) {
+        const mensaje = isEdit
+          ? "El número de ficha ingresado ya existe."
+          : "El número de ficha que se intenta crear ya existe.";
+        showFlowbiteAlert("warning", mensaje);
         return;
       }
       paso1Ficha.classList.add("hidden")
@@ -1891,6 +1895,13 @@ function validarPaso1() {
 
   if (!numeroRegex.test(inputNumeroFicha.value.trim())) {
     toastError("El número de ficha solo puede contener números.")
+    inputNumeroFicha.focus()
+    return false
+  }
+
+  const numeroFichaLength = inputNumeroFicha.value.trim().length
+  if (numeroFichaLength < 7 || numeroFichaLength > 10) {
+    toastError("El número de ficha debe tener entre 7 y 10 caracteres.")
     inputNumeroFicha.focus()
     return false
   }
@@ -2197,6 +2208,122 @@ async function inicializar() {
 
 // Start
 inicializar();
+
+// =========================
+// CHAR COUNTERS INITIALIZATION
+// =========================
+function initCharCounters() {
+  const fields = document.querySelectorAll("input[maxlength], textarea[maxlength]")
+
+  fields.forEach((el) => {
+    if (!el || el.dataset.noCounter === "1") return
+
+    const max = parseInt(el.getAttribute("maxlength"), 10)
+    const min = parseInt(el.getAttribute("minlength"), 10) || 0
+    if (!max || max <= 0) return
+
+    const wrapper = el.closest("[data-char-wrap]") || el.parentElement
+    if (!wrapper) return
+
+    const key = el.id || el.name || "field"
+
+    let msg = wrapper.querySelector(`[data-char-limit-msg-for="${key}"]`)
+    if (!msg) {
+      msg = document.createElement("p")
+      msg.setAttribute("data-char-limit-msg-for", key)
+      msg.className = "mt-1 text-[11px] text-muted-foreground select-none hidden"
+      msg.setAttribute("aria-live", "polite")
+      wrapper.appendChild(msg)
+    }
+
+    const update = () => {
+      const len = (el.value || "").length
+      
+      if (min > 0 && len > 0 && len < min) {
+        msg.textContent = `Mínimo ${min} caracteres requeridos`
+        msg.classList.remove("hidden")
+      } else if (len >= max) {
+        msg.textContent = "Limite de caracteres alcanzados"
+        msg.classList.remove("hidden")
+      } else {
+        msg.classList.add("hidden")
+      }
+    }
+
+    el.addEventListener("input", update)
+    update()
+  })
+}
+
+function onlyDigits(value) {
+  return (value || "").replace(/\D+/g, "")
+}
+
+function bindOnlyNumbers(inputEl) {
+  if (!inputEl) return
+
+  inputEl.setAttribute("inputmode", "numeric")
+
+  inputEl.addEventListener("keydown", function (e) {
+    const allowedKeys = [
+      "Backspace", "Delete", "Tab", "Escape", "Enter",
+      "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+      "Home", "End"
+    ]
+
+    if ((e.ctrlKey || e.metaKey) && ["a", "c", "v", "x", "z", "y"].includes((e.key || "").toLowerCase())) {
+      return
+    }
+
+    if (allowedKeys.includes(e.key)) return
+
+    if (/^\d$/.test(e.key)) return
+
+    e.preventDefault()
+  })
+
+  inputEl.addEventListener("input", function () {
+    const cleaned = onlyDigits(inputEl.value)
+    if (inputEl.value !== cleaned) {
+      const pos = inputEl.selectionStart || cleaned.length
+      inputEl.value = cleaned
+      try { inputEl.setSelectionRange(pos, pos) } catch (e) {}
+    }
+  })
+
+  inputEl.addEventListener("paste", function (e) {
+    e.preventDefault()
+    const text = (e.clipboardData || window.clipboardData).getData("text") || ""
+    const cleaned = onlyDigits(text)
+    const max = parseInt(inputEl.getAttribute("maxlength") || "9999", 10)
+    const current = inputEl.value || ""
+    const start = inputEl.selectionStart ?? current.length
+    const end = inputEl.selectionEnd ?? current.length
+    const before = current.slice(0, start)
+    const after = current.slice(end)
+    let next = (before + cleaned + after)
+    if (next.length > max) next = next.slice(0, max)
+    inputEl.value = next
+    inputEl.dispatchEvent(new Event("input", { bubbles: true }))
+  })
+}
+
+// Initialize char counters and number validation for ficha number
+document.addEventListener("DOMContentLoaded", function () {
+  initCharCounters()
+  bindOnlyNumbers(inputNumeroFicha)
+})
+
+// If already loaded (scripts at bottom), init immediately
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", function () {
+    initCharCounters()
+    bindOnlyNumbers(inputNumeroFicha)
+  })
+} else {
+  initCharCounters()
+  bindOnlyNumbers(inputNumeroFicha)
+}
 
 // Expose necessary functions to global functions
 window.eliminarEstudiante = eliminarEstudiante;
