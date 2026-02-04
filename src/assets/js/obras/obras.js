@@ -287,25 +287,135 @@ if (!window.__obrasJSLoaded) {
     }
   }
 
-  function llenarSelectRaes() {
-    const select = document.getElementById("create_rae");
-    if (!select) return;
+  // ==============================
+  // CARGAR RAES POR FICHA (NUEVO)
+  // ==============================
+  async function cargarRaesPorFicha(idFicha) {
+    try {
+      if (!idFicha) {
+        // Si no hay ficha, cargar todos los RAEs activos
+        await cargarTodosRaes();
+        return;
+      }
+      
+      console.log("Cargando RAEs para ficha ID:", idFicha);
+      
+      const data = await fetchAPI({
+        accion: "obtener_raes_por_ficha",
+        id_ficha: idFicha
+      });
+      
+      if (data && !data.error) {
+        // Actualizar el select de RAEs con los datos filtrados
+        llenarSelectRaesPorFicha(data);
+      } else {
+        console.error("Error al cargar RAEs por ficha:", data?.error);
+        // Fallback: cargar todos los RAEs
+        await cargarTodosRaes();
+      }
+    } catch (error) {
+      console.error("Error en cargarRaesPorFicha:", error);
+      // Fallback: cargar todos los RAEs
+      await cargarTodosRaes();
+    }
+  }
 
-    if (raes.length === 0) {
-      select.innerHTML =
-        '<option value="" disabled selected class="text-red-500">No hay RAEs disponibles</option>';
+  async function cargarTodosRaes() {
+    try {
+      const data = await fetchAPI({ accion: "obtener_raes" });
+      if (data && !data.error) {
+        raes = Array.isArray(data) ? data : [];
+        llenarSelectRaes();
+      }
+    } catch (error) {
+      console.error("Error cargando todos los RAEs:", error);
+    }
+  }
+
+  function llenarSelectRaesPorFicha(raesData) {
+    const selectCreate = document.getElementById("create_rae");
+    const selectEdit = document.getElementById("edit_rae");
+    
+    if (!raesData || raesData.length === 0) {
+      const message = "No hay RAEs disponibles para esta ficha";
+      if (selectCreate) {
+        selectCreate.innerHTML = `<option value="" disabled selected class="text-red-500">${message}</option>`;
+      }
+      if (selectEdit) {
+        selectEdit.innerHTML = `<option value="" disabled selected class="text-red-500">${message}</option>`;
+      }
       return;
     }
+    
+    // Para modal crear
+    if (selectCreate) {
+      selectCreate.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona un RAE</option>';
+      raesData.forEach((rae) => {
+        const option = document.createElement("option");
+        option.value = rae.id_rae;
+        option.textContent = `${rae.codigo_rae} - ${rae.descripcion_rae}`;
+        option.setAttribute("data-codigo", rae.codigo_rae);
+        option.setAttribute("data-descripcion", rae.descripcion_rae);
+        selectCreate.appendChild(option);
+      });
+    }
+    
+    // Para modal editar
+    if (selectEdit) {
+      selectEdit.innerHTML = '<option value="" disabled class="text-gray-500">Selecciona un RAE</option>';
+      raesData.forEach((rae) => {
+        const option = document.createElement("option");
+        option.value = rae.id_rae;
+        option.textContent = `${rae.codigo_rae} - ${rae.descripcion_rae}`;
+        option.setAttribute("data-codigo", rae.codigo_rae);
+        option.setAttribute("data-descripcion", rae.descripcion_rae);
+        selectEdit.appendChild(option);
+      });
+    }
+  }
 
-    select.innerHTML =
-      '<option value="" disabled selected class="text-gray-500">Selecciona un RAE</option>';
-
-    raes.forEach((rae) => {
-      const option = document.createElement("option");
-      option.value = rae.id_rae;
-      option.textContent = rae.descripcion_rae;
-      select.appendChild(option);
-    });
+  function llenarSelectRaes(selectedId = null) {
+    const selectCreate = document.getElementById("create_rae");
+    const selectEdit = document.getElementById("edit_rae");
+    
+    if (raes.length === 0) {
+      const message = "No hay RAEs disponibles";
+      if (selectCreate) {
+        selectCreate.innerHTML = `<option value="" disabled selected class="text-red-500">${message}</option>`;
+      }
+      if (selectEdit) {
+        selectEdit.innerHTML = `<option value="" disabled selected class="text-red-500">${message}</option>`;
+      }
+      return;
+    }
+    
+    // Para modal crear
+    if (selectCreate) {
+      selectCreate.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona un RAE</option>';
+      raes.forEach((rae) => {
+        const option = document.createElement("option");
+        option.value = rae.id_rae;
+        option.textContent = `${rae.codigo_rae} - ${rae.descripcion_rae}`;
+        option.setAttribute("data-codigo", rae.codigo_rae);
+        option.setAttribute("data-descripcion", rae.descripcion_rae);
+        if (selectedId && rae.id_rae == selectedId) option.selected = true;
+        selectCreate.appendChild(option);
+      });
+    }
+    
+    // Para modal editar
+    if (selectEdit) {
+      selectEdit.innerHTML = '<option value="" disabled class="text-gray-500">Selecciona un RAE</option>';
+      raes.forEach((rae) => {
+        const option = document.createElement("option");
+        option.value = rae.id_rae;
+        option.textContent = `${rae.codigo_rae} - ${rae.descripcion_rae}`;
+        option.setAttribute("data-codigo", rae.codigo_rae);
+        option.setAttribute("data-descripcion", rae.descripcion_rae);
+        if (selectedId && rae.id_rae == selectedId) option.selected = true;
+        selectEdit.appendChild(option);
+      });
+    }
   }
 
   function llenarSelectInstructores() {
@@ -744,6 +854,29 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
+  // MANEJAR CAMBIO DE FICHA (NUEVO)
+  // ==============================
+  async function handleFichaChange() {
+    const fichaId = this.value;
+    const raeSelect = document.getElementById("create_rae");
+    
+    if (!fichaId) {
+      if (raeSelect) {
+        raeSelect.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona primero una ficha</option>';
+        raeSelect.disabled = true;
+      }
+      return;
+    }
+    
+    if (raeSelect) {
+      raeSelect.innerHTML = '<option value="" disabled selected>Cargando RAEs...</option>';
+      raeSelect.disabled = false;
+    }
+    
+    await cargarRaesPorFicha(fichaId);
+  }
+
+  // ==============================
   // MODAL CREAR
   // ==============================
   async function openCreateModal() {
@@ -799,6 +932,29 @@ if (!window.__obrasJSLoaded) {
     if (selectAprendiz) {
       selectAprendiz.innerHTML =
         '<option value="" disabled selected>Selecciona una ficha primero</option>';
+    }
+
+    // Agregar evento para cambiar RAEs cuando cambia la ficha
+    const fichaSelect = document.getElementById("create_ficha");
+    const raeSelect = document.getElementById("create_rae");
+    
+    if (fichaSelect && raeSelect) {
+      // Remover event listener anterior si existe
+      fichaSelect.removeEventListener("change", handleFichaChange);
+      
+      // Agregar nuevo event listener
+      fichaSelect.addEventListener("change", handleFichaChange);
+      
+      // Inicializar el select de RAEs como deshabilitado
+      raeSelect.disabled = true;
+      raeSelect.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona primero una ficha</option>';
+      
+      // Si es instructor, cargar RAEs de su ficha automáticamente
+      if (esInstructor && fichaInstructor) {
+        console.log("📚 Cargando RAEs para instructor de ficha:", fichaInstructor);
+        await cargarRaesPorFicha(fichaInstructor);
+        raeSelect.disabled = false;
+      }
     }
 
     // Si es instructor, cargar aprendices de su ficha automáticamente
@@ -977,6 +1133,19 @@ if (!window.__obrasJSLoaded) {
       llenarSelectFichasEdit(obra.id_ficha);
       llenarSelectRaesEdit(obra.id_rae);
       llenarSelectInstructoresEdit(obra.id_instructor);
+
+      // Después de cargar la obra, cargar RAEs específicos de la ficha
+      if (obra && obra.id_ficha) {
+        await cargarRaesPorFicha(obra.id_ficha);
+        
+        // Establecer el RAE seleccionado después de cargar
+        setTimeout(() => {
+          const raeSelect = document.getElementById("edit_rae");
+          if (raeSelect && obra.id_rae) {
+            raeSelect.value = obra.id_rae;
+          }
+        }, 100);
+      }
 
       document.getElementById("edit_id").value = obra.id_actividad;
       document.getElementById("edit_nombre").value = obra.nombre_actividad;
@@ -1190,7 +1359,9 @@ if (!window.__obrasJSLoaded) {
     raes.forEach((rae) => {
       const option = document.createElement("option");
       option.value = rae.id_rae;
-      option.textContent = rae.descripcion_rae;
+      option.textContent = `${rae.codigo_rae} - ${rae.descripcion_rae}`;
+      option.setAttribute("data-codigo", rae.codigo_rae);
+      option.setAttribute("data-descripcion", rae.descripcion_rae);
       if (selectedId && rae.id_rae == selectedId) option.selected = true;
       select.appendChild(option);
     });
@@ -1833,6 +2004,11 @@ if (!window.__obrasJSLoaded) {
       const tipo = document.getElementById("create_tipo")?.value;
       if (tipo === "Individual" && this.value) {
         cargarAprendicesParaSelect(this.value);
+      }
+      
+      // También disparar el cambio para cargar RAEs
+      if (this.value) {
+        handleFichaChange.call(this);
       }
     });
 

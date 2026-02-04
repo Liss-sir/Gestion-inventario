@@ -222,10 +222,15 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </div>
 
         <div>
-          <label class="block text-xs text-muted-foreground mb-1">RAE *</label>
-          <select id="create_rae" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" required>
-            <option value="" disabled selected class="text-gray-500">Cargando RAEs...</option>
-          </select>
+            <label class="block text-xs text-muted-foreground mb-1">RAE *</label>
+            <select 
+                id="create_rae" 
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" 
+                required
+                disabled
+            >
+                <option value="" disabled selected class="text-gray-500">Selecciona primero una ficha</option>
+            </select>
         </div>
 
         <div>

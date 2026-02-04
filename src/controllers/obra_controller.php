@@ -51,7 +51,7 @@ class ObraController {
 
     public function obtenerRaesPorFicha() {
     // Obtener id_ficha de GET o POST
-    $idFicha = $_GET['id_ficha'] ?? ($_POST['id_ficha'] ?? null);
+    $idFicha = $_GET['id_ficha'] ?? ($_POST['id_ficha'] ?? $input['id_ficha'] ?? null);
     
     if (!$idFicha || !is_numeric($idFicha)) {
         echo json_encode(["error" => "ID de ficha inválido o no proporcionado"]);
@@ -185,6 +185,17 @@ switch ($accion) {
         }
         
         $controller->obtenerAprendicesFicha((int)$idFicha);
+        break;
+
+    case "obtener_raes_por_ficha":
+        $idFicha = $_GET['id_ficha'] ?? ($_POST['id_ficha'] ?? $input['id_ficha'] ?? null);
+        
+        if (!$idFicha || !is_numeric($idFicha)) {
+            echo json_encode(["error" => "ID de ficha inválido o no proporcionado"]);
+            break;
+        }
+        
+        $controller->obtenerRaesPorFicha((int)$idFicha);
         break;
 
     case "obtener":
