@@ -221,38 +221,84 @@ switch ($accion) {
         break;
 
     // =========================
+    // OBTENER INSTRUCTORES DE UN PROGRAMA
+    // =========================
+    case 'obtener_instructores_programa':
+        $id_programa = $_GET['id_programa'] ?? null;
+        if (!$id_programa) {
+            echo json_encode(['error' => 'Debe especificar id_programa']);
+            exit;
+        }
+
+        try {
+            $query = "SELECT u.id_usuario, u.nombre_completo, u.correo, u.cargo
+                      FROM usuarios u
+                      INNER JOIN instructores_programas ip 
+                        ON u.id_usuario = ip.id_usuario
+                      WHERE ip.id_programa = ?
+                      AND u.cargo = 'Instructor'
+                      AND u.estado = 'activo'
+                      ORDER BY u.nombre_completo ASC";
+            $stmt = $conn->prepare($query);
+            $stmt->execute([$id_programa]);
+            echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+        } catch (PDOException $e) {
+            echo json_encode(['error' => 'Error al obtener instructores del programa: ' . $e->getMessage()]);
+        }
+        break;
+
+    // =========================
     // ASIGNAR INSTRUCTORES A PROGRAMA
     // =========================
     case 'asignar_instructores':
         $data = json_decode(file_get_contents("php://input"), true);
 
         $id_programa = $data['id_programa'] ?? null;
-        $instructores_ids = $data['instructores_ids'] ?? [];
+        $nuevos = $data['instructores_ids'] ?? [];
 
-        if (!$id_programa || !is_array($instructores_ids)) {
+        if (!$id_programa || !is_array($nuevos)) {
             echo json_encode(['error' => 'Datos inválidos para asignar instructores']);
             exit;
         }
 
         try {
-            $conn->prepare("DELETE FROM instructores_programas WHERE id_programa = ?")
-                 ->execute([$id_programa]);
+            // Obtener instructores actuales del programa
+            $stmt = $conn->prepare("SELECT id_usuario FROM instructores_programas WHERE id_programa = ?");
+            $stmt->execute([$id_programa]);
+            $actuales = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-            $insert = $conn->prepare("INSERT INTO instructores_programas (id_usuario, id_programa) VALUES (?, ?)");
+            // Calcular diferencias
+            $para_insertar = array_diff($nuevos, $actuales);   // los nuevos
+            $para_borrar   = array_diff($actuales, $nuevos);   // los quitados
 
-            foreach ($instructores_ids as $id_instructor) {
-                $insert->execute([$id_instructor, $id_programa]);
+            // Insertar solo los nuevos
+            if (!empty($para_insertar)) {
+                $insert = $conn->prepare("INSERT INTO instructores_programas (id_usuario, id_programa) VALUES (?, ?)");
+                foreach ($para_insertar as $id_usuario) {
+                    $insert->execute([$id_usuario, $id_programa]);
+                }
+            }
+
+            // Borrar solo los quitados
+            if (!empty($para_borrar)) {
+                $placeholders = implode(',', array_fill(0, count($para_borrar), '?'));
+                $sql = "DELETE FROM instructores_programas 
+                        WHERE id_programa = ? 
+                        AND id_usuario IN ($placeholders)";
+                $stmt = $conn->prepare($sql);
+                $stmt->execute(array_merge([$id_programa], $para_borrar));
             }
 
             echo json_encode([
-                'mensaje' => 'Instructores asignados correctamente',
-                'total_asignados' => count($instructores_ids)
+                'mensaje'   => 'Instructores actualizados correctamente',
+                'agregados' => array_values($para_insertar),
+                'eliminados'=> array_values($para_borrar)
             ]);
+
         } catch (PDOException $e) {
             echo json_encode(['error' => 'Error al asignar instructores: ' . $e->getMessage()]);
         }
         break;
-
     default:
         echo json_encode(['error'=>'Acción inválida']);
 }

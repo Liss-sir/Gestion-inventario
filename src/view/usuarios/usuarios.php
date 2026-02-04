@@ -671,6 +671,79 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   </div>
 </div>
 
+<!-- MODAL DE CONFIRMACIÓN: QUITAR ROL FUNCIONAL  -->
+<div id="modalConfirmarQuitarRol"
+     class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] px-4">
+  <div id="modalConfirmarQuitarRolInner"
+       class="modal-confirm-card relative w-full max-w-lg p-6 transform transition-all duration-200 scale-95 opacity-0">
+
+    <!-- Header -->
+    <div class="flex items-start justify-between gap-4">
+      <div class="flex items-start gap-3">
+        <div class="mt-0.5 h-10 w-10 rounded-full bg-red-50 flex items-center justify-center">
+          <i data-lucide="trash-2" class="text-red-600"></i>
+        </div>
+
+        <div>
+          <h2 class="modal-confirm-title text-lg font-semibold text-slate-900">
+            Confirmar acción
+          </h2>
+          <p class="mt-1 text-sm text-slate-500">
+            Esto quitará el rol funcional asignado a este usuario.
+          </p>
+        </div>
+      </div>
+
+      <button type="button" id="btnCerrarModalConfirmarQuitarRol" class="icon-btn">
+        <span class="sr-only">Cerrar</span>
+        <i data-lucide="x" class="text-slate-600"></i>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="mt-5 space-y-4">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div class="grid gap-3">
+          <div>
+            <p class="text-xs text-slate-500">Usuario</p>
+            <p id="confirmarQuitarNombreUsuario" class="text-sm font-semibold text-slate-900">--</p>
+          </div>
+
+          <div class="h-px bg-slate-200/70"></div>
+
+          <div>
+            <p class="text-xs text-slate-500">Rol funcional</p>
+            <p id="confirmarQuitarRolFuncional" class="text-sm text-slate-800">--</p>
+          </div>
+        </div>
+      </div>
+
+      <input type="hidden" id="hiddenConfirmarQuitarUserId" value="" />
+
+      <p class="text-xs text-slate-500">
+        *Esta acción no elimina al usuario, solo su rol funcional.
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-6 flex justify-end gap-3">
+      <button type="button" id="btnCancelarModalConfirmarQuitarRol"
+              class="btn-neutral inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium text-slate-700">
+        <i data-lucide="x" class="text-slate-600"></i>
+        Cancelar
+      </button>
+
+      <button type="button" id="btnConfirmarQuitarRol"
+              class="btn-danger inline-flex items-center gap-2 rounded-md px-5 py-2.5 text-sm  text-white shadow-sm">
+        <i data-lucide="trash-2" class="text-white"></i>
+        Quitar rol
+      </button>
+    </div>
+
+  </div>
+</div>
+
+
 
   <!-- ========================================= -->
   <!-- ALERT CONTAINER (FLOWBITE-LIKE TOASTS)    -->
@@ -683,6 +756,9 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   <!-- ========================================= -->
   <!-- MODULE SCRIPT: USERS MANAGEMENT LOGIC     -->
   <!-- ========================================= -->
+  <!-- Lucide icons (CDN) -->
+  <script src="https://unpkg.com/lucide/dist/lucide.min.js"></script>
+
   <script src="src/assets/js/usuarios/usuarios.js"></script>
 
   <!-- ===================================================== -->
