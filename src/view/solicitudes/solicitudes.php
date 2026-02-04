@@ -10,6 +10,10 @@ if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 
+// (Opcional pero recomendado) si no hay usuario en sesión, redirigir
+if (empty($_SESSION['usuario']) || empty($_SESSION['usuario']['id_usuario'])) {
+  // header("Location: login.php"); exit;
+}
 
 ?>
 
@@ -267,17 +271,6 @@ if (session_status() === PHP_SESSION_NONE) {
     </div>
 </div>
 
-<?php
-$u = $_SESSION['usuario'] ?? $_SESSION['USUARIO_SESION'] ?? $_SESSION['user'] ?? null;
-
-$id = 0;
-$cargo = '';
-
-if (is_array($u)) {
-  $id = (int)($u['id_usuario'] ?? $u['id'] ?? $u['usuarioId'] ?? $u['user_id'] ?? 0);
-  $cargo = (string)($u['cargo'] ?? $u['rol'] ?? $u['role'] ?? '');
-}
-?>
 <script>
   window.SIGA_SOL_PERMS = {
     crear: <?= json_encode(canPermiso("solicitudes.crear")) ?>,
@@ -287,12 +280,11 @@ if (is_array($u)) {
   };
 
   window.SIGA_USER = {
-    id: <?= json_encode($id) ?>,
-    cargo: <?= json_encode($cargo) ?>
+    id: <?= (int)($_SESSION['usuario']['id'] ?? 0) ?>,
+    cargo: "<?= addslashes($_SESSION['usuario']['cargo'] ?? '') ?>"
   };
+
 </script>
-
-
 
 <!-- JS -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
