@@ -681,12 +681,8 @@ const api = {
       const url1 = `${API}?accion=actividades&ficha=${encodeURIComponent(fichaId)}&rae=${encodeURIComponent(raeId)}`;
       const url2 = `${API}?accion=actividad&ficha=${encodeURIComponent(fichaId)}&rae=${encodeURIComponent(raeId)}`;
 
-      console.debug(`[SOLICITUDES] cargarActividades: ficha=${fichaId}, rae=${raeId}`);
-      console.debug(`[SOLICITUDES] intentando URL: ${url1}`);
-
       let res = await fetch(url1);
       if (!res.ok) {
-        console.debug(`[SOLICITUDES] URL1 falló (${res.status}), intentando fallback: ${url2}`);
         res = await fetch(url2);
       }
 
@@ -695,7 +691,6 @@ const api = {
       }
 
       const data = await res.json();
-      console.debug("[SOLICITUDES] actividades respuesta bruta:", data);
 
       // Normalizar posibles formas de respuesta
       let items = [];
@@ -859,7 +854,6 @@ const api = {
   },
 
   async cargarSelectores() {
-    console.debug('[SOLICITUDES] cargarSelectores invoked');
     try {
       // PROGRAMAS
 if (selectores.selectPrograma) {
@@ -907,7 +901,6 @@ if (selectores.selectPrograma) {
         const resB = await fetch(`${API}?accion=bodegas`);
           if (resB.ok) {
             const bodegas = await resB.json();
-            console.debug('[SOLICITUDES] bodegas fetched:', bodegas);
             if (Array.isArray(bodegas) && bodegas.length) {
               bodegas.forEach((b) => {
                 const opt = document.createElement("option");
@@ -964,7 +957,6 @@ if (selectores.selectPrograma) {
               const resSub = await fetch(`${API}?accion=subbodegas&bodega=${encodeURIComponent(bodegaId)}`);
                 if (selectores.selectSubBodega && resSub.ok) {
                   const subs = await resSub.json();
-                  console.debug('[SOLICITUDES] subbodegas fetched for bodega', bodegaId, subs);
                 selectores.selectSubBodega.innerHTML = '<option value="">Seleccione una subbodega</option>';
 
                 if (Array.isArray(subs) && subs.length) {
