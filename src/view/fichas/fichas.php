@@ -184,9 +184,12 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         <input type="hidden" id="id_ficha">
 
         <!-- Number -->
-        <div class="space-y-2">
+        <div class="space-y-2" data-char-wrap>
           <label for="numero_ficha" class="text-sm font-medium">Número de ficha*</label>
           <input id="numero_ficha" type="text"
+                 minlength="7"
+                 maxlength="10"
+                 inputmode="numeric"
                  class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
                  placeholder="2567890">
         </div>
