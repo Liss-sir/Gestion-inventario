@@ -68,6 +68,8 @@ async function fetchJsonSeguro(url, options = {}) {
     throw new Error("Respuesta contiene errores PHP visibles");
   }
 
+    
+
   try {
     return JSON.parse(rawText);
   } catch (e) {

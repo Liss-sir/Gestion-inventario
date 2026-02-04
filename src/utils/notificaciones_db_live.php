@@ -42,7 +42,7 @@ try {
     ]);
     exit;
   }
-
+    
   // ✅ LISTADO
   if ($accion === "list") {
     $stmt = $conn->prepare("

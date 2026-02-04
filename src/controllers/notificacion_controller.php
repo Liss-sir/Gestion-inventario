@@ -20,7 +20,7 @@ class NotificacionController {
             $this->sendError('Error de conexión a BD: ' . $e->getMessage());
         }
     }
-    
+      
     private function sendError($message) {
         echo json_encode(['error' => $message, 'debug' => debug_backtrace()]);
         exit;

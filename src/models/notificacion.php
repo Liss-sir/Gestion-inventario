@@ -437,7 +437,7 @@ class NotificacionModel {
             'referencia_tipo' => 'solicitud',
             'referencia_id' => $id_solicitud
         ];
-        
+           
         return $this->crear($data);
     }
 

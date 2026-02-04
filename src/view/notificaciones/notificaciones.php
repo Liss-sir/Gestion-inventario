@@ -291,7 +291,7 @@ $alerts = array_map(function ($n) {
               class="btn-aprobar-directo w-9 h-9 rounded-full border border-border bg-transparent hover:bg-[color-mix(in_srgb,var(--primary)_10%,white)] transition flex items-center justify-center"
               data-notif-id="<?= $a['id'] ?>"
               title="Aprobar solicitud"
-            >
+            >   
               <i data-lucide="check" class="w-4 h-4 text-primary opacity-80"></i>
             </button>
           <?php endif; ?>
