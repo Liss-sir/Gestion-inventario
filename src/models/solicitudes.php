@@ -182,7 +182,6 @@ class SolicitudMaterialModel {
         }
     }
 
-
     /* ===============================
        CREAR MOVIMIENTO DE SALIDA
        Cuando se aprueba una solicitud
@@ -390,29 +389,10 @@ class SolicitudMaterialModel {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getProgramasUsuario($id_usuario)
-    {
-        $sql = "SELECT 
-                p.id_programa, 
-                p.codigo_programa, 
-                p.nombre_programa
-            FROM programas_formacion p
-            INNER JOIN instructores_programas ip 
-                ON ip.id_programa = p.id_programa
-            WHERE p.estado = 'Activo'
-            AND ip.id_usuario = ?
-            ORDER BY p.codigo_programa";
-
-    $stmt = $this->db->prepare($sql);
-    $stmt->execute([$id_usuario]);
-
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
     public function getRaesPorPrograma($programaId)
     {
         if ($programaId <= 0) {
-            return [];  
+            return [];
         }
 
         $sql = "SELECT id_rae, codigo_rae, descripcion_rae

@@ -53,7 +53,7 @@ const USUARIO = (() => {
 
   return {
     raw: u,
-    id: (id !== null && id !== undefined) ? parseInt(id, 10) : null,
+    id: id ? parseInt(id, 10) : null,
     cargo: String(cargo || "").trim(),
   };
 })();
@@ -490,17 +490,17 @@ const utilidades = {
   },
 
   mostrarError(msg) {
-    console.error(msg);
+    console.error("❌", msg);
     toastError(msg);
   },
 
   mostrarExito(msg) {
-    console.log(msg);
+    console.log("✅", msg);
     toastSuccess(msg);
   },
 
   mostrarInfo(msg) {
-    console.log(msg);
+    console.log("ℹ️", msg);
     toastInfo(msg);
   },
 };
@@ -862,45 +862,122 @@ const api = {
     console.debug('[SOLICITUDES] cargarSelectores invoked');
     try {
       // PROGRAMAS
-if (selectores.selectPrograma) {
-  const esFiltrado = String(USUARIO.cargo || "").toLowerCase() === "instructor";
-  const urlProgramas = esFiltrado && USUARIO.id
-    ? `${API}?accion=programasPorUsuario&usuario=${encodeURIComponent(USUARIO.id)}`
-    : `${API}?accion=programas`;
+      if (selectores.selectPrograma) {
+        const resProg = await fetch(`${API}?accion=programas`);
+        if (resProg.ok) {
+          const programas = await resProg.json();
+          selectores.selectPrograma.innerHTML = '<option value="">Seleccionar programa</option>';
+          if (Array.isArray(programas)) {
+            programas.forEach((p) => {
+              const opt = document.createElement("option");
+              opt.value = p.id_programa;
+              const fullText = `${p.codigo_programa} - ${p.nombre_programa}`;
+              opt.textContent = truncateText(fullText, 27);
+              opt.title = fullText; // Mostrar texto completo en tooltip
+              selectores.selectPrograma.appendChild(opt);
+            });
+          }
+        }
 
-  const resProg = await fetch(urlProgramas);
+        // ✅ Evitar duplicar listener
+        if (!selectores.selectPrograma.dataset.boundChange) {
+          selectores.selectPrograma.addEventListener("change", async function () {
+            const programaId = this.value;
 
-  if (resProg.ok) {
-    const programas = await resProg.json();
+            console.debug('[SOLICITUDES] selectPrograma changed:', programaId);
 
-    selectores.selectPrograma.innerHTML = '<option value="">Seleccionar programa</option>';
+            if (selectores.selectActividad) {
+              selectores.selectActividad.innerHTML = '<option value="">Seleccione ficha y RAE</option>';
+            }
 
-    if (Array.isArray(programas) && programas.length) {
-      programas.forEach((p) => {
-        const opt = document.createElement("option");
-        opt.value = p.id_programa;
+            if (selectores.selectRae) selectores.selectRae.innerHTML = '<option value="">Seleccionar RAE</option>';
+            if (selectores.selectFichas) selectores.selectFichas.innerHTML = '<option value="">Seleccionar ficha</option>';
 
-        const fullText = `${p.codigo_programa} - ${p.nombre_programa}`;
-        opt.textContent = truncateText(fullText, 27);
-        opt.title = fullText;
+            if (!programaId) return;
 
-        selectores.selectPrograma.appendChild(opt);
-      });
-    } else {
-      // si es instructor y no tiene asignaciones
-      selectores.selectPrograma.innerHTML = esFiltrado
-        ? '<option value="">No tienes programas asignados</option>'
-        : '<option value="">No hay programas disponibles</option>';
-    }
-  } else {
-    selectores.selectPrograma.innerHTML = '<option value="">Error cargando programas</option>';
-  }
+            const [resRaes, resFichas] = await Promise.all([
+              fetch(`${API}?accion=raes&programa=${programaId}`),
+              fetch(`${API}?accion=fichas&programa=${programaId}`),
+            ]);
 
-  // (tu listener change queda EXACTAMENTE igual)
-}
+            if (selectores.selectRae && resRaes.ok) {
+              const raes = await resRaes.json();
+              console.debug('[SOLICITUDES] raes fetched:', raes);
+              selectores.selectRae.innerHTML = '<option value="">Seleccionar RAE</option>';
+              if (Array.isArray(raes) && raes.length) {
+                raes.forEach((r) => {
+                  const opt = document.createElement("option");
+                  opt.value = r.id_rae;
+                  const fullText = `${r.codigo_rae} - ${r.descripcion_rae}`;
+                  opt.textContent = truncateText(fullText, 27);
+                  opt.title = fullText; // Mostrar texto completo en tooltip
+                  selectores.selectRae.appendChild(opt);
+                });
+              } else {
+                selectores.selectRae.innerHTML = '<option value="">No hay RAEs disponibles</option>';
+              }
+            }
 
+            if (selectores.selectFichas && resFichas.ok) {
+              const fichas = await resFichas.json();
+              console.debug('[SOLICITUDES] fichas fetched:', fichas);
+              selectores.selectFichas.innerHTML = '<option value="">Seleccionar ficha</option>';
+              if (Array.isArray(fichas) && fichas.length) {
+                fichas.forEach((f) => {
+                  const opt = document.createElement("option");
+                  opt.value = f.id_ficha;
+                  const fullText = `${f.numero_ficha} - ${f.jornada}`;
+                  opt.textContent = truncateText(fullText, 27);
+                  opt.title = fullText; // Mostrar texto completo en tooltip
+                  selectores.selectFichas.appendChild(opt);
+                });
+              } else {
+                selectores.selectFichas.innerHTML = '<option value="">No hay fichas disponibles</option>';
+              }
+            }
 
-      //BODEGAS
+            // Si solo hay 1 RAE y 1 FICHA, autoseleccionarlas y cargar actividades
+            try {
+              if (Array.isArray(raes) && raes.length === 1 && Array.isArray(fichas) && fichas.length === 1) {
+                const rId = raes[0].id_rae;
+                const fId = fichas[0].id_ficha;
+                selectores.selectRae.value = rId;
+                selectores.selectFichas.value = fId;
+                console.debug('[SOLICITUDES] autoseleccionando rae/ficha y cargando actividades', rId, fId);
+                api.cargarActividades(fId, rId);
+              }
+            } catch (eAuto) {
+              console.warn('[SOLICITUDES] autoseleccionar fallback error:', eAuto);
+            }
+          });
+
+          selectores.selectPrograma.dataset.boundChange = "1";
+
+          // ✅ Cargar actividades al cambiar RAE
+          if (selectores.selectRae && !selectores.selectRae.dataset.boundAct) {
+            selectores.selectRae.addEventListener("change", () => {
+              const fichaId = selectores.selectFichas?.value || "";
+              const raeId = selectores.selectRae?.value || "";
+              console.debug('[SOLICITUDES] selectRae changed, ficha=', fichaId, 'rae=', raeId);
+              api.cargarActividades(fichaId, raeId);
+            });
+            selectores.selectRae.dataset.boundAct = "1";
+          }
+
+          // ✅ Cargar actividades al cambiar Ficha
+          if (selectores.selectFichas && !selectores.selectFichas.dataset.boundAct) {
+            selectores.selectFichas.addEventListener("change", () => {
+              const fichaId = selectores.selectFichas?.value || "";
+              const raeId = selectores.selectRae?.value || "";
+              console.debug('[SOLICITUDES] selectFichas changed, ficha=', fichaId, 'rae=', raeId);
+              api.cargarActividades(fichaId, raeId);
+            });
+            selectores.selectFichas.dataset.boundAct = "1";
+          }
+        }
+      }
+
+      // ✅ NUEVO: BODEGAS
       if (selectores.selectBodega) {
         selectores.selectBodega.innerHTML = '<option value="">Seleccione una bodega</option>';
 
@@ -1609,7 +1686,7 @@ const modal = {
       return;
     }
 
-    if (!USUARIO?.id || USUARIO.id <= 0) {
+    if (!USUARIO?.id) {
       utilidades.mostrarError("No se pudo identificar el usuario en sesión.");
       return;
     }

@@ -707,301 +707,22 @@ if (!window.__perfilJSLoaded) {
     // =====================================================
     // 7) BUTTONS: OPEN MODALS
     // =====================================================
-    // Fetch latest profile from server and render modal before showing it.
-    async function fetchUserLatest(id) {
-      if (!id) return null;
-      try {
-        const resp = await fetch(`src/controllers/usuario_controller.php?accion=obtener&id_usuario=${encodeURIComponent(id)}&t=${Date.now()}`, { cache: 'no-store' });
-        const data = await safeJson(resp);
-
-        // Accept either { ...user } or { success:true, ... }
-        if (!data) return null;
-
-        // If backend returns wrapper like { usuario: {...} } or { data: {...} }
-        const possible = data.usuario || data.data || data.usuario || data;
-
-        // Some endpoints may return success boolean; ensure object has id
-        if (possible && (possible.id_usuario || possible.id)) return possible;
-
-        // If data itself contains user fields
-        if (data.id_usuario || data.id) return data;
-
-        return null;
-      } catch (e) {
-        console.error('Error fetching latest user:', e);
-        return null;
-      }
-    }
-
-    function renderPerfilModalFromUser(user) {
-      // Update the existing modal elements in-place to preserve original markup and styles
-      if (!modalPerfilVer || !user) return;
-
-      try {
-        // Avatar
-        const avatarWrap = modalPerfilVer.querySelector('.avatar-wrapper');
-        if (avatarWrap) {
-          const foto = user.foto_perfil || user.foto || user.foto_url || user.avatar || null;
-          // remove images/spans but keep classes
-          avatarWrap.querySelectorAll('img, span:not(.sr-only)').forEach(n => n.remove());
-          // reset inline background styles
-          avatarWrap.style.backgroundImage = '';
-          avatarWrap.style.backgroundSize = '';
-          avatarWrap.style.backgroundPosition = '';
-          avatarWrap.style.backgroundRepeat = '';
-
-          if (foto) {
-            avatarWrap.style.backgroundImage = `url('${foto}')`;
-            avatarWrap.style.backgroundSize = 'cover';
-            avatarWrap.style.backgroundPosition = 'center center';
-            avatarWrap.style.backgroundRepeat = 'no-repeat';
-            // ensure sr-only label exists
-            if (!avatarWrap.querySelector('.sr-only')) {
-              const sr = document.createElement('span');
-              sr.className = 'sr-only';
-              sr.textContent = `Foto de perfil de ${user.nombre_completo || ''}`;
-              avatarWrap.appendChild(sr);
-            }
-          } else {
-            const nombre = (user.nombre_completo || ((user.nombre || '') + ' ' + (user.apellido || ''))).trim();
-            const initials = String(nombre || '').split(' ').map(s => s[0] || '').filter(Boolean).slice(0,2).join('').toUpperCase();
-            const span = document.createElement('span');
-            span.className = 'text-xl font-semibold text-primary';
-            span.textContent = initials || '';
-            avatarWrap.appendChild(span);
-          }
-        }
-
-        // Replace the modal body with the original HTML structure (keeps original classes/styles)
-        const container = modalPerfilVer.querySelector('.p-6');
-        if (!container) return;
-
-        // Normalize fields and compute labels/classes similar to header.php
-        const nombreCompleto = user.nombre_completo || ((user.nombre || '') + ' ' + (user.apellido || '')).trim() || '';
-        const tipoDocumento = user.tipo_documento || '';
-        const numeroDocumento = user.numero_documento || '';
-        const telefono = user.telefono || '';
-        const direccion = user.direccion || '';
-        const correo = user.correo || '';
-        const fechaCreacion = user.fecha_creacion || user.created_at || '';
-        const cargoRaw = user.cargo || '';
-        const cargoLabel = cargoRaw ? (String(cargoRaw).replaceAll('_', ' ').split(/\s+/).map(s => s.charAt(0).toUpperCase()+s.slice(1)).join(' ')) : '';
-
-        // rol funcional: accept several possible fields
-        const rolRaw = user.rol_funcional || user.nombre_rol_funcional || user.rol_funcional_nombre || '';
-        const rolLabel = rolRaw ? String(rolRaw).replaceAll('_', ' ').split(/\s+/).map(s => s.charAt(0).toUpperCase()+s.slice(1)).join(' ') : 'Sin rol asignado';
-        const rolNorm = rolRaw ? String(rolRaw).toLowerCase().replaceAll(' ', '_') : '';
-        let rolBadgeClass = 'badge-rolfunc-default';
-        if (rolNorm === 'encargado_inventario' || (rolRaw && String(rolRaw).toLowerCase().includes('inventario'))) rolBadgeClass = 'badge-rolfunc-inventario';
-        else if (rolNorm === 'encargado_bodega' || (rolRaw && String(rolRaw).toLowerCase().includes('bodega'))) rolBadgeClass = 'badge-rolfunc-bodega';
-
-        const estadoBool = (String(user.estado || '').toLowerCase() === 'activo' || String(user.estado) === '1' || user.estado === true);
-        const estadoText = estadoBool ? 'Activo' : (user.estado || 'Inactivo');
-
-        const foto = user.foto_perfil || user.foto || user.foto_url || user.avatar || null;
-
-        // Build HTML that mirrors the server-side modal markup
-        const html = `
-          <div class="flex items-start gap-4 mb-6">
-            <div class="h-16 w-16 rounded-full overflow-hidden flex items-center justify-center bg-slate-100 shrink-0 avatar-wrapper" style="${foto ? `background-image: url('${foto}'); background-size: cover; background-position: center center; background-repeat: no-repeat; background-color: transparent;` : `background-color: color-mix(in srgb, var(--secondary) 39%, #ffffff 61%);`}">
-              ${!foto ? `<span class="text-xl font-semibold text-primary">${(nombreCompleto.split(' ').map(s=>s[0]).filter(Boolean).slice(0,2).join('')).toUpperCase()}</span>` : `<span class="sr-only">Foto de perfil</span>`}
-            </div>
-
-            <div class="flex-1 min-w-0 pr-10">
-              <h2 class="text-lg md:text-xl font-semibold text-slate-900 truncate">${escapeHTML(nombreCompleto)}</h2>
-
-              <div class="mt-2 flex flex-wrap items-center gap-2">
-                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${escapeHTML(getCargoBadgeClass(cargoRaw))}">${escapeHTML(cargoLabel)}</span>
-                <span class="badge-rolfunc-base ${escapeHTML(rolBadgeClass)}">${escapeHTML(rolLabel)}</span>
-                <span class="inline-flex rounded-full px-3 py-0.5 text-[11px] font-semibold ${estadoBool ? 'badge-estado-activo' : 'badge-estado-inactivo'}">${escapeHTML(estadoText)}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="space-y-6 text-sm">
-            <div>
-              <h3 class="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase">Datos personales</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
-                <div>
-                  <p class="text-xs font-medium text-slate-400">Tipo de documento</p>
-                  <p class="text-sm text-slate-800">${escapeHTML(tipoDocumento)}</p>
-                </div>
-                <div>
-                  <p class="text-xs font-medium text-slate-400">Número de documento</p>
-                  <p class="text-sm text-slate-800">${escapeHTML(numeroDocumento)}</p>
-                </div>
-                <div>
-                  <p class="text-xs font-medium text-slate-400">Teléfono</p>
-                  <p class="text-sm text-slate-800">${escapeHTML(telefono)}</p>
-                </div>
-                <div>
-                  <p class="text-xs font-medium text-slate-400">Dirección</p>
-                  <p class="text-sm text-slate-800 break-words">${escapeHTML(direccion)}</p>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 class="mb-3 text-xs font-semibold tracking-wide text-slate-500 uppercase">Datos de la cuenta</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
-                <div>
-                  <p class="text-xs font-medium text-slate-400">Correo</p>
-                  <p class="text-sm text-slate-800 break-all">${escapeHTML(correo)}</p>
-                </div>
-                <div>
-                  <p class="text-xs font-medium text-slate-400">Fecha de creación</p>
-                  <p class="text-sm text-slate-800">${escapeHTML(fechaCreacion)}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-
-        container.innerHTML = html;
-        // Labeled fields: Documento, Teléfono, Correo, Dirección, Registrado
-        const labelEls = modalPerfilVer.querySelectorAll('.grid .text-muted-foreground');
-        labelEls.forEach((labelEl) => {
-          const labelText = (labelEl.textContent || '').toLowerCase().trim();
-          const valueEl = labelEl.nextElementSibling; // expected to be <span class="col-span-2">...
-          if (!valueEl) return;
-
-          if (labelText.startsWith('document')) {
-            valueEl.textContent = `${user.tipo_documento || ''} ${user.numero_documento || ''}`.trim();
-          } else if (labelText.startsWith('tel') || labelText.includes('teléfono')) {
-            valueEl.textContent = user.telefono || '';
-          } else if (labelText.startsWith('correo')) {
-            valueEl.textContent = user.correo || '';
-          } else if (labelText.startsWith('direc') || labelText.includes('dirección')) {
-            valueEl.textContent = user.direccion || '';
-          } else if (labelText.startsWith('registr')) {
-            valueEl.textContent = user.fecha_creacion || user.created_at || '';
-          } else if (labelText.includes('programa')) {
-            valueEl.textContent = user.nombre_programa || user.programa || '';
-          }
-        });
-
-        // If the modal includes a dedicated program row that is hidden when empty, show/hide accordingly
-        try {
-          const progLabel = Array.from(modalPerfilVer.querySelectorAll('.grid .text-muted-foreground')).find(n => (n.textContent || '').toLowerCase().includes('program'));
-          if (progLabel) {
-            const progRow = progLabel.closest('.grid');
-            if (progRow) {
-              const progVal = user.nombre_programa || user.programa || '';
-              progRow.style.display = progVal ? '' : 'none';
-            }
-          }
-        } catch (e) {
-          // ignore
-        }
-
-        // Update global userData so edit modal and other features preload correctly
-        window.userData = window.userData || {};
-        window.userData = Object.assign({}, window.userData, {
-          id_usuario: user.id_usuario || user.id || window.userData.id_usuario,
-          nombre_completo: user.nombre_completo || window.userData.nombre_completo,
-          correo: user.correo || window.userData.correo,
-          telefono: user.telefono || window.userData.telefono,
-          direccion: user.direccion || window.userData.direccion,
-          tipo_documento: user.tipo_documento || window.userData.tipo_documento,
-          numero_documento: user.numero_documento || window.userData.numero_documento
-        });
-      } catch (e) {
-        // no-fatal; preserve original markup
-        console.error('[perfil] error actualizando modal en-place', e);
-      }
-    }
-
-    // Update the small header avatar / name / role without reloading
-    function updateHeaderFromUser(user) {
-      try {
-        const btn = document.getElementById('btnUserMenu');
-        if (!btn || !user) return;
-
-        // Avatar wrapper (first child div inside the button)
-        const avatarWrap = btn.querySelector('.avatar-wrapper');
-        if (avatarWrap) {
-          const foto = user.foto_perfil || user.foto || user.foto_url || user.avatar || null;
-          // Clear existing content
-          avatarWrap.style.backgroundImage = '';
-          avatarWrap.style.backgroundSize = '';
-          avatarWrap.style.backgroundPosition = '';
-          avatarWrap.style.backgroundRepeat = '';
-          avatarWrap.innerHTML = '';
-
-          if (foto) {
-            // prefer absolute or relative URL as provided by backend
-            avatarWrap.style.backgroundImage = `url('${foto}')`;
-            avatarWrap.style.backgroundSize = 'cover';
-            avatarWrap.style.backgroundPosition = 'center center';
-            avatarWrap.style.backgroundRepeat = 'no-repeat';
-          } else {
-            // render initials
-            const nombre = (user.nombre_completo || (user.nombre || '') + ' ' + (user.apellido || '')).trim();
-            const initials = String(nombre || '').split(' ').map(s => s[0] || '').filter(Boolean).slice(0,2).join('').toUpperCase();
-            const span = document.createElement('span');
-            span.className = 'text-xs font-semibold text-primary';
-            span.textContent = initials || '';
-            avatarWrap.appendChild(span);
-            // ensure a neutral background if none
-            avatarWrap.style.backgroundColor = avatarWrap.style.backgroundColor || "";
-          }
-        }
-
-        // Name & role (the hidden md:flex block inside the button)
-        const infoBlock = btn.querySelector('div.hidden.flex-col, div.md\\:flex');
-        if (infoBlock) {
-          const spans = infoBlock.querySelectorAll('span');
-          const nombreSpan = spans[0];
-          const rolSpan = spans[1];
-
-          const nombre = user.nombre_completo || (user.nombre ? ((user.nombre || '') + ' ' + (user.apellido || '')).trim() : window.userData?.nombre_completo);
-          if (nombreSpan) nombreSpan.textContent = String(nombre || '').split(' ').slice(0,2).join(' ');
-
-          const rolText = user.cargo || user.rol || user.cargo_label || '';
-          if (rolSpan) rolSpan.textContent = rolText;
-        }
-      } catch (e) {
-        // silent
-      }
-    }
-
     if (btnVerPerfil && !btnVerPerfil.dataset.__bound_click_ver) {
       btnVerPerfil.dataset.__bound_click_ver = "1";
-      btnVerPerfil.addEventListener("click", async (e) => {
+      btnVerPerfil.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         closeUserMenu();
-
-        const id = window.userData?.id_usuario || window.userData?.id || null;
-        const user = await fetchUserLatest(id);
-        if (user) {
-          renderPerfilModalFromUser(user);
-        }
         openModal(modalPerfilVer);
       });
     }
 
     if (btnEditarPerfil && !btnEditarPerfil.dataset.__bound_click_edit) {
       btnEditarPerfil.dataset.__bound_click_edit = "1";
-      btnEditarPerfil.addEventListener("click", async (e) => {
+      btnEditarPerfil.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         closeUserMenu();
-
-        // Ensure we have the freshest data before opening the edit modal
-        const id = window.userData?.id_usuario || window.userData?.id || null;
-        const user = await fetchUserLatest(id);
-        if (user) {
-          // merge into window.userData so inicializarEditarPerfilValores can use it
-          window.userData = Object.assign({}, window.userData || {}, {
-            nombre: user.nombre || user.nombre_completo || window.userData?.nombre,
-            apellido: user.apellido || '',
-            correo: user.correo || window.userData?.correo,
-            telefono: user.telefono || window.userData?.telefono,
-            direccion: user.direccion || window.userData?.direccion
-          });
-        }
-
         openModal(modalPerfilEditar);
       });
     }
@@ -1382,24 +1103,7 @@ if (!window.__perfilJSLoaded) {
 
           if (data.success) {
             toastSuccess("Perfil actualizado.");
-
-            // Fetch latest user and update UI in-place (no reload)
-            try {
-              const id = window.userData?.id_usuario || window.userData?.id || null;
-              const latest = await fetchUserLatest(id);
-              if (latest) {
-                renderPerfilModalFromUser(latest);
-                updateHeaderFromUser(latest);
-              }
-            } catch (e) {
-              // ignore fetch errors, not fatal
-            }
-
-            // Close edit modal and open view modal to show changes
-            try {
-              closeModal(modalPerfilEditar);
-              openModal(modalPerfilVer);
-            } catch (e) {}
+            setTimeout(() => location.reload(), 1000);
           } else {
             toastDanger(data.error || "Error al actualizar el perfil.");
           }
@@ -1892,24 +1596,6 @@ if (!window.__perfilJSLoaded) {
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
-    }
-
-    // Map cargo (role) to the badge CSS class used in header.php
-    function getCargoBadgeClass(cargoRaw) {
-      if (!cargoRaw) return 'badge-role-default';
-      const key = String(cargoRaw).toLowerCase().trim().replaceAll('\\s+', '_');
-
-      const map = {
-        'coordinador': 'badge-role-coordinador',
-        'subcoordinador': 'badge-role-subcoordinador',
-        'instructor': 'badge-role-instructor',
-        'pasante': 'badge-role-pasante',
-        'aprendiz': 'badge-role-parendiz',
-        'encargado_inventario': 'badge-role-encargado-inventario',
-        'encargado_bodega': 'badge-role-encargado-bodega'
-      };
-
-      return map[key] || 'badge-role-default';
     }
 
     // =====================================================

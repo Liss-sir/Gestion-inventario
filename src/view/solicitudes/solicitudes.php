@@ -6,10 +6,6 @@
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 
-if (session_status() === PHP_SESSION_NONE) {
-  session_start();
-}
-
 
 ?>
 
@@ -267,17 +263,6 @@ if (session_status() === PHP_SESSION_NONE) {
     </div>
 </div>
 
-<?php
-$u = $_SESSION['usuario'] ?? $_SESSION['USUARIO_SESION'] ?? $_SESSION['user'] ?? null;
-
-$id = 0;
-$cargo = '';
-
-if (is_array($u)) {
-  $id = (int)($u['id_usuario'] ?? $u['id'] ?? $u['usuarioId'] ?? $u['user_id'] ?? 0);
-  $cargo = (string)($u['cargo'] ?? $u['rol'] ?? $u['role'] ?? '');
-}
-?>
 <script>
   window.SIGA_SOL_PERMS = {
     crear: <?= json_encode(canPermiso("solicitudes.crear")) ?>,
@@ -287,11 +272,10 @@ if (is_array($u)) {
   };
 
   window.SIGA_USER = {
-    id: <?= json_encode($id) ?>,
-    cargo: <?= json_encode($cargo) ?>
+    id: <?= (int)($_SESSION['usuario']['id_usuario'] ?? 0) ?>,
+    cargo: "<?= addslashes($_SESSION['usuario']['cargo'] ?? '') ?>"
   };
 </script>
-
 
 
 <!-- JS -->

@@ -79,14 +79,6 @@ class FichaController {
         echo json_encode($this->model->obtenerInstructores());
     }
 
-    public function obtenerInstructoresPorPrograma($id_programa) {
-        if (!$id_programa) {
-            echo json_encode(['error' => 'id_programa requerido']);
-            return;
-        }
-        echo json_encode($this->model->obtenerInstructoresPorPrograma($id_programa));
-    }
-
     public function obtenerInstructoresFicha($id) {
         if (!$id) {
             echo json_encode(['error' => 'id_ficha requerido']);
@@ -124,7 +116,6 @@ class FichaController {
 
 $accion = $_GET['accion'] ?? null;
 $id = $_GET['id_ficha'] ?? null;
-$id_programa = $_GET['id_programa'] ?? null;
 
 $controller = new FichaController($conn);
 
@@ -172,10 +163,6 @@ switch ($accion) {
 
     case "instructores":
         $controller->obtenerInstructores();
-        break;
-
-    case "instructoresPorPrograma":
-        $controller->obtenerInstructoresPorPrograma($id_programa);
         break;
 
     case "instructoresFicha":
