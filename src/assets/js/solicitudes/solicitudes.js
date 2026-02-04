@@ -878,8 +878,6 @@ const api = {
           selectores.selectPrograma.addEventListener("change", async function () {
             const programaId = this.value;
 
-            console.debug('[SOLICITUDES] selectPrograma changed:', programaId);
-
             if (selectores.selectActividad) {
               selectores.selectActividad.innerHTML = '<option value="">Seleccione ficha y RAE</option>';
             }
@@ -896,7 +894,6 @@ const api = {
 
             if (selectores.selectRae && resRaes.ok) {
               const raes = await resRaes.json();
-              console.debug('[SOLICITUDES] raes fetched:', raes);
               selectores.selectRae.innerHTML = '<option value="">Seleccionar RAE</option>';
               if (Array.isArray(raes) && raes.length) {
                 raes.forEach((r) => {
@@ -914,7 +911,6 @@ const api = {
 
             if (selectores.selectFichas && resFichas.ok) {
               const fichas = await resFichas.json();
-              console.debug('[SOLICITUDES] fichas fetched:', fichas);
               selectores.selectFichas.innerHTML = '<option value="">Seleccionar ficha</option>';
               if (Array.isArray(fichas) && fichas.length) {
                 fichas.forEach((f) => {
@@ -937,7 +933,6 @@ const api = {
                 const fId = fichas[0].id_ficha;
                 selectores.selectRae.value = rId;
                 selectores.selectFichas.value = fId;
-                console.debug('[SOLICITUDES] autoseleccionando rae/ficha y cargando actividades', rId, fId);
                 api.cargarActividades(fId, rId);
               }
             } catch (eAuto) {
@@ -952,7 +947,6 @@ const api = {
             selectores.selectRae.addEventListener("change", () => {
               const fichaId = selectores.selectFichas?.value || "";
               const raeId = selectores.selectRae?.value || "";
-              console.debug('[SOLICITUDES] selectRae changed, ficha=', fichaId, 'rae=', raeId);
               api.cargarActividades(fichaId, raeId);
             });
             selectores.selectRae.dataset.boundAct = "1";
@@ -963,7 +957,6 @@ const api = {
             selectores.selectFichas.addEventListener("change", () => {
               const fichaId = selectores.selectFichas?.value || "";
               const raeId = selectores.selectRae?.value || "";
-              console.debug('[SOLICITUDES] selectFichas changed, ficha=', fichaId, 'rae=', raeId);
               api.cargarActividades(fichaId, raeId);
             });
             selectores.selectFichas.dataset.boundAct = "1";
