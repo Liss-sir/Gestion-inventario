@@ -38,10 +38,10 @@ function findNameById($arr, $id)
 function badgeTipo($tipo)
 {
     $tipo = strtolower((string)$tipo);
-    if ($tipo === "entrada") return ["Entrada", "bg-[#39A90020] text-slate-700", "arrow-up-from-line"];
-    if ($tipo === "salida") return ["Salida", "bg-lime-100 text-lime-700", "arrow-down-up"];
-    if ($tipo === "devolucion") return ["Devolución", "bg-[#39A90020] text-slate-700", "rotate-ccw"];
-    return [ucfirst($tipo), "bg-gray-100 text-gray-700", "arrow-down-up"];
+    if ($tipo === "entrada") return ["Entrada", "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-[#39A90020] text-[#2e7d00]", "arrow-up-from-line"];
+    if ($tipo === "salida") return ["Salida", "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-lime-100 text-lime-700", "arrow-down-up"];
+    if ($tipo === "devolucion") return ["Devolución", "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-[#39A90020] text-[#2e7d00]", "rotate-ccw"];
+    return [ucfirst($tipo), "inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700", "arrow-down-up"];
 }
 
 /* =========================
@@ -74,15 +74,14 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
     <main class="p-6 transition-all duration-300"
         style="margin-left: <?= isset($_GET['coll']) && $_GET['coll'] == "1" ? '70px' : '260px' ?>;">
 
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div class="space-y-6">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h1 class="text-2xl font-bold tracking-tight">Movimientos de Material</h1>
                 <p class="text-muted-foreground">Historial de entradas, salidas y devoluciones de materiales</p>
             </div>
 
-
-
-            <div class="flex justify-end items-center gap-2 mt-4 mb-4">
+            <div class="flex items-center gap-3">
                 <div class="inline-flex rounded-lg border border-border bg-card shadow-sm overflow-hidden">
                     <button type="button" id="btnVistaTabla"
                         class="px-3 py-2 text-xs sm:text-sm flex items-center gap-1 bg-muted text-foreground">
@@ -131,7 +130,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-6">
 
             <!-- ENTRY -->
-            <div class="rounded-xl border border-border bg-card p-8 flex flex-col items-center">
+            <div class="rounded-xl border border-border bg-card p-4 sm:p-6 md:p-8 flex flex-col items-center">
                 <div class="flex items-start gap-3">
                     <div class="p-3 rounded-2xl bg-gray-100 inline-flex items-center justify-center">
                         <i data-lucide="arrow-up-from-line" class="h-6 w-6 text-[#39A900]"></i>
@@ -144,7 +143,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
             </div>
 
             <!-- EXIT -->
-            <div class="rounded-xl border border-border bg-card p-8 flex flex-col items-center">
+            <div class="rounded-xl border border-border bg-card p-4 sm:p-6 md:p-8 flex flex-col items-center">
                 <div class="flex items-start gap-3">
                     <div class="p-3 rounded-2xl bg-gray-100 inline-flex items-center justify-center">
                         <i data-lucide="arrow-down-up" class="h-6 w-6 text-[#39A900]"></i>
@@ -157,7 +156,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
             </div>
 
             <!-- RETURN -->
-            <div class="rounded-xl border border-border bg-card p-8 flex flex-col items-center">
+            <div class="rounded-xl border border-border bg-card p-4 sm:p-6 md:p-8 flex flex-col items-center">
                 <div class="flex items-start gap-3">
                     <div class="p-3 rounded-2xl bg-gray-100 inline-flex items-center justify-center">
                         <i data-lucide="rotate-ccw" class="h-6 w-6 text-[#39A900]"></i>
@@ -227,21 +226,21 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
         <!-- TABLE -->
         <div id="tableView" class="mt-6 rounded-2xl border border-border bg-card overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="min-w-[1300px] w-full text-sm">
+                <table class="min-w-full w-full text-sm">
                     <thead class="bg-gray-100">
                         <tr class="bg-primary/5 text-xs text-muted-foreground border-b border-border">
                             <th class="px-4 py-3 text-left font-medium">Fecha/Hora</th>
                             <th class="px-4 py-3 text-left font-medium">Tipo</th>
                             <th class="px-4 py-3 text-left font-medium">Materiales</th>
                             <th class="px-4 py-3 text-left font-medium">Cantidad</th>
-                            <th class="px-4 py-3 text-left font-medium">Bodega</th>
-                            <th class="px-4 py-3 text-left font-medium">Subbodega</th>
-                            <th class="px-4 py-3 text-left font-medium">Programa</th>
-                            <th class="px-4 py-3 text-left font-medium">Ficha</th>
-                            <th class="px-4 py-3 text-left font-medium">RAE</th>
-                            <th class="px-4 py-3 text-left font-medium">Instructor</th>
-                            <th class="px-4 py-3 text-left font-medium">Observaciones</th>
-                            <th class="px-4 py-3 text-left font-medium">Solicitud</th>
+                            <th class="px-4 py-3 text-left font-medium hidden lg:table-cell">Bodega</th>
+                            <th class="px-4 py-3 text-left font-medium hidden xl:table-cell">Subbodega</th>
+                            <th class="px-4 py-3 text-left font-medium hidden md:table-cell">Programa</th>
+                            <th class="px-4 py-3 text-left font-medium hidden lg:table-cell">Ficha</th>
+                            <th class="px-4 py-3 text-left font-medium hidden xl:table-cell">RAE</th>
+                            <th class="px-4 py-3 text-left font-medium hidden lg:table-cell">Instructor</th>
+                            <th class="px-4 py-3 text-left font-medium hidden md:table-cell">Observaciones</th>
+                            <th class="px-4 py-3 text-left font-medium hidden xl:table-cell">Solicitud</th>
                         </tr>
                     </thead>
 
@@ -294,7 +293,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
         </div>
 
         <!-- GRID VIEW COMPACT -->
-        <div id="gridView" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+        <div id="gridView" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-6">
 
         </div>
 
@@ -356,10 +355,10 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
         </div>
 
         <!-- REGISTER MOVEMENT MODAL -->
-        <div id="movimientoModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div id="movimientoModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm overflow-y-auto">
             <div class="absolute inset-0" onclick="closeMovimientoModal()"></div>
 
-            <div class="relative mx-4 w-full max-w-2xl rounded-2xl bg-white shadow-xl p-6 sm:p-8">
+            <div class="relative mx-4 my-4 w-full max-w-2xl rounded-2xl bg-white shadow-xl p-4 sm:p-6 md:p-8 max-h-[90vh] overflow-y-auto">
                 <div class="flex items-start justify-between mb-4">
                     <div>
                         <h2 class="text-xl font-semibold text-gray-900">Registrar Movimiento</h2>
@@ -537,7 +536,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
                         <button type="button"
                             onclick="closeMovimientoModal()"
-                            class="px-4 py-2 rounded-lg border text-sm hover:bg-muted">
+                            class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
                             Cancelar
                         </button>
 
@@ -553,6 +552,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
                 </form>
             </div>
+        </div>
         </div>
     </main>
 
