@@ -71,7 +71,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 </head>
 
 <body>
-    <main class="p-6 transition-all duration-300"
+    <main class="mtransition-all duration-300"
         style="margin-left: <?= isset($_GET['coll']) && $_GET['coll'] == "1" ? '70px' : '260px' ?>;">
 
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
