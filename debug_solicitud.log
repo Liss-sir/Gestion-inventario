@@ -13,3 +13,7 @@
 2026-02-05 01:01:25 [INSERT] id_solicitud recibido: 'NO_EXISTE'
 2026-02-05 01:01:25 [INSERT] Cantidad a insertar: 100 | tipo_movimiento: 'entrada'
 2026-02-05 01:01:25 [INSERT] Movimiento insertado con ID: 2
+2026-02-05 15:40:46 [RESPONDER] responderSolicitud(1, aprobada)
+2026-02-05 15:40:48 [INSERT] id_solicitud recibido: 1
+2026-02-05 15:40:48 [INSERT] Cantidad a insertar: 50 | tipo_movimiento: 'Salida'
+2026-02-05 15:40:48 [INSERT] Movimiento insertado con ID: 3
