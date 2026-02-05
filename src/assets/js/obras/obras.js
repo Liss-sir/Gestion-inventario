@@ -1,4 +1,4 @@
-﻿/* ============================================================
+﻿﻿/* ============================================================
    GUARD GLOBAL (evita doble carga del script)
 ============================================================ */
 if (!window.__obrasJSLoaded) {
@@ -33,7 +33,10 @@ if (!window.__obrasJSLoaded) {
     ? usuarioActual.fichas[0].id_ficha 
     : null;
   
-  console.log("🔍 VERIFICACIÓN INSTRUCTOR:", { esInstructor, fichaInstructor, usuarioActual });
+  // Verificar si es instructor sin ficha
+  const instructorSinFicha = window.INSTRUCTOR_SIN_FICHA || false;
+  
+  console.log("🔍 VERIFICACIÓN INSTRUCTOR:", { esInstructor, fichaInstructor, instructorSinFicha, usuarioActual });
 
   // ==============================
   // PERMISOS FRONT (desde PHP)
@@ -150,6 +153,33 @@ if (!window.__obrasJSLoaded) {
   // ==============================
   async function cargarObras() {
     try {
+      // Si es instructor sin ficha, mostrar mensaje especial
+      if (instructorSinFicha) {
+        const container = document.getElementById("obrasContainer");
+        if (container) {
+          container.innerHTML = `
+            <div class="text-center py-12 text-amber-600">
+              <i class="fas fa-exclamation-circle text-5xl mb-4"></i>
+              <h3 class="text-xl font-semibold mb-2">Ficha No Vinculada</h3>
+              <p class="mb-4">Debe contar con una ficha vinculada para poder listar sus obras.</p>
+              <p class="text-sm opacity-75">Contacte al administrador o coordinador para que le asigne una ficha.</p>
+            </div>
+          `;
+        }
+        
+        // Ocultar estadísticas y otros elementos
+        const statsContainer = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-3.gap-6');
+        const worksListContainer = document.querySelector('.rounded-xl.border.border-border.bg-card.shadow-sm.overflow-hidden');
+        
+        if (statsContainer) statsContainer.style.display = 'none';
+        if (worksListContainer) worksListContainer.style.display = 'none';
+        
+        const loadingElement = document.getElementById("loading");
+        if (loadingElement) loadingElement.style.display = "none";
+        
+        return;
+      }
+      
       console.log("Cargando obras...");
       const data = await fetchAPI({ accion: "listar" });
 
@@ -542,6 +572,9 @@ if (!window.__obrasJSLoaded) {
   // BUSCAR
   // ==============================
   function searchObras() {
+    // Si es instructor sin ficha, no hacer búsqueda
+    if (instructorSinFicha) return;
+    
     const searchInput = document.getElementById("searchInput");
     const searchTerm = (searchInput?.value || "").toLowerCase();
 
@@ -567,6 +600,13 @@ if (!window.__obrasJSLoaded) {
   // CAMBIAR ESTADO
   // ==============================
   async function toggleEstado(id, estado) {
+    // Verificar si es instructor sin ficha
+    if (instructorSinFicha) {
+      toastError("No puede cambiar el estado porque no tiene una ficha vinculada.");
+      revertirSwitchEstado(id, estado);
+      return;
+    }
+    
     if (!OBRAS_PERMS.canCambiarEstado) {
       toastError("No tienes permisos para cambiar el estado.");
       revertirSwitchEstado(id, estado);
@@ -604,6 +644,9 @@ if (!window.__obrasJSLoaded) {
   // FUNCIONES PARA MENÚ DE ACCIONES
   // ==============================
   function toggleActionMenu(index) {
+    // Si es instructor sin ficha, no mostrar menú
+    if (instructorSinFicha) return;
+    
     const menu = document.getElementById("actionMenu" + index);
     const isHidden = menu.classList.contains("hidden");
 
@@ -704,6 +747,12 @@ if (!window.__obrasJSLoaded) {
   // MODAL CREAR
   // ==============================
   async function openCreateModal() {
+    // Verificar si es instructor sin ficha vinculada
+    if (instructorSinFicha) {
+      toastError("No puede crear obras porque no tiene una ficha vinculada. Contacte al administrador.");
+      return;
+    }
+    
     if (!OBRAS_PERMS.canCrear) {
       toastError("No tienes permisos para crear obras.");
       return;
@@ -771,6 +820,12 @@ if (!window.__obrasJSLoaded) {
   // ==============================
   async function handleCreateObra(e) {
     e.preventDefault();
+
+    // Verificar si es instructor sin ficha
+    if (instructorSinFicha) {
+      toastError("No puede crear obras porque no tiene una ficha vinculada.");
+      return;
+    }
 
     if (isCreatingObra) {
       console.log("Creación ya en progreso, ignorando clic adicional");
@@ -876,6 +931,12 @@ if (!window.__obrasJSLoaded) {
   // MODAL EDITAR
   // ==============================
   async function openEditModal(id) {
+    // Verificar si es instructor sin ficha vinculada
+    if (instructorSinFicha) {
+      toastError("No puede editar obras porque no tiene una ficha vinculada.");
+      return;
+    }
+    
     if (!OBRAS_PERMS.canEditar) {
       toastError("No tienes permisos para editar obras.");
       return;
@@ -956,6 +1017,11 @@ if (!window.__obrasJSLoaded) {
 
   async function handleEditObra(e) {
     e.preventDefault();
+
+    if (instructorSinFicha) {
+      toastError("No puede editar obras porque no tiene una ficha vinculada.");
+      return;
+    }
 
     if (!OBRAS_PERMS.canEditar) {
       toastError("No tienes permisos para editar obras.");
@@ -1436,6 +1502,11 @@ if (!window.__obrasJSLoaded) {
   }
 
   async function asignarAprendizIndividual(idAprendiz) {
+    if (instructorSinFicha) {
+      toastError("No puede asignar aprendices porque no tiene una ficha vinculada.");
+      return;
+    }
+    
     if (!OBRAS_PERMS.canCrear) {
       toastError("No tienes permisos para crear obras.");
       return;

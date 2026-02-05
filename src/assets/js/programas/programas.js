@@ -438,16 +438,84 @@ function openViewModal(index) {
         document.getElementById("view_nivel").textContent = row.dataset.nivel;
         document.getElementById("view_duracion").textContent = row.dataset.duracion;
 
-        // Display instructors or message if there are none
+        // Display instructors in vertical list with scroll
         const instructores = row.dataset.instructores;
-        const instructorElement = document.getElementById('view_instructor');
-        
-        if (!instructores || instructores === 'No hay instructores vinculados' || instructores.trim() === '') {
-          instructorElement.textContent = 'No hay instructores vinculados a este programa';
-          instructorElement.className = 'text-sm text-muted-foreground';
+        const instructoresList = document.getElementById('view_instructores_list');
+        const noInstructoresMsg = document.getElementById('view_no_instructores');
+        const container = document.getElementById('view_instructores_container');
+
+        // Clear previous list
+        instructoresList.innerHTML = '';
+
+        // Debug (puedes remover esto después)
+        console.log('Datos de instructores:', instructores);
+
+        // Check if instructors data exists and is valid
+        if (!instructores || 
+            instructores === 'No hay instructores vinculados' || 
+            instructores === '0' || 
+            instructores.trim() === '' ||
+            instructores === 'undefined') {
+            
+            // No instructors
+            noInstructoresMsg.classList.remove('hidden');
+            instructoresList.classList.add('hidden');
+            container.classList.remove('border', 'border-gray-200', 'p-2', 'rounded-md');
+            
         } else {
-            instructorElement.textContent = instructores;
-            instructorElement.className = 'text-sm font-medium text-foreground';
+            // Try different separators since we don't know the exact format
+            let instructorsArray = [];
+            
+            // Primero, intentar separar por coma
+            if (instructores.includes(',')) {
+                instructorsArray = instructores.split(',').map(instructor => instructor.trim());
+            } 
+            // Si no hay comas, intentar otros separadores comunes
+            else if (instructores.includes(';')) {
+                instructorsArray = instructores.split(';').map(instructor => instructor.trim());
+            }
+            // Si no hay ningún separador, tomar todo como un solo instructor
+            else {
+                instructorsArray = [instructores.trim()];
+            }
+            
+            // Filtrar elementos vacíos
+            instructorsArray = instructorsArray.filter(instructor => 
+                instructor && 
+                instructor !== 'undefined' && 
+                instructor !== '0' && 
+                instructor.toLowerCase() !== 'no hay instructores vinculados'
+            );
+            
+            // Verificar si después del filtrado quedan instructores
+            if (instructorsArray.length === 0) {
+                noInstructoresMsg.classList.remove('hidden');
+                instructoresList.classList.add('hidden');
+                container.classList.remove('border', 'border-gray-200', 'p-2', 'rounded-md');
+            } else {
+                // Hide "no instructors" message
+                noInstructoresMsg.classList.add('hidden');
+                instructoresList.classList.remove('hidden');
+                
+                // Add border and padding if there are instructors
+                container.classList.add('border', 'border-gray-200', 'p-2', 'rounded-md');
+                
+                // Create list items for each instructor
+                instructorsArray.forEach(instructor => {
+                    if (instructor && instructor.trim() !== '') {
+                        const li = document.createElement('li');
+                        li.className = 'flex items-center gap-2 text-foreground py-1 px-1 hover:bg-gray-50 rounded transition-colors';
+                        li.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0 text-gray-500">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                            </svg>
+                            <span class="truncate text-sm">${instructor}</span>
+                        `;
+                        instructoresList.appendChild(li);
+                    }
+                });
+            }
         }
 
         // Normalize state and display human-friendly badge (Activo / Inactivo)

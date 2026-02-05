@@ -609,6 +609,32 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </select>
       </div>
 
+      <!-- Bodega (solo si rol es Encargado Bodega) -->
+      <div class="space-y-2 hidden" id="wrapper_bodega_asignar_rol">
+        <label for="selectBodegaAsignarRol" class="text-sm font-medium">
+          Bodega asignada *
+        </label>
+        <select
+          id="selectBodegaAsignarRol"
+          class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input-siga"
+        >
+          <option value="">Cargando bodegas...</option>
+        </select>
+      </div>
+
+      <!-- Sub-bodega (solo si rol es Encargado Subbodega) -->
+      <div class="space-y-2 hidden" id="wrapper_subbodega_asignar_rol">
+        <label for="selectSubbodegaAsignarRol" class="text-sm font-medium">
+          Sub-bodega asignada *
+        </label>
+        <select
+          id="selectSubbodegaAsignarRol"
+          class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input-siga"
+        >
+          <option value="">Seleccione una bodega primero</option>
+        </select>
+      </div>
+
       <!-- Footer -->
       <div class="flex justify-end gap-2 pt-2">
         <button

@@ -550,9 +550,16 @@ try {
                         <span class="text-xs text-muted-foreground">Duración:</span>
                         <span id="view_duracion" class="text-sm font-medium text-foreground">0 Horas</span>
                     </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs text-muted-foreground">Instructor:</span>
-                        <span id="view_instructor" class="text-sm font-medium text-foreground"></span>
+                    <div>
+                        <span class="text-xs text-muted-foreground block mb-2">Instructores vinculados:</span>
+                        <div id="view_instructores_container" class="max-h-32 overflow-y-auto pr-2">
+                            <!-- Mensaje cuando no hay instructores -->
+                            <div id="view_no_instructores" class="text-sm text-muted-foreground italic py-2">
+                                No hay instructores vinculados a este programa
+                            </div>
+                            <!-- Lista de instructores -->
+                            <ul id="view_instructores_list" class="space-y-2 text-sm hidden"></ul>
+                        </div>
                     </div>
                     <div class="flex items-center justify-between">
                         <span class="text-xs text-muted-foreground">Estado:</span>

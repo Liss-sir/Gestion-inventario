@@ -1240,7 +1240,7 @@ async function createMaterial() {
     descripcion: document.getElementById("descripcion").value.trim(),
     clasificacion: document.getElementById("clasificacion").value,
     codigo_inventario: document.getElementById("codigo").value.trim() || null,
-    unidad_medida: document.getElementById("unidad").value,
+    unidad_medida: document.getElementById("unidad")?.value.trim() || "",
     precio: parsePriceValue(precioRaw || precioTyped),
     stock_maximo: document.getElementById("stock_maximo").value,
   }
@@ -1284,7 +1284,7 @@ async function updateMaterial() {
     descripcion: document.getElementById("editDescripcion").value.trim(),
     clasificacion: document.getElementById("editClasificacion").value,
     codigo_inventario: document.getElementById("editCodigo").value.trim() || null,
-    unidad_medida: document.getElementById("editUnidad").value,
+    unidad_medida: document.getElementById("editUnidad")?.value.trim() || "",
     precio: parsePriceValue(precioRaw || precioTyped),
     stock_maximo: document.getElementById("editStockMaximo").value,
     estado: materialsData.find((m) => m.id === id)?.enabled ? "Disponible" : "Agotado",
@@ -1518,6 +1518,10 @@ function setupEventListeners() {
   attachCurrencyMask("precio")
   attachCurrencyMask("editPrecio")
 
+  // Inicializar selects buscadores de unidad
+  initSearchableSelect("unidad", "unidadDropdown", "unidad-option")
+  initSearchableSelect("editUnidad", "editUnidadDropdown", "edit-unidad-option")
+
   const imagenInput = document.getElementById("imagen")
   const dropzoneImagen = document.getElementById("dropzoneImagen")
   const previewImagen = document.getElementById("previewImagen")
@@ -1638,3 +1642,95 @@ function mostrarVistaPrevia(file, previewId = "previewImagen") {
 
   reader.readAsDataURL(file)
 }
+
+/* =========================
+   SEARCHABLE SELECT - Unidad de medida
+   ========================= */
+function initSearchableSelect(inputId, dropdownId, optionClass) {
+  const input = document.getElementById(inputId)
+  const dropdown = document.getElementById(dropdownId)
+  
+  if (!input || !dropdown) return
+
+  const options = dropdown.querySelectorAll(`.${optionClass}`)
+  let selectedValue = ""
+
+  // Mostrar dropdown al hacer clic en el input
+  input.addEventListener("click", (e) => {
+    e.stopPropagation()
+    dropdown.classList.remove("hidden")
+    filterOptions("")
+  })
+
+  // Filtrar opciones mientras se escribe
+  input.addEventListener("input", (e) => {
+    const searchTerm = e.target.value
+    dropdown.classList.remove("hidden")
+    filterOptions(searchTerm)
+  })
+
+  // Seleccionar opción
+  options.forEach(option => {
+    option.addEventListener("click", (e) => {
+      e.stopPropagation()
+      const value = option.dataset.value
+      input.value = value
+      selectedValue = value
+      dropdown.classList.add("hidden")
+    })
+  })
+
+  // Cerrar dropdown al hacer clic fuera
+  document.addEventListener("click", (e) => {
+    if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+      dropdown.classList.add("hidden")
+      
+      // Si el input no coincide con una opción válida, restaurar el último valor válido o vaciar
+      const currentValue = input.value.trim().toUpperCase()
+      const validOptions = Array.from(options).map(opt => opt.dataset.value.toUpperCase())
+      
+      if (currentValue && !validOptions.includes(currentValue)) {
+        input.value = selectedValue
+      }
+    }
+  })
+
+  // Función para filtrar opciones
+  function filterOptions(searchTerm) {
+    const term = searchTerm.toLowerCase().trim()
+    let hasVisible = false
+
+    options.forEach(option => {
+      const value = option.dataset.value.toLowerCase()
+      if (value.includes(term)) {
+        option.style.display = "block"
+        hasVisible = true
+      } else {
+        option.style.display = "none"
+      }
+    })
+
+    // Mostrar mensaje si no hay resultados
+    const existingMsg = dropdown.querySelector(".no-results-message")
+    if (existingMsg) existingMsg.remove()
+
+    if (!hasVisible && term) {
+      const noResultsDiv = document.createElement("div")
+      noResultsDiv.className = "no-results-message px-3 py-2 text-sm text-muted-foreground text-center"
+      noResultsDiv.textContent = "No se encontraron resultados"
+      dropdown.querySelector("div").appendChild(noResultsDiv)
+    }
+  }
+
+  // Método público para establecer valor
+  input.setUnidadValue = (value) => {
+    input.value = value
+    selectedValue = value
+  }
+
+  // Método público para obtener valor
+  input.getUnidadValue = () => {
+    return input.value.trim()
+  }
+}
+

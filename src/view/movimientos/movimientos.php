@@ -209,17 +209,13 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
                 <!-- PROGRAMA -->
                 <div class="relative w-full sm:w-56">
-                    <select
-                        id="filtroPrograma"
-                        name="filtro_programa"
-                        class="w-full appearance-none rounded-lg border border-border bg-background py-2 pl-3 pr-9 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
-                        <option value="">Todos los programas</option>
-                        <?php foreach ($programas as $p): ?>
-                            <option value="<?= $p['id'] ?>">
-                                <?= htmlspecialchars($p['nombre']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                    <input
+                        id="buscarPrograma"
+                        type="text"
+                        placeholder="Buscar por programa..."
+                        class="w-full sm:max-w-xs rounded-lg border border-border bg-background py-2 px-3 text-sm"
+                        />
+
 
                     <span class="pointer-events-none absolute inset-y-0 right-2 flex items-center text-muted-foreground">
                     </span>
