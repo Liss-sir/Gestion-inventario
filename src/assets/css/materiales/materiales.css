@@ -1,4 +1,20 @@
 /* ===========================
+   INPUTS SIGA – FOCUS STYLING
+   =========================== */
+.input-siga:focus {
+  outline: none;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(57, 169, 0, 0.12) !important;
+  background-color: #FFFFFF !important;
+}
+
+.input-siga:focus-visible {
+  outline: none;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(57, 169, 0, 0.12) !important;
+}
+
+/* ===========================
    ANIMACIÓN – MODAL SLIDE DOWN
    =========================== */
 @keyframes modal-slide-down {

@@ -1034,6 +1034,7 @@ function closeCreateModal() {
   document.getElementById("codigo").value = ""
   document.getElementById("unidad").value = ""
   document.getElementById("precio").value = ""
+  document.getElementById("stock_maximo").value = ""
   const precioInput = document.getElementById("precio")
   if (precioInput) precioInput.dataset.rawPrice = ""
   document.getElementById("imagen").value = ""
