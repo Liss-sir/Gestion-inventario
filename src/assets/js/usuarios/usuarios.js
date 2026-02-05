@@ -201,6 +201,32 @@ if (!window.__usuariosJSLoaded) {
       showFlowbiteAlert("info", message);
     }
 
+    // Helper para mostrar un único mensaje de bloqueo relacionado con el select de cargo
+    // Evita que múltiples comprobaciones muestren varias alertas iguales en cortos períodos.
+    function showLockMessageOnce(msg) {
+      try {
+        if (!inputCargo) {
+          // Si no existe el elemento, mostrar normalmente
+          toastError(msg);
+          return;
+        }
+
+        const now = Date.now();
+        const last = Number(inputCargo.dataset._lastLockToastAt || 0);
+        const lastMsg = inputCargo.dataset._lastLockToastMsg || "";
+
+        // Mostrar si el mensaje cambió o si pasó más de 2000ms desde la última alerta
+        if (String(lastMsg) !== String(msg) || now - last > 2000) {
+          inputCargo.dataset._lastLockToastAt = String(now);
+          inputCargo.dataset._lastLockToastMsg = String(msg || "");
+          toastError(msg);
+        }
+      } catch (e) {
+        // Fallback
+        try { toastError(msg); } catch (e) {}
+      }
+    }
+
     // =========================
     // DOM REFERENCES
     // =========================
@@ -361,6 +387,29 @@ let rolesFuncionalesMap = {};
     // =========================
     // HELPER FUNCTIONS
     // =========================
+
+    // Limpia el estado del select de cargo: quita bloqueo, handlers y atributos temporales
+    function cleanInputCargoState() {
+      if (!inputCargo) return;
+      try {
+        inputCargo.dataset.lockedInstructorChange = "0";
+        inputCargo.disabled = false;
+        inputCargo.classList.remove("opacity-60", "cursor-not-allowed");
+        inputCargo.removeAttribute("title");
+        delete inputCargo.dataset._lastLockToastAt;
+        delete inputCargo.dataset._lastLockToastMsg;
+        delete inputCargo.dataset.originalCargo;
+        if (inputCargo._preventChangeHandler) {
+          try {
+            inputCargo.removeEventListener("change", inputCargo._preventChangeHandler);
+            inputCargo.removeEventListener("input", inputCargo._preventChangeHandler);
+          } catch (e) {}
+          delete inputCargo._preventChangeHandler;
+        }
+      } catch (e) {
+        // no-fatal
+      }
+    }
 
     /**
      * Computes initials from a full name (up to two letters).
@@ -730,7 +779,7 @@ function renderRolFuncionalBadgeHTML(user) {
             parsed.message ||
             "Tu sesión fue cerrada o revocada. Debes iniciar sesión nuevamente.";
 
-          toastError(msg);
+          showLockMessageOnce(msg);
 
           // Small delay to let the user read the alert
           setTimeout(() => {
@@ -1225,6 +1274,148 @@ async function obtenerRolFuncionalUsuario(id_usuario) {
         inputNumeroDocumento.value = editUser.numero_documento;
         inputTelefono.value = editUser.telefono;
         inputCargo.value = editUser.cargo;
+        // =====================================================
+// ✅ BLOQUEO: si es Instructor con vínculos, no permitir cambiar cargo
+// =====================================================
+(async () => {
+  try {
+      if (inputCargo && editUser?.id) {
+      // Guardar cargo original para revertir cambios
+      inputCargo.dataset.originalCargo = String(editUser.cargo || "");
+
+      // Bandera de bloqueo (por defecto no)
+      inputCargo.dataset.lockedInstructorChange = "0";
+
+      // Normalizamos cargo actual
+      const cargoActualNormalized = String(editUser.cargo || "").trim().toLowerCase();
+
+      // Handler reutilizable que revierte cambios si está bloqueado
+      const original = String(inputCargo.dataset.originalCargo || "");
+      const preventChangeHandler = function (e) {
+        try {
+          if (String(inputCargo.dataset.lockedInstructorChange) === "1") {
+            inputCargo.value = original;
+            const msg = inputCargo.title ||
+              "No es posible cambiar el cargo porque este instructor tiene vinculaciones activas.";
+            toastError(msg);
+          }
+        } catch (err) {
+          // ignore
+        }
+      };
+
+      // Attach immediately to prevent quick user changes before validation completes
+      try {
+        inputCargo.addEventListener("change", preventChangeHandler);
+        inputCargo.addEventListener("input", preventChangeHandler);
+        // store ref so we can remove it later if needed
+        inputCargo._preventChangeHandler = preventChangeHandler;
+      } catch (e) {}
+
+      // If cargo es Instructor, deshabilitamos temporalmente mientras validamos el backend
+      if (cargoActualNormalized === "instructor") {
+        // // Si editUser ya trae id_programa, eso es vínculo: bloquear inmediatamente
+        // if (editUser && (editUser.id_programa || editUser.idPrograma || editUser.programa)) {
+        //   inputCargo.dataset.lockedInstructorChange = "1";
+        //   try {
+        //     inputCargo.disabled = true;
+        //     inputCargo.classList.add("opacity-60", "cursor-not-allowed");
+        //     inputCargo.title = "No se puede cambiar el cargo porque el instructor tiene un programa asignado.";
+        //     try { toastError(inputCargo.title); } catch (e) {}
+        //   } catch (e) {}
+        // }
+
+        // marcar checking para UX y evitar interacción si no bloqueado por id_programa
+        if (String(inputCargo.dataset.lockedInstructorChange) !== "1") {
+          try {
+            inputCargo.disabled = true;
+            inputCargo.classList.add("opacity-60", "cursor-not-allowed");
+            inputCargo.title = "Verificando vinculaciones...";
+          } catch (e) {}
+        }
+
+        // Intentar validar; si la respuesta es nula la tratamos como "no bloqueo" para no romper UX
+  const resp = await validarCambioCargoInstructor(String(editUser.id), "Aprendiz");
+  try { console.log("openModalUsuario -> validarCambioCargoInstructor resp:", resp); } catch (e) {}
+
+        // COMPROBACION ADICIONAL: consultar instructores_programas directamente
+        try {
+          const res = await fetch(`${API_URL}?accion=esta_vinculado_programa`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_usuario: String(editUser.id) })
+          });
+
+          const txt = await res.text();
+          const parsed = (function (t) { try { return JSON.parse(t); } catch (e) { return null; } })(txt);
+          try { console.log('openModalUsuario -> esta_vinculado_programa resp:', parsed, txt); } catch (e) {}
+
+          // if (parsed && (parsed.vinculado === 1 || parsed.vinculado === '1')) {
+          //   inputCargo.dataset.lockedInstructorChange = "1";
+          //   inputCargo.disabled = true;
+          //   inputCargo.classList.add("opacity-60", "cursor-not-allowed");
+          //   inputCargo.title = "No se puede cambiar el cargo porque el instructor está vinculado a un programa.";
+          //   try { showLockMessageOnce(inputCargo.title); } catch (e) {}
+          // }
+        } catch (e) {
+          // ignore
+        }
+
+        if (resp && resp.success === true && Number(resp.can_change) === 0) {
+          inputCargo.dataset.lockedInstructorChange = "1";
+          inputCargo.disabled = true;
+          inputCargo.classList.add("opacity-60", "cursor-not-allowed");
+      inputCargo.title = resp.message || "No se puede cambiar el cargo porque tiene vínculos activos.";
+      try { showLockMessageOnce(inputCargo.title); } catch (e) {}
+        } else if (resp && (resp.success === false || Number(resp.can_change) === 0)) {
+          inputCargo.dataset.lockedInstructorChange = "1";
+          inputCargo.disabled = true;
+          inputCargo.classList.add("opacity-60", "cursor-not-allowed");
+      inputCargo.title = resp.message || "No se puede cambiar el cargo porque tiene vínculos activos.";
+      try { showLockMessageOnce(inputCargo.title); } catch (e) {}
+        } else {
+          // permitir cambio: removemos bloqueo y título SOLO si no fue bloqueado por otra comprobación
+          if (String(inputCargo.dataset.lockedInstructorChange) !== "1") {
+            inputCargo.dataset.lockedInstructorChange = "0";
+            inputCargo.disabled = false;
+            inputCargo.classList.remove("opacity-60", "cursor-not-allowed");
+            inputCargo.removeAttribute("title");
+
+            // removemos el preventChangeHandler porque ahora no es necesario
+            try {
+              if (inputCargo._preventChangeHandler) {
+                inputCargo.removeEventListener("change", inputCargo._preventChangeHandler);
+                inputCargo.removeEventListener("input", inputCargo._preventChangeHandler);
+                delete inputCargo._preventChangeHandler;
+              }
+            } catch (e) {}
+          } else {
+            // Si ya fue bloqueado por otra comprobación (ej. instructores_programas), mantenemos bloqueo
+            inputCargo.disabled = true;
+            inputCargo.classList.add("opacity-60", "cursor-not-allowed");
+          }
+        }
+      } else {
+        // No es instructor -> habilitar y quitar prevent handler si estaba
+        try {
+          inputCargo.dataset.lockedInstructorChange = "0";
+          inputCargo.disabled = false;
+          inputCargo.classList.remove("opacity-60", "cursor-not-allowed");
+          inputCargo.removeAttribute("title");
+          if (inputCargo._preventChangeHandler) {
+            inputCargo.removeEventListener("change", inputCargo._preventChangeHandler);
+            inputCargo.removeEventListener("input", inputCargo._preventChangeHandler);
+            delete inputCargo._preventChangeHandler;
+          }
+        } catch (e) {}
+      }
+    }
+  } catch (e) {
+    // no-fatal
+  }
+})();
+
         inputCorreo.value = editUser.correo;
         inputPassword.value = "";
         inputDireccion.value = editUser.direccion;
@@ -1281,6 +1472,8 @@ async function obtenerRolFuncionalUsuario(id_usuario) {
 
         // Auto-generate a secure default password for new records
         setGenericPasswordInInput();
+        // Asegurar que el select de cargo esté en estado limpio al crear
+        try { cleanInputCargoState(); } catch (e) {}
       }
     }
 
@@ -1293,6 +1486,8 @@ async function obtenerRolFuncionalUsuario(id_usuario) {
       selectedUser = null;
       if (hiddenUserId) hiddenUserId.value = "";
       originalEditData = null;
+      // Limpieza de select cargo para evitar que quede deshabilitado tras cerrar modal
+      try { cleanInputCargoState(); } catch (e) {}
     }
 
     /**
