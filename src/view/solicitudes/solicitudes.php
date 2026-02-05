@@ -6,6 +6,14 @@
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 
+if (session_status() === PHP_SESSION_NONE) {
+  session_start();
+}
+
+// (Opcional pero recomendado) si no hay usuario en sesión, redirigir
+if (empty($_SESSION['usuario']) || empty($_SESSION['usuario']['id_usuario'])) {
+  // header("Location: login.php"); exit;
+}
 
 ?>
 
@@ -272,11 +280,11 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   };
 
   window.SIGA_USER = {
-    id: <?= (int)($_SESSION['usuario']['id_usuario'] ?? 0) ?>,
+    id: <?= (int)($_SESSION['usuario']['id'] ?? 0) ?>,
     cargo: "<?= addslashes($_SESSION['usuario']['cargo'] ?? '') ?>"
   };
-</script>
 
+</script>
 
 <!-- JS -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

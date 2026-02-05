@@ -53,7 +53,7 @@ const USUARIO = (() => {
 
   return {
     raw: u,
-    id: id ? parseInt(id, 10) : null,
+    id: (id !== null && id !== undefined) ? parseInt(id, 10) : null,
     cargo: String(cargo || "").trim(),
   };
 })();
@@ -115,6 +115,70 @@ const selectores = {
 };
 
 // ============================================================
+// ✅ LÍMITES DE CARACTERES (front-end only)
+// ============================================================
+const LIMITES = {
+  // Ajusta a tu gusto / lo que soporte tu BD
+  observaciones: 500,      // textarea principal
+  motivoRechazo: 300,      // textarea del modal rechazo
+  cantidad: 6,             // input cantidad (ej: hasta 999999)
+};
+
+// Aplica maxlength + recorta en input/paste (por seguridad)
+function aplicarLimiteCaracteres(el, max, { onLimitMessage } = {}) {
+  if (!el || !max) return;
+
+  // maxlength nativo
+  el.setAttribute("maxlength", String(max));
+
+  const cortar = () => {
+    const v = String(el.value ?? "");
+    if (v.length > max) {
+      el.value = v.slice(0, max);
+      if (typeof onLimitMessage === "function") onLimitMessage(max);
+    }
+  };
+
+  // recorta al escribir/pegar
+  el.addEventListener("input", cortar);
+  el.addEventListener("paste", () => setTimeout(cortar, 0));
+}
+
+// Solo números y máximo dígitos (para cantidad)
+function aplicarLimiteNumerico(el, maxDigits = 6) {
+  if (!el) return;
+
+  el.setAttribute("inputmode", "numeric");
+  el.setAttribute("maxlength", String(maxDigits));
+
+  el.addEventListener("input", () => {
+    // deja solo dígitos
+    let v = String(el.value ?? "").replace(/\D+/g, "");
+    if (v.length > maxDigits) v = v.slice(0, maxDigits);
+    el.value = v;
+  });
+
+  el.addEventListener("paste", () => {
+    setTimeout(() => {
+      let v = String(el.value ?? "").replace(/\D+/g, "");
+      if (v.length > maxDigits) v = v.slice(0, maxDigits);
+      el.value = v;
+    }, 0);
+  });
+}
+
+// Inicializa límites para los campos existentes del formulario
+function initLimitesCaracteres() {
+  // Observaciones (form principal)
+  aplicarLimiteCaracteres(selectores.textareaObservaciones, LIMITES.observaciones, {
+    onLimitMessage: (max) => toastInfo(`Máximo ${max} caracteres en Observaciones.`),
+  });
+
+  // Cantidad (solo dígitos, máximo N dígitos)
+  aplicarLimiteNumerico(selectores.inputCantidad, LIMITES.cantidad);
+}
+
+// ============================================================
 //  ✅ UTILIDADES SEGURAS
 // ============================================================
 function safeLucideCreateIcons() {
@@ -134,7 +198,7 @@ function filtrarSolicitudesPorUsuario(listado) {
   if (!CARGOS_FILTRAN_PROPIAS.has(USUARIO.cargo)) return listado;
 
   // Si no hay ID, por seguridad no mostramos nada (evita fuga de info)
-  if (!USUARIO.id) return [];
+  if (USUARIO.id === null || Number.isNaN(USUARIO.id)) return [];
 
   // Importante: tu backend debe traer el id del creador en el listado
   // Probables nombres: id_usuario, id_solicitante, usuario_id, etc.
@@ -323,6 +387,10 @@ function pedirMotivoRechazo() {
     root.classList.add("flex");
 
     const input = root.querySelector("#sol-motivo-input");
+    aplicarLimiteCaracteres(input, LIMITES.motivoRechazo, {
+      onLimitMessage: (max) => toastInfo(`Máximo ${max} caracteres en el motivo.`),
+    });
+
     const backdrop = root.querySelector("[data-motivo-backdrop]");
 
     const cleanup = () => {
@@ -613,12 +681,8 @@ const api = {
       const url1 = `${API}?accion=actividades&ficha=${encodeURIComponent(fichaId)}&rae=${encodeURIComponent(raeId)}`;
       const url2 = `${API}?accion=actividad&ficha=${encodeURIComponent(fichaId)}&rae=${encodeURIComponent(raeId)}`;
 
-      console.debug(`[SOLICITUDES] cargarActividades: ficha=${fichaId}, rae=${raeId}`);
-      console.debug(`[SOLICITUDES] intentando URL: ${url1}`);
-
       let res = await fetch(url1);
       if (!res.ok) {
-        console.debug(`[SOLICITUDES] URL1 falló (${res.status}), intentando fallback: ${url2}`);
         res = await fetch(url2);
       }
 
@@ -627,7 +691,6 @@ const api = {
       }
 
       const data = await res.json();
-      console.debug("[SOLICITUDES] actividades respuesta bruta:", data);
 
       // Normalizar posibles formas de respuesta
       let items = [];
@@ -791,7 +854,6 @@ const api = {
   },
 
   async cargarSelectores() {
-    console.debug('[SOLICITUDES] cargarSelectores invoked');
     try {
       // PROGRAMAS
       if (selectores.selectPrograma) {
@@ -816,8 +878,6 @@ const api = {
           selectores.selectPrograma.addEventListener("change", async function () {
             const programaId = this.value;
 
-            console.debug('[SOLICITUDES] selectPrograma changed:', programaId);
-
             if (selectores.selectActividad) {
               selectores.selectActividad.innerHTML = '<option value="">Seleccione ficha y RAE</option>';
             }
@@ -828,21 +888,27 @@ const api = {
             if (!programaId) return;
 
             const [resRaes, resFichas] = await Promise.all([
-              fetch(`${API}?accion=raes&programa=${programaId}`),
-              fetch(`${API}?accion=fichas&programa=${programaId}`),
+              fetch(`${API}?accion=raes&programa=${encodeURIComponent(programaId)}`),
+              fetch(`${API}?accion=fichas&programa=${encodeURIComponent(programaId)}`),
             ]);
 
-            if (selectores.selectRae && resRaes.ok) {
-              const raes = await resRaes.json();
-              console.debug('[SOLICITUDES] raes fetched:', raes);
+            // ✅ ESTO ES LO QUE TE FALTA
+            let raes = [];
+            let fichas = [];
+
+            if (resRaes.ok) raes = await resRaes.json();
+            if (resFichas.ok) fichas = await resFichas.json();
+
+            // Render RAEs
+            if (selectores.selectRae) {
               selectores.selectRae.innerHTML = '<option value="">Seleccionar RAE</option>';
               if (Array.isArray(raes) && raes.length) {
                 raes.forEach((r) => {
                   const opt = document.createElement("option");
-                  opt.value = r.id_rae;
+                  opt.value = r.id_rae ?? r.id ?? "";
                   const fullText = `${r.codigo_rae} - ${r.descripcion_rae}`;
                   opt.textContent = truncateText(fullText, 27);
-                  opt.title = fullText; // Mostrar texto completo en tooltip
+                  opt.title = fullText;
                   selectores.selectRae.appendChild(opt);
                 });
               } else {
@@ -850,17 +916,16 @@ const api = {
               }
             }
 
-            if (selectores.selectFichas && resFichas.ok) {
-              const fichas = await resFichas.json();
-              console.debug('[SOLICITUDES] fichas fetched:', fichas);
+            // Render Fichas
+            if (selectores.selectFichas) {
               selectores.selectFichas.innerHTML = '<option value="">Seleccionar ficha</option>';
               if (Array.isArray(fichas) && fichas.length) {
                 fichas.forEach((f) => {
                   const opt = document.createElement("option");
-                  opt.value = f.id_ficha;
+                  opt.value = f.id_ficha ?? f.id ?? "";
                   const fullText = `${f.numero_ficha} - ${f.jornada}`;
                   opt.textContent = truncateText(fullText, 27);
-                  opt.title = fullText; // Mostrar texto completo en tooltip
+                  opt.title = fullText;
                   selectores.selectFichas.appendChild(opt);
                 });
               } else {
@@ -868,29 +933,25 @@ const api = {
               }
             }
 
-            // Si solo hay 1 RAE y 1 FICHA, autoseleccionarlas y cargar actividades
-            try {
-              if (Array.isArray(raes) && raes.length === 1 && Array.isArray(fichas) && fichas.length === 1) {
-                const rId = raes[0].id_rae;
-                const fId = fichas[0].id_ficha;
-                selectores.selectRae.value = rId;
-                selectores.selectFichas.value = fId;
-                console.debug('[SOLICITUDES] autoseleccionando rae/ficha y cargando actividades', rId, fId);
-                api.cargarActividades(fId, rId);
-              }
-            } catch (eAuto) {
-              console.warn('[SOLICITUDES] autoseleccionar fallback error:', eAuto);
+            // ✅ Autoselección + cargar actividades
+            if (raes.length === 1 && fichas.length === 1) {
+              const rId = raes[0].id_rae ?? raes[0].id;
+              const fId = fichas[0].id_ficha ?? fichas[0].id;
+              selectores.selectRae.value = rId;
+              selectores.selectFichas.value = fId;
+              api.cargarActividades(fId, rId);
             }
           });
+        }
 
-          selectores.selectPrograma.dataset.boundChange = "1";
+        // ✅ Marcar que el listener del programa quedó ligado
+        selectores.selectPrograma.dataset.boundChange = "1";
 
-          // ✅ Cargar actividades al cambiar RAE
-          if (selectores.selectRae && !selectores.selectRae.dataset.boundAct) {
+        // ✅ Cargar actividades al cambiar RAE
+        if (selectores.selectRae && !selectores.selectRae.dataset.boundAct) {
             selectores.selectRae.addEventListener("change", () => {
               const fichaId = selectores.selectFichas?.value || "";
               const raeId = selectores.selectRae?.value || "";
-              console.debug('[SOLICITUDES] selectRae changed, ficha=', fichaId, 'rae=', raeId);
               api.cargarActividades(fichaId, raeId);
             });
             selectores.selectRae.dataset.boundAct = "1";
@@ -901,13 +962,33 @@ const api = {
             selectores.selectFichas.addEventListener("change", () => {
               const fichaId = selectores.selectFichas?.value || "";
               const raeId = selectores.selectRae?.value || "";
-              console.debug('[SOLICITUDES] selectFichas changed, ficha=', fichaId, 'rae=', raeId);
               api.cargarActividades(fichaId, raeId);
             });
-            selectores.selectFichas.dataset.boundAct = "1";
+
+            // ✅ Marcar que el listener del programa quedó ligado
+            selectores.selectPrograma.dataset.boundChange = "1";
+
+            // ✅ Cargar actividades al cambiar RAE
+            if (selectores.selectRae && !selectores.selectRae.dataset.boundAct) {
+              selectores.selectRae.addEventListener("change", () => {
+                const fichaId = selectores.selectFichas?.value || "";
+                const raeId = selectores.selectRae?.value || "";
+                api.cargarActividades(fichaId, raeId);
+              });
+              selectores.selectRae.dataset.boundAct = "1";
+            }
+
+            // ✅ Cargar actividades al cambiar Ficha
+            if (selectores.selectFichas && !selectores.selectFichas.dataset.boundAct) {
+              selectores.selectFichas.addEventListener("change", () => {
+                const fichaId = selectores.selectFichas?.value || "";
+                const raeId = selectores.selectRae?.value || "";
+                api.cargarActividades(fichaId, raeId);
+              });
+              selectores.selectFichas.dataset.boundAct = "1";
+            }
           }
         }
-      }
 
       // ✅ NUEVO: BODEGAS
       if (selectores.selectBodega) {
@@ -916,7 +997,6 @@ const api = {
         const resB = await fetch(`${API}?accion=bodegas`);
           if (resB.ok) {
             const bodegas = await resB.json();
-            console.debug('[SOLICITUDES] bodegas fetched:', bodegas);
             if (Array.isArray(bodegas) && bodegas.length) {
               bodegas.forEach((b) => {
                 const opt = document.createElement("option");
@@ -973,7 +1053,6 @@ const api = {
               const resSub = await fetch(`${API}?accion=subbodegas&bodega=${encodeURIComponent(bodegaId)}`);
                 if (selectores.selectSubBodega && resSub.ok) {
                   const subs = await resSub.json();
-                  console.debug('[SOLICITUDES] subbodegas fetched for bodega', bodegaId, subs);
                 selectores.selectSubBodega.innerHTML = '<option value="">Seleccione una subbodega</option>';
 
                 if (Array.isArray(subs) && subs.length) {
@@ -1504,7 +1583,7 @@ async function marcarEntregada(idSolicitud) {
 //  MODAL
 // ============================================================
 const modal = {
-  abrir() {
+  async abrir() {
     if (!selectores.modal) return;
 
     selectores.modal.classList.add("sol-modal-show");
@@ -1515,7 +1594,7 @@ const modal = {
     this.limpiarFormulario();
     // Refrescar selectores al abrir modal para asegurar que bodegas/subbodegas/materiales están cargados
     try {
-      api.cargarSelectores();
+      await api.cargarSelectores();
     } catch (e) {
       console.warn('[SOLICITUDES] error refrescando selectores al abrir modal:', e);
     }
@@ -1740,6 +1819,7 @@ const app = {
 document.addEventListener("DOMContentLoaded", () => {
   safeLucideCreateIcons();
   console.log("[SOLICITUDES] API =", API);
+  initLimitesCaracteres();
   app.inicializar();
 
   // ✅ Si no tiene permiso para crear, ocultamos el botón

@@ -374,32 +374,40 @@ async function cargarAprendices() {
 }
 
 // =========================
-// LOAD INSTRUCTORS
+// LOAD INSTRUCTORS (with program filter)
 // =========================
-async function cargarInstructores() {
+async function cargarInstructores(id_programa = null) {
   try {
-    console.log("Solicitando instructores desde:", `${API_URL}?accion=instructores`);
-    const res = await fetch(`${API_URL}?accion=instructores`)
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}: ${res.statusText}`)
-    }
-    
-    const data = await res.json()
-    console.log("Instructores recibidos:", data);
-    
-    if (Array.isArray(data)) {
-      instructores = data
-      console.log(`Se cargaron ${data.length} instructores`);
-    } else {
-      instructores = []
-      console.error("La respuesta de instructores no es un array:", data)
+    let url = `${API_URL}?accion=instructores`;
+
+    if (id_programa) {
+      url = `${API_URL}?accion=instructoresPorPrograma&id_programa=${id_programa}`;
+      console.log("Cargando instructores para programa:", id_programa);
     }
 
-    renderChecklistInstructores()
-  } catch (error) {
-    console.error("Error al cargar instructores:", error)
-    instructores = []
-    renderChecklistInstructores()
+    console.log("Solicitando instructores desde:", url);
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
+
+    const data = await res.json();
+    console.log("Instructores recibidos:", data);
+
+    if (Array.isArray(data)) {
+      instructores = data;
+      console.log(`Se cargaron ${data.length} instructores para el programa ${id_programa || "todos"}`);
+    } else {
+      instructores = [];
+      console.error("La respuesta de instructores no es un array:", data);
+    }
+
+    renderChecklistInstructores();
+  }
+  catch (error) {
+    console.error("Error al cargar instructores:", error);
+    instructores = [];
+    renderChecklistInstructores();
   }
 }
 
@@ -626,19 +634,35 @@ function renderChecklistAprendices() {
 }
 
 function renderChecklistInstructores() {
-  if (!listaInstructoresSeleccionados) return
+    if (!listaInstructoresSeleccionados) return;
 
-  if (!Array.isArray(instructores) || instructores.length === 0) {
-    listaInstructoresSeleccionados.innerHTML = `
-      <div class="text-center text-muted-foreground py-8">
-        <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-        <p class="text-sm">No hay instructores disponibles</p>
-      </div>
-    `
-    return
-  }
+    // If no programs is selected
+    const id_programa = inputPrograma ? inputPrograma.value : null;
+    if (!id_programa && !selectedFicha?.id_programa) {
+      listaInstructoresSeleccionados.innerHTML = `
+        <div class="text-center text-muted-foreground py-8">
+          <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          <p class="text-sm">Primero debe seleccionar un programa de formación</p>
+          <p class="text-xs text-gray-500 mt-1">Los instructores se mostrarán según el programa seleccionado</p>
+        </div>
+      `;
+      return;
+    }
+
+    if (!Array.isArray(instructores) || instructores.length === 0) {
+      listaInstructoresSeleccionados.innerHTML = `
+        <div class="text-center text-muted-foreground py-8">
+          <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <p class="text-sm">No hay instructores disponibles para este programa</p>
+          <p class="text-xs text-gray-500 mt-1">Asocie instructores al programa desde la gestión de programas</p>
+        </div>
+      `;
+      return;
+    }
 
   // Filter by search
   const searchTerm = (selectInstructor && selectInstructor.value ? selectInstructor.value.toLowerCase() : '')
@@ -773,7 +797,7 @@ function eliminarEstudiante(id) {
 }
 
 function openModalFicha(editFicha = null) {
-  selectedFicha = editFicha
+  selectedFicha = editFicha;
   modalFicha.classList.add("active")
 
   // Reset selections
@@ -830,11 +854,20 @@ function openModalFicha(editFicha = null) {
     originalEditData = null
   }
 
-  renderOpcionesPrograma()
-  renderOpcionesAprendices()
-  renderChecklistAprendices()
-  renderChecklistInstructores()
-  renderOpcionesJefeGrupo()
+  renderOpcionesPrograma();
+  renderOpcionesAprendices();
+  renderChecklistAprendices();
+
+  // Load instructors only if a program is already selected (in editing)
+  if (editFicha && editFicha.id_programa) {
+    cargarInstructores(editFicha.id_programa);
+  } else {
+    // During creation, do not load instructors until a program is selected
+    instructores = [];
+    renderChecklistInstructores();
+  }
+  
+  renderOpcionesJefeGrupo();
 }
 
 async function cargarEstudiantesDeFicha(idFicha) {
@@ -884,13 +917,28 @@ async function cargarInstructoresDeFicha(idFicha) {
       }
       
       console.log(`Se cargaron ${data.length} instructores`);
-      renderChecklistInstructores();
+
+      // Upload the complete list of instructors for this program
+      const ficha = fichas.find(f => String(f.id) === String(idFicha));
+      if (ficha && ficha.id_programa) {
+        await cargarInstructores(ficha.id_programa);
+      } else {
+        renderChecklistInstructores();
+      }
+
       renderOpcionesJefeGrupo(); // Update group leader options
     } else {
       instructoresSeleccionados = [];
       jefeGrupoSeleccionado = null;
       console.log('No se encontraron instructores para esta ficha');
-      renderChecklistInstructores();
+
+      // Upload program instructors if they exist
+      const ficha = fichas.find(f => String(f.id) === String(idFicha));
+      if (ficha && ficha.id_programa) {
+        await cargarInstructores(ficha.id_programa);
+      } else {
+        renderChecklistInstructores();
+      }
     }
   } catch (error) {
     console.error("Error al cargar instructores de la ficha:", error);
@@ -1702,15 +1750,20 @@ if (btnIrPaso2) {
     if (validarPaso1()) {
       // Verify if the ficha number already exists
       const numeroFicha = inputNumeroFicha.value.trim();
-      const fichaExistente = fichas.find(f => f.numero_ficha == numeroFicha);
-      if (fichaExistente) {
-        showFlowbiteAlert("warning", "El número de ficha que se intenta crear ya existe.");
+      const fichaExistente = fichas.find(f => String(f.numero_ficha) === String(numeroFicha));
+      const isEdit = hiddenFichaId.value !== "" && hiddenFichaId.value !== null && hiddenFichaId.value !== undefined;
+
+      if (fichaExistente && (!isEdit || String(fichaExistente.id) !== String(hiddenFichaId.value))) {
+        const mensaje = isEdit
+          ? "El número de ficha ingresado ya existe."
+          : "El número de ficha que se intenta crear ya existe.";
+        showFlowbiteAlert("warning", mensaje);
         return;
       }
       paso1Ficha.classList.add("hidden")
       paso2Ficha.classList.remove("hidden")
     }
-  })
+  });
 }
 
 if (btnVolverPaso1) {
@@ -1753,6 +1806,42 @@ if (btnVolverPaso3) {
     paso3Ficha.classList.remove("hidden");
   })
 }
+
+// ==========================================
+// NUEVO LISTENER PARA CAMBIOS EN PROGRAMA
+// ==========================================
+// Cuando cambia el programa, actualizar instructores
+if (inputPrograma) {
+  inputPrograma.addEventListener("change", async function() {
+    const id_programa = this.value;
+    
+    if (id_programa) {
+      // Recargar instructores con el nuevo filtro
+      await cargarInstructores(id_programa);
+      
+      // Limpiar selecciones anteriores si estamos en edición y el programa cambió
+      if (selectedFicha) {
+        const programaAnterior = selectedFicha.id_programa;
+        if (String(programaAnterior) !== String(id_programa)) {
+          instructoresSeleccionados = [];
+          jefeGrupoSeleccionado = null;
+          toastInfo("El programa ha cambiado. Por favor, seleccione los instructores nuevamente.");
+        }
+      }
+      
+      renderChecklistInstructores();
+      renderOpcionesJefeGrupo();
+    } else {
+      // Si se deselecciona el programa, limpiar instructores
+      instructores = [];
+      instructoresSeleccionados = [];
+      jefeGrupoSeleccionado = null;
+      renderChecklistInstructores();
+      renderOpcionesJefeGrupo();
+    }
+  });
+}
+// ==========================================
 
 // Add student with Enter
 if (selectEstudiante) {
@@ -1806,6 +1895,13 @@ function validarPaso1() {
 
   if (!numeroRegex.test(inputNumeroFicha.value.trim())) {
     toastError("El número de ficha solo puede contener números.")
+    inputNumeroFicha.focus()
+    return false
+  }
+
+  const numeroFichaLength = inputNumeroFicha.value.trim().length
+  if (numeroFichaLength < 7 || numeroFichaLength > 10) {
+    toastError("El número de ficha debe tener entre 7 y 10 caracteres.")
     inputNumeroFicha.focus()
     return false
   }
@@ -2112,6 +2208,122 @@ async function inicializar() {
 
 // Start
 inicializar();
+
+// =========================
+// CHAR COUNTERS INITIALIZATION
+// =========================
+function initCharCounters() {
+  const fields = document.querySelectorAll("input[maxlength], textarea[maxlength]")
+
+  fields.forEach((el) => {
+    if (!el || el.dataset.noCounter === "1") return
+
+    const max = parseInt(el.getAttribute("maxlength"), 10)
+    const min = parseInt(el.getAttribute("minlength"), 10) || 0
+    if (!max || max <= 0) return
+
+    const wrapper = el.closest("[data-char-wrap]") || el.parentElement
+    if (!wrapper) return
+
+    const key = el.id || el.name || "field"
+
+    let msg = wrapper.querySelector(`[data-char-limit-msg-for="${key}"]`)
+    if (!msg) {
+      msg = document.createElement("p")
+      msg.setAttribute("data-char-limit-msg-for", key)
+      msg.className = "mt-1 text-[11px] text-muted-foreground select-none hidden"
+      msg.setAttribute("aria-live", "polite")
+      wrapper.appendChild(msg)
+    }
+
+    const update = () => {
+      const len = (el.value || "").length
+      
+      if (min > 0 && len > 0 && len < min) {
+        msg.textContent = `Mínimo ${min} caracteres requeridos`
+        msg.classList.remove("hidden")
+      } else if (len >= max) {
+        msg.textContent = "Limite de caracteres alcanzados"
+        msg.classList.remove("hidden")
+      } else {
+        msg.classList.add("hidden")
+      }
+    }
+
+    el.addEventListener("input", update)
+    update()
+  })
+}
+
+function onlyDigits(value) {
+  return (value || "").replace(/\D+/g, "")
+}
+
+function bindOnlyNumbers(inputEl) {
+  if (!inputEl) return
+
+  inputEl.setAttribute("inputmode", "numeric")
+
+  inputEl.addEventListener("keydown", function (e) {
+    const allowedKeys = [
+      "Backspace", "Delete", "Tab", "Escape", "Enter",
+      "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+      "Home", "End"
+    ]
+
+    if ((e.ctrlKey || e.metaKey) && ["a", "c", "v", "x", "z", "y"].includes((e.key || "").toLowerCase())) {
+      return
+    }
+
+    if (allowedKeys.includes(e.key)) return
+
+    if (/^\d$/.test(e.key)) return
+
+    e.preventDefault()
+  })
+
+  inputEl.addEventListener("input", function () {
+    const cleaned = onlyDigits(inputEl.value)
+    if (inputEl.value !== cleaned) {
+      const pos = inputEl.selectionStart || cleaned.length
+      inputEl.value = cleaned
+      try { inputEl.setSelectionRange(pos, pos) } catch (e) {}
+    }
+  })
+
+  inputEl.addEventListener("paste", function (e) {
+    e.preventDefault()
+    const text = (e.clipboardData || window.clipboardData).getData("text") || ""
+    const cleaned = onlyDigits(text)
+    const max = parseInt(inputEl.getAttribute("maxlength") || "9999", 10)
+    const current = inputEl.value || ""
+    const start = inputEl.selectionStart ?? current.length
+    const end = inputEl.selectionEnd ?? current.length
+    const before = current.slice(0, start)
+    const after = current.slice(end)
+    let next = (before + cleaned + after)
+    if (next.length > max) next = next.slice(0, max)
+    inputEl.value = next
+    inputEl.dispatchEvent(new Event("input", { bubbles: true }))
+  })
+}
+
+// Initialize char counters and number validation for ficha number
+document.addEventListener("DOMContentLoaded", function () {
+  initCharCounters()
+  bindOnlyNumbers(inputNumeroFicha)
+})
+
+// If already loaded (scripts at bottom), init immediately
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", function () {
+    initCharCounters()
+    bindOnlyNumbers(inputNumeroFicha)
+  })
+} else {
+  initCharCounters()
+  bindOnlyNumbers(inputNumeroFicha)
+}
 
 // Expose necessary functions to global functions
 window.eliminarEstudiante = eliminarEstudiante;

@@ -175,6 +175,24 @@ class FichaModel {
         }
     }
 
+    public function obtenerInstructoresPorPrograma($id_programa) {
+        try { 
+            $sql = "SELECT DISTINCT u.id_usuario, u.nombre_completo, u.numero_documento, u.correo
+                    FROM usuarios u
+                    INNER JOIN instructores_programas ip ON u.id_usuario = ip.id_usuario
+                    WHERE u.cargo = 'Instructor' 
+                    AND u.estado = 'activo'
+                    AND ip.id_programa = ?
+                    ORDER BY u.nombre_completo";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([$id_programa]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
     public function obtenerInstructoresDeFicha($id_ficha) {
         try {
             $sql = "SELECT 

@@ -184,9 +184,12 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         <input type="hidden" id="id_ficha">
 
         <!-- Number -->
-        <div class="space-y-2">
+        <div class="space-y-2" data-char-wrap>
           <label for="numero_ficha" class="text-sm font-medium">Número de ficha*</label>
           <input id="numero_ficha" type="text"
+                 minlength="7"
+                 maxlength="10"
+                 inputmode="numeric"
                  class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
                  placeholder="2567890">
         </div>
@@ -206,9 +209,9 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           <select id="jornada"
             class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga">
             <option value="">Seleccione</option>
-            <option value="Mañana">Mañana</option>
-            <option value="Tarde">Tarde</option>
-            <option value="Noche">Noche</option>
+            <option value="Diurna">Diurna</option>
+            <option value="Mixta">Mixta</option>
+            <option value="Nocturna">Nocturna</option>
           </select>
         </div>
 
@@ -220,7 +223,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             <option value="">Seleccione</option>
             <option value="Presencial">Presencial</option>
             <option value="Virtual">Virtual</option>
-            <option value="Mixta">Mixta</option>
+            <option value="A distancia">A distancia</option>
           </select>
         </div>
 

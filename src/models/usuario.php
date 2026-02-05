@@ -212,6 +212,52 @@ class Usuario {
 
     // Update user data (password update is optional)
     public function actualizar($id_usuario, $nombre, $tipo_doc, $num_doc, $telefono, $cargo, $correo, $password, $direccion, $id_programa = null) {
+        // =============================
+        // Guard: evitar cambiar cargo de Instructor con vinculaciones
+        try {
+            $stmtCur = $this->conn->prepare("SELECT cargo, id_programa FROM usuarios WHERE id_usuario = :id LIMIT 1");
+            $stmtCur->execute([":id" => $id_usuario]);
+            $cur = $stmtCur->fetch(PDO::FETCH_ASSOC);
+
+            if ($cur) {
+                $cargoActual = trim((string)($cur['cargo'] ?? ''));
+                if (strcasecmp($cargoActual, 'Instructor') === 0 && strcasecmp(trim((string)$cargo), 'Instructor') !== 0) {
+                    $tieneVinculos = false;
+                    if (!empty($cur['id_programa'])) $tieneVinculos = true;
+
+                    // tablas típicas
+                    $checks = [
+                        ["table" => "instructor_programa", "sql" => "SELECT 1 FROM instructor_programa WHERE id_instructor = :id OR id_usuario = :id LIMIT 1"],
+                            ["table" => "instructores_programas", "sql" => "SELECT 1 FROM instructores_programas WHERE id_instructor = :id OR id_usuario = :id LIMIT 1"],
+                            ["table" => "fichas_instructores", "sql" => "SELECT 1 FROM fichas_instructores WHERE id_instructor = :id OR id_usuario = :id LIMIT 1"],
+                            ["table" => "instructor_ficha", "sql" => "SELECT 1 FROM instructor_ficha WHERE id_instructor = :id OR id_usuario = :id LIMIT 1"],
+                    ];
+
+                    foreach ($checks as $c) {
+                        try {
+                            $res = $this->conn->query("SHOW TABLES LIKE '" . $c['table'] . "'");
+                            if ($res && $res->fetchColumn()) {
+                                $stmt = $this->conn->prepare($c['sql']);
+                                $stmt->execute([':id' => $id_usuario]);
+                                if ($stmt->fetchColumn()) {
+                                    $tieneVinculos = true;
+                                    break;
+                                }
+                            }
+                        } catch (\Throwable $e) {
+                            // ignore and continue
+                        }
+                    }
+
+                    if ($tieneVinculos) {
+                        // Prevent update
+                        return false;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // best-effort: if check fails, fallthrough to allow update (controller should guard)
+        }
 
         if ($password !== null && $password !== "") {
             $sql = "UPDATE usuarios SET
