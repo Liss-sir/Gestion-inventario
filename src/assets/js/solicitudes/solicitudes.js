@@ -60,7 +60,6 @@ const USUARIO = (() => {
 
 const CARGOS_FILTRAN_PROPIAS = new Set(["Instructor", "Pasante"]);
 
-
 // ============================================================
 // ✅ PERMISOS (inyectados desde PHP)
 // ============================================================
@@ -508,6 +507,63 @@ const utilidades = {
 // ============================================================
 // ✅ HELPER: cargar opciones de materiales de forma segura
 // ============================================================
+
+function idsProgramasAsignadosDesdeSesion(uRaw) {
+  if (!uRaw || typeof uRaw !== "object") return [];
+
+  // soporta varias formas típicas
+  const candidatos = [
+    uRaw.programas_asignados,
+    uRaw.programas,
+    uRaw.programasAsignados,
+    uRaw.programa_ids,
+    uRaw.programaIds,
+    uRaw.ids_programas,
+  ];
+
+  // 1) Si ya viene un array (de ids o de objetos)
+  for (const c of candidatos) {
+    if (Array.isArray(c)) {
+      // puede ser [1,2] o [{id_programa:1}, ...]
+      return c
+        .map((x) => (typeof x === "object" ? (x.id_programa ?? x.id ?? x) : x))
+        .map((v) => parseInt(v, 10))
+        .filter((v) => !Number.isNaN(v));
+    }
+  }
+
+  // 2) Si viene string tipo "1,2,3"
+  for (const c of candidatos) {
+    if (typeof c === "string" && c.trim()) {
+      return c
+        .split(",")
+        .map((v) => parseInt(v.trim(), 10))
+        .filter((v) => !Number.isNaN(v));
+    }
+  }
+
+  return [];
+}
+
+function filtrarProgramasPorUsuario(programas) {
+  if (!Array.isArray(programas)) return [];
+
+  // Solo filtrar para Instructor / Pasante
+  if (!CARGOS_FILTRAN_PROPIAS.has(USUARIO.cargo)) return programas;
+
+  const idsAsignados = idsProgramasAsignadosDesdeSesion(USUARIO.raw);
+
+  // ✅ si NO hay asignaciones en sesión, por seguridad NO mostrar nada
+  // (evita que vea todos los programas)
+  if (!idsAsignados.length) return [];
+
+  return programas.filter((p) => {
+    const id = parseInt(p.id_programa ?? p.id ?? null, 10);
+    return !Number.isNaN(id) && idsAsignados.includes(id);
+  });
+}
+
+
 function setMaterialOptions(materialesArray, modo = "normal") {
   if (!selectores.selectMaterial) return;
 
@@ -858,32 +914,51 @@ const api = {
       // PROGRAMAS
       if (selectores.selectPrograma) {
         const resProg = await fetch(`${API}?accion=programas`);
+
         if (resProg.ok) {
-          const programas = await resProg.json();
+          let programas = await resProg.json();
+          programas = filtrarProgramasPorUsuario(programas);
+
           selectores.selectPrograma.innerHTML = '<option value="">Seleccionar programa</option>';
-          if (Array.isArray(programas)) {
+          selectores.selectPrograma.disabled = false;
+
+          if (Array.isArray(programas) && programas.length) {
             programas.forEach((p) => {
               const opt = document.createElement("option");
               opt.value = p.id_programa;
               const fullText = `${p.codigo_programa} - ${p.nombre_programa}`;
               opt.textContent = truncateText(fullText, 27);
-              opt.title = fullText; // Mostrar texto completo en tooltip
+              opt.title = fullText;
               selectores.selectPrograma.appendChild(opt);
             });
+          } else {
+            selectores.selectPrograma.innerHTML = '<option value="">No tiene programas asignados</option>';
+            selectores.selectPrograma.disabled = true;
           }
+        } else {
+          selectores.selectPrograma.innerHTML = '<option value="">Error cargando programas</option>';
+          selectores.selectPrograma.disabled = true;
         }
 
-        // ✅ Evitar duplicar listener
+        // Listener Programa (UNA sola vez)
         if (!selectores.selectPrograma.dataset.boundChange) {
           selectores.selectPrograma.addEventListener("change", async function () {
-            const programaId = this.value;
+            const programaId = this.value || "";
 
             if (selectores.selectActividad) {
               selectores.selectActividad.innerHTML = '<option value="">Seleccione ficha y RAE</option>';
+              selectores.selectActividad.value = "";
             }
 
-            if (selectores.selectRae) selectores.selectRae.innerHTML = '<option value="">Seleccionar RAE</option>';
-            if (selectores.selectFichas) selectores.selectFichas.innerHTML = '<option value="">Seleccionar ficha</option>';
+            if (selectores.selectRae) {
+              selectores.selectRae.innerHTML = '<option value="">Seleccionar RAE</option>';
+              selectores.selectRae.value = "";
+            }
+
+            if (selectores.selectFichas) {
+              selectores.selectFichas.innerHTML = '<option value="">Seleccionar ficha</option>';
+              selectores.selectFichas.value = "";
+            }
 
             if (!programaId) return;
 
@@ -892,10 +967,8 @@ const api = {
               fetch(`${API}?accion=fichas&programa=${encodeURIComponent(programaId)}`),
             ]);
 
-            // ✅ ESTO ES LO QUE TE FALTA
             let raes = [];
             let fichas = [];
-
             if (resRaes.ok) raes = await resRaes.json();
             if (resFichas.ok) fichas = await resFichas.json();
 
@@ -933,62 +1006,40 @@ const api = {
               }
             }
 
-            // ✅ Autoselección + cargar actividades
-            if (raes.length === 1 && fichas.length === 1) {
+            // Autoselección + cargar actividades
+            if (Array.isArray(raes) && raes.length === 1 && Array.isArray(fichas) && fichas.length === 1) {
               const rId = raes[0].id_rae ?? raes[0].id;
               const fId = fichas[0].id_ficha ?? fichas[0].id;
-              selectores.selectRae.value = rId;
-              selectores.selectFichas.value = fId;
+              if (selectores.selectRae) selectores.selectRae.value = rId;
+              if (selectores.selectFichas) selectores.selectFichas.value = fId;
               api.cargarActividades(fId, rId);
             }
           });
+
+          selectores.selectPrograma.dataset.boundChange = "1";
         }
 
-        // ✅ Marcar que el listener del programa quedó ligado
-        selectores.selectPrograma.dataset.boundChange = "1";
+        // Listener Ficha (UNA sola vez)
+        if (selectores.selectFichas && !selectores.selectFichas.dataset.boundAct) {
+          selectores.selectFichas.addEventListener("change", () => {
+            const fichaId = selectores.selectFichas?.value || "";
+            const raeId = selectores.selectRae?.value || "";
+            api.cargarActividades(fichaId, raeId);
+          });
+          selectores.selectFichas.dataset.boundAct = "1";
+        }
 
-        // ✅ Cargar actividades al cambiar RAE
+        // Listener RAE (UNA sola vez)
         if (selectores.selectRae && !selectores.selectRae.dataset.boundAct) {
-            selectores.selectRae.addEventListener("change", () => {
-              const fichaId = selectores.selectFichas?.value || "";
-              const raeId = selectores.selectRae?.value || "";
-              api.cargarActividades(fichaId, raeId);
-            });
-            selectores.selectRae.dataset.boundAct = "1";
-          }
-
-          // ✅ Cargar actividades al cambiar Ficha
-          if (selectores.selectFichas && !selectores.selectFichas.dataset.boundAct) {
-            selectores.selectFichas.addEventListener("change", () => {
-              const fichaId = selectores.selectFichas?.value || "";
-              const raeId = selectores.selectRae?.value || "";
-              api.cargarActividades(fichaId, raeId);
-            });
-
-            // ✅ Marcar que el listener del programa quedó ligado
-            selectores.selectPrograma.dataset.boundChange = "1";
-
-            // ✅ Cargar actividades al cambiar RAE
-            if (selectores.selectRae && !selectores.selectRae.dataset.boundAct) {
-              selectores.selectRae.addEventListener("change", () => {
-                const fichaId = selectores.selectFichas?.value || "";
-                const raeId = selectores.selectRae?.value || "";
-                api.cargarActividades(fichaId, raeId);
-              });
-              selectores.selectRae.dataset.boundAct = "1";
-            }
-
-            // ✅ Cargar actividades al cambiar Ficha
-            if (selectores.selectFichas && !selectores.selectFichas.dataset.boundAct) {
-              selectores.selectFichas.addEventListener("change", () => {
-                const fichaId = selectores.selectFichas?.value || "";
-                const raeId = selectores.selectRae?.value || "";
-                api.cargarActividades(fichaId, raeId);
-              });
-              selectores.selectFichas.dataset.boundAct = "1";
-            }
-          }
+          selectores.selectRae.addEventListener("change", () => {
+            const fichaId = selectores.selectFichas?.value || "";
+            const raeId = selectores.selectRae?.value || "";
+            api.cargarActividades(fichaId, raeId);
+          });
+          selectores.selectRae.dataset.boundAct = "1";
         }
+      }
+
 
       // ✅ NUEVO: BODEGAS
       if (selectores.selectBodega) {
@@ -1078,7 +1129,6 @@ const api = {
               }
             }
           });
-
           selectores.selectBodega.dataset.boundChange = "1";
         }
       }
@@ -1106,13 +1156,15 @@ const api = {
         selectores.selectSubBodega.dataset.boundChange = "1";
       }
 
-      // ✅ CARGA INICIAL DE MATERIALES (sin filtros)
-      const resMat = await fetch(`${API}?accion=materiales`);
-      if (resMat.ok && selectores.selectMaterial) {
-        const mats = await resMat.json();
-        setMaterialOptions(mats, "global");
-      } else if (selectores.selectMaterial) {
-        selectores.selectMaterial.innerHTML = '<option value="">Error cargando materiales</option>';
+      // ✅ CARGA INICIAL DE MATERIALES (sin filtros) SOLO si no hay bodega activa
+      if (!estadoApp.filtrosInventario?.bodega) {
+        const resMat = await fetch(`${API}?accion=materiales`);
+        if (resMat.ok && selectores.selectMaterial) {
+          const mats = await resMat.json();
+          setMaterialOptions(mats, "global");
+        } else if (selectores.selectMaterial) {
+          selectores.selectMaterial.innerHTML = '<option value="">Error cargando materiales</option>';
+        }
       }
     } catch (e) {
       utilidades.mostrarError(`Error cargando selectores: ${e.message}`);
@@ -1697,7 +1749,7 @@ const modal = {
       return;
     }
 
-    if (!USUARIO?.id) {
+    if (USUARIO.id === null || Number.isNaN(USUARIO.id)) {
       utilidades.mostrarError("No se pudo identificar el usuario en sesión.");
       return;
     }
