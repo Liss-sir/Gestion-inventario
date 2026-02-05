@@ -98,16 +98,16 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
   <!-- BUSCADOR A LA IZQUIERDA -->
   <div class="relative w-full max-w-xs">
+    <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"></circle>
+      <path d="m21 21-4.35-4.35"></path>
+    </svg>
     <input
       type="text"
       id="inputBuscar"
       placeholder="Buscar por nombre o descripción..."
-      class="w-full rounded-md border border-input bg-background px-3 py-2 pl-10 text-sm input-siga"
+      class="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm input-siga"
     />
-    <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-      <circle cx="11" cy="11" r="8"></circle>
-      <path d="m21 21-4.35-4.35"></path>
-    </svg>
   </div>
 
   <!-- FILTRO A LA DERECHA -->
@@ -234,7 +234,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                             <input 
                                 type="text" 
                                 id="unidad" 
-                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" 
+                                class="w-full rounded-md border border-input bg-background pl-3 pr-10 py-2 text-sm input-siga" 
                                 placeholder="Buscar unidad..."
                                 autocomplete="off"
                             />
@@ -416,7 +416,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                             <input 
                                 type="text" 
                                 id="editUnidad" 
-                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" 
+                                class="w-full rounded-md border border-input bg-background pl-3 pr-10 py-2 text-sm input-siga" 
                                 placeholder="Buscar unidad..."
                                 autocomplete="off"
                             />
