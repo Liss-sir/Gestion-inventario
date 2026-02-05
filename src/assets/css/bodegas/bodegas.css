@@ -1,0 +1,288 @@
+/* =========================================================
+   VARIABLES GLOBALES DEL MÓDULO BODEGAS
+   (Ajustadas a tu sistema SIGA)
+========================================================= */
+:root {
+  --color-primary: #39A900;
+  --color-primary-dark: #007832;
+  --color-danger: #d62828;
+  --color-muted: #6b7280;
+  --color-bg: #ffffff;
+  --color-border: #e5e7eb;
+  --color-card: #ffffff;
+  --color-card-foreground: #00304D;
+  --radius: 0.75rem;
+}
+
+/* =========================================================
+   INPUTS SIGA
+========================================================= */
+.input-siga {
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  transition: all .15s ease;
+}
+
+.input-siga:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(57,169,0,0.25);
+}
+
+/* =========================================================
+   BOTONES
+========================================================= */
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  padding: 0.55rem 1.2rem;
+  border-radius: var(--radius);
+  transition: 0.2s;
+}
+
+.btn-primary:hover {
+  opacity: 0.85;
+}
+
+.btn-secondary {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  padding: 0.55rem 1.2rem;
+  border-radius: var(--radius);
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  color: white;
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--radius);
+}
+
+/* =========================================================
+   TABLA
+========================================================= */
+table thead {
+  background: #f3f4f6;
+}
+
+table th, 
+table td {
+  padding: 0.75rem 1rem;
+}
+
+/* =========================================================
+   TARJETAS
+========================================================= */
+.card-bodega {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-card);
+  padding: 1rem;
+  transition: .2s;
+}
+
+.card-bodega:hover {
+  transform: scale(1.015);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+/* =========================================================
+   MODAL
+========================================================= */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  backdrop-filter: blur(2px);
+  background: rgba(0,0,0,0.35);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-container {
+  background: var(--color-card);
+  color: var(--color-card-foreground);
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 540px;
+  border-radius: var(--radius);
+  animation: slideDown .25s ease;
+}
+
+.modal-close-btn {
+  background: transparent;
+  padding: 0.4rem;
+  border-radius: 50%;
+}
+
+.badge-estado-activo {
+  background-color: color-mix(in srgb, var(--color-primary) 29%, transparent);
+  color: var(--color-primary);
+}
+
+.badge-estado-inactivo {
+  background-color: color-mix(in srgb, #64748b 18%, transparent);
+  color: #64748b;
+}
+
+/* Animación */
+@keyframes slideDown {
+  from {
+    transform: translateY(-12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0px);
+    opacity: 1;
+  }
+}
+
+/* =========================================================
+   BADGES
+========================================================= */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  width: fit-content;
+}
+
+/* ===== FIX BADGE ESTADO EN MODAL DETALLE ===== */
+#detalleEstado {
+  display: inline-flex !important;
+  width: fit-content !important;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.detalle-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: #374151;
+  width: fit-content;
+}
+
+.badge-disponible {
+  background-color: #dcfce7;
+  color: #15803d;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-prestado {
+  background-color: #e5e7eb;
+  color: #374151;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ===== BADGES ESTADO MATERIALES ===== */
+.badge-material-disponible {
+  background-color: #dcfce7;
+  color: #15803d;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-material-prestado {
+  background-color: #e5e7eb;
+  color: #475569;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ===== CHIP PARA CLASIFICACIÓN / TIPO ===== */
+.detalle-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: #374151;
+  width: fit-content;
+}
+
+/* ===== FIX ESTADO BODEGA ===== */
+#detalleEstado {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ===== BADGES MATERIALES ===== */
+.badge-material-disponible {
+  background-color: #dcfce7;
+  color: #15803d;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-material-prestado {
+  background-color: #e5e7eb;
+  color: #475569;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* ===== CONTEXT MENU MÁS COMPACTO ===== */
+#context-menu {
+  width: 190px;      
+  border-radius: 0.75rem;
+  position: fixed;
+  z-index: 1000;
+}
+
+#context-menu ul {
+  padding: 0.25rem 0;
+}
+
+#context-menu li button {
+  padding: 0.45rem 0.75rem;
+  font-size: 0.8rem;
+  gap: 0.5rem;
+}
+
+#context-menu i {
+  width: 16px;
+  height: 16px;
+}
+
+#context-menu li.border-t {
+  margin: 0.25rem 0;
+}

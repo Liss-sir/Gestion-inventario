@@ -52,41 +52,49 @@ $stats = [
   <div class="min-h-screen bg-background">
     <!-- Hero Section -->
     <header class="border-b border-border bg-card">
-      <div class="container mx-auto flex h-16 items-center justify-between px-4">
-        <div class="flex items-center gap-2">
-          <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <!-- Package icon -->
-            <i data-lucide="package" class="h-5 w-5 text-primary-foreground"></i>
-          </div>
-          <span class="text-xl font-bold">SIGA</span>
-        </div>
-        <div class="flex items-center gap-4">
-          <!-- Iniciar Sesión -->
-          <a href="/login"
-             class="inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 text-foreground bg-transparent">
-            Iniciar Sesión
-          </a>
-          <!-- Acceder al Sistema -->
-          <a href="/dashboard"
-             class="inline-flex items-center justify-center whitespace-nowrap rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-            Acceder al Sistema
-          </a>
-        </div>
-      </div>
-    </header>
+  <div class="container mx-auto flex h-16 items-center justify-between px-4">
+
+    <!-- Logo + línea + texto -->
+    <div class="flex items-center gap-3">
+
+      <!-- Imagen del logo -->
+      <img src="src/assets/img/logo-sena-negro.png" 
+           alt="Logo SENA"
+           class="h-9 w-auto object-contain">
+
+      <!-- Línea vertical -->
+      <div class="h-8 border-l border-border mx-1"></div>
+
+      <!-- Texto del sistema -->
+      <span class="text-xl font-bold">SIGA</span>
+    </div>
+
+    <!-- Botón Iniciar Sesión -->
+    <div class="flex items-center gap-4">
+      <a href="src/view/login/login.php"
+         class="inline-flex items-center justify-center whitespace-nowrap rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground shadow hover:bg-secondary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+        Iniciar Sesión
+      </a>
+    </div>
+
+  </div>
+</header>
+
+
 
     <main>
       <!-- Hero -->
       <section class="relative overflow-hidden py-24">
-        <div class="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5"></div>
+        <div class="absolute inset-0 hero-bg"></div>
         <div class="container relative mx-auto px-4 text-center">
           <div class="mx-auto max-w-3xl space-y-6">
-            <div class="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
-              <span class="h-2 w-2 rounded-full bg-primary animate-pulse"></span>
-              Sistema de Gestión de Almacén v1.0
-            </div>
+            <div class="inline-flex items-center gap-2 rounded-full bg-badge-secondary px-3 py-1 text-xs font-medium text-badge-secondary">
+            <span class="h-2 w-2 rounded-full bg-badge-secondary-dot "></span>
+            Sistema de Gestión de Almacén v1.0
+            <span class="h-2 w-2 rounded-full bg-badge-secondary-dot"></span>
+          </div>
             <h1 class="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl text-balance">
-              Control total de tu <span class="text-primary">inventario</span> de formación
+              Control total de tu <span class="text-secondary">inventario</span> de formación
             </h1>
             <p class="text-lg text-muted-foreground text-pretty">
               Gestiona materiales, herramientas, solicitudes y evidencias de manera eficiente. Diseñado para centros
@@ -94,15 +102,10 @@ $stats = [
             </p>
             <div class="flex flex-col items-center justify-center gap-4 sm:flex-row">
               <!-- Comenzar ahora -->
-              <a href="/dashboard"
-                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 gap-2">
+              <a href="src/view/login/login.php"
+                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md bg-secondary px-6 py-3 text-sm font-medium text-primary-foreground shadow hover:bg-secondary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 gap-2">
                 Comenzar ahora
                 <i data-lucide="arrow-right" class="h-4 w-4"></i>
-              </a>
-              <!-- Iniciar sesión (hero) -->
-              <a href="/login"
-                 class="inline-flex items-center justify-center whitespace-nowrap rounded-md border border-input bg-background px-6 py-3 text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                Iniciar sesión
               </a>
             </div>
           </div>
@@ -111,40 +114,46 @@ $stats = [
 
       <!-- Features -->
       <section class="border-t border-border bg-card py-20">
-        <div class="container mx-auto px-4">
-          <div class="mb-12 text-center">
-            <h2 class="text-3xl font-bold">Características principales</h2>
-            <p class="mt-2 text-muted-foreground">
-              Todo lo que necesitas para gestionar tu inventario de formación
-            </p>
+  <div class="container mx-auto px-4">
+    <div class="mb-12 text-center">
+      <h2 class="text-3xl font-bold">Características principales</h2>
+      <p class="mt-2 text-muted-foreground">
+        Todo lo que necesitas para gestionar tu inventario de formación
+      </p>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <?php foreach ($features as $index => $feature): ?>
+        <div
+          class="group rounded-xl border border-border bg-background p-6 transition-all hover:border-primary/50 hover:shadow-lg">
+
+          <!-- Ícono dentro del cuadrito verde secundario al 13% -->
+          <div class="mb-4 inline-flex rounded-lg bg-secondary-13 p-3 text-secondary 
+                      group-hover:bg-secondary group-hover:text-secondary-foreground transition-colors">
+            <i data-lucide="<?php echo htmlspecialchars($feature['icon']); ?>" class="h-6 w-6"></i>
           </div>
-          <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <?php foreach ($features as $index => $feature): ?>
-              <div
-                class="group rounded-xl border border-border bg-background p-6 transition-all hover:border-primary/50 hover:shadow-lg">
-                <div
-                  class="mb-4 inline-flex rounded-lg bg-primary/10 p-3 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                  <i data-lucide="<?php echo htmlspecialchars($feature['icon']); ?>" class="h-6 w-6"></i>
-                </div>
-                <h3 class="mb-2 font-semibold">
-                  <?php echo htmlspecialchars($feature['title']); ?>
-                </h3>
-                <p class="text-sm text-muted-foreground">
-                  <?php echo htmlspecialchars($feature['description']); ?>
-                </p>
-              </div>
-            <?php endforeach; ?>
-          </div>
+
+          <h3 class="mb-2 font-semibold">
+            <?php echo htmlspecialchars($feature['title']); ?>
+          </h3>
+
+          <p class="text-sm text-muted-foreground">
+            <?php echo htmlspecialchars($feature['description']); ?>
+          </p>
         </div>
-      </section>
+      <?php endforeach; ?>
+    </div>
+  </div>
+</section>
+
 
       <!-- Stats -->
-      <section class="py-20">
+      <section class="py-20 hero-bg">
         <div class="container mx-auto px-4">
           <div class="grid gap-8 md:grid-cols-4">
             <?php foreach ($stats as $index => $stat): ?>
               <div class="text-center">
-                <p class="text-4xl font-bold text-primary">
+                <p class="text-4xl font-bold text-secondary">
                   <?php echo htmlspecialchars($stat['value']); ?>
                 </p>
                 <p class="mt-1 text-muted-foreground">
@@ -163,6 +172,8 @@ $stats = [
         <p>© 2025 SIGA - Sistema de Gestión de Almacén. Todos los derechos reservados.</p>
       </div>
     </footer>
+
+    <?php include "src/includes/footer.php"; ?>
   </div>
 
   <script>

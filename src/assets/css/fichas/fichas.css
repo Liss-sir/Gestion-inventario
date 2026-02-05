@@ -1,0 +1,91 @@
+/* ===================================
+   FICHAS MODULE STYLES
+   =================================== */
+
+/* Modal overlay styles */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Input styles */
+.input-siga {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-siga:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+  outline: none;
+}
+
+/* Dropdown menu styles */
+.dropdown-menu {
+  position: absolute;
+  z-index: 50;
+  transform-origin: top right;
+  opacity: 0;
+  transform: scale(0.96);
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+
+.dropdown-menu.show {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Avoid dropdown cuts within tables */
+table,
+thead,
+tbody,
+tr,
+td,
+th {
+  overflow: visible;
+}
+
+/* Badge styles - Nivel */
+.badge-nivel-tecnologo, .badge-nivel-tecnico {
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+
+.badge-nivel-default {
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+/* Animation */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out forwards;
+}
+
+/* Avatar background */
+.bg-avatar-secondary-39 {
+  background-color: rgba(16, 185, 129, 0.15);
+}

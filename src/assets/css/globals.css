@@ -1,52 +1,84 @@
-/* ✅ NO uses @import "tailwindcss" ni "tw-animate-css" aquí.
-   Tailwind va por CDN en el HTML. Este archivo solo define tu tema. */
-
 /* ===========================
    PALETA BASE (MODO CLARO)
    =========================== */
 :root {
-  /* Paleta de colores original */
-  --background: oklch(0.98 0.005 240);
-  --foreground: oklch(0.2 0.02 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.02 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.02 260);
-  --primary: oklch(0.55 0.15 160);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0.01 240);
-  --secondary-foreground: oklch(0.3 0.02 260);
-  --muted: oklch(0.95 0.01 240);
-  --muted-foreground: oklch(0.5 0.02 260);
-  --accent: oklch(0.6 0.12 180);
-  --accent-foreground: oklch(0.99 0 0);
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.9 0.01 240);
-  --input: oklch(0.92 0.01 240);
-  --ring: oklch(0.55 0.15 160);
-  --chart-1: oklch(0.55 0.15 160);
-  --chart-2: oklch(0.6 0.12 180);
-  --chart-3: oklch(0.65 0.18 85);
-  --chart-4: oklch(0.6 0.15 280);
-  --chart-5: oklch(0.7 0.2 30);
-  --radius: 0.75rem;
-  --sidebar: oklch(0.99 0 0);
-  --sidebar-foreground: oklch(0.2 0.02 260);
-  --sidebar-primary: oklch(0.55 0.15 160);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.96 0.02 160);
-  --sidebar-accent-foreground: oklch(0.3 0.05 160);
-  --sidebar-border: oklch(0.92 0.01 240);
-  --sidebar-ring: oklch(0.55 0.15 160);
+  /* Paleta SENA */
+  /* Verde principal:  #39A900 */
+  /* Verde oscuro:     #007832 */
+  /* Azul oscuro:      #00304D */
+  /* Morado:           #71277A */
+  /* Cian:             #50E5F9 */
+  /* Amarillo:         #FDC300 */
+  /* Gris claro:       #F6F6F6 */
+  /* Blanco:           #FFFFFF */
+  /* Negro:            #000000 */
 
-  /* Colores adicionales para estados */
-  --success: oklch(0.6 0.18 145);
-  --success-foreground: oklch(0.99 0 0);
-  --warning: oklch(0.75 0.18 85);
-  --warning-foreground: oklch(0.25 0.05 85);
-  --info: oklch(0.6 0.15 240);
-  --info-foreground: oklch(0.99 0 0);
+  --background: #F6F6F6;          /* Fondo general claro */
+  --foreground: #00304D;          /* Texto principal (azul institucional) */
+
+  --card: #FFFFFF;
+  --card-foreground: #00304D;
+
+  --popover: #FFFFFF;
+  --popover-foreground: #00304D;
+
+  --primary: #39A900;             /* Verde SENA */
+  --primary-foreground: #FFFFFF;  /* Texto blanco sobre el verde */
+
+  --secondary: #007832;           /* Verde oscuro */
+  --secondary-foreground: #FFFFFF;
+
+  --muted: #F6F6F6;               /* Gris claro */
+  --muted-foreground: #00304D;
+
+  --accent: #50E5F9;              /* Cian para detalles */
+  --accent-foreground: #00304D;
+
+  --destructive: #FDC300;         /* Amarillo como color de alerta */
+  --destructive-foreground: #00304D;
+
+  --border: rgba(0, 48, 77, 0.12); /* Borde suave derivado del azul institucional */
+  --input: rgba(0, 48, 77, 0.06);  /* Fondo de inputs muy claro */
+  --ring: #39A900;                 /* Anillos/focus con el verde SENA */
+
+  /* Colores para gráficos usando solo la paleta SENA */
+  --chart-1: #39A900; /* verde */
+  --chart-2: #007832; /* verde oscuro */
+  --chart-3: #FDC300; /* amarillo */
+  --chart-4: #50E5F9; /* cian */
+  --chart-5: #71277A; /* morado */
+
+  --radius: 0.75rem;
+
+  
+
+  /* Sidebar en modo claro */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #00304D;
+  --sidebar-primary: #39A900;
+  --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: color-mix(in srgb, var(--primary) 12%, white);
+
+  /* --sidebar-accent: #F6F6F6; */
+  --sidebar-accent-foreground: #00304D;
+  --sidebar-border: rgba(0, 48, 77, 0.12);
+  --sidebar-ring: #39A900;
+
+  
+
+  /* Colores adicionales para estados usando paleta SENA */
+  --success: #39A900;
+  --success-foreground: #FFFFFF;
+
+  --warning: #FDC300;
+  --warning-foreground: #00304D;
+
+  --info: #50E5F9;
+  --info-foreground: #00304D;
+
+    /* Error (rojo puro) */
+  --error: #FF0000;
+  --error-foreground: #FFFFFF;
 
   /* ===========================
      Mapeo de @theme inline
@@ -84,6 +116,8 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+  --color-error: var(--error);
+  --color-error-foreground: var(--error-foreground);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -104,44 +138,61 @@
    MODO OSCURO (.dark en <html> o <body>)
    =========================== */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.18 0.01 260);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.18 0.01 260);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.65 0.15 160);
-  --primary-foreground: oklch(0.15 0.02 160);
-  --secondary: oklch(0.25 0.01 260);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.25 0.01 260);
-  --muted-foreground: oklch(0.65 0.01 260);
-  --accent: oklch(0.5 0.12 180);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.5 0.2 25);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.3 0.01 260);
-  --input: oklch(0.3 0.01 260);
-  --ring: oklch(0.65 0.15 160);
-  --chart-1: oklch(0.65 0.15 160);
-  --chart-2: oklch(0.6 0.12 180);
-  --chart-3: oklch(0.7 0.18 85);
-  --chart-4: oklch(0.65 0.15 280);
-  --chart-5: oklch(0.75 0.2 30);
-  --sidebar: oklch(0.18 0.01 260);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.65 0.15 160);
-  --sidebar-primary-foreground: oklch(0.15 0.02 160);
-  --sidebar-accent: oklch(0.25 0.02 160);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.3 0.01 260);
-  --sidebar-ring: oklch(0.65 0.15 160);
-  --success: oklch(0.55 0.15 145);
-  --success-foreground: oklch(0.985 0 0);
-  --warning: oklch(0.7 0.15 85);
-  --warning-foreground: oklch(0.2 0.05 85);
-  --info: oklch(0.55 0.12 240);
-  --info-foreground: oklch(0.985 0 0);
+  --background: #00304D;          /* Azul oscuro como fondo */
+  --foreground: #F6F6F6;          /* Texto claro */
+
+  --card: #00304D;
+  --card-foreground: #F6F6F6;
+
+  --popover: #00304D;
+  --popover-foreground: #F6F6F6;
+
+  --primary: #39A900;
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #007832;
+  --secondary-foreground: #FFFFFF;
+
+  --muted: #00304D;
+  --muted-foreground: #F6F6F6;
+
+  --accent: #71277A;              /* Morado para acentos en oscuro */
+  --accent-foreground: #F6F6F6;
+
+  --destructive: #FDC300;
+  --destructive-foreground: #00304D;
+
+  --border: rgba(246, 246, 246, 0.18);
+  --input: rgba(246, 246, 246, 0.12);
+  --ring: #39A900;
+
+  --chart-1: #39A900;
+  --chart-2: #007832;
+  --chart-3: #FDC300;
+  --chart-4: #50E5F9;
+  --chart-5: #71277A;
+
+  --sidebar: #00304D;
+  --sidebar-foreground: #F6F6F6;
+  --sidebar-primary: #39A900;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #007832;
+  --sidebar-accent-foreground: #F6F6F6;
+  --sidebar-border: rgba(246, 246, 246, 0.18);
+  --sidebar-ring: #39A900;
+
+  --success: #39A900;
+  --success-foreground: #FFFFFF;
+
+  --warning: #FDC300;
+  --warning-foreground: #00304D;
+
+  --info: #50E5F9;
+  --info-foreground: #00304D;
+
+  --error: #FF0000;
+  --error-foreground: #FFFFFF;
+
 }
 
 /* ===========================
@@ -153,6 +204,11 @@
   border-color: var(--border);
   /* Aproximación a outline-ring/50 */
   outline-color: color-mix(in srgb, var(--ring) 50%, transparent);
+}
+
+/* Fondo del HERO usando el verde institucional al 4% */
+.hero-bg {
+  background-color: color-mix(in srgb, var(--primary) 4%, transparent);
 }
 
 /* Equivalente a @apply bg-background text-foreground; */
@@ -171,6 +227,22 @@ body {
 .bg-background { background-color: var(--background); }
 .text-foreground { color: var(--foreground); }
 
+.bg-badge-secondary {
+  background-color: color-mix(in srgb, var(--secondary) 18%, white);
+}
+
+.text-badge-secondary {
+  color: var(--secondary);
+}
+
+.bg-badge-secondary-dot {
+  background-color: var(--secondary);
+}
+
+.bg-secondary-13 {
+  background-color: color-mix(in srgb, var(--secondary) 13%, transparent);
+}
+
 /* Cards */
 .bg-card { background-color: var(--card); }
 .text-card-foreground { color: var(--card-foreground); }
@@ -181,10 +253,12 @@ body {
 
 /* Primary */
 .bg-primary { background-color: var(--primary); }
+.text-primary { color: var(--primary); }              /* <-- añadido */
 .text-primary-foreground { color: var(--primary-foreground); }
 
 /* Secondary */
 .bg-secondary { background-color: var(--secondary); }
+.text-secondary { color: var(--secondary); }          /* <-- añadido */
 .text-secondary-foreground { color: var(--secondary-foreground); }
 
 /* Muted */
@@ -214,6 +288,7 @@ body {
 .bg-sidebar-accent { background-color: var(--sidebar-accent); }
 .text-sidebar-accent-foreground { color: var(--sidebar-accent-foreground); }
 .border-sidebar-border { border-color: var(--sidebar-border); }
+.text-sidebar-primary { color: var(--sidebar-primary); }
 
 /* Estados */
 .bg-success { background-color: var(--success); }
@@ -225,12 +300,293 @@ body {
 .bg-info { background-color: var(--info); }
 .text-info-foreground { color: var(--info-foreground); }
 
+.bg-error { background-color: var(--error); }
+.text-error-foreground { color: var(--error-foreground); }
+
 /* Radios personalizados, sobreescribiendo los de Tailwind
    para respetar tu --radius */
 .rounded-sm { border-radius: var(--radius-sm); }
 .rounded-md { border-radius: var(--radius-md); }
 .rounded-lg { border-radius: var(--radius-lg); }
 .rounded-xl { border-radius: var(--radius-xl); }
+
+/* ===========================
+   INPUTS OFICIALES SIGA
+   =========================== */
+
+.input-siga {
+  background-color: #FFFFFF !important;            /* Fondo blanco */
+  border: 1px solid var(--border) !important;      /* Borde institucional */
+  padding: 0.55rem 0.75rem !important;             /* Altura exacta */
+  border-radius: var(--radius-md) !important;      /* Radio institucional */
+  font-size: 0.875rem;
+  color: var(--foreground);
+}
+
+.input-siga::placeholder {
+  color: color-mix(in srgb, var(--foreground) 40%, transparent);
+  opacity: 0.7;
+}
+
+/* =========================================
+   AVATAR – VERDE SECUNDARIO AL 39%
+   ========================================= */
+.bg-avatar-secondary-39 {
+  /* círculo con verde secundario al 39% */
+  background-color: color-mix(in srgb, var(--secondary) 39%, transparent);
+  color: var(--secondary);
+}
+
+/* =========================================
+   AVATAR – VERDE PRIMARIO AL 39%
+   ========================================= */
+.bg-avatar-primary-39 {
+  /* círculo con verde primario al 39% */
+  background-color: color-mix(in srgb, var(--primary) 39%, transparent);
+  color: var(--primary);
+}
+
+/* ===========================
+   SELECTS – Flecha personalizada global
+   Aplica una flecha SVG pequeña a la derecha de los selects (no multiple)
+   =========================== */
+select:not([multiple]) {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+
+  /* Flecha SVG (inline) */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2364748b' stroke-width='1.6'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M6 8l4 4 4-4' /%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  background-size: 12px;
+
+  /* Espacio para la flecha */
+  padding-right: 2.5rem;
+
+  /* Mantener aspecto consistente */
+  cursor: pointer;
+}
+
+/* Si quieres excluir algún select, añade la clase .no-arrow */
+select.no-arrow { background-image: none; padding-right: 0.75rem; }
+
+/* =========================================
+   BADGES DE ROL – FONDO AL 29%
+   ========================================= */
+
+/* estilo base de todos los badges de rol */
+.badge-role-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0.125rem 0.75rem;        /* pill */
+  font-size: 0.75rem;               /* text-xs */
+  font-weight: 500;                 /* font-medium */
+  white-space: nowrap;
+}
+
+/* Coordinador – usa chart-4 (morado/azulado) */
+/* Coordinador – ahora sí morado SENA */
+.badge-role-coordinador {
+  composes: badge-role-base;
+  background-color: color-mix(in srgb, var(--chart-5) 29%, transparent);
+  color: var(--chart-5);
+}
+
+/* Instructor – verde principal */
+.badge-role-instructor {
+  composes: badge-role-base;
+  background-color: color-mix(in srgb, var(--primary) 29%, transparent);
+  color: var(--primary);
+}
+
+/* Pasante – amarillo */
+.badge-role-pasante {
+  composes: badge-role-base;
+  background-color: color-mix(in srgb, var(--chart-3) 29%, transparent);
+  color: var(--chart-3);
+}
+
+/* Encargado de Inventario – cian */
+.badge-role-encargado-inventario {
+  composes: badge-role-base;
+  background-color: color-mix(in srgb, var(--chart-2) 29%, transparent);
+  color: var(--chart-2);
+}
+
+/* Encargado de Bodega – verde oscuro */
+.badge-role-encargado-bodega {
+  composes: badge-role-base;
+  background-color: color-mix(in srgb, var(--chart-1) 29%, transparent);
+  color: var(--chart-1);
+}
+
+/* Aprendiz/Parendiz – azul institucional */
+.badge-role-parendiz {
+  composes: badge-role-base;
+  background-color: color-mix(in srgb, var(--foreground) 29%, transparent);
+  color: var(--foreground);
+}
+
+/* Rol por defecto (por si llega alguno no mapeado) */
+.badge-role-default {
+  composes: badge-role-base;
+  background-color: color-mix(in srgb, var(--secondary) 29%, transparent);
+  color: var(--secondary);
+}
+
+/* =========================================
+   BADGES DE ESTADO – VERDE PRIMARIO AL 29%
+   ========================================= */
+
+.badge-estado-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0.125rem 0.75rem; /* pill compacta */
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  width: auto;        /* clave: solo lo que mida el texto */
+  min-width: 0;
+}
+
+/* Activo: verde primario al 29% */
+.badge-estado-activo {
+  background-color: color-mix(in srgb, var(--primary) 29%, transparent);
+  color: var(--primary);
+}
+
+/* Inactivo: gris suave */
+.badge-estado-inactivo {
+  background-color: color-mix(in srgb, #64748b 18%, transparent);
+  color: #64748b;
+}
+
+/* ===========================
+   SWEETALERT2 – TOAST PERFECTO
+   =========================== */
+
+/* Tamaño general del toast */
+.swal2-popup.swal2-toast {
+  padding: 14px 20px !important;         /* tamaño cómodo */
+  min-width: 340px !important;           /* ancho equilibrado */
+  border-radius: 16px !important;        /* redondeo suave */
+  font-size: 1rem !important;            /* texto legible */
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;                  /* espacio icono-texto */
+  background: #ffffff !important;        /* fondo blanco limpio */
+}
+
+/* El texto (título del toast) */
+.swal2-popup.swal2-toast .swal2-title {
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 1rem !important;
+  line-height: 1.3 !important;
+  font-weight: 500 !important;
+}
+
+/* Icono del toast: usamos el dibujo original y solo lo escalamos */
+.swal2-popup.swal2-toast .swal2-icon {
+  margin: 0 10px 0 0 !important;  /* separación con el texto */
+  transform: scale(0.9);          /* un pelín más pequeño, pero proporcionado */
+  transform-origin: center center;
+}
+
+/* No tocamos el layout interno, solo tamaño de la X */
+.swal2-popup.swal2-toast .swal2-icon .swal2-icon-content {
+  font-size: 1.3rem !important;   /* X clara pero sin salirse */
+}
+
+.text-sidebar-primary { 
+  color: var(--sidebar-primary); /* #39A900 */
+}
+
+
+/* Modo solo lectura para el modal de perfil */
+.modal-readonly input,
+.modal-readonly select {
+  pointer-events: none;
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+}
+
+/* =========================================
+   BADGES — ROL FUNCIONAL (MISMO LOOK QUE ROL)
+   ========================================= */
+
+.badge-rolfunc-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0.125rem 0.75rem; /* pill */
+  font-size: 0.75rem;        /* text-xs */
+  font-weight: 500;          /* font-medium */
+  white-space: nowrap;
+}
+
+/* Encargado Inventario — mismo color que tu verde oscuro (chart-2) */
+.badge-rolfunc-inventario {
+  background-color: color-mix(in srgb, var(--chart-2) 29%, transparent);
+  color: var(--chart-2);
+}
+
+/* Encargado Bodega — mismo color que tu verde principal (chart-1) */
+.badge-rolfunc-bodega {
+  background-color: color-mix(in srgb, var(--chart-1) 29%, transparent);
+  color: var(--chart-1);
+}
+
+/* Sin rol asignado — neutro elegante */
+.badge-rolfunc-default {
+  background-color: color-mix(in srgb, #64748b 18%, transparent);
+  color: #64748b;
+}
+
+/* ===========================
+   AVATAR PERFIL (FIX CÍRCULO)
+   =========================== */
+.avatar-wrapper{
+  overflow:hidden;
+  border-radius:9999px;
+  position: relative;
+}
+
+.avatar-wrapper img{
+  /* Force the image to absolutely fill the circular wrapper.
+     Using position:absolute prevents layout shifts or flexbox
+     effects from moving the image inside the circle. */
+  position: absolute !important;
+  inset: 0 !important; /* top:0; right:0; bottom:0; left:0 */
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+  flex-shrink: 0 !important;
+}
+
+
+
+
+
+/* Animación moderna estilo shadcn/iOS */
+@keyframes modalModernFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
 
 /* ===========================
    ANIMACIONES PERSONALIZADAS
@@ -263,5 +619,5 @@ body {
 }
 
 .animate-fade-in-up {
-  animation: fade-in-up 0.4s ease-out forwards;
+  animation: fade-in-up 0.4s ease-out forwards;
 }
