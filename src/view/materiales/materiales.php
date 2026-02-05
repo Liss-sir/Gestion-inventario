@@ -138,7 +138,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
         <!-- Updated materials table with consistent styling -->
         <div id="tableView">
-          <div class="overflow-hidden rounded-xl border border-border bg-card">
+          <div id="tableCardWrapper" class="overflow-hidden rounded-xl border border-border bg-card">
             <table class="min-w-full divide-y divide-border text-sm">
               <thead class="bg-gray-100">
                 <tr>
