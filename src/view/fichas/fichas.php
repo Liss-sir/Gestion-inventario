@@ -48,16 +48,30 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
           <!-- View Switch -->
           <div class="inline-flex rounded-lg border border-border bg-card shadow-sm overflow-hidden">
-
-            <!-- Table view -->
-            <button id="btnVistaTabla"
-              class="px-3 py-2 text-xs sm:text-sm flex items-center gap-1 bg-muted text-foreground">
-              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+            <!-- Table view button -->
+            <button
+              type="button"
+              id="btnVistaTabla"
+              class="px-3 py-2 text-xs sm:text-sm flex items-center gap-1 bg-muted text-foreground "
+            >
+              <!-- List icon -->
+              <svg
+                class="h-4 w-4"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="1.8"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               </svg>
             </button>
 
-            <!-- Cards view -->
+            <!-- Cards view button -->
             <button
               type="button"
               id="btnVistaTarjetas"
@@ -78,7 +92,6 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 <rect x="13" y="13" width="7" height="7" rx="1"></rect>
               </svg>
             </button>
-
           </div>
 
           <!-- New ficha -->
