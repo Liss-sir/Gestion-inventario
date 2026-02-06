@@ -2,7 +2,6 @@
 
 class SolicitudMaterialModel {
 
-    // 🔥 CAMBIA ESTO: de private a public
     public $db;
 
     public function __construct(PDO $conn)
@@ -10,25 +9,21 @@ class SolicitudMaterialModel {
         $this->db = $conn;
     }
 
-    // Start transaction
     public function begin()
     {
         $this->db->beginTransaction();
     }
 
-    // Commit transaction
     public function commit()
     {
         $this->db->commit();
     }
 
-    // Rollback transaction
     public function rollback()
     {
         $this->db->rollBack();
     }
 
-    // Create solicitud
     public function createSolicitudes($data)
     {
         $sql = "INSERT INTO solicitudes_material 
@@ -37,7 +32,6 @@ class SolicitudMaterialModel {
 
         $stmt = $this->db->prepare($sql);
         
-        // Si id_actividad es 0 o no existe, usar NULL
         $id_actividad = !empty($data['id_actividad']) && $data['id_actividad'] > 0 
                         ? $data['id_actividad'] 
                         : null;
@@ -45,7 +39,7 @@ class SolicitudMaterialModel {
         $stmt->execute([
             $data['id_usuario'] ?? 1,
             $data['id_ficha'],
-            $id_actividad, // ← Puede ser NULL
+            $id_actividad,
             $data['id_rae'],
             $data['id_programa'],
             $data['observaciones'] ?? ''
@@ -54,7 +48,6 @@ class SolicitudMaterialModel {
         return $this->db->lastInsertId();
     }
 
-    // Add details
     public function addDetalle($idSolicitud, $materiales)
     {
         $sql = "INSERT INTO solicitudes_detalle
@@ -81,7 +74,6 @@ class SolicitudMaterialModel {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    // Get all requests
     public function getAll()
     {
         $sql = "SELECT 
@@ -113,23 +105,18 @@ class SolicitudMaterialModel {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // Approve or reject request
+    // ================= RESPONDER (YA NO DESCUENTA STOCK) =================
     public function responderSolicitud($idSolicitud, $estado, $idAprobador, $observaciones = null)
     {
-        // Escribir en archivo de debug
-        file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " [RESPONDER] Iniciando responderSolicitud($idSolicitud, $estado, $idAprobador)\n", FILE_APPEND);
+        file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " [RESPONDER] responderSolicitud($idSolicitud, $estado)\n", FILE_APPEND);
         
-        // Normalizar el estado (aceptar mayúscula o minúscula)
         $estadoNormalizado = ucfirst(strtolower($estado));
-        
-        // Only valid states
+
         if (!in_array($estadoNormalizado, ['Aprobada', 'Rechazada'])) {
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ Estado no válido: $estado\n", FILE_APPEND);
             return false;
         }
 
         try {
-            // Transacción para mantener consistencia entre estado y movimiento
             $this->db->beginTransaction();
 
             $sql = "UPDATE solicitudes_material
@@ -141,99 +128,58 @@ class SolicitudMaterialModel {
                       AND estado = 'Pendiente'";
 
             $stmt = $this->db->prepare($sql);
-
-            $result = $stmt->execute([
+            $stmt->execute([
                 $estadoNormalizado,
                 $idAprobador,
                 $observaciones,
                 $idSolicitud
             ]);
-            
-            if (!$result) {
-                $errorInfo = $stmt->errorInfo();
-                file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ Error en BD: " . json_encode($errorInfo) . "\n", FILE_APPEND);
-                $this->db->rollBack();
-                return false;
-            }
 
             $rows = $stmt->rowCount();
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ✅ Solicitud $idSolicitud actualizada a $estadoNormalizado. Filas: $rows\n", FILE_APPEND);
-            
-            // ✅ SI FUE APROBADA, crear movimiento de tipo "salida"
-            if ($estadoNormalizado === 'Aprobada' && $rows > 0) {
-                file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " 🔵 Llamando crearMovimientoSalidaDeSolicitud($idSolicitud, $idAprobador)\n", FILE_APPEND);
-                $okMov = $this->crearMovimientoSalidaDeSolicitud($idSolicitud, $idAprobador);
-                if (!$okMov) {
-                    // Si no se pudo crear el movimiento, revertir aprobación
-                    file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ Falló creación de movimiento. Haciendo ROLLBACK.\n", FILE_APPEND);
-                    $this->db->rollBack();
-                    return false;
-                }
-            }
+
+            // ❌ YA NO CREA MOVIMIENTO AQUÍ
 
             $this->db->commit();
             return $rows > 0;
+
         } catch (Exception $e) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ Excepción en responderSolicitud: " . $e->getMessage() . "\n", FILE_APPEND);
+            $this->db->rollBack();
             return false;
         }
     }
 
-
     /* ===============================
        CREAR MOVIMIENTO DE SALIDA
-       Cuando se aprueba una solicitud
+       AHORA SOLO SE USA AL ENTREGAR
     =============================== */
     private function crearMovimientoSalidaDeSolicitud($idSolicitud, $idUsuario)
     {
         try {
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " 🔵 [SALIDA] Iniciando crearMovimientoSalidaDeSolicitud($idSolicitud, $idUsuario)\n", FILE_APPEND);
-            
-            // Obtener la solicitud completa con sus materiales
             $solicitud = $this->getSolicitudCompleta($idSolicitud);
-            
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " 📋 [SALIDA] Solicitud: " . json_encode($solicitud) . "\n", FILE_APPEND);
-            
-            if (!$solicitud) {
-                file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ [SALIDA] Solicitud no encontrada\n", FILE_APPEND);
-                return false;
-            }
-            
-            if (empty($solicitud['materiales'])) {
-                file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ [SALIDA] Sin materiales\n", FILE_APPEND);
+
+            if (!$solicitud || empty($solicitud['materiales'])) {
                 return false;
             }
 
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . "  [SALIDA] " . count($solicitud['materiales']) . " materiales encontrados\n", FILE_APPEND);
-            
-            // ⭐ Obtener la bodega Y subbodega del primer material
             $ubicacion = $this->obtenerBodegaDeMaterial($solicitud['materiales'][0]['id_material']);
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " 🏪 [SALIDA] Ubicación obtenida: " . json_encode($ubicacion) . "\n", FILE_APPEND);
-            
+
             if (!$ubicacion || !isset($ubicacion['id_bodega'])) {
-                file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ [SALIDA] No se encontró bodega para el material\n", FILE_APPEND);
                 return false;
             }
-            
-            // Preparar datos para el movimiento
+
             $datosMovimiento = [
-                'tipo_movimiento' => 'Salida',  // ⭐ MAYÚSCULA para coincidir con el trigger
+                'tipo_movimiento' => 'Salida',
                 'id_usuario' => $idUsuario,
-                'id_bodega' => $ubicacion['id_bodega'],  // ⭐ USAR LA BODEGA DEL MATERIAL
-                'id_subbodega' => $ubicacion['id_subbodega'],  // ⭐ USAR LA SUBBODEGA DEL MATERIAL
+                'id_bodega' => $ubicacion['id_bodega'],
+                'id_subbodega' => $ubicacion['id_subbodega'],
                 'id_programa' => $solicitud['id_programa'] ?? null,
                 'id_ficha' => $solicitud['id_ficha'] ?? null,
                 'id_rae' => $solicitud['id_rae'] ?? null,
-                // ⭐ INCLUIR LAS OBSERVACIONES ORIGINALES DE LA SOLICITUD
                 'observaciones' => ($solicitud['observaciones']),
                 'id_solicitud' => $idSolicitud,
                 'materiales' => []
             ];
 
-            // Convertir materiales de solicitud al formato de movimiento
             foreach ($solicitud['materiales'] as $material) {
                 $datosMovimiento['materiales'][] = [
                     'id_material' => $material['id_material'],
@@ -241,36 +187,21 @@ class SolicitudMaterialModel {
                     'cantidad' => $material['cantidad'],
                     'unidad' => $material['unidad_medida'] ?? ''
                 ];
-                file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . "   📌 {$material['material']} (ID: {$material['id_material']}, Cant: {$material['cantidad']})\n", FILE_APPEND);
             }
 
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " 🔧 [SALIDA] Datos movimiento: " . json_encode($datosMovimiento) . "\n", FILE_APPEND);
-
-            // Usar el modelo de movimientos para registrar la salida
             require_once __DIR__ . '/movimiento.php';
             $movimientoModel = new MovimientoModel($this->db);
-            
-            $codigoMovimiento = $movimientoModel->registrarEntrada($datosMovimiento);
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ✅ [SALIDA] Movimiento creado: $codigoMovimiento\n", FILE_APPEND);
-            
+            $movimientoModel->registrarEntrada($datosMovimiento);
+
             return true;
 
         } catch (Exception $e) {
-            // Re-lanzar para que responderSolicitud pueda hacer rollback
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " ❌ [SALIDA] Exception (rethrow): " . $e->getMessage() . "\n", FILE_APPEND);
             throw $e;
         }
     }
 
-    /* ===============================
-       OBTENER BODEGA Y SUBBODEGA DE UN MATERIAL
-       Busca dónde está almacenado el material
-       Retorna: ['id_bodega' => X, 'id_subbodega' => Y]
-    =============================== */
     private function obtenerBodegaDeMaterial($idMaterial)
     {
-        // Buscar en movimientos_material la bodega Y subbodega donde está almacenado este material
-        // (el más reciente)
         $sql = "SELECT id_bodega, id_subbodega
             FROM movimientos_material 
             WHERE id_material = ? 
@@ -289,7 +220,6 @@ class SolicitudMaterialModel {
             ];
         }
 
-        // 🔁 Fallback: buscar en stock_subbodega primero (más específico)
         $sqlSubStock = "SELECT ss.id_subbodega, sb.id_bodega
                         FROM stock_subbodega ss
                         INNER JOIN subbodegas sb ON sb.id_subbodega = ss.id_subbodega
@@ -305,7 +235,6 @@ class SolicitudMaterialModel {
             ];
         }
 
-        // 🔁 Fallback final: buscar en stock_bodega dónde haya stock del material
         $sqlStock = "SELECT id_bodega FROM stock_bodega WHERE id_material = ? AND stock_actual > 0 ORDER BY stock_actual DESC LIMIT 1";
         $stStock = $this->db->prepare($sqlStock);
         $stStock->execute([$idMaterial]);
@@ -317,25 +246,42 @@ class SolicitudMaterialModel {
             ];
         }
 
-        // Si no hay referencia, retorna null
         return null;
     }
 
-    // Mark request as delivered
+    // ================= ENTREGAR (AHORA DESCUENTA STOCK) =================
     public function marcarEntregada($idSolicitud, $idUsuario)
     {
-        $sql = "UPDATE solicitudes_material
-                SET estado = 'Entregada',
-                    fecha_respuesta = NOW(),
-                    id_usuario_aprobador = ?
-                WHERE id_solicitud = ?
-                  AND estado = 'Aprobada'";
+        try {
+            $this->db->beginTransaction();
 
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$idUsuario, $idSolicitud]);
+            $sql = "UPDATE solicitudes_material
+                    SET estado = 'Entregada',
+                        fecha_respuesta = NOW(),
+                        id_usuario_aprobador = ?
+                    WHERE id_solicitud = ?
+                      AND estado = 'Aprobada'";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$idUsuario, $idSolicitud]);
+
+            if ($stmt->rowCount() === 0) {
+                $this->db->rollBack();
+                return false;
+            }
+
+            // ✅ AHORA AQUÍ SE CREA LA SALIDA
+            $this->crearMovimientoSalidaDeSolicitud($idSolicitud, $idUsuario);
+
+            $this->db->commit();
+            return true;
+
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            return false;
+        }
     }
 
-    // Get request details (materials)
     public function getDetalles($idSolicitud)
     {
         $sql = "SELECT 
@@ -356,7 +302,6 @@ class SolicitudMaterialModel {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // Get request with header + details
     public function getSolicitudCompleta($idSolicitud)
     {
         $sql = "SELECT * FROM solicitudes_material WHERE id_solicitud = ?";
@@ -374,10 +319,6 @@ class SolicitudMaterialModel {
         return $solicitud;
     }
 
-    // ============================================
-    // NUEVAS FUNCIONES PARA LOS SELECTORES
-    // ============================================
-
     public function getProgramas()
     {
         $sql = "SELECT id_programa, codigo_programa, nombre_programa 
@@ -390,30 +331,9 @@ class SolicitudMaterialModel {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getProgramasUsuario($id_usuario)
-    {
-        $sql = "SELECT 
-                p.id_programa, 
-                p.codigo_programa, 
-                p.nombre_programa
-            FROM programas_formacion p
-            INNER JOIN instructores_programas ip 
-                ON ip.id_programa = p.id_programa
-            WHERE p.estado = 'Activo'
-            AND ip.id_usuario = ?
-            ORDER BY p.codigo_programa";
-
-    $stmt = $this->db->prepare($sql);
-    $stmt->execute([$id_usuario]);
-
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
     public function getRaesPorPrograma($programaId)
     {
-        if ($programaId <= 0) {
-            return [];  
-        }
+        if ($programaId <= 0) return [];
 
         $sql = "SELECT id_rae, codigo_rae, descripcion_rae
                 FROM raes
@@ -430,9 +350,7 @@ class SolicitudMaterialModel {
 
     public function getFichasPorPrograma($programaId)
     {
-        if ($programaId <= 0) {
-            return [];
-        }
+        if ($programaId <= 0) return [];
 
         $sql = "SELECT id_ficha, numero_ficha, jornada 
                 FROM fichas 
@@ -466,6 +384,24 @@ class SolicitudMaterialModel {
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public function getProgramasUsuario($id_usuario)
+    {
+        $sql = "SELECT 
+                    p.id_programa, 
+                    p.codigo_programa, 
+                    p.nombre_programa
+                FROM programas_formacion p
+                INNER JOIN instructor_programa ip 
+                    ON ip.id_programa = p.id_programa
+                WHERE p.estado = 'Activo'
+                AND ip.id_usuario = ?
+                ORDER BY p.codigo_programa";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id_usuario]);
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

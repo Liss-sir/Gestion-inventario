@@ -10,6 +10,7 @@ let currentCardPage = 1
 const itemsPerPage = 10
 const cardsPerPage = 9
 let currentView = "table"
+const DESCRIPTION_MAX_LENGTH = 250
 
 // API endpoints
 const API_URL = `${window.BASE_URL}src/controllers/material_formacion_controller.php`;
@@ -400,6 +401,27 @@ function showAlert(message, type = "success") {
   showFlowbiteAlert(type, message)
 }
 
+function updateDescriptionCount(textareaId, counterId) {
+  const textarea = document.getElementById(textareaId)
+  const counter = document.getElementById(counterId)
+  if (!textarea || !counter) return
+
+  if (textarea.value.length > DESCRIPTION_MAX_LENGTH) {
+    textarea.value = textarea.value.slice(0, DESCRIPTION_MAX_LENGTH)
+  }
+
+  counter.textContent = textarea.value.length.toString()
+}
+
+function setupDescriptionCounter(textareaId, counterId) {
+  const textarea = document.getElementById(textareaId)
+  const counter = document.getElementById(counterId)
+  if (!textarea || !counter) return
+
+  textarea.addEventListener("input", () => updateDescriptionCount(textareaId, counterId))
+  updateDescriptionCount(textareaId, counterId)
+}
+
 function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
   const nameRegex = /^[A-Za-z0-9ÁÉÍÓÚÜÑñáéíóúüñ\s\-.]{3,80}$/
   const codeRegex = /^[0-9]{3,30}$/
@@ -418,6 +440,12 @@ function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
 
   if (!data.descripcion || data.descripcion.length < 5) {
     showAlert("La descripción debe tener al menos 5 caracteres", "info")
+    document.getElementById(isEdit ? "editDescripcion" : "descripcion")?.focus()
+    return false
+  }
+
+  if (data.descripcion.length > DESCRIPTION_MAX_LENGTH) {
+    showAlert("La descripción no puede superar los 250 caracteres", "info")
     document.getElementById(isEdit ? "editDescripcion" : "descripcion")?.focus()
     return false
   }
@@ -652,6 +680,20 @@ const icons = {
 /* =================================================
    RENDER TABLE / CARDS
    ================================================= */
+function updateTableCardWrapper() {
+  const tableCardWrapper = document.getElementById("tableCardWrapper")
+  if (!tableCardWrapper) return
+  
+  const tableBody = document.getElementById("tableBody")
+  const hasRows = tableBody && tableBody.querySelectorAll("tr").length > 0
+  
+  if (hasRows) {
+    tableCardWrapper.classList.remove("hidden")
+  } else {
+    tableCardWrapper.classList.add("hidden")
+  }
+}
+
 function renderTable() {
   const dataToRender = getDataToRender()
   const searchTerm = document.getElementById("inputBuscar")?.value.trim()
@@ -673,6 +715,7 @@ function renderTable() {
   if (!dataToRender.length) {
     if (tableWrapper) tableWrapper.classList.add("hidden")
     if (tableEl) tableEl.classList.add("hidden")
+    updateTableCardWrapper()
     if (paginationEl) {
       paginationEl.innerHTML = ""
       paginationEl.parentElement?.classList.add("hidden")
@@ -782,6 +825,7 @@ function renderTable() {
   if (window.lucide && typeof lucide.createIcons === "function") {
     lucide.createIcons(tableBody)
   }
+  updateTableCardWrapper()
 }
 
 function renderCards() {
@@ -1034,6 +1078,7 @@ function closeCreateModal() {
   document.getElementById("codigo").value = ""
   document.getElementById("unidad").value = ""
   document.getElementById("precio").value = ""
+  document.getElementById("stock_maximo").value = ""
   const precioInput = document.getElementById("precio")
   if (precioInput) precioInput.dataset.rawPrice = ""
   document.getElementById("imagen").value = ""
@@ -1044,6 +1089,8 @@ function closeCreateModal() {
     previewImagen.src = ""
     previewImagen.classList.add("hidden")
   }
+
+  updateDescriptionCount("descripcion", "descCharCount")
 }
 
 function openDetailsModal(id) {
@@ -1119,6 +1166,7 @@ function openEditModal(id) {
   document.getElementById("editId").value = material.id
   document.getElementById("editNombre").value = material.name
   document.getElementById("editDescripcion").value = material.description
+  updateDescriptionCount("editDescripcion", "editDescCharCount")
   document.getElementById("editClasificacion").value = material.clasificacion
   document.getElementById("editCodigo").value = material.codigo || ""
   document.getElementById("editUnidad").value = material.unit
@@ -1517,6 +1565,9 @@ function setupEventListeners() {
 
   attachCurrencyMask("precio")
   attachCurrencyMask("editPrecio")
+
+  setupDescriptionCounter("descripcion", "descCharCount")
+  setupDescriptionCounter("editDescripcion", "editDescCharCount")
 
   // Inicializar selects buscadores de unidad
   initSearchableSelect("unidad", "unidadDropdown", "unidad-option")

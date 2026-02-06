@@ -31,7 +31,7 @@ try {
         WHERE n.id_notificacion = ?
         LIMIT 1
     ");
-    
+       
     $stmtNotif->execute([$id_notificacion]);
     $notificacion = $stmtNotif->fetch(PDO::FETCH_ASSOC);
     
