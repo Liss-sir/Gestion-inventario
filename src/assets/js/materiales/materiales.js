@@ -652,6 +652,20 @@ const icons = {
 /* =================================================
    RENDER TABLE / CARDS
    ================================================= */
+function updateTableCardWrapper() {
+  const tableCardWrapper = document.getElementById("tableCardWrapper")
+  if (!tableCardWrapper) return
+  
+  const tableBody = document.getElementById("tableBody")
+  const hasRows = tableBody && tableBody.querySelectorAll("tr").length > 0
+  
+  if (hasRows) {
+    tableCardWrapper.classList.remove("hidden")
+  } else {
+    tableCardWrapper.classList.add("hidden")
+  }
+}
+
 function renderTable() {
   const dataToRender = getDataToRender()
   const searchTerm = document.getElementById("inputBuscar")?.value.trim()
@@ -673,6 +687,7 @@ function renderTable() {
   if (!dataToRender.length) {
     if (tableWrapper) tableWrapper.classList.add("hidden")
     if (tableEl) tableEl.classList.add("hidden")
+    updateTableCardWrapper()
     if (paginationEl) {
       paginationEl.innerHTML = ""
       paginationEl.parentElement?.classList.add("hidden")
@@ -782,6 +797,7 @@ function renderTable() {
   if (window.lucide && typeof lucide.createIcons === "function") {
     lucide.createIcons(tableBody)
   }
+  updateTableCardWrapper()
 }
 
 function renderCards() {
@@ -1034,6 +1050,7 @@ function closeCreateModal() {
   document.getElementById("codigo").value = ""
   document.getElementById("unidad").value = ""
   document.getElementById("precio").value = ""
+  document.getElementById("stock_maximo").value = ""
   const precioInput = document.getElementById("precio")
   if (precioInput) precioInput.dataset.rawPrice = ""
   document.getElementById("imagen").value = ""

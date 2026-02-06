@@ -98,16 +98,16 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
   <!-- BUSCADOR A LA IZQUIERDA -->
   <div class="relative w-full max-w-xs">
+    <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"></circle>
+      <path d="m21 21-4.35-4.35"></path>
+    </svg>
     <input
       type="text"
       id="inputBuscar"
       placeholder="Buscar por nombre o descripción..."
-      class="w-full rounded-md border border-input bg-background px-3 py-2 pl-10 text-sm"
+      class="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm input-siga"
     />
-    <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-      <circle cx="11" cy="11" r="8"></circle>
-      <path d="m21 21-4.35-4.35"></path>
-    </svg>
   </div>
 
   <!-- FILTRO A LA DERECHA -->
@@ -126,7 +126,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
     <!-- Select -->
     <select
       id="selectFiltroRol"
-      class="rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm"
+      class="rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input-siga"
     >
       <option value="">Todos</option>
       <option value="Inventariado">Inventariado</option>
@@ -138,7 +138,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
         <!-- Updated materials table with consistent styling -->
         <div id="tableView">
-          <div class="overflow-hidden rounded-xl border border-border bg-card">
+          <div id="tableCardWrapper" class="overflow-hidden rounded-xl border border-border bg-card">
             <table class="min-w-full divide-y divide-border text-sm">
               <thead class="bg-gray-100">
                 <tr>
@@ -209,20 +209,20 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 <!-- Nombre -->
                 <div class="space-y-2">
                     <label class="text-sm font-medium">Nombre *</label>
-                    <input id="nombre" type="text" placeholder="Ej: Cemento gris" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <input id="nombre" type="text" placeholder="Ej: Cemento gris" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga">
                 </div>
                 
                 <!-- Descripción -->
                 <div class="space-y-2">
                     <label class="text-sm font-medium">Descripción *</label>
-                    <textarea id="descripcion" placeholder="Descripción del material" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm h-16"></textarea>
+                    <textarea id="descripcion" placeholder="Descripción del material" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm h-16 input-siga"></textarea>
                 </div>
                 
                 <!-- Clasificación y Unidad -->
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Clasificación *</label>
-                        <select id="clasificacion" class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input" onchange="toggleCodigoField()">
+                        <select id="clasificacion" class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input-siga" onchange="toggleCodigoField()">
                             <option value="">Seleccione...</option>
                             <option value="Inventariado">Inventariado</option>
                             <option value="Consumible">Consumible</option>
@@ -234,7 +234,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                             <input 
                                 type="text" 
                                 id="unidad" 
-                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input" 
+                                class="w-full rounded-md border border-input bg-background pl-3 pr-10 py-2 text-sm input-siga" 
                                 placeholder="Buscar unidad..."
                                 autocomplete="off"
                             />
@@ -289,18 +289,18 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 <div class="grid grid-cols-2 gap-4">
                   <div class="space-y-2">
                     <label class="text-sm font-medium">Precio *</label>
-                    <input id="precio" type="text" inputmode="decimal" placeholder="$ 0" min="100" class="w-full rounded-md border border-input px-3 py-2 text-sm bg-transparent">
+                    <input id="precio" type="text" inputmode="decimal" placeholder="$ 0" min="100" class="w-full rounded-md border border-input px-3 py-2 text-sm bg-transparent input-siga">
                   </div>
                   
                   <div class="space-y-2">
                     <label class="text-sm font-medium">Stock Máximo *</label>
-                    <input id="stock_maximo" type="text" inputmode="numeric" placeholder="0" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <input id="stock_maximo" type="text" inputmode="numeric" placeholder="0" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga">
                   </div>
                 </div>
 
                 <div id="codigoContainer" class="space-y-2" style="display: none;">
                   <label class="text-sm font-medium">Código *</label>
-                  <input id="codigo" type="text" placeholder="EJ: 1234" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  <input id="codigo" type="text" placeholder="EJ: 1234" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga">
                 </div>
                 
                 <div id="codigoHelpText" class="text-xs text-muted-foreground" style="display: none;">
@@ -392,20 +392,20 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 <!-- Nombre -->
                 <div class="space-y-2">
                     <label class="text-sm font-medium">Nombre *</label>
-                    <input id="editNombre" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <input id="editNombre" type="text" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga">
                 </div>
                 
                 <!-- Descripción -->
                 <div class="space-y-2">
                     <label class="text-sm font-medium">Descripción *</label>
-                    <textarea id="editDescripcion" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm h-16"></textarea>
+                    <textarea id="editDescripcion" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm h-16 input-siga"></textarea>
                 </div>
                 
                 <!-- Clasificación y Unidad -->
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-2">
                         <label class="text-sm font-medium">Clasificación *</label>
-                        <select id="editClasificacion" class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input" onchange="toggleEditCodigoField()">
+                        <select id="editClasificacion" class="w-full rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm input-siga" onchange="toggleEditCodigoField()">
                             <option value="Inventariado">Inventariado</option>
                             <option value="Consumible">Consumible</option>
                         </select>
@@ -416,7 +416,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                             <input 
                                 type="text" 
                                 id="editUnidad" 
-                                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input" 
+                                class="w-full rounded-md border border-input bg-background pl-3 pr-10 py-2 text-sm input-siga" 
                                 placeholder="Buscar unidad..."
                                 autocomplete="off"
                             />
@@ -471,18 +471,18 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 <div class="grid grid-cols-2 gap-4">
                   <div class="space-y-2">
                     <label class="text-sm font-medium">Precio *</label>
-                    <input id="editPrecio" type="text" inputmode="decimal" placeholder="$ 0" min="100" class="w-full rounded-md border border-input px-3 py-2 text-sm bg-transparent">
+                    <input id="editPrecio" type="text" inputmode="decimal" placeholder="$ 0" min="100" class="w-full rounded-md border border-input px-3 py-2 text-sm bg-transparent input-siga">
                   </div>
                   
                   <div class="space-y-2">
                     <label class="text-sm font-medium">Stock Máximo *</label>
-                    <input id="editStockMaximo" type="text" inputmode="numeric" placeholder="0" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <input id="editStockMaximo" type="text" inputmode="numeric" placeholder="0" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga">
                   </div>
                 </div>
 
                 <div id="editCodigoContainer" class="space-y-2">
                   <label class="text-sm font-medium">Código <span id="editCodigoRequired">*</span></label>
-                  <input id="editCodigo" type="text" placeholder="EJ: 1234" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  <input id="editCodigo" type="text" placeholder="EJ: 1234" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga">
                 </div>
                 
                 <p class="text-xs text-muted-foreground">Este campo es obligatorio solo para materiales inventariados</p>
