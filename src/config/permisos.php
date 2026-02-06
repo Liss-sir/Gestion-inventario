@@ -339,6 +339,12 @@ return [
 
         // Reglas de negocio
         "evidencias.bloquear_solicitudes_pendientes",
+
+        // Movimientos
+        "movimientos.gestionar",
+        "movimientos.entradas",
+        "movimientos.salidas",
+        "movimientos.devoluciones",
     ],
 
 
