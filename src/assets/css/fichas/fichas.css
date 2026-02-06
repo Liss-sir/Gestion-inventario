@@ -27,8 +27,8 @@
 }
 
 .input-siga:focus {
-  border-color: #10b981;
-  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+  border-color: var(--ring);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 50%, transparent);
   outline: none;
 }
 

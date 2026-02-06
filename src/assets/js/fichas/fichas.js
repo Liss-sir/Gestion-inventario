@@ -622,7 +622,7 @@ function renderChecklistAprendices() {
           <span>${totalSeleccionados}</span>
         </div>
         <div class="mt-2 text-center">
-          <a href="#" onclick="seleccionarTodosVisibles(); return false;" class="text-blue-600 hover:text-blue-800 underline text-sm">
+          <a href="#" onclick="seleccionarTodosVisibles(); return false;" class="text-foreground hover:opacity-80 underline text-sm">
             Seleccionar todos los visibles
           </a>
         </div>
@@ -723,7 +723,7 @@ function renderChecklistInstructores() {
           <span>${totalSeleccionados}</span>
         </div>
         <div class="mt-2 text-center">
-          <a href="#" onclick="seleccionarTodosInstructoresVisibles(); return false;" class="text-blue-600 hover:text-blue-800 underline text-sm">
+          <a href="#" onclick="seleccionarTodosInstructoresVisibles(); return false;" class="text-foreground hover:opacity-80 underline text-sm">
             Seleccionar todos los visibles
           </a>
         </div>
@@ -1645,7 +1645,6 @@ function renderTable() {
   });
 
   attachMenuEvents()
-  attachActionEvents()
 
   const tablaVisible = !vistaTabla.classList.contains("hidden")
 
@@ -1666,21 +1665,126 @@ function renderTable() {
 // DROPDOWN MENU HANDLING
 // =========================
 
-function attachMenuEvents() {
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest("[data-menu-trigger]") && !e.target.closest("[data-menu]")) {
-      document.querySelectorAll("[data-menu]").forEach((el) => {
-        el.classList.add("hidden")
-        el.classList.remove("show")
-      })
-    }
-  })
+let _menuEventsAttached = false
 
-  document.querySelectorAll("[data-menu-trigger]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
+function attachMenuEvents() {
+  if (_menuEventsAttached) return
+  _menuEventsAttached = true
+
+  function portalizeMenu(menu, trigger) {
+    if (!menu || !trigger) return
+
+    if (menu.dataset.portaled === "1") {
+      positionMenuFixed(menu, trigger)
+      return
+    }
+
+    const placeholder = document.createElement("span")
+    placeholder.style.display = "none"
+    placeholder.dataset.menuPlaceholder = menu.getAttribute("data-menu") || ""
+
+    menu._placeholderEl = placeholder
+    menu.parentNode.insertBefore(placeholder, menu)
+
+    document.body.appendChild(menu)
+    menu.dataset.portaled = "1"
+
+    menu.style.position = "fixed"
+    menu.style.zIndex = "99999"
+    menu.style.marginTop = "0"
+
+    positionMenuFixed(menu, trigger)
+  }
+
+  function restoreMenu(menu) {
+    if (!menu || menu.dataset.portaled !== "1") return
+
+    const placeholder = menu._placeholderEl
+    if (placeholder && placeholder.parentNode) {
+      placeholder.parentNode.insertBefore(menu, placeholder)
+      placeholder.remove()
+    }
+
+    menu.dataset.portaled = "0"
+    menu.style.position = ""
+    menu.style.top = ""
+    menu.style.left = ""
+    menu.style.zIndex = ""
+    menu.style.marginTop = ""
+  }
+
+  function positionMenuFixed(menu, trigger) {
+    if (!menu || !trigger) return
+
+    menu.classList.remove("hidden")
+
+    const rect = trigger.getBoundingClientRect()
+    const menuRect = menu.getBoundingClientRect()
+
+    let top = rect.bottom + 8
+    let left = rect.right - menuRect.width
+
+    const maxLeft = window.innerWidth - menuRect.width - 12
+    if (left > maxLeft) left = maxLeft
+    if (left < 12) left = 12
+
+    const maxTop = window.innerHeight - menuRect.height - 12
+    if (top > maxTop) {
+      top = rect.top - menuRect.height - 8
+    }
+    if (top < 12) top = 12
+
+    menu.style.top = `${top}px`
+    menu.style.left = `${left}px`
+  }
+
+  const closeAllMenus = () => {
+    document.querySelectorAll("[data-menu]").forEach((el) => {
+      el.classList.add("hidden")
+      el.classList.remove("show")
+      restoreMenu(el)
+    })
+  }
+
+  document.addEventListener("click", (e) => {
+    const trigger = e.target.closest("[data-menu-trigger]")
+    const actionBtn = e.target.closest("[data-menu] [data-action]")
+    const anyMenu = e.target.closest("[data-menu]")
+
+    if (actionBtn) {
       e.stopPropagation()
 
-      const wrapper = btn.closest(".relative, .inline-block, td, div")
+      const action = actionBtn.getAttribute("data-action")
+      const id = actionBtn.getAttribute("data-id")
+
+      if (!id || !action) {
+        closeAllMenus()
+        return
+      }
+
+      if (action === "ver") {
+        const ficha = fichas.find((f) => String(f.id) === String(id))
+        if (ficha) openModalVerFicha(ficha)
+      } else if (action === "editar") {
+        const ficha = fichas.find((f) => String(f.id) === String(id))
+        if (ficha) openModalFicha(ficha)
+      } else if (["activar", "finalizar", "cancelar"].includes(action)) {
+        cambiarEstadoFicha(id, action)
+      }
+
+      closeAllMenus()
+      return
+    }
+
+    if (trigger) {
+      e.stopPropagation()
+
+      const wrapper =
+        trigger.closest(".relative") ||
+        trigger.closest(".inline-block") ||
+        trigger.closest("td") ||
+        trigger.closest("div")
+
       if (!wrapper) return
 
       const menu = wrapper.querySelector("[data-menu]")
@@ -1688,56 +1792,27 @@ function attachMenuEvents() {
 
       const isHidden = menu.classList.contains("hidden")
 
-      document.querySelectorAll("[data-menu]").forEach((el) => {
-        el.classList.add("hidden")
-        el.classList.remove("show")
-      })
+      closeAllMenus()
 
       if (isHidden) {
-        menu.classList.remove("hidden")
+        portalizeMenu(menu, trigger)
         requestAnimationFrame(() => {
           menu.classList.add("show")
         })
       } else {
-        menu.classList.remove("show")
-        setTimeout(() => {
-          menu.classList.add("hidden")
-        }, 150)
+        closeAllMenus()
       }
-    })
+
+      return
+    }
+
+    if (!anyMenu) {
+      closeAllMenus()
+    }
   })
-}
 
-function attachActionEvents() {
-  document.querySelectorAll("[data-menu] [data-action]").forEach((btn) => {
-    btn.addEventListener("click", async (e) => {
-      e.stopPropagation()
-
-      const action = btn.getAttribute("data-action")
-      const id = btn.getAttribute("data-id")
-      
-      if (!id || !action) return
-
-      // Close menu
-      const menu = btn.closest("[data-menu]")
-      if (menu) {
-        menu.classList.add("hidden")
-        menu.classList.remove("show")
-      }
-
-      // Manage different actions
-      if (action === "ver") {
-        const ficha = fichas.find((f) => String(f.id) === String(id))
-        if (ficha) await openModalVerFicha(ficha)
-      } else if (action === "editar") {
-        const ficha = fichas.find((f) => String(f.id) === String(id))
-        if (ficha) openModalFicha(ficha)
-      } else if (['activar', 'finalizar', 'cancelar'].includes(action)) {
-        // Use the new unified feature
-        await cambiarEstadoFicha(id, action)
-      }
-    })
-  })
+  window.addEventListener("scroll", closeAllMenus, true)
+  window.addEventListener("resize", closeAllMenus)
 }
 
 // =========================
@@ -2132,11 +2207,11 @@ function renderOpcionesJefeGrupo() {
   instructoresSeleccionados.forEach((instructor, index) => {
     const isSelected = jefeGrupoSeleccionado && jefeGrupoSeleccionado.id_usuario == instructor.id_usuario;
     html += `
-      <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer ${isSelected ? 'ring-2 ring-blue-500' : ''}"
+      <div class="flex items-center gap-3 p-3 rounded-lg transition-colors cursor-pointer bg-muted hover:bg-secondary-13 ${isSelected ? 'ring-2 ring-custom' : ''}"
            onclick="seleccionarJefeGrupo(${index})">
         <div class="flex-shrink-0">
-          <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-            <span class="text-blue-600 font-semibold">${instructor.nombre_completo.charAt(0)}</span>
+          <div class="w-10 h-10 rounded-full bg-avatar-primary-39 flex items-center justify-center">
+            <span class="font-semibold">${instructor.nombre_completo.charAt(0)}</span>
           </div>
         </div>
         <div class="flex-1">
@@ -2146,7 +2221,7 @@ function renderOpcionesJefeGrupo() {
         </div>
         <div class="flex-shrink-0">
           <input type="radio" name="jefeGrupo" ${isSelected ? 'checked' : ''} 
-                 class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                 class="w-4 h-4 text-foreground bg-input border-border focus:ring-custom"
                  onclick="seleccionarJefeGrupo(${index})">
         </div>
       </div>
@@ -2159,9 +2234,17 @@ function renderOpcionesJefeGrupo() {
           <p><strong>Nota:</strong> Solo puede seleccionar un instructor como jefe de grupo.</p>
         </div>
         ${jefeGrupoSeleccionado ? `
-        <div class="mt-2 p-2 bg-blue-50 rounded-lg border border-blue-100">
-          <div class="text-sm font-medium text-blue-800">Jefe de grupo seleccionado:</div>
-          <div class="text-sm text-blue-600">${jefeGrupoSeleccionado.nombre_completo}</div>
+        <div class="mt-2 p-2 rounded-lg border border-border"
+            style="background-color: color-mix(in srgb, var(--foreground) 6%, transparent);">
+          
+          <div class="text-sm font-medium text-foreground">
+            Jefe de grupo seleccionado:
+          </div>
+
+          <div class="text-sm"
+              style="color: color-mix(in srgb, var(--foreground) 70%, transparent);">
+            ${jefeGrupoSeleccionado.nombre_completo}
+          </div>
         </div>
         ` : ''}
       </div>

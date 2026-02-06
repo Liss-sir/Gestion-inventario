@@ -58,9 +58,20 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             </button>
 
             <!-- Cards view -->
-            <button id="btnVistaTarjetas"
-              class="px-3 py-2 text-xs sm:text-sm flex items-center gap-1 text-muted-foreground">
-              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <button
+              type="button"
+              id="btnVistaTarjetas"
+              class="px-3 py-2 text-xs sm:text-sm flex items-center gap-1 text-muted-foreground"
+            >
+              <!-- Grid icon -->
+              <svg
+                class="h-4 w-4"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="1.8"
+              >
                 <rect x="4" y="4" width="7" height="7" rx="1"></rect>
                 <rect x="13" y="4" width="7" height="7" rx="1"></rect>
                 <rect x="4" y="13" width="7" height="7" rx="1"></rect>
@@ -126,22 +137,22 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
       <!-- TABLE VIEW -->
       <div id="vistaTabla"
-        class="relative rounded-xl border border-border bg-card p-[1px] overflow-visible">
-        <table class="min-w-full border-separate border-spacing-0 text-sm rounded-[11px] bg-card">
-          <thead>
+        class="relative rounded-[14px] border border-border bg-card overflow-x-hidden overflow-y-visible">
+        <table class="min-w-full border-separate border-spacing-0 text-sm bg-card">
+          <thead class="bg-[#f3f4f6]">
             <tr>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100 first:rounded-tl-[11px]">Número</th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">Programa</th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">Nivel</th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">Jornada</th>
-              <th class="px-4 py-3 text-left font-medium text-xs text-muted-foreground bg-gray-100">Estado</th>
-              <th class="px-4 py-3 text-right font-medium text-xs text-muted-foreground bg-gray-100 last:rounded-tr-[11px]">Acciones</th>
+              <th class="px-4 py-3 text-left font-normal rounded-tl-[14px]">Número</th>
+              <th class="px-4 py-3 text-left font-normal">Programa</th>
+              <th class="px-4 py-3 text-left font-normal">Nivel</th>
+              <th class="px-4 py-3 text-left font-normal">Jornada</th>
+              <th class="px-4 py-3 text-left font-normal">Estado</th>
+              <th class="px-4 py-3 text-right font-normal rounded-tr-[14px]">Acciones</th>
             </tr>
           </thead>
           <tbody id="tbodyFichas" class="divide-y divide-border bg-card
                    [&>tr>td]:bg-card
-                   [&>tr:last-child>td:first-child]:rounded-bl-[11px]
-                   [&>tr:last-child>td:last-child]:rounded-br-[11px]">
+                   [&>tr:last-child>td:first-child]:rounded-bl-[14px]
+                   [&>tr:last-child>td:last-child]:rounded-br-[14px]">
           </tbody>
         </table>
       </div>
@@ -245,12 +256,12 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         <!-- FOOTER PASO 1 -->
         <div class="flex justify-end gap-2 pt-4">
           <button id="btnCancelarModalFicha" type="button"
-            class="inline-flex items-center justify-center rounded-md border border-input px-4 py-2 text-sm hover:bg-muted">
+            class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
             Cancelar
           </button>
 
           <button type="button" id="btnIrPaso2"
-            class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm text-white shadow">
+            class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:opacity-90">
             Siguiente
           </button>
         </div>
@@ -295,12 +306,12 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           <!-- FOOTER PASO 2 -->
           <div class="flex justify-between gap-2 pt-4">
             <button type="button" id="btnVolverPaso1"
-              class="inline-flex items-center justify-center rounded-md border border-input px-4 py-2 text-sm hover:bg-muted">
+              class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
               Atrás
             </button>
 
             <button type="button" id="btnIrPaso3"
-              class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm text-white shadow">
+              class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:opacity-90">
               Siguiente
             </button>
           </div>
@@ -338,12 +349,12 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           <!-- FOOTER PASO 3 -->
           <div class="flex justify-between gap-2 pt-4">
             <button type="button" id="btnVolverPaso2"
-              class="inline-flex items-center justify-center rounded-md border border-input px-4 py-2 text-sm hover:bg-muted">
+              class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
               Atrás
             </button>
 
             <button type="button" id="btnIrPaso4"
-              class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm text-white shadow">
+              class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:opacity-90">
               Siguiente
             </button>
           </div>
@@ -374,12 +385,12 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           <!-- FOOTER PASO 4 -->
           <div class="flex justify-between gap-2 pt-4">
             <button type="button" id="btnVolverPaso3"
-              class="inline-flex items-center justify-center rounded-md border border-input px-4 py-2 text-sm hover:bg-muted">
+              class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
               Atrás
             </button>
 
             <button type="submit"
-              class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm text-white shadow">
+              class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:opacity-90">
               Guardar Ficha
             </button>
           </div>
