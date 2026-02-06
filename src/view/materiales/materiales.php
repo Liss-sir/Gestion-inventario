@@ -214,8 +214,11 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 
                 <!-- Descripción -->
                 <div class="space-y-2">
+                  <div class="flex items-center justify-between">
                     <label class="text-sm font-medium">Descripción *</label>
-                    <textarea id="descripcion" placeholder="Descripción del material" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm h-16 input-siga"></textarea>
+                    <span class="text-xs text-muted-foreground"><span id="descCharCount">0</span>/250</span>
+                  </div>
+                  <textarea id="descripcion" maxlength="250" placeholder="Descripción del material" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm h-16 input-siga"></textarea>
                 </div>
                 
                 <!-- Clasificación y Unidad -->
@@ -397,8 +400,11 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                 
                 <!-- Descripción -->
                 <div class="space-y-2">
+                  <div class="flex items-center justify-between">
                     <label class="text-sm font-medium">Descripción *</label>
-                    <textarea id="editDescripcion" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm h-16 input-siga"></textarea>
+                    <span class="text-xs text-muted-foreground"><span id="editDescCharCount">0</span>/250</span>
+                  </div>
+                  <textarea id="editDescripcion" maxlength="250" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm h-16 input-siga"></textarea>
                 </div>
                 
                 <!-- Clasificación y Unidad -->
