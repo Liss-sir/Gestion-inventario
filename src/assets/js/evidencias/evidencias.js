@@ -332,7 +332,16 @@ function setupUploadArea() {
 
     const files = e.dataTransfer.files
     if (files.length > 0) {
-      handleImageUpload(files[0])
+      const file = files[0]
+      // Sync dropped file into the input so validation sees it
+      try {
+        const dt = new DataTransfer()
+        dt.items.add(file)
+        photoInput.files = dt.files
+      } catch (err) {
+        console.warn("[Evidencias] No se pudo sincronizar el input de archivo:", err)
+      }
+      handleImageUpload(file)
     }
   })
 
