@@ -174,16 +174,6 @@ class MovimientoModel {
                 )
             ");
 
-            // DEBUG: Ver qué valor tiene id_solicitud
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', 
-                date('Y-m-d H:i:s') . " [INSERT] id_solicitud recibido: " . var_export($data['id_solicitud'] ?? 'NO_EXISTE', true) . "\n", 
-                FILE_APPEND);
-
-            // ⭐ DEBUG: Ver cantidad que se intenta insertar
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', 
-                date('Y-m-d H:i:s') . " [INSERT] Cantidad a insertar: " . var_export($primerMaterial['cantidad'] ?? 'NO_EXISTE', true) . " | tipo_movimiento: " . var_export($data['tipo_movimiento'], true) . "\n", 
-                FILE_APPEND);
-
             $stmtMov->execute([
                 $data['tipo_movimiento'] ?? 'entrada',
                 $data['id_usuario'],
@@ -197,10 +187,6 @@ class MovimientoModel {
                 $primerMaterial['id_material'],
                 $primerMaterial['cantidad']
             ]);
-
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', 
-                date('Y-m-d H:i:s') . " [INSERT] Movimiento insertado con ID: " . $this->conn->lastInsertId() . "\n", 
-                FILE_APPEND);
 
             $idMovimiento = $this->conn->lastInsertId();
             error_log("ID movimiento creado: " . $idMovimiento);

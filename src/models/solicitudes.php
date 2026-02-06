@@ -108,8 +108,6 @@ class SolicitudMaterialModel {
     // ================= RESPONDER (YA NO DESCUENTA STOCK) =================
     public function responderSolicitud($idSolicitud, $estado, $idAprobador, $observaciones = null)
     {
-        file_put_contents(__DIR__ . '/../../debug_solicitud.log', date('Y-m-d H:i:s') . " [RESPONDER] responderSolicitud($idSolicitud, $estado)\n", FILE_APPEND);
-        
         $estadoNormalizado = ucfirst(strtolower($estado));
 
         if (!in_array($estadoNormalizado, ['Aprobada', 'Rechazada'])) {
