@@ -34,6 +34,11 @@ let programasMap = {};
 // Apprentices
 let aprendices = [];
 let estudiantesSeleccionados = [];
+let aprendicesCargando = false;
+let detalleAprendices = [];
+let detalleAprendicesSeleccionados = new Set();
+let detalleAprendicesOriginal = new Set();
+let detalleAprendicesCargando = false;
 
 // Instructors
 let instructores = [];
@@ -349,9 +354,11 @@ async function cargarProgramas() {
 // =========================
 // LOAD APPRENTICES
 // =========================
-async function cargarAprendices() {
+async function cargarAprendices(idFicha = null) {
+  setAprendicesLoading(true)
   try {
-    const res = await fetch(`${API_URL}?accion=aprendices`)
+    const query = idFicha ? `&id_ficha=${encodeURIComponent(idFicha)}` : ""
+    const res = await fetch(`${API_URL}?accion=aprendices${query}`)
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}: ${res.statusText}`)
     }
@@ -364,12 +371,11 @@ async function cargarAprendices() {
       aprendices = []
       console.error("La respuesta de aprendices no es un array:", data)
     }
-
-    renderOpcionesAprendices()
+    setAprendicesLoading(false)
   } catch (error) {
     console.error("Error al cargar aprendices:", error)
     aprendices = []
-    renderOpcionesAprendices()
+    setAprendicesLoading(false)
   }
 }
 
@@ -414,6 +420,15 @@ async function cargarInstructores(id_programa = null) {
 function renderOpcionesAprendices() {
   if (!selectEstudiante) return
 
+  if (aprendicesCargando) {
+    selectEstudiante.value = ""
+    selectEstudiante.disabled = true
+    selectEstudiante.placeholder = "Cargando aprendices..."
+    return
+  }
+
+  selectEstudiante.disabled = false
+  selectEstudiante.placeholder = "Buscar aprendices por nombre, documento o correo..."
   selectEstudiante.innerHTML = ""
 
   if (!Array.isArray(aprendices) || aprendices.length === 0) {
@@ -551,6 +566,18 @@ function seleccionarTodosInstructoresVisibles() {
 function renderChecklistAprendices() {
   if (!listaEstudiantesSeleccionados) return
 
+  if (aprendicesCargando) {
+    listaEstudiantesSeleccionados.innerHTML = `
+      <div class="text-center text-muted-foreground py-8">
+        <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <p class="text-sm">Cargando aprendices...</p>
+      </div>
+    `
+    return
+  }
+
   if (!Array.isArray(aprendices) || aprendices.length === 0) {
     listaEstudiantesSeleccionados.innerHTML = `
       <div class="text-center text-muted-foreground py-8">
@@ -602,9 +629,9 @@ function renderChecklistAprendices() {
     const isSelected = estudiantesSeleccionados.some(e => e.id_usuario == aprendiz.id_usuario)
     html += `
       <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-        <div class="flex-1">
-          <div class="font-medium text-sm">${aprendiz.nombre_completo}</div>
-          ${aprendiz.correo ? `<div class="text-xs text-gray-500">${aprendiz.correo}</div>` : ''}
+        <div class="flex-1 list-item-content">
+          <div class="font-medium text-sm list-item-name">${aprendiz.nombre_completo}</div>
+          ${aprendiz.correo ? `<div class="text-xs text-gray-500 list-item-email">${aprendiz.correo}</div>` : ''}
         </div>
         <div class="w-32 text-center text-sm">${aprendiz.numero_documento}</div>
         <div class="w-16 text-center">
@@ -703,9 +730,9 @@ function renderChecklistInstructores() {
     const isSelected = instructoresSeleccionados.some(e => e.id_usuario == instructor.id_usuario)
     html += `
       <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-        <div class="flex-1">
-          <div class="font-medium text-sm">${instructor.nombre_completo}</div>
-          ${instructor.correo ? `<div class="text-xs text-gray-500">${instructor.correo}</div>` : ''}
+        <div class="flex-1 list-item-content">
+          <div class="font-medium text-sm list-item-name">${instructor.nombre_completo}</div>
+          ${instructor.correo ? `<div class="text-xs text-gray-500 list-item-email">${instructor.correo}</div>` : ''}
         </div>
         <div class="w-32 text-center text-sm">${instructor.numero_documento}</div>
         <div class="w-16 text-center">
@@ -811,6 +838,8 @@ function openModalFicha(editFicha = null) {
   if (paso3Ficha) paso3Ficha.classList.add("hidden")
   if (paso4Ficha) paso4Ficha.classList.add("hidden")
 
+  let programaIdEditar = ""
+
   if (editFicha) {
     modalFichaTitulo.textContent = "Editar Ficha"
     modalFichaDescripcion.textContent = "Modifica la información de la ficha"
@@ -818,7 +847,7 @@ function openModalFicha(editFicha = null) {
 
     // Upload data to the form
     inputNumeroFicha.value = editFicha.numero_ficha || ""
-    inputPrograma.value = editFicha.id_programa || ""
+    programaIdEditar = editFicha.id_programa ? String(editFicha.id_programa) : ""
     inputJornada.value = editFicha.jornada || ""
     inputModalidad.value = editFicha.modalidad || ""
     inputFechaInicio.value = editFicha.fecha_inicio || ""
@@ -855,8 +884,10 @@ function openModalFicha(editFicha = null) {
   }
 
   renderOpcionesPrograma();
-  renderOpcionesAprendices();
-  renderChecklistAprendices();
+  if (programaIdEditar) {
+    inputPrograma.value = programaIdEditar
+  }
+  setAprendicesLoading(true)
 
   // Load instructors only if a program is already selected (in editing)
   if (editFicha && editFicha.id_programa) {
@@ -868,6 +899,17 @@ function openModalFicha(editFicha = null) {
   }
   
   renderOpcionesJefeGrupo();
+
+  cargarAprendices(editFicha ? editFicha.id : null);
+}
+
+function setAprendicesLoading(isLoading) {
+  aprendicesCargando = isLoading
+  if (isLoading) {
+    aprendices = []
+  }
+  renderOpcionesAprendices()
+  renderChecklistAprendices()
 }
 
 async function cargarEstudiantesDeFicha(idFicha) {
@@ -1039,12 +1081,226 @@ async function openModalVerFicha(ficha) {
         <span class="font-medium">${ficha.fecha_fin || "No especificado"}</span>
       </div>
     </div>
+    <div class="mt-5 border-t border-border pt-4">
+      <div class="flex items-center justify-between gap-2">
+        <h4 class="text-sm font-semibold">Aprendices en la ficha</h4>
+        <button id="btnGuardarAprendices" type="button"
+          class="inline-flex items-center justify-center rounded-md bg-secondary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow hover:opacity-90 disabled:opacity-50"
+          disabled>
+          Sin cambios
+        </button>
+      </div>
+      <div class="mt-2">
+        <input id="detalleBuscarAprendiz" type="text"
+          placeholder="Buscar aprendiz por nombre, documento o correo..."
+          class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" />
+      </div>
+      <div id="detalleListaAprendices"
+        class="mt-3 max-h-[240px] overflow-y-auto rounded-lg border border-border p-3"></div>
+      <p id="detalleAprendicesInfo" class="mt-2 text-xs text-muted-foreground"></p>
+    </div>
   `
+
+  setupDetalleAprendicesHandlers()
+  await cargarDetalleAprendices(ficha.id)
 }
 
 function closeModalVerFicha() {
   modalVerFicha.classList.remove("active")
   selectedFicha = null
+  detalleAprendices = []
+  detalleAprendicesSeleccionados = new Set()
+  detalleAprendicesOriginal = new Set()
+  detalleAprendicesCargando = false
+}
+
+function setupDetalleAprendicesHandlers() {
+  const inputBuscar = document.getElementById("detalleBuscarAprendiz")
+  const lista = document.getElementById("detalleListaAprendices")
+  const btnGuardar = document.getElementById("btnGuardarAprendices")
+
+  if (inputBuscar) {
+    inputBuscar.oninput = () => renderDetalleAprendices()
+  }
+
+  if (lista) {
+    lista.onchange = (event) => {
+      const target = event.target
+      if (!target || !target.matches("input[type='checkbox'][data-id]")) return
+
+      const id = target.getAttribute("data-id")
+      if (!id) return
+
+      if (target.checked) {
+        detalleAprendicesSeleccionados.add(id)
+      } else {
+        detalleAprendicesSeleccionados.delete(id)
+      }
+
+      actualizarEstadoGuardarAprendices()
+    }
+  }
+
+  if (btnGuardar) {
+    btnGuardar.onclick = async () => {
+      if (!selectedFicha) return
+      await guardarDetalleAprendices(selectedFicha.id)
+    }
+  }
+}
+
+function setDetalleAprendicesLoading(isLoading) {
+  detalleAprendicesCargando = isLoading
+  renderDetalleAprendices()
+}
+
+async function cargarDetalleAprendices(idFicha) {
+  setDetalleAprendicesLoading(true)
+  try {
+    const res = await fetch(`${API_URL}?accion=estudiantesFicha&id_ficha=${idFicha}`)
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+    }
+
+    const data = await res.json()
+
+    if (Array.isArray(data)) {
+      detalleAprendices = data
+    } else {
+      detalleAprendices = []
+    }
+
+    detalleAprendicesSeleccionados = new Set(
+      detalleAprendices.map(a => String(a.id_usuario))
+    )
+    detalleAprendicesOriginal = new Set(detalleAprendicesSeleccionados)
+  } catch (error) {
+    console.error("Error al cargar aprendices de la ficha:", error)
+    detalleAprendices = []
+    detalleAprendicesSeleccionados = new Set()
+    detalleAprendicesOriginal = new Set()
+  }
+
+  setDetalleAprendicesLoading(false)
+}
+
+function renderDetalleAprendices() {
+  const lista = document.getElementById("detalleListaAprendices")
+  const info = document.getElementById("detalleAprendicesInfo")
+  const inputBuscar = document.getElementById("detalleBuscarAprendiz")
+
+  if (!lista || !info) return
+
+  if (detalleAprendicesCargando) {
+    lista.innerHTML = `
+      <div class="text-center text-muted-foreground py-6">
+        <p class="text-sm">Cargando aprendices...</p>
+      </div>
+    `
+    info.textContent = ""
+    actualizarEstadoGuardarAprendices()
+    return
+  }
+
+  if (!Array.isArray(detalleAprendices) || detalleAprendices.length === 0) {
+    lista.innerHTML = `
+      <div class="text-center text-muted-foreground py-6">
+        <p class="text-sm">No hay aprendices asignados a esta ficha.</p>
+      </div>
+    `
+    info.textContent = ""
+    actualizarEstadoGuardarAprendices()
+    return
+  }
+
+  const term = inputBuscar && inputBuscar.value ? inputBuscar.value.toLowerCase() : ""
+  const filtrados = detalleAprendices.filter(a =>
+    (a.nombre_completo && a.nombre_completo.toLowerCase().includes(term)) ||
+    (a.numero_documento && a.numero_documento.toString().toLowerCase().includes(term)) ||
+    (a.correo && a.correo.toLowerCase().includes(term))
+  )
+
+  if (filtrados.length === 0) {
+    lista.innerHTML = `
+      <div class="text-center text-muted-foreground py-6">
+        <p class="text-sm">No se encontraron aprendices con ese criterio.</p>
+      </div>
+    `
+    info.textContent = ""
+    actualizarEstadoGuardarAprendices()
+    return
+  }
+
+  const rows = filtrados.map((a) => {
+    const id = String(a.id_usuario)
+    const checked = detalleAprendicesSeleccionados.has(id) ? "checked" : ""
+    return `
+      <label class="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted">
+        <div class="min-w-0">
+          <div class="font-medium truncate">${a.nombre_completo || "Sin nombre"}</div>
+          <div class="text-xs text-muted-foreground truncate">${a.numero_documento || "Sin documento"}${a.correo ? ` · ${a.correo}` : ""}</div>
+        </div>
+        <input type="checkbox" data-id="${id}" class="h-4 w-4 rounded border-input" ${checked} />
+      </label>
+    `
+  }).join("")
+
+  lista.innerHTML = `<div class="space-y-2">${rows}</div>`
+  info.textContent = `Seleccionados: ${detalleAprendicesSeleccionados.size} de ${detalleAprendices.length}`
+  actualizarEstadoGuardarAprendices()
+}
+
+function actualizarEstadoGuardarAprendices() {
+  const btn = document.getElementById("btnGuardarAprendices")
+  if (!btn) return
+
+  const seleccionados = detalleAprendicesSeleccionados
+  const originales = detalleAprendicesOriginal
+  let cambios = seleccionados.size !== originales.size
+
+  if (!cambios) {
+    for (const id of seleccionados) {
+      if (!originales.has(id)) {
+        cambios = true
+        break
+      }
+    }
+  }
+
+  btn.disabled = !cambios
+  btn.textContent = cambios ? `Guardar cambios (${seleccionados.size})` : "Sin cambios"
+}
+
+async function guardarDetalleAprendices(idFicha) {
+  const btn = document.getElementById("btnGuardarAprendices")
+  if (btn) btn.disabled = true
+
+  try {
+    const payload = {
+      id_ficha: idFicha,
+      estudiantes: Array.from(detalleAprendicesSeleccionados)
+    }
+
+    const res = await fetch(`${API_URL}?accion=agregarEstudiantes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+
+    const data = await res.json()
+    if (data && data.success) {
+      detalleAprendicesOriginal = new Set(detalleAprendicesSeleccionados)
+      toastSuccess("Aprendices actualizados correctamente.")
+      await cargarAprendices()
+    } else {
+      toastError(data.error || "No se pudieron actualizar los aprendices.")
+    }
+  } catch (error) {
+    console.error("Error al actualizar aprendices:", error)
+    toastError("No se pudieron actualizar los aprendices.")
+  }
+
+  actualizarEstadoGuardarAprendices()
 }
 
 // =========================
@@ -2094,7 +2350,7 @@ formFicha.addEventListener("submit", async (e) => {
             if (dataEstudiantes.success) {
                 mensajeFinal += ` ${estudiantesSeleccionados.length} estudiante(s) agregado(s).`;
             } else {
-                errores.push("Hubo un problema al agregar aprendices.");
+              errores.push(dataEstudiantes.error || "Hubo un problema al agregar aprendices.");
             }
         }
 
@@ -2157,7 +2413,8 @@ formFicha.addEventListener("submit", async (e) => {
         } else {
             toastSuccess(mensajeFinal);
         }
-        
+
+        await cargarAprendices();
         closeModalFicha();
         await cargarFichas();
     } catch (error) {

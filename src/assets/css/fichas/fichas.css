@@ -89,3 +89,22 @@ th {
 .bg-avatar-secondary-39 {
   background-color: rgba(16, 185, 129, 0.15);
 }
+
+/* Checklist text overflow handling */
+.list-item-content {
+  min-width: 0;
+}
+
+.list-item-name {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.25;
+}
+
+.list-item-email {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -99,15 +99,31 @@ class FichaModel {
 
     /* ================= APRENDICES ================= */
 
-    public function obtenerAprendices() {
+    public function obtenerAprendices($id_ficha = null) {
         try {
-            $sql = "SELECT id_usuario, nombre_completo, numero_documento, correo
-                    FROM usuarios
-                    WHERE cargo = 'Aprendiz' AND estado = 'activo'
-                    ORDER BY nombre_completo";
+            $sql = "SELECT u.id_usuario, u.nombre_completo, u.numero_documento, u.correo
+                    FROM usuarios u
+                    WHERE u.cargo = 'Aprendiz' AND u.estado = 'activo'";
+
+            if ($id_ficha) {
+                $sql .= " AND NOT EXISTS (
+                            SELECT 1
+                            FROM fichas_aprendices fa
+                            WHERE fa.id_usuario = u.id_usuario
+                            AND fa.id_ficha <> ?
+                          )";
+            } else {
+                $sql .= " AND NOT EXISTS (
+                            SELECT 1
+                            FROM fichas_aprendices fa
+                            WHERE fa.id_usuario = u.id_usuario
+                          )";
+            }
+
+            $sql .= " ORDER BY u.nombre_completo";
 
             $stmt = $this->conn->prepare($sql);
-            $stmt->execute();
+            $id_ficha ? $stmt->execute([$id_ficha]) : $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         } catch (Exception $e) {
@@ -118,7 +134,31 @@ class FichaModel {
     public function agregarEstudiantes($id_ficha, $estudiantes) {
         try {
             if (empty($estudiantes) || !is_array($estudiantes)) {
-                return true;
+                $this->conn->prepare(
+                    "DELETE FROM fichas_aprendices WHERE id_ficha = ?"
+                )->execute([$id_ficha]);
+
+                return ["success" => true];
+            }
+
+            $placeholders = implode(",", array_fill(0, count($estudiantes), "?"));
+            $params = array_values($estudiantes);
+            $params[] = $id_ficha;
+
+            $sqlConflicto = "SELECT DISTINCT id_usuario
+                            FROM fichas_aprendices
+                            WHERE id_usuario IN ($placeholders)
+                            AND id_ficha <> ?";
+
+            $stmtConflicto = $this->conn->prepare($sqlConflicto);
+            $stmtConflicto->execute($params);
+            $conflictos = $stmtConflicto->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!empty($conflictos)) {
+                return [
+                    "success" => false,
+                    "error" => "Hay aprendices que ya pertenecen a otra ficha."
+                ];
             }
 
             $this->conn->prepare(
@@ -133,10 +173,10 @@ class FichaModel {
                 $stmt->execute([$id_ficha, $id_estudiante]);
             }
 
-            return true;
+            return ["success" => true];
 
         } catch (Exception $e) {
-            return false;
+            return ["success" => false, "error" => "Error al asignar aprendices."];
         }
     }
 
