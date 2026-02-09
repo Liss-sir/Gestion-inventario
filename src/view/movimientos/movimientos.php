@@ -330,19 +330,24 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                         <p class="text-sm text-gray-500">Listado de materiales solicitados en este movimiento</p>
                     </div>
                     <button type="button" onclick="closeMaterialesModal()"
-                        class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100">
-                        <i data-lucide="x" class="h-4 w-4"></i>
+                        class="rounded-full p-1 hover:bg-muted">
+                        <span class="sr-only">Cerrar</span>
+                        <svg
+                            class="h-5 w-5"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
                     </button>
                 </div>
 
                 <div id="materialesBody" class="space-y-2 max-h-[60vh] overflow-y-auto"></div>
-
-                <div class="mt-5 flex justify-end">
-                    <button type="button" onclick="closeMaterialesModal()"
-                        class="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 border border-border">
-                        Cerrar
-                    </button>
-                </div>
             </div>
             </div>
         </div>
@@ -359,8 +364,20 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                         <p class="text-sm text-gray-500">Registre un nuevo movimiento de inventario</p>
                     </div>
                     <button type="button" onclick="closeMovimientoModal()"
-                        class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100">
-                        <i data-lucide="x" class="h-4 w-4"></i>
+                        class="rounded-full p-1 hover:bg-muted">
+                        <span class="sr-only">Cerrar</span>
+                        <svg
+                            class="h-5 w-5"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
                     </button>
                 </div>
 
@@ -464,7 +481,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                     ====================== -->
 
                     <div data-field="devolucion-container"
-                        class="hidden rounded-xl border border-border bg-gray-50 p-4">
+                        class="hidden rounded-xl border p-4">
 
                         <p class="text-xs sm:text-sm font-semibold mb-3">
                             Devolución de Material
