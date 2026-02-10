@@ -164,6 +164,7 @@ public function registrarEntrada(array $data): string
 
             $idMaterial = (int)$m['id_material'];
             $cantidad   = (int)$m['cantidad'];
+            $idBodega    = (int)($data['id_bodega'] ?? 0);
 
             $sql = "SELECT stock_maximo 
                     FROM material_formacion 
@@ -178,8 +179,17 @@ public function registrarEntrada(array $data): string
                 throw new Exception("El material no existe.");
             }
 
-            if ($cantidad > (int)$stockMaximo) {
-                throw new Exception("No puede solicitar más de $stockMaximo unidades para este material.");
+            // Stock actual total (todas las bodegas)
+            $stmtStock = $this->conn->prepare(
+                "SELECT COALESCE(SUM(stock_actual), 0)
+                 FROM stock_bodega
+                 WHERE id_material = ?"
+            );
+            $stmtStock->execute([$idMaterial]);
+            $stockActual = (int)($stmtStock->fetchColumn() ?? 0);
+
+            if (($stockActual + $cantidad) > (int)$stockMaximo) {
+                throw new Exception("No puede superar el stock máximo ($stockMaximo). Stock actual: $stockActual.");
             }
         }
 

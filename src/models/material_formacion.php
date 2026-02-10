@@ -129,6 +129,26 @@ class MaterialFormacionModel {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    /*
+       GET ALL MATERIALS WITH TOTAL STOCK (FOR MOVIMIENTOS)
+    */
+    public function getAllDisponiblesWithStockTotal()
+    {
+        $sql = "SELECT
+                    m.*, 
+                    COALESCE(SUM(sb.stock_actual), 0) AS stock_actual
+                FROM material_formacion m
+                LEFT JOIN stock_bodega sb ON m.id_material = sb.id_material
+                WHERE m.estado IS NULL OR m.estado <> 'Agotado'
+                GROUP BY m.id_material
+                ORDER BY m.nombre ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     /* 
        SEARCH MATERIAL
         */
@@ -138,7 +158,7 @@ class MaterialFormacionModel {
 
         $sql = "SELECT *
                 FROM material_formacion
-                WHERE nombre LIKE ? OR codigo_inventario LIKE ?
+                                WHERE nombre LIKE ? OR codigo_inventario LIKE ?
                 ORDER BY nombre ASC";
 
         $stmt = $this->db->prepare($sql);
