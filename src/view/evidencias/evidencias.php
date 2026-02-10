@@ -39,6 +39,8 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             <p class="text-muted-foreground">Registro de evidencias de uso de materiales de formación</p>
           </div>
 
+                    <!-- (Filters moved below header for layout parity with 'materiales' module) -->
+
           <!-- Botón Nueva Evidencia -->
           <button
             id="btnNuevaEvidencia"
@@ -52,10 +54,42 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </button>
         </div>
 
-        <!-- Evidence Grid -->
-        <div id="evidenceGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            <!-- Las tarjetas se generarán dinámicamente con JavaScript -->
-        </div>
+<!-- Contenedor de controles (buscador + filtros) similar a módulo materiales -->
+<div class="flex justify-between items-center w-full">
+
+    <!-- Espacio izquierdo (puede alojar un buscador si se necesita) -->
+    <div class="relative w-full max-w-xs">
+        <!-- placeholder empty to keep spacing consistent -->
+    </div>
+
+    <!-- FILTROS A LA DERECHA -->
+    <div class="flex items-center gap-2">
+        <!-- Ícono de filtro -->
+        <svg class="h-4 w-4 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+            <path
+                d="M5 5h14a1 1 0 0 1 .8 1.6L15 12v4.5a1 1 0 0 1-.553.894l-3 1.5A1 1 0 0 1 10 18v-6L4.2 6.6A1 1 0 0 1 5 5z"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            />
+        </svg>
+
+        <select id="filterPrograma" class="rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm">
+            <option value="">Todos los programas</option>
+        </select>
+
+        <select id="filterFicha" class="rounded-md border border-input bg-background px-3 pr-10 py-2 text-sm" disabled>
+            <option value="">Todas las fichas</option>
+        </select>
+    </div>
+
+</div>
+
+                <!-- Evidence Grid -->
+                <div id="evidenceGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        <!-- Las tarjetas se generarán dinámicamente con JavaScript -->
+                </div>
       </div>
     </main>
 
@@ -195,6 +229,17 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </div>
     </div>
        
-    <script src="<?= BASE_URL ?>/src/assets/js/evidencias/evidencias.js"></script>
+        <script>
+            window.CURRENT_USER = <?php
+                $cu = [
+                    'id' => $_SESSION['usuario_id'] ?? null,
+                    'cargo' => $_SESSION['usuario_cargo'] ?? $_SESSION['cargo'] ?? null,
+                    'programas' => $_SESSION['usuario_programas'] ?? [],
+                    'fichas' => $_SESSION['usuario_fichas'] ?? []
+                ];
+                echo json_encode($cu, JSON_UNESCAPED_UNICODE);
+            ?>;
+        </script>
+        <script src="<?= BASE_URL ?>/src/assets/js/evidencias/evidencias.js"></script>
 </body>
 </html>

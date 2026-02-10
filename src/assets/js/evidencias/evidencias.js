@@ -9,8 +9,11 @@ let evidencesData = []
    Inicialización
    ========================= */
 document.addEventListener("DOMContentLoaded", () => {
-  // Cargar evidencias
-  fetchAndRenderEvidences()
+  // Dump de depuración: mostrar qué sesión llegó al cliente
+  try { console.debug('[Evidencias] window.CURRENT_USER', window.CURRENT_USER) } catch (e) {}
+
+  // Cargar filtros y evidencias
+  loadPrograms().finally(() => fetchAndRenderEvidences())
   setupUploadArea()
   setupButtonListeners()
 })
@@ -88,45 +91,317 @@ function getEvidenceImageUrl(foto) {
 
 async function fetchAndRenderEvidences() {
   try {
-    const res = await fetch(resolveEndpoint(EVIDENCIAS_API_URL), {
-      method: "GET",
-      credentials: "same-origin",
-      cache: "no-store",
-    })
+    // Leer filtros desde la UI
+    const params = new URLSearchParams()
+    const progSel = document.getElementById('filterPrograma')
+    const fichaSel = document.getElementById('filterFicha')
+    if (progSel && progSel.value) params.append('id_programa', progSel.value)
+    if (fichaSel && fichaSel.value) params.append('id_ficha', fichaSel.value)
 
-    if (!res.ok) throw new Error("Error al cargar evidencias")
+    // Construir endpoint
+    const query = params.toString()
+    const endpoint = resolveEndpoint(`${EVIDENCIAS_API_URL}?accion=listar${query ? '&' + query : ''}`)
 
+    const res = await fetch(endpoint, { method: 'GET' })
+    if (!res.ok) throw new Error('Error al obtener evidencias')
     const data = await res.json()
 
-    evidencesData = (Array.isArray(data) ? data : []).map((row) => {
-      // Formatear fecha
-      const fecha = row.fecha ? new Date(row.fecha).toLocaleDateString("es-CO") : "-"
-      
-      // Crear array de materiales desde el GROUP_CONCAT
-      const materiales = []
-      if (row.materiales) {
-        // materiales ya viene como string: "Cemento (10 KG), Arena (20 KG)"
-        materiales.push(...row.materiales.split(', '))
-      }
+    if (!Array.isArray(data)) {
+      evidencesData = []
+      renderEvidenceCards()
+      return
+    }
+
+    evidencesData = data.map(row => {
+      const fecha = row.fecha || row.fecha_creacion || row.created_at || ''
+      let materiales = []
+      if (Array.isArray(row.materiales)) materiales = row.materiales
+      else if (typeof row.materiales === 'string' && row.materiales.trim() !== '') materiales = row.materiales.split(',').map(s => s.trim()).filter(Boolean)
 
       return {
-        id: Number.parseInt(row.id_evidencia ?? row.id ?? Math.floor(Math.random() * 1e9)),
+        id: Number.parseInt(row.id_evidencia ?? row.id ?? row.id_movimiento ?? Math.floor(Math.random() * 1e9)),
         fecha: fecha,
-        ficha: row.ficha ?? "-",
-        obra: row.obra ?? "-",
-        imagen: getEvidenceImageUrl(row.foto ?? row.imagen ?? ""),
-        titulo: row.titulo ?? "Evidencia",
-        descripcion: row.descripcion_obra ?? row.descripcion ?? "",
+        ficha: row.ficha ?? row.numero_ficha ?? row.id_ficha ?? '-',
+        obra: row.obra ?? row.nombre_obra ?? '-',
+        imagen: getEvidenceImageUrl(row.foto ?? row.imagen ?? ''),
+        titulo: row.titulo ?? 'Evidencia',
+        descripcion: row.descripcion_obra ?? row.descripcion ?? '',
         materiales: materiales,
-        usuario: row.usuario ?? "-",
+        usuario: row.usuario ?? row.nombre_usuario ?? '-',
       }
     })
 
     renderEvidenceCards()
   } catch (err) {
-    console.warn("[Evidencias] No se pudo cargar desde backend:", err)
+    console.warn('[Evidencias] No se pudo cargar desde backend:', err)
     evidencesData = []
     renderEvidenceCards()
+  }
+}
+
+/* =========================
+   Cargar fichas para un programa
+   ========================= */
+async function loadFichasForProgram(id_programa) {
+  const select = document.getElementById('filterFicha')
+  if (!select) return
+  select.disabled = true
+  select.innerHTML = ''
+  // Si el usuario es Instructor y tenemos fichas en sesión, filtrar desde sesión
+  const isInstructor = window.CURRENT_USER && String(window.CURRENT_USER.cargo || '').toLowerCase() === 'instructor'
+  let userFichas = []
+  if (window.CURRENT_USER && window.CURRENT_USER.fichas !== undefined && window.CURRENT_USER.fichas !== null) {
+    const rawF = window.CURRENT_USER.fichas
+    if (Array.isArray(rawF)) userFichas = rawF
+    else if (typeof rawF === 'string') {
+      try {
+        const parsedF = JSON.parse(rawF)
+        if (Array.isArray(parsedF)) userFichas = parsedF
+        else if (typeof parsedF === 'object') userFichas = Object.values(parsedF)
+      } catch (e) { userFichas = [] }
+    } else if (typeof rawF === 'object') {
+      userFichas = Object.values(rawF)
+    }
+  }
+  try { console.debug('[Evidencias] userFichas', userFichas) } catch (e) {}
+
+    try {
+      // Si es Instructor y no tiene fichas relacionadas, dejar vacío y deshabilitado
+      if (isInstructor && userFichas.length === 0) {
+        const optEmpty = document.createElement('option')
+        optEmpty.value = ''
+        optEmpty.textContent = 'Sin fichas asignadas'
+        select.appendChild(optEmpty)
+        select.disabled = true
+        return
+      }
+
+      const optAll = document.createElement('option')
+      optAll.value = ''
+      optAll.textContent = 'Todas las fichas'
+      select.appendChild(optAll)
+
+      if (isInstructor && userFichas.length > 0) {
+        const filtered = id_programa ? userFichas.filter(f => String(f.id_programa) === String(id_programa)) : userFichas
+        if (filtered.length === 0) {
+          // No fichas relacionadas con el programa seleccionado
+          select.innerHTML = ''
+          const opt = document.createElement('option')
+          opt.value = ''
+          opt.textContent = 'Sin fichas asignadas'
+          select.appendChild(opt)
+          select.disabled = true
+          return
+        }
+        filtered.forEach(f => {
+          const opt = document.createElement('option')
+          opt.value = f.id_ficha
+          opt.textContent = f.numero_ficha
+          select.appendChild(opt)
+        })
+        select.disabled = false
+        select.onchange = () => fetchAndRenderEvidences()
+        return
+      }
+    // Fallback: cargar todas las fichas desde backend y filtrar por programa
+    const res = await fetch(resolveEndpoint('src/controllers/ficha_controller.php?accion=listar'), { method: 'GET' })
+    if (!res.ok) throw new Error('Error al cargar fichas')
+    const data = await res.json()
+
+    if (Array.isArray(data)) {
+      const filtered = id_programa ? data.filter(f => String(f.id_programa) === String(id_programa)) : data
+      filtered.forEach(f => {
+        const opt = document.createElement('option')
+        opt.value = f.id_ficha || f.id_ficha
+        opt.textContent = f.numero_ficha || f.numero_ficha
+        select.appendChild(opt)
+      })
+    }
+
+    select.disabled = false
+    select.onchange = () => fetchAndRenderEvidences()
+
+  } catch (err) {
+    console.warn('No se pudieron cargar fichas:', err)
+    select.innerHTML = '<option value="">Error al cargar fichas</option>'
+    select.disabled = true
+  }
+}
+
+/* =========================
+   Cargar programas para filtro
+   ========================= */
+async function loadPrograms() {
+  const select = document.getElementById('filterPrograma')
+  if (!select) return
+  try {
+    // Si el usuario es Instructor y hay programas en sesión, usar esos
+    const isInstructor = window.CURRENT_USER && String(window.CURRENT_USER.cargo || '').toLowerCase() === 'instructor'
+    let userPrograms = []
+    if (window.CURRENT_USER && window.CURRENT_USER.programas !== undefined && window.CURRENT_USER.programas !== null) {
+      const raw = window.CURRENT_USER.programas
+      if (Array.isArray(raw)) userPrograms = raw
+      else if (typeof raw === 'string') {
+        try {
+          const parsed = JSON.parse(raw)
+          if (Array.isArray(parsed)) userPrograms = parsed
+          else if (typeof parsed === 'object') userPrograms = Object.values(parsed)
+        } catch (e) { userPrograms = [] }
+      } else if (typeof raw === 'object') {
+        userPrograms = Object.values(raw)
+      }
+    }
+    try { console.debug('[Evidencias] userPrograms', userPrograms) } catch (e) {}
+
+      // Limpiar
+      select.innerHTML = ''
+
+      // Si es Instructor y no tiene programas relacionados, intentar derivarlos desde sus fichas
+      if (isInstructor && userPrograms.length === 0) {
+        // Parsear fichas desde session si existen
+        let derivedFichas = []
+        if (window.CURRENT_USER && window.CURRENT_USER.fichas !== undefined && window.CURRENT_USER.fichas !== null) {
+          const rawF = window.CURRENT_USER.fichas
+          if (Array.isArray(rawF)) derivedFichas = rawF
+          else if (typeof rawF === 'string') {
+            try { const parsedF = JSON.parse(rawF); if (Array.isArray(parsedF)) derivedFichas = parsedF; else if (typeof parsedF === 'object') derivedFichas = Object.values(parsedF) } catch (e) { derivedFichas = [] }
+          } else if (typeof rawF === 'object') derivedFichas = Object.values(rawF)
+        }
+
+        const derivedProgIds = Array.from(new Set(derivedFichas.map(f => Number(f.id_programa)).filter(Boolean)))
+        try { console.debug('[Evidencias] derivedProgIds from fichas', derivedProgIds) } catch (e) {}
+
+        if (derivedProgIds.length > 0) {
+          // Cargar programas desde backend y filtrar por los ids derivados
+          const resAll = await fetch(resolveEndpoint('src/controllers/programa_controller.php?accion=listar'), { method: 'GET' })
+          if (!resAll.ok) throw new Error('Error al cargar programas')
+          const allProgs = await resAll.json()
+          const filteredProgs = Array.isArray(allProgs) ? allProgs.filter(p => derivedProgIds.includes(Number(p.id_programa))) : []
+
+          // Agregar opción por defecto
+          const optAllInner = document.createElement('option')
+          optAllInner.value = ''
+          optAllInner.textContent = 'Todos los programas'
+          select.appendChild(optAllInner)
+
+          filteredProgs.forEach(p => {
+            const opt = document.createElement('option')
+            opt.value = p.id_programa || p.id_programa
+            opt.textContent = p.nombre || p.nombre_programa || p.nombre_programa
+            select.appendChild(opt)
+          })
+          select.disabled = false
+
+          // Añadir listener para mantener comportamiento del filtro
+          select.addEventListener('change', () => {
+            const fichaSel = document.getElementById('filterFicha')
+            if (select.value) {
+              loadFichasForProgram(select.value)
+            } else {
+              if (fichaSel) {
+                fichaSel.innerHTML = ''
+                const opt = document.createElement('option')
+                opt.value = ''
+                opt.textContent = 'Todas las fichas'
+                fichaSel.appendChild(opt)
+                fichaSel.disabled = true
+              }
+            }
+            fetchAndRenderEvidences()
+          })
+
+          // Inicial: dejar ficha vacía y deshabilitada
+          const initialFicha = document.getElementById('filterFicha')
+          if (initialFicha) {
+            initialFicha.innerHTML = ''
+            const opt0 = document.createElement('option')
+            opt0.value = ''
+            opt0.textContent = 'Todas las fichas'
+            initialFicha.appendChild(opt0)
+            initialFicha.disabled = true
+          }
+          return
+        } else {
+          const optEmpty = document.createElement('option')
+          optEmpty.value = ''
+          optEmpty.textContent = 'Sin programas asignados'
+          select.appendChild(optEmpty)
+          select.disabled = true
+          // Mantener ficha también vacía y deshabilitada
+          const fichaSel = document.getElementById('filterFicha')
+          if (fichaSel) {
+            fichaSel.innerHTML = ''
+            const optF = document.createElement('option')
+            optF.value = ''
+            optF.textContent = 'Sin fichas asignadas'
+            fichaSel.appendChild(optF)
+            fichaSel.disabled = true
+          }
+          return
+        }
+      }
+
+      // Agregar opción por defecto
+      const optAll = document.createElement('option')
+      optAll.value = ''
+      optAll.textContent = 'Todos los programas'
+      select.appendChild(optAll)
+
+      if (isInstructor && userPrograms.length > 0) {
+      userPrograms.forEach(p => {
+        const opt = document.createElement('option')
+        opt.value = p.id_programa
+        opt.textContent = p.nombre_programa || p.nombre || p.nombre_programa
+        select.appendChild(opt)
+      })
+      select.disabled = false
+    } else {
+      const res = await fetch(resolveEndpoint('src/controllers/programa_controller.php?accion=listar'), { method: 'GET' })
+      if (!res.ok) throw new Error('Error al cargar programas')
+      const data = await res.json()
+
+      if (Array.isArray(data)) {
+        data.forEach(p => {
+          const opt = document.createElement('option')
+          opt.value = p.id_programa || p.id_programa
+          opt.textContent = p.nombre || p.nombre_programa || p.nombre_programa
+          select.appendChild(opt)
+        })
+      }
+    }
+
+    // Al cambiar programa, cargar fichas relacionadas y recargar evidencias
+    select.addEventListener('change', () => {
+      const fichaSel = document.getElementById('filterFicha')
+      if (select.value) {
+        loadFichasForProgram(select.value)
+      } else {
+        // limpiar y deshabilitar ficha cuando no hay programa seleccionado
+        if (fichaSel) {
+          fichaSel.innerHTML = ''
+          const opt = document.createElement('option')
+          opt.value = ''
+          opt.textContent = 'Todas las fichas'
+          fichaSel.appendChild(opt)
+          fichaSel.disabled = true
+        }
+      }
+      fetchAndRenderEvidences()
+    })
+
+    // Inicial: dejar ficha vacía y deshabilitada
+    const initialFicha = document.getElementById('filterFicha')
+    if (initialFicha) {
+      initialFicha.innerHTML = ''
+      const opt0 = document.createElement('option')
+      opt0.value = ''
+      opt0.textContent = 'Todas las fichas'
+      initialFicha.appendChild(opt0)
+      initialFicha.disabled = true
+    }
+
+  } catch (err) {
+    console.warn('No se pudieron cargar programas:', err)
   }
 }
 
@@ -150,19 +425,45 @@ function renderEvidenceCards() {
 
   if (evidencesData.length === 0) {
     grid.className = "col-span-full"
-    grid.innerHTML = `
-      <div class="mt-10 mb-6 flex flex-col items-center justify-center text-center border border-border rounded-2xl p-10 w-full">
-        <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
-          <svg class="h-7 w-7 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-          </svg>
+
+    // Detectar si hay filtros activos
+    const progSel = document.getElementById('filterPrograma')
+    const fichaSel = document.getElementById('filterFicha')
+    const hasFilters = (progSel && progSel.value) || (fichaSel && fichaSel.value)
+
+    if (hasFilters) {
+      grid.innerHTML = `
+        <div class="mt-10 mb-6 flex flex-col items-center justify-center text-center border border-border rounded-2xl p-10 w-full">
+          <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
+            <svg class="h-7 w-7 text-muted-foreground"
+                 xmlns="http://www.w3.org/2000/svg"
+                 fill="none"
+                 viewBox="0 0 24 24"
+                 stroke="currentColor"
+                 stroke-width="1.8">
+              <circle cx="11" cy="11" r="6" stroke-linecap="round" stroke-linejoin="round"></circle>
+              <line x1="16" y1="16" x2="20" y2="20" stroke-linecap="round" stroke-linejoin="round"></line>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold mt-4">No se encontraron resultados</h3>
+          <p class="text-sm text-muted-foreground mt-1 max-w-md">No se encontraron evidencias que coincidan con los criterios de búsqueda actuales.</p>
         </div>
-        <h3 class="text-lg font-semibold mt-4">No hay evidencias registradas</h3>
-        <p class="text-sm text-muted-foreground mt-1 max-w-md">
-          Una vez agregues evidencias desde el botón <strong>"Nueva Evidencia"</strong>, aparecerán listadas en esta vista.
-        </p>
-      </div>
-    `
+      `
+    } else {
+      grid.innerHTML = `
+        <div class="mt-10 mb-6 flex flex-col items-center justify-center text-center border border-border rounded-2xl p-10 w-full">
+          <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
+            <svg class="h-7 w-7 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold mt-4">No hay evidencias registradas</h3>
+          <p class="text-sm text-muted-foreground mt-1 max-w-md">
+            Una vez agregues evidencias desde el botón <strong>"Nueva Evidencia"</strong>, aparecerán listadas en esta vista.
+          </p>
+        </div>
+      `
+    }
     return
   }
 
