@@ -56,7 +56,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         <!-- Right-side actions: view mode toggle and "New User" button -->
         <div class="flex items-center gap-3">
           <!-- View mode toggle: table / cards -->
-          <div class="inline-flex rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+          <div class="hidden sm:inline-flex rounded-lg border border-border bg-card shadow-sm overflow-hidden">
             <!-- Table view button -->
             <button
               type="button"
@@ -750,7 +750,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   <!-- ========================================= -->
   <div
     id="flowbite-alert-container"
-    class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 w-full max-w-md"
+    class="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-[9999] flex flex-col gap-3 w-full max-w-[calc(100%-2rem)] sm:max-w-md"
   ></div>
 
   <!-- ========================================= -->

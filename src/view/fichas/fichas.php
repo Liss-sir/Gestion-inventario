@@ -47,7 +47,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         <div class="flex items-center gap-3">
 
           <!-- View Switch -->
-          <div class="inline-flex rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+          <div class="hidden md:inline-flex rounded-lg border border-border bg-card shadow-sm overflow-hidden">
             <!-- Table view button -->
             <button
               type="button"
@@ -180,7 +180,8 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
   <!-- MODAL CREATE / EDIT (2 PASOS) -->
   <div id="modalFicha" class="modal-overlay">
-    <div class="relative w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
+    <div class="relative w-[90vw] sm:w-full max-w-md rounded-xl border border-border bg-card shadow-lg overflow-hidden max-h-[90vh]">
+      <div class="overflow-y-auto max-h-[90vh] p-4 sm:p-6">
 
       <div class="flex items-start justify-between gap-4 mb-4">
         <div>
@@ -412,12 +413,14 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
       </form>
 
+      </div>
     </div>
   </div>
 
   <!-- MODAL SEE DETAILS -->
   <div id="modalVerFicha" class="modal-overlay">
-    <div class="relative w-full max-w-md rounded-xl border border-border bg-card from-white p-6 shadow-lg">
+    <div class="relative w-[90vw] sm:w-full max-w-md rounded-xl border border-border bg-card from-white shadow-lg overflow-hidden max-h-[90vh]">
+      <div class="overflow-y-auto max-h-[90vh] p-4 sm:p-6">
 
       <div class="flex items-start justify-between mb-4">
         <h2 class="text-lg font-semibold">Detalles de la Ficha</h2>
@@ -429,14 +432,15 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </button>
       </div>
 
-      <div id="detalleFichaContent" class="space-y-4"></div>
+        <div id="detalleFichaContent" class="space-y-4"></div>
 
+      </div>
     </div>
   </div>
 
   <!-- ALERT CONTAINER -->
   <div id="flowbite-alert-container"
-       class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 w-full max-w-md"></div>
+       class="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-[9999] flex flex-col gap-3 w-full max-w-[calc(100%-2rem)] sm:max-w-md"></div>
 
   
 
