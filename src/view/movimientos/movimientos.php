@@ -354,7 +354,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
         <!-- REGISTER MOVEMENT MODAL -->
         <div id="movimientoModal" class="fixed inset-0 z-50 hidden">
-            <div class="fixed inset-0 z-0 bg-black/50 backdrop-blur-md" onclick="closeMovimientoModal()"></div>
+            <div class="fixed inset-0 z-0 bg-black/40" onclick="closeMovimientoModal()"></div>
 
             <div class="absolute inset-0 z-10 flex items-center justify-center overflow-y-auto">
             <div class="relative mx-2 sm:mx-4 w-full max-w-4xl rounded-2xl bg-white shadow-xl p-4 sm:p-6 lg:p-8 my-4 sm:my-0">
