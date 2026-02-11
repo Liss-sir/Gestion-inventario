@@ -419,6 +419,46 @@ const icons = {
 /* =========================
    Render de tarjetas
    ========================= */
+function setFiltersDisabledByEmptyState(shouldDisable) {
+  const progSel = document.getElementById('filterPrograma')
+  const fichaSel = document.getElementById('filterFicha')
+
+  ;[progSel, fichaSel].forEach((sel) => {
+    if (!sel) return
+    if (shouldDisable) {
+      if (!sel.disabled) {
+        const firstOpt = sel.options && sel.options[0] ? sel.options[0] : null
+        if (firstOpt) {
+          sel.dataset.emptyOriginalText = firstOpt.textContent
+          sel.dataset.emptyOriginalValue = firstOpt.value
+          firstOpt.textContent = 'Sin evidencias para filtrar'
+          firstOpt.value = ''
+        } else {
+          const opt = document.createElement('option')
+          opt.value = ''
+          opt.textContent = 'Sin evidencias para filtrar'
+          sel.appendChild(opt)
+        }
+        sel.selectedIndex = 0
+        sel.dataset.disabledByEmpty = '1'
+        sel.disabled = true
+      }
+    } else if (sel.dataset.disabledByEmpty === '1') {
+      if (sel.dataset.emptyOriginalText !== undefined) {
+        const firstOpt = sel.options && sel.options[0] ? sel.options[0] : null
+        if (firstOpt) {
+          firstOpt.textContent = sel.dataset.emptyOriginalText
+          firstOpt.value = sel.dataset.emptyOriginalValue || ''
+        }
+        delete sel.dataset.emptyOriginalText
+        delete sel.dataset.emptyOriginalValue
+      }
+      delete sel.dataset.disabledByEmpty
+      sel.disabled = false
+    }
+  })
+}
+
 function renderEvidenceCards() {
   const grid = document.getElementById("evidenceGrid")
   grid.innerHTML = ""
@@ -430,6 +470,9 @@ function renderEvidenceCards() {
     const progSel = document.getElementById('filterPrograma')
     const fichaSel = document.getElementById('filterFicha')
     const hasFilters = (progSel && progSel.value) || (fichaSel && fichaSel.value)
+
+    // Si no hay evidencias y no hay filtros activos, bloquear filtros
+    setFiltersDisabledByEmptyState(!hasFilters)
 
     if (hasFilters) {
       grid.innerHTML = `
@@ -466,6 +509,8 @@ function renderEvidenceCards() {
     }
     return
   }
+
+  setFiltersDisabledByEmptyState(false)
 
   grid.className = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
 
