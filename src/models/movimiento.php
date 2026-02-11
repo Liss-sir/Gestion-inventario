@@ -132,131 +132,139 @@ class MovimientoModel {
         }
     }
 
-    /* ===============================
-       REGISTRAR ENTRADA (MULTI MATERIAL)
-    =============================== */
-    public function registrarEntrada(array $data): string
-    {
-        // LOG: Ver qué datos llegan
-        error_log("=== REGISTRAR ENTRADA ===");
-        error_log("Datos recibidos: " . json_encode($data));
-        error_log("Total materiales: " . count($data['materiales'] ?? []));
+/* ===============================
+   REGISTRAR ENTRADA (MULTI MATERIAL)
+=============================== */
+public function registrarEntrada(array $data): string
+{
+    error_log("=== REGISTRAR ENTRADA ===");
+    error_log("Datos recibidos: " . json_encode($data));
+    error_log("Total materiales: " . count($data['materiales'] ?? []));
 
-        // ✅ FIX: Verificar si ya hay una transacción activa
-        // (puede ser llamado desde responderSolicitud que ya tiene una abierta)
-        $transaccionNuestra = false;
-        if (!$this->conn->inTransaction()) {
-            $this->conn->beginTransaction();
-            $transaccionNuestra = true;
-            error_log("⚙️ Iniciando nueva transacción en registrarEntrada()");
-        } else {
-            error_log("⚙️ Usando transacción existente en registrarEntrada()");
+    $transaccionNuestra = false;
+    if (!$this->conn->inTransaction()) {
+        $this->conn->beginTransaction();
+        $transaccionNuestra = true;
+        error_log("⚙️ Iniciando nueva transacción en registrarEntrada()");
+    } else {
+        error_log("⚙️ Usando transacción existente en registrarEntrada()");
+    }
+
+    try {
+
+        if (empty($data['materiales'])) {
+            throw new Exception("Debe agregar al menos un material");
         }
 
-        try {
-            // Insertar UNA SOLA fila en movimientos_material con el PRIMER material
-            if (empty($data['materiales'])) {
-                throw new Exception("Debe agregar al menos un material");
+        /* ============================================================
+           ✅ VALIDACIÓN CONTRA STOCK_MAXIMO
+           - No permite solicitar más del stock_maximo
+        ============================================================ */
+        foreach ($data['materiales'] as $m) {
+
+            $idMaterial = (int)$m['id_material'];
+            $cantidad   = (int)$m['cantidad'];
+            $idBodega    = (int)($data['id_bodega'] ?? 0);
+
+            $sql = "SELECT stock_maximo 
+                    FROM material_formacion 
+                    WHERE id_material = ? 
+                    LIMIT 1";
+
+            $stmtVal = $this->conn->prepare($sql);
+            $stmtVal->execute([$idMaterial]);
+            $stockMaximo = $stmtVal->fetchColumn();
+
+            if ($stockMaximo === false) {
+                throw new Exception("El material no existe.");
             }
 
-            $primerMaterial = $data['materiales'][0];
-            error_log("Primer material: " . json_encode($primerMaterial));
+            // Stock actual total (todas las bodegas)
+            $stmtStock = $this->conn->prepare(
+                "SELECT COALESCE(SUM(stock_actual), 0)
+                 FROM stock_bodega
+                 WHERE id_material = ?"
+            );
+            $stmtStock->execute([$idMaterial]);
+            $stockActual = (int)($stmtStock->fetchColumn() ?? 0);
 
-            $stmtMov = $this->conn->prepare("
-                INSERT INTO movimientos_material (
-                    tipo_movimiento, id_usuario,
-                    id_bodega, id_subbodega,
-                    id_programa, id_ficha, id_rae,
-                    observaciones, id_solicitud, fecha_hora,
-                    id_material, cantidad
-                ) VALUES (
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?
-                )
+            if (($stockActual + $cantidad) > (int)$stockMaximo) {
+                throw new Exception("No puede superar el stock máximo ($stockMaximo). Stock actual: $stockActual.");
+            }
+        }
+
+        // Insertar UNA SOLA fila en movimientos_material con el PRIMER material
+        $primerMaterial = $data['materiales'][0];
+        error_log("Primer material: " . json_encode($primerMaterial));
+
+        $stmtMov = $this->conn->prepare("
+            INSERT INTO movimientos_material (
+                tipo_movimiento, id_usuario,
+                id_bodega, id_subbodega,
+                id_programa, id_ficha, id_rae,
+                observaciones, id_solicitud, fecha_hora,
+                id_material, cantidad
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?
+            )
+        ");
+
+        $stmtMov->execute([
+            $data['tipo_movimiento'] ?? 'entrada',
+            $data['id_usuario'],
+            $data['id_bodega'],
+            $data['id_subbodega'] ?? null,
+            $data['id_programa'] ?? null,
+            $data['id_ficha'] ?? null,
+            $data['id_rae'] ?? null,
+            $data['observaciones'] ?? null,
+            $data['id_solicitud'] ?? null,
+            $primerMaterial['id_material'],
+            $primerMaterial['cantidad']
+        ]);
+
+        $idMovimiento = $this->conn->lastInsertId();
+        error_log("ID movimiento creado: " . $idMovimiento);
+
+        if (count($data['materiales']) > 1) {
+
+            $stmtMat = $this->conn->prepare("
+                INSERT INTO movimientos_detalle
+                (id_movimiento, id_material, cantidad)
+                VALUES (?, ?, ?)
             ");
 
-            // DEBUG: Ver qué valor tiene id_solicitud
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', 
-                date('Y-m-d H:i:s') . " [INSERT] id_solicitud recibido: " . var_export($data['id_solicitud'] ?? 'NO_EXISTE', true) . "\n", 
-                FILE_APPEND);
+            for ($i = 1; $i < count($data['materiales']); $i++) {
+                $mat = $data['materiales'][$i];
 
-            // ⭐ DEBUG: Ver cantidad que se intenta insertar
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', 
-                date('Y-m-d H:i:s') . " [INSERT] Cantidad a insertar: " . var_export($primerMaterial['cantidad'] ?? 'NO_EXISTE', true) . " | tipo_movimiento: " . var_export($data['tipo_movimiento'], true) . "\n", 
-                FILE_APPEND);
-
-            $stmtMov->execute([
-                $data['tipo_movimiento'] ?? 'entrada',
-                $data['id_usuario'],
-                $data['id_bodega'],
-                $data['id_subbodega'] ?? null, // ✅ FIX: evitar undefined index
-                $data['id_programa'] ?? null,
-                $data['id_ficha'] ?? null,
-                $data['id_rae'] ?? null,
-                $data['observaciones'] ?? null,
-                $data['id_solicitud'] ?? null,
-                $primerMaterial['id_material'],
-                $primerMaterial['cantidad']
-            ]);
-
-            file_put_contents(__DIR__ . '/../../debug_solicitud.log', 
-                date('Y-m-d H:i:s') . " [INSERT] Movimiento insertado con ID: " . $this->conn->lastInsertId() . "\n", 
-                FILE_APPEND);
-
-            $idMovimiento = $this->conn->lastInsertId();
-            error_log("ID movimiento creado: " . $idMovimiento);
-
-            // Insertar los materiales restantes en movimientos_detalle
-            if (count($data['materiales']) > 1) {
-                error_log("Insertando " . (count($data['materiales']) - 1) . " materiales en movimientos_detalle");
-                $stmtMat = $this->conn->prepare("
-                    INSERT INTO movimientos_detalle
-                    (id_movimiento, id_material, cantidad)
-                    VALUES (?, ?, ?)
-                ");
-
-                for ($i = 1; $i < count($data['materiales']); $i++) {
-                    $mat = $data['materiales'][$i];
-                    error_log("  - Material #$i: ID={$mat['id_material']}, Cantidad={$mat['cantidad']}");
-                    $stmtMat->execute([
-                        $idMovimiento,
-                        $mat['id_material'],
-                        $mat['cantidad']
-                    ]);
-                }
-                error_log("✓ Materiales detalle insertados correctamente");
-            } else {
-                error_log("⚠ Solo 1 material, no se usa movimientos_detalle");
+                $stmtMat->execute([
+                    $idMovimiento,
+                    $mat['id_material'],
+                    $mat['cantidad']
+                ]);
             }
-
-            /* ============================================================
-               ✅ NUEVO: ACTUALIZAR STOCK AUTOMÁTICAMENTE
-               - Esto llena stock_bodega y stock_subbodega
-               - Soluciona el problema en solicitudes cuando filtras por bodega
-            ============================================================ */
-            $this->actualizarStockEntrada($data, $data['materiales']);
-            error_log("✓ Stock actualizado correctamente");
-
-            // ✅ Solo hacer commit si FUE NUESTRA transacción
-            if ($transaccionNuestra) {
-                $this->conn->commit();
-            }
-
-            $codigo = 'MOV-' . date('Y') . '-' . str_pad($idMovimiento, 5, '0', STR_PAD_LEFT);
-            error_log("✓ Movimiento registrado exitosamente: " . $codigo);
-            error_log("======================\n");
-
-            return $codigo;
-
-        } catch (Exception $e) {
-            // ✅ Solo hacer rollback si FUE NUESTRA transacción
-            if ($transaccionNuestra) {
-                $this->conn->rollBack();
-            }
-            error_log("✗ ERROR al registrar: " . $e->getMessage());
-            // Re-lanzar la excepción para que responderSolicitud pueda hacer rollback
-            throw new Exception("Error al registrar movimiento: " . $e->getMessage());
         }
+
+        $this->actualizarStockEntrada($data, $data['materiales']);
+
+        if ($transaccionNuestra) {
+            $this->conn->commit();
+        }
+
+        $codigo = 'MOV-' . date('Y') . '-' . str_pad($idMovimiento, 5, '0', STR_PAD_LEFT);
+
+        return $codigo;
+
+    } catch (Exception $e) {
+
+        if ($transaccionNuestra) {
+            $this->conn->rollBack();
+        }
+
+        throw new Exception("Error al registrar movimiento: " . $e->getMessage());
     }
+}
+
 
     public function listarMovimientos()
     {

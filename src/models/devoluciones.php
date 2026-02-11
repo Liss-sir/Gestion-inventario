@@ -11,19 +11,18 @@ class devolucion {
      * Obtener solicitudes con movimientos de salida disponibles para devolución
      */
     public function getSolicitudesConSalida() {
-        $sql = "SELECT DISTINCT
-                    s.id_solicitud,
-                    s.fecha_solicitud,
-                    s.observaciones,
-                    mm.id_movimiento,
-                    mm.fecha_hora as fecha_salida,
-                    u.nombre_completo as usuario_solicitante
-                FROM solicitudes_material s
-                INNER JOIN movimientos_material mm ON mm.id_solicitud = s.id_solicitud
-                LEFT JOIN usuarios u ON u.id_usuario = s.id_usuario_solicitante
-                WHERE mm.tipo_movimiento = 'Salida'
-                  AND s.estado = 'Aprobada'
-                ORDER BY mm.fecha_hora DESC";
+                $sql = "SELECT DISTINCT
+                                        mm.id_movimiento,
+                                        mm.fecha_hora as fecha_salida,
+                                        s.id_solicitud,
+                                        s.fecha_solicitud,
+                                        s.observaciones,
+                                        u.nombre_completo as usuario_solicitante
+                                FROM movimientos_material mm
+                                LEFT JOIN solicitudes_material s ON mm.id_solicitud = s.id_solicitud
+                                LEFT JOIN usuarios u ON u.id_usuario = s.id_usuario_solicitante
+                                WHERE LOWER(mm.tipo_movimiento) = 'salida'
+                                ORDER BY mm.fecha_hora DESC";
         
         $stmt = $this->conn->prepare($sql);
         $stmt->execute();

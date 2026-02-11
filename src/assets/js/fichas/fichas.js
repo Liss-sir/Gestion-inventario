@@ -34,6 +34,11 @@ let programasMap = {};
 // Apprentices
 let aprendices = [];
 let estudiantesSeleccionados = [];
+let aprendicesCargando = false;
+let detalleAprendices = [];
+let detalleAprendicesSeleccionados = new Set();
+let detalleAprendicesOriginal = new Set();
+let detalleAprendicesCargando = false;
 
 // Instructors
 let instructores = [];
@@ -349,9 +354,11 @@ async function cargarProgramas() {
 // =========================
 // LOAD APPRENTICES
 // =========================
-async function cargarAprendices() {
+async function cargarAprendices(idFicha = null) {
+  setAprendicesLoading(true)
   try {
-    const res = await fetch(`${API_URL}?accion=aprendices`)
+    const query = idFicha ? `&id_ficha=${encodeURIComponent(idFicha)}` : ""
+    const res = await fetch(`${API_URL}?accion=aprendices${query}`)
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}: ${res.statusText}`)
     }
@@ -364,12 +371,11 @@ async function cargarAprendices() {
       aprendices = []
       console.error("La respuesta de aprendices no es un array:", data)
     }
-
-    renderOpcionesAprendices()
+    setAprendicesLoading(false)
   } catch (error) {
     console.error("Error al cargar aprendices:", error)
     aprendices = []
-    renderOpcionesAprendices()
+    setAprendicesLoading(false)
   }
 }
 
@@ -414,6 +420,15 @@ async function cargarInstructores(id_programa = null) {
 function renderOpcionesAprendices() {
   if (!selectEstudiante) return
 
+  if (aprendicesCargando) {
+    selectEstudiante.value = ""
+    selectEstudiante.disabled = true
+    selectEstudiante.placeholder = "Cargando aprendices..."
+    return
+  }
+
+  selectEstudiante.disabled = false
+  selectEstudiante.placeholder = "Buscar aprendices por nombre, documento o correo..."
   selectEstudiante.innerHTML = ""
 
   if (!Array.isArray(aprendices) || aprendices.length === 0) {
@@ -551,6 +566,18 @@ function seleccionarTodosInstructoresVisibles() {
 function renderChecklistAprendices() {
   if (!listaEstudiantesSeleccionados) return
 
+  if (aprendicesCargando) {
+    listaEstudiantesSeleccionados.innerHTML = `
+      <div class="text-center text-muted-foreground py-8">
+        <svg class="w-8 h-8 mx-auto mb-2 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <p class="text-sm">Cargando aprendices...</p>
+      </div>
+    `
+    return
+  }
+
   if (!Array.isArray(aprendices) || aprendices.length === 0) {
     listaEstudiantesSeleccionados.innerHTML = `
       <div class="text-center text-muted-foreground py-8">
@@ -602,9 +629,9 @@ function renderChecklistAprendices() {
     const isSelected = estudiantesSeleccionados.some(e => e.id_usuario == aprendiz.id_usuario)
     html += `
       <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-        <div class="flex-1">
-          <div class="font-medium text-sm">${aprendiz.nombre_completo}</div>
-          ${aprendiz.correo ? `<div class="text-xs text-gray-500">${aprendiz.correo}</div>` : ''}
+        <div class="flex-1 list-item-content">
+          <div class="font-medium text-sm list-item-name">${aprendiz.nombre_completo}</div>
+          ${aprendiz.correo ? `<div class="text-xs text-gray-500 list-item-email">${aprendiz.correo}</div>` : ''}
         </div>
         <div class="w-32 text-center text-sm">${aprendiz.numero_documento}</div>
         <div class="w-16 text-center">
@@ -622,7 +649,7 @@ function renderChecklistAprendices() {
           <span>${totalSeleccionados}</span>
         </div>
         <div class="mt-2 text-center">
-          <a href="#" onclick="seleccionarTodosVisibles(); return false;" class="text-blue-600 hover:text-blue-800 underline text-sm">
+          <a href="#" onclick="seleccionarTodosVisibles(); return false;" class="text-foreground hover:opacity-80 underline text-sm">
             Seleccionar todos los visibles
           </a>
         </div>
@@ -703,9 +730,9 @@ function renderChecklistInstructores() {
     const isSelected = instructoresSeleccionados.some(e => e.id_usuario == instructor.id_usuario)
     html += `
       <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-        <div class="flex-1">
-          <div class="font-medium text-sm">${instructor.nombre_completo}</div>
-          ${instructor.correo ? `<div class="text-xs text-gray-500">${instructor.correo}</div>` : ''}
+        <div class="flex-1 list-item-content">
+          <div class="font-medium text-sm list-item-name">${instructor.nombre_completo}</div>
+          ${instructor.correo ? `<div class="text-xs text-gray-500 list-item-email">${instructor.correo}</div>` : ''}
         </div>
         <div class="w-32 text-center text-sm">${instructor.numero_documento}</div>
         <div class="w-16 text-center">
@@ -723,7 +750,7 @@ function renderChecklistInstructores() {
           <span>${totalSeleccionados}</span>
         </div>
         <div class="mt-2 text-center">
-          <a href="#" onclick="seleccionarTodosInstructoresVisibles(); return false;" class="text-blue-600 hover:text-blue-800 underline text-sm">
+          <a href="#" onclick="seleccionarTodosInstructoresVisibles(); return false;" class="text-foreground hover:opacity-80 underline text-sm">
             Seleccionar todos los visibles
           </a>
         </div>
@@ -811,6 +838,8 @@ function openModalFicha(editFicha = null) {
   if (paso3Ficha) paso3Ficha.classList.add("hidden")
   if (paso4Ficha) paso4Ficha.classList.add("hidden")
 
+  let programaIdEditar = ""
+
   if (editFicha) {
     modalFichaTitulo.textContent = "Editar Ficha"
     modalFichaDescripcion.textContent = "Modifica la información de la ficha"
@@ -818,7 +847,7 @@ function openModalFicha(editFicha = null) {
 
     // Upload data to the form
     inputNumeroFicha.value = editFicha.numero_ficha || ""
-    inputPrograma.value = editFicha.id_programa || ""
+    programaIdEditar = editFicha.id_programa ? String(editFicha.id_programa) : ""
     inputJornada.value = editFicha.jornada || ""
     inputModalidad.value = editFicha.modalidad || ""
     inputFechaInicio.value = editFicha.fecha_inicio || ""
@@ -855,8 +884,10 @@ function openModalFicha(editFicha = null) {
   }
 
   renderOpcionesPrograma();
-  renderOpcionesAprendices();
-  renderChecklistAprendices();
+  if (programaIdEditar) {
+    inputPrograma.value = programaIdEditar
+  }
+  setAprendicesLoading(true)
 
   // Load instructors only if a program is already selected (in editing)
   if (editFicha && editFicha.id_programa) {
@@ -868,6 +899,17 @@ function openModalFicha(editFicha = null) {
   }
   
   renderOpcionesJefeGrupo();
+
+  cargarAprendices(editFicha ? editFicha.id : null);
+}
+
+function setAprendicesLoading(isLoading) {
+  aprendicesCargando = isLoading
+  if (isLoading) {
+    aprendices = []
+  }
+  renderOpcionesAprendices()
+  renderChecklistAprendices()
 }
 
 async function cargarEstudiantesDeFicha(idFicha) {
@@ -1039,12 +1081,226 @@ async function openModalVerFicha(ficha) {
         <span class="font-medium">${ficha.fecha_fin || "No especificado"}</span>
       </div>
     </div>
+    <div class="mt-5 border-t border-border pt-4">
+      <div class="flex items-center justify-between gap-2">
+        <h4 class="text-sm font-semibold">Aprendices en la ficha</h4>
+        <button id="btnGuardarAprendices" type="button"
+          class="inline-flex items-center justify-center rounded-md bg-secondary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow hover:opacity-90 disabled:opacity-50"
+          disabled>
+          Sin cambios
+        </button>
+      </div>
+      <div class="mt-2">
+        <input id="detalleBuscarAprendiz" type="text"
+          placeholder="Buscar aprendiz por nombre, documento o correo..."
+          class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" />
+      </div>
+      <div id="detalleListaAprendices"
+        class="mt-3 max-h-[240px] overflow-y-auto rounded-lg border border-border p-3"></div>
+      <p id="detalleAprendicesInfo" class="mt-2 text-xs text-muted-foreground"></p>
+    </div>
   `
+
+  setupDetalleAprendicesHandlers()
+  await cargarDetalleAprendices(ficha.id)
 }
 
 function closeModalVerFicha() {
   modalVerFicha.classList.remove("active")
   selectedFicha = null
+  detalleAprendices = []
+  detalleAprendicesSeleccionados = new Set()
+  detalleAprendicesOriginal = new Set()
+  detalleAprendicesCargando = false
+}
+
+function setupDetalleAprendicesHandlers() {
+  const inputBuscar = document.getElementById("detalleBuscarAprendiz")
+  const lista = document.getElementById("detalleListaAprendices")
+  const btnGuardar = document.getElementById("btnGuardarAprendices")
+
+  if (inputBuscar) {
+    inputBuscar.oninput = () => renderDetalleAprendices()
+  }
+
+  if (lista) {
+    lista.onchange = (event) => {
+      const target = event.target
+      if (!target || !target.matches("input[type='checkbox'][data-id]")) return
+
+      const id = target.getAttribute("data-id")
+      if (!id) return
+
+      if (target.checked) {
+        detalleAprendicesSeleccionados.add(id)
+      } else {
+        detalleAprendicesSeleccionados.delete(id)
+      }
+
+      actualizarEstadoGuardarAprendices()
+    }
+  }
+
+  if (btnGuardar) {
+    btnGuardar.onclick = async () => {
+      if (!selectedFicha) return
+      await guardarDetalleAprendices(selectedFicha.id)
+    }
+  }
+}
+
+function setDetalleAprendicesLoading(isLoading) {
+  detalleAprendicesCargando = isLoading
+  renderDetalleAprendices()
+}
+
+async function cargarDetalleAprendices(idFicha) {
+  setDetalleAprendicesLoading(true)
+  try {
+    const res = await fetch(`${API_URL}?accion=estudiantesFicha&id_ficha=${idFicha}`)
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+    }
+
+    const data = await res.json()
+
+    if (Array.isArray(data)) {
+      detalleAprendices = data
+    } else {
+      detalleAprendices = []
+    }
+
+    detalleAprendicesSeleccionados = new Set(
+      detalleAprendices.map(a => String(a.id_usuario))
+    )
+    detalleAprendicesOriginal = new Set(detalleAprendicesSeleccionados)
+  } catch (error) {
+    console.error("Error al cargar aprendices de la ficha:", error)
+    detalleAprendices = []
+    detalleAprendicesSeleccionados = new Set()
+    detalleAprendicesOriginal = new Set()
+  }
+
+  setDetalleAprendicesLoading(false)
+}
+
+function renderDetalleAprendices() {
+  const lista = document.getElementById("detalleListaAprendices")
+  const info = document.getElementById("detalleAprendicesInfo")
+  const inputBuscar = document.getElementById("detalleBuscarAprendiz")
+
+  if (!lista || !info) return
+
+  if (detalleAprendicesCargando) {
+    lista.innerHTML = `
+      <div class="text-center text-muted-foreground py-6">
+        <p class="text-sm">Cargando aprendices...</p>
+      </div>
+    `
+    info.textContent = ""
+    actualizarEstadoGuardarAprendices()
+    return
+  }
+
+  if (!Array.isArray(detalleAprendices) || detalleAprendices.length === 0) {
+    lista.innerHTML = `
+      <div class="text-center text-muted-foreground py-6">
+        <p class="text-sm">No hay aprendices asignados a esta ficha.</p>
+      </div>
+    `
+    info.textContent = ""
+    actualizarEstadoGuardarAprendices()
+    return
+  }
+
+  const term = inputBuscar && inputBuscar.value ? inputBuscar.value.toLowerCase() : ""
+  const filtrados = detalleAprendices.filter(a =>
+    (a.nombre_completo && a.nombre_completo.toLowerCase().includes(term)) ||
+    (a.numero_documento && a.numero_documento.toString().toLowerCase().includes(term)) ||
+    (a.correo && a.correo.toLowerCase().includes(term))
+  )
+
+  if (filtrados.length === 0) {
+    lista.innerHTML = `
+      <div class="text-center text-muted-foreground py-6">
+        <p class="text-sm">No se encontraron aprendices con ese criterio.</p>
+      </div>
+    `
+    info.textContent = ""
+    actualizarEstadoGuardarAprendices()
+    return
+  }
+
+  const rows = filtrados.map((a) => {
+    const id = String(a.id_usuario)
+    const checked = detalleAprendicesSeleccionados.has(id) ? "checked" : ""
+    return `
+      <label class="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted">
+        <div class="min-w-0">
+          <div class="font-medium truncate">${a.nombre_completo || "Sin nombre"}</div>
+          <div class="text-xs text-muted-foreground truncate">${a.numero_documento || "Sin documento"}${a.correo ? ` · ${a.correo}` : ""}</div>
+        </div>
+        <input type="checkbox" data-id="${id}" class="h-4 w-4 rounded border-input" ${checked} />
+      </label>
+    `
+  }).join("")
+
+  lista.innerHTML = `<div class="space-y-2">${rows}</div>`
+  info.textContent = `Seleccionados: ${detalleAprendicesSeleccionados.size} de ${detalleAprendices.length}`
+  actualizarEstadoGuardarAprendices()
+}
+
+function actualizarEstadoGuardarAprendices() {
+  const btn = document.getElementById("btnGuardarAprendices")
+  if (!btn) return
+
+  const seleccionados = detalleAprendicesSeleccionados
+  const originales = detalleAprendicesOriginal
+  let cambios = seleccionados.size !== originales.size
+
+  if (!cambios) {
+    for (const id of seleccionados) {
+      if (!originales.has(id)) {
+        cambios = true
+        break
+      }
+    }
+  }
+
+  btn.disabled = !cambios
+  btn.textContent = cambios ? `Guardar cambios (${seleccionados.size})` : "Sin cambios"
+}
+
+async function guardarDetalleAprendices(idFicha) {
+  const btn = document.getElementById("btnGuardarAprendices")
+  if (btn) btn.disabled = true
+
+  try {
+    const payload = {
+      id_ficha: idFicha,
+      estudiantes: Array.from(detalleAprendicesSeleccionados)
+    }
+
+    const res = await fetch(`${API_URL}?accion=agregarEstudiantes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+
+    const data = await res.json()
+    if (data && data.success) {
+      detalleAprendicesOriginal = new Set(detalleAprendicesSeleccionados)
+      toastSuccess("Aprendices actualizados correctamente.")
+      await cargarAprendices()
+    } else {
+      toastError(data.error || "No se pudieron actualizar los aprendices.")
+    }
+  } catch (error) {
+    console.error("Error al actualizar aprendices:", error)
+    toastError("No se pudieron actualizar los aprendices.")
+  }
+
+  actualizarEstadoGuardarAprendices()
 }
 
 // =========================
@@ -1645,7 +1901,6 @@ function renderTable() {
   });
 
   attachMenuEvents()
-  attachActionEvents()
 
   const tablaVisible = !vistaTabla.classList.contains("hidden")
 
@@ -1666,21 +1921,126 @@ function renderTable() {
 // DROPDOWN MENU HANDLING
 // =========================
 
-function attachMenuEvents() {
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest("[data-menu-trigger]") && !e.target.closest("[data-menu]")) {
-      document.querySelectorAll("[data-menu]").forEach((el) => {
-        el.classList.add("hidden")
-        el.classList.remove("show")
-      })
-    }
-  })
+let _menuEventsAttached = false
 
-  document.querySelectorAll("[data-menu-trigger]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
+function attachMenuEvents() {
+  if (_menuEventsAttached) return
+  _menuEventsAttached = true
+
+  function portalizeMenu(menu, trigger) {
+    if (!menu || !trigger) return
+
+    if (menu.dataset.portaled === "1") {
+      positionMenuFixed(menu, trigger)
+      return
+    }
+
+    const placeholder = document.createElement("span")
+    placeholder.style.display = "none"
+    placeholder.dataset.menuPlaceholder = menu.getAttribute("data-menu") || ""
+
+    menu._placeholderEl = placeholder
+    menu.parentNode.insertBefore(placeholder, menu)
+
+    document.body.appendChild(menu)
+    menu.dataset.portaled = "1"
+
+    menu.style.position = "fixed"
+    menu.style.zIndex = "99999"
+    menu.style.marginTop = "0"
+
+    positionMenuFixed(menu, trigger)
+  }
+
+  function restoreMenu(menu) {
+    if (!menu || menu.dataset.portaled !== "1") return
+
+    const placeholder = menu._placeholderEl
+    if (placeholder && placeholder.parentNode) {
+      placeholder.parentNode.insertBefore(menu, placeholder)
+      placeholder.remove()
+    }
+
+    menu.dataset.portaled = "0"
+    menu.style.position = ""
+    menu.style.top = ""
+    menu.style.left = ""
+    menu.style.zIndex = ""
+    menu.style.marginTop = ""
+  }
+
+  function positionMenuFixed(menu, trigger) {
+    if (!menu || !trigger) return
+
+    menu.classList.remove("hidden")
+
+    const rect = trigger.getBoundingClientRect()
+    const menuRect = menu.getBoundingClientRect()
+
+    let top = rect.bottom + 8
+    let left = rect.right - menuRect.width
+
+    const maxLeft = window.innerWidth - menuRect.width - 12
+    if (left > maxLeft) left = maxLeft
+    if (left < 12) left = 12
+
+    const maxTop = window.innerHeight - menuRect.height - 12
+    if (top > maxTop) {
+      top = rect.top - menuRect.height - 8
+    }
+    if (top < 12) top = 12
+
+    menu.style.top = `${top}px`
+    menu.style.left = `${left}px`
+  }
+
+  const closeAllMenus = () => {
+    document.querySelectorAll("[data-menu]").forEach((el) => {
+      el.classList.add("hidden")
+      el.classList.remove("show")
+      restoreMenu(el)
+    })
+  }
+
+  document.addEventListener("click", (e) => {
+    const trigger = e.target.closest("[data-menu-trigger]")
+    const actionBtn = e.target.closest("[data-menu] [data-action]")
+    const anyMenu = e.target.closest("[data-menu]")
+
+    if (actionBtn) {
       e.stopPropagation()
 
-      const wrapper = btn.closest(".relative, .inline-block, td, div")
+      const action = actionBtn.getAttribute("data-action")
+      const id = actionBtn.getAttribute("data-id")
+
+      if (!id || !action) {
+        closeAllMenus()
+        return
+      }
+
+      if (action === "ver") {
+        const ficha = fichas.find((f) => String(f.id) === String(id))
+        if (ficha) openModalVerFicha(ficha)
+      } else if (action === "editar") {
+        const ficha = fichas.find((f) => String(f.id) === String(id))
+        if (ficha) openModalFicha(ficha)
+      } else if (["activar", "finalizar", "cancelar"].includes(action)) {
+        cambiarEstadoFicha(id, action)
+      }
+
+      closeAllMenus()
+      return
+    }
+
+    if (trigger) {
+      e.stopPropagation()
+
+      const wrapper =
+        trigger.closest(".relative") ||
+        trigger.closest(".inline-block") ||
+        trigger.closest("td") ||
+        trigger.closest("div")
+
       if (!wrapper) return
 
       const menu = wrapper.querySelector("[data-menu]")
@@ -1688,56 +2048,27 @@ function attachMenuEvents() {
 
       const isHidden = menu.classList.contains("hidden")
 
-      document.querySelectorAll("[data-menu]").forEach((el) => {
-        el.classList.add("hidden")
-        el.classList.remove("show")
-      })
+      closeAllMenus()
 
       if (isHidden) {
-        menu.classList.remove("hidden")
+        portalizeMenu(menu, trigger)
         requestAnimationFrame(() => {
           menu.classList.add("show")
         })
       } else {
-        menu.classList.remove("show")
-        setTimeout(() => {
-          menu.classList.add("hidden")
-        }, 150)
+        closeAllMenus()
       }
-    })
+
+      return
+    }
+
+    if (!anyMenu) {
+      closeAllMenus()
+    }
   })
-}
 
-function attachActionEvents() {
-  document.querySelectorAll("[data-menu] [data-action]").forEach((btn) => {
-    btn.addEventListener("click", async (e) => {
-      e.stopPropagation()
-
-      const action = btn.getAttribute("data-action")
-      const id = btn.getAttribute("data-id")
-      
-      if (!id || !action) return
-
-      // Close menu
-      const menu = btn.closest("[data-menu]")
-      if (menu) {
-        menu.classList.add("hidden")
-        menu.classList.remove("show")
-      }
-
-      // Manage different actions
-      if (action === "ver") {
-        const ficha = fichas.find((f) => String(f.id) === String(id))
-        if (ficha) await openModalVerFicha(ficha)
-      } else if (action === "editar") {
-        const ficha = fichas.find((f) => String(f.id) === String(id))
-        if (ficha) openModalFicha(ficha)
-      } else if (['activar', 'finalizar', 'cancelar'].includes(action)) {
-        // Use the new unified feature
-        await cambiarEstadoFicha(id, action)
-      }
-    })
-  })
+  window.addEventListener("scroll", closeAllMenus, true)
+  window.addEventListener("resize", closeAllMenus)
 }
 
 // =========================
@@ -2019,7 +2350,7 @@ formFicha.addEventListener("submit", async (e) => {
             if (dataEstudiantes.success) {
                 mensajeFinal += ` ${estudiantesSeleccionados.length} estudiante(s) agregado(s).`;
             } else {
-                errores.push("Hubo un problema al agregar aprendices.");
+              errores.push(dataEstudiantes.error || "Hubo un problema al agregar aprendices.");
             }
         }
 
@@ -2082,7 +2413,8 @@ formFicha.addEventListener("submit", async (e) => {
         } else {
             toastSuccess(mensajeFinal);
         }
-        
+
+        await cargarAprendices();
         closeModalFicha();
         await cargarFichas();
     } catch (error) {
@@ -2132,11 +2464,11 @@ function renderOpcionesJefeGrupo() {
   instructoresSeleccionados.forEach((instructor, index) => {
     const isSelected = jefeGrupoSeleccionado && jefeGrupoSeleccionado.id_usuario == instructor.id_usuario;
     html += `
-      <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer ${isSelected ? 'ring-2 ring-blue-500' : ''}"
+      <div class="flex items-center gap-3 p-3 rounded-lg transition-colors cursor-pointer bg-muted hover:bg-secondary-13 ${isSelected ? 'ring-2 ring-custom' : ''}"
            onclick="seleccionarJefeGrupo(${index})">
         <div class="flex-shrink-0">
-          <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-            <span class="text-blue-600 font-semibold">${instructor.nombre_completo.charAt(0)}</span>
+          <div class="w-10 h-10 rounded-full bg-avatar-primary-39 flex items-center justify-center">
+            <span class="font-semibold">${instructor.nombre_completo.charAt(0)}</span>
           </div>
         </div>
         <div class="flex-1">
@@ -2146,7 +2478,7 @@ function renderOpcionesJefeGrupo() {
         </div>
         <div class="flex-shrink-0">
           <input type="radio" name="jefeGrupo" ${isSelected ? 'checked' : ''} 
-                 class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                 class="w-4 h-4 text-foreground bg-input border-border focus:ring-custom"
                  onclick="seleccionarJefeGrupo(${index})">
         </div>
       </div>
@@ -2159,9 +2491,17 @@ function renderOpcionesJefeGrupo() {
           <p><strong>Nota:</strong> Solo puede seleccionar un instructor como jefe de grupo.</p>
         </div>
         ${jefeGrupoSeleccionado ? `
-        <div class="mt-2 p-2 bg-blue-50 rounded-lg border border-blue-100">
-          <div class="text-sm font-medium text-blue-800">Jefe de grupo seleccionado:</div>
-          <div class="text-sm text-blue-600">${jefeGrupoSeleccionado.nombre_completo}</div>
+        <div class="mt-2 p-2 rounded-lg border border-border"
+            style="background-color: color-mix(in srgb, var(--foreground) 6%, transparent);">
+          
+          <div class="text-sm font-medium text-foreground">
+            Jefe de grupo seleccionado:
+          </div>
+
+          <div class="text-sm"
+              style="color: color-mix(in srgb, var(--foreground) 70%, transparent);">
+            ${jefeGrupoSeleccionado.nombre_completo}
+          </div>
         </div>
         ` : ''}
       </div>

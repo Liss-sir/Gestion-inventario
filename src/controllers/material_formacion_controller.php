@@ -41,6 +41,11 @@ class MaterialFormacionController {
     // Get all materials
     public function listar()
     {
+        $context = $_GET['context'] ?? null;
+        if ($context === 'movimientos') {
+            return $this->model->getAllDisponiblesWithStockTotal();
+        }
+
         return $this->model->getAll();
     }
 

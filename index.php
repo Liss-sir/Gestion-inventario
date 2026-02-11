@@ -86,6 +86,19 @@ if ($rolSesion === 'aprendiz') {
         exit;
     }
 }
+
+// =====================================================
+// ✅ DETECTAR PÁGINAS CON HTML COMPLETO (SIN WRAPPER)
+// =====================================================
+$paginaActual = $_GET['page'] ?? 'dashboard';
+$paginasConHTMLCompleto = ['movimientos'];
+
+if (in_array($paginaActual, $paginasConHTMLCompleto)) {
+    // Estas páginas tienen su propio HTML + header/sidebar, incluirlas directamente
+    require_once BASE_PATH . '/src/includes/main.php';
+    exit;
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="es">

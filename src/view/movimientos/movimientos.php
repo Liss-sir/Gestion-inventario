@@ -3,7 +3,7 @@
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 
-// Asegurar que BASE_URL est├® definido (por si se accede directamente)
+// Asegurar que BASE_URL está definido (por si se accede directamente)
 if (!defined('BASE_URL')) {
     $protocol   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
     $host       = $_SERVER['HTTP_HOST'];
@@ -13,7 +13,6 @@ if (!defined('BASE_URL')) {
 
 // Obtener ID del usuario de la sesi├│n
 $idUsuario = $_SESSION['id_usuario'] ?? 1; // Por defecto 1 si no hay sesi├│n
-
 $movimientos = [];
 $movimientosPage = [];
 $total = 0;
@@ -59,30 +58,35 @@ $movimientosPage = array_slice($movimientos, $offset, $perPage);
 $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 ?>
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Movimientos</title>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="<?= BASE_URL ?>src/assets/css/globals.css">
+    <link rel="stylesheet" href="src/assets/css/globals.css">
 </head>
+<body class="flex flex-col min-h-screen font-sans bg-white text-gray-900 transition-all duration-300">
+    <header>
+        <?php require_once BASE_PATH . '/src/includes/header.php'; ?>
+        <?php require_once BASE_PATH . '/src/includes/sidebar.php'; ?>
+    </header>
 
-<body>
-    <main class="p-6 transition-all duration-300"
+    <main class="p-3 sm:p-6 transition-all duration-300 flex-grow"
         style="margin-left: <?= isset($_GET['coll']) && $_GET['coll'] == "1" ? '70px' : '260px' ?>;">
 
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <div>
+<div class="space-y-6 animate-fade-in-up">
+<!-- Header -->
+      <!-- ================================== -->
+      <!-- PAGE HEADER                         -->
+      <!-- ================================== -->
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
                 <h1 class="text-2xl font-bold tracking-tight">Movimientos de Material</h1>
                 <p class="text-muted-foreground">Historial de entradas, salidas y devoluciones de materiales</p>
             </div>
-
-
-
-            <div class="flex justify-end items-center gap-2 mt-4 mb-4">
+            <div class="flex items-center gap-3">
                 <div class="inline-flex rounded-lg border border-border bg-card shadow-sm overflow-hidden">
                     <button type="button" id="btnVistaTabla"
                         class="px-3 py-2 text-xs sm:text-sm flex items-center gap-1 bg-muted text-foreground">
@@ -173,7 +177,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
         <!-- filters -->
         <div class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
-            <!-- ­ƒöì SEARCH (LEFT - QUIETO) -->
+            <!-- ­SEARCH (LEFT - QUIETO) -->
             <div class="relative w-full sm:max-w-xs">
                 <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
                     <i data-lucide="search" class="h-4 w-4"></i>
@@ -187,7 +191,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                     class="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
             </div>
 
-            <!-- ­ƒÄø´©Å FILTERS (RIGHT - JUNTOS) -->
+            <!-- ­FILTERS (RIGHT - JUNTOS) -->
             <div class="flex items-center gap-3 justify-end w-full sm:w-auto">
 
                 <!-- TIPO -->
@@ -258,7 +262,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                                     </div>
                                     <div>
                                         <p class="text-sm font-medium text-gray-900">No se encontraron movimientos</p>
-                                        <p class="text-xs text-gray-500 mt-1">Intenta ajustar los filtros para ver m├ís resultados</p>
+                                        <p class="text-xs text-gray-500 mt-1">Intenta ajustar los filtros para ver mís resultados</p>
                                     </div>
                                 </div>
                             </td>
@@ -273,23 +277,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                     Mostrando 0 - 0 de 0 registros
                 </p>
 
-
-                <div class="flex items-center gap-1">
-                    <a class="px-3 py-2 text-xs rounded-lg border border-border hover:bg-muted <?= $page <= 1 ? 'pointer-events-none opacity-50' : '' ?>"
-                        href="?page=movimientos&p=<?= $page - 1 ?><?= $collParam ?>">Anterior</a>
-
-                    <?php
-                    $start = max(1, $page - 2);
-                    $end   = min($totalPages, $page + 2);
-                    for ($i = $start; $i <= $end; $i++):
-                    ?>
-                        <a class="px-3 py-2 text-xs rounded-lg border border-border hover:bg-muted <?= $i === $page ? 'bg-muted text-foreground' : 'text-muted-foreground' ?>"
-                            href="?page=movimientos&p=<?= $i ?><?= $collParam ?>"><?= $i ?></a>
-                    <?php endfor; ?>
-
-                    <a class="px-3 py-2 text-xs rounded-lg border border-border hover:bg-muted <?= $page >= $totalPages ? 'pointer-events-none opacity-50' : '' ?>"
-                        href="?page=movimientos&p=<?= $page + 1 ?><?= $collParam ?>">Siguiente</a>
-                </div>
+                <div id="paginationMovimientos" class="flex justify-end gap-2"></div>
             </div>
         </div>
 
@@ -300,11 +288,12 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
 
         <!-- CONFIRMATION MODAL - BODEGA/SUBBODEGA -->
-        <div id="confirmBodegaModal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div class="absolute inset-0" onclick="closeConfirmBodegaModal()"></div>
+        <div id="confirmBodegaModal" class="fixed inset-0 z-[60] hidden">
+            <div class="fixed inset-0 z-0 bg-black/50 backdrop-blur-md" onclick="closeConfirmBodegaModal()"></div>
 
-            <div class="relative mx-4 w-full max-w-sm rounded-2xl bg-white shadow-xl p-6">
-                <div class="flex items-start justify-between mb-4">
+            <div class="absolute inset-0 z-10 flex items-center justify-center">
+            <div class="relative mx-4 w-full max-w-sm rounded-2xl bg-white shadow-xl p-4 sm:p-6">
+                <div class="flex items-start justify-between mb-4 gap-2">
                     <div>
                         <h3 class="text-lg font-semibold text-gray-900">Destino de materiales</h3>
                         <p class="text-sm text-gray-500 mt-1">¿Deseas agregar los materiales a una subbodega específica o a la bodega general?</p>
@@ -315,66 +304,87 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                     </button>
                 </div>
 
-                <div class="mt-6 flex gap-3 justify-end">
+                <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-end">
                     <button type="button" onclick="selectBodegaDestino('bodega')"
-                        class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 border border-border">
+                        class="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 border border-border">
                         No, a la bodega
                     </button>
                     <button type="button" onclick="selectBodegaDestino('subbodega')"
-                        class="px-4 py-2 rounded-lg text-sm font-medium text-white bg-secondary hover:opacity-90">
+                        class="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium text-white bg-secondary hover:opacity-90">
                         Sí, a una subbodega
                     </button>
                 </div>
             </div>
+            </div>
         </div>
 
         <!-- MATERIALS VIEW MODAL -->
-        <div id="materialesModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div class="absolute inset-0" onclick="closeMaterialesModal()"></div>
+        <div id="materialesModal" class="fixed inset-0 z-50 hidden">
+            <div class="fixed inset-0 z-0 bg-black/50 backdrop-blur-md" onclick="closeMaterialesModal()"></div>
 
-            <div class="relative mx-4 w-full max-w-xl rounded-2xl bg-white shadow-xl p-6">
-                <div class="flex items-start justify-between mb-4">
+            <div class="absolute inset-0 z-10 flex items-center justify-center">
+            <div class="relative mx-4 w-full max-w-xl rounded-2xl bg-white shadow-xl p-4 sm:p-6">
+                <div class="flex items-start justify-between mb-4 gap-2">
                     <div>
                         <h3 class="text-lg font-semibold text-gray-900">Materiales del movimiento</h3>
                         <p class="text-sm text-gray-500">Listado de materiales solicitados en este movimiento</p>
                     </div>
                     <button type="button" onclick="closeMaterialesModal()"
-                        class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100">
-                        <i data-lucide="x" class="h-4 w-4"></i>
+                        class="rounded-full p-1 hover:bg-muted">
+                        <span class="sr-only">Cerrar</span>
+                        <svg
+                            class="h-5 w-5"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
                     </button>
                 </div>
 
-                <div id="materialesBody" class="space-y-2"></div>
-
-                <div class="mt-5 flex justify-end">
-                    <button type="button" onclick="closeMaterialesModal()"
-                        class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 border border-border">
-                        Cerrar
-                    </button>
-                </div>
+                <div id="materialesBody" class="space-y-2 max-h-[60vh] overflow-y-auto"></div>
+            </div>
             </div>
         </div>
 
         <!-- REGISTER MOVEMENT MODAL -->
-        <div id="movimientoModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div class="absolute inset-0" onclick="closeMovimientoModal()"></div>
+        <div id="movimientoModal" class="fixed inset-0 z-50 hidden">
+            <div class="fixed inset-0 z-0 bg-black/50 backdrop-blur-md" onclick="closeMovimientoModal()"></div>
 
-            <div class="relative mx-4 w-full max-w-2xl rounded-2xl bg-white shadow-xl p-6 sm:p-8">
-                <div class="flex items-start justify-between mb-4">
+            <div class="absolute inset-0 z-10 flex items-center justify-center overflow-y-auto">
+            <div class="relative mx-2 sm:mx-4 w-full max-w-4xl rounded-2xl bg-white shadow-xl p-4 sm:p-6 lg:p-8 my-4 sm:my-0">
+                <div class="flex items-start justify-between mb-4 gap-2">
                     <div>
                         <h2 class="text-xl font-semibold text-gray-900">Registrar Movimiento</h2>
                         <p class="text-sm text-gray-500">Registre un nuevo movimiento de inventario</p>
                     </div>
                     <button type="button" onclick="closeMovimientoModal()"
-                        class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100">
-                        <i data-lucide="x" class="h-4 w-4"></i>
+                        class="rounded-full p-1 hover:bg-muted">
+                        <span class="sr-only">Cerrar</span>
+                        <svg
+                            class="h-5 w-5"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
                     </button>
                 </div>
 
                 <!-- Tabs ( entrada / devolucion) -->
-                <div class="mb-6 flex justify-center">
+                <div class="mb-6 flex justify-center overflow-x-auto">
                     <div id="tabsMovimiento"
-                        class="flex w-full max-w-md items-center rounded-full bg-gray-100 p-1 text-sm font-medium shadow-inner">
+                        class="flex w-full max-w-md min-w-fit items-center rounded-full bg-gray-100 p-1 text-xs sm:text-sm font-medium shadow-inner">
 
                         <button type="button" data-tipo="entrada"
                             class="tab-mov flex-1 rounded-full py-2 text-center text-gray-600 hover:text-gray-900 transition-all">
@@ -403,12 +413,12 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                             Datos del material
                         </p>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
 
                             <!-- MATERIAL -->
                             <div class="sm:col-span-2">
-                                <label class="text-sm font-medium">Material</label>
-                                <select id="material" class="w-full border rounded-lg px-3 py-2">
+                                <label class="text-xs sm:text-sm font-medium">Material</label>
+                                <select id="material" class="w-full border rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm">
                                     <option value="">Seleccione</option>
                                     <?php foreach ($materiales as $m): ?>
                                         <option value="<?= $m["id"] ?>" data-unidad="<?= $m["unidad"] ?>">
@@ -420,15 +430,15 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
                             <!-- CANTIDAD -->
                             <div>
-                                <label class="text-sm font-medium">Cantidad</label>
+                                <label class="text-xs sm:text-sm font-medium">Cantidad</label>
                                 <input id="cantidad" type="number" min="1" value="1"
-                                    class="w-full border rounded-lg px-3 py-2">
+                                    class="w-full border rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm">
                             </div>
 
                             <!-- ESTADO -->
                             <div class="sm:col-span-3">
-                                <label class="text-sm font-medium">Estado</label>
-                                <select id="estado_material" class="w-full border rounded-lg px-3 py-2">
+                                <label class="text-xs sm:text-sm font-medium">Estado</label>
+                                <select id="estado_material" class="w-full border rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm">
                                     <option value="">Seleccione</option>
                                     <option value="bueno">Bueno</option>
                                 </select>
@@ -438,7 +448,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
                         <button type="button"
                             onclick="agregarMaterial()"
-                            class="mt-3 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-muted">
+                            class="mt-3 w-full sm:w-auto inline-flex items-center justify-center sm:justify-start gap-2 rounded-lg border px-3 py-2 text-xs sm:text-sm hover:bg-muted">
                             <i data-lucide="plus" class="h-4 w-4"></i>
                             Agregar material
                         </button>
@@ -447,19 +457,19 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                     <!-- =====================
                         BODEGA
                     ====================== -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3" data-field="bodega-section">
 
                         <div>
-                            <label class="text-sm font-medium">Bodega</label>
-                            <select id="bodega" class="w-full border rounded-lg px-3 py-2">
+                            <label class="text-xs sm:text-sm font-medium">Bodega</label>
+                            <select id="bodega" class="w-full border rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm">
                                 <option value="">Seleccione</option>
                             </select>
 
                         </div>
 
                         <div data-field="subbodega-row" class="hidden">
-                            <label class="text-sm font-medium">Subbodega</label>
-                            <select id="subbodega" class="w-full border rounded-lg px-3 py-2">
+                            <label class="text-xs sm:text-sm font-medium">Subbodega</label>
+                            <select id="subbodega" class="w-full border rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm">
                                 <option value="">Seleccione</option>
                             </select>
 
@@ -471,23 +481,23 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                     ====================== -->
 
                     <div data-field="devolucion-container"
-                        class="hidden rounded-xl border border-[#39A900] bg-[#39A90015] p-4">
+                        class="hidden rounded-xl border p-4">
 
-                        <p class="text-sm font-semibold text-[#2e7d00] mb-3">
+                        <p class="text-xs sm:text-sm font-semibold mb-3">
                             Devolución de Material
                         </p>
 
                         <!-- Seleccionar solicitud con salida -->
-                        <div class="mb-3">
-                            <label class="text-sm font-medium text-gray-700">Solicitud de Salida</label>
-                            <select id="solicitud_salida_dev" class="w-full border rounded-lg px-3 py-2 text-sm">
+                        <div class="mb-3 relative z-20">
+                            <label class="text-xs sm:text-sm font-medium text-gray-700">Solicitud de Salida</label>
+                            <select id="solicitud_salida_dev" class="w-full border rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm relative z-20">
                                 <option value="">Seleccione una solicitud...</option>
                             </select>
                         </div>
 
                         <!-- Materiales prestados (se carga dinámicamente) -->
                         <div id="materiales_prestados_container" class="hidden">
-                            <label class="text-sm font-medium text-gray-700 mb-2 block">Materiales Prestados</label>
+                            <label class="text-xs sm:text-sm font-medium text-gray-700 mb-2 block">Materiales Prestados</label>
                             <div id="materiales_prestados_lista" class="space-y-2">
                                 <!-- Se llena con JavaScript -->
                             </div>
@@ -528,23 +538,23 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                     <!-- OBSERVACIONES -->
                     <textarea name="observaciones"
                         placeholder="Observaciones"
-                        class="w-full border rounded-lg px-3 py-2"></textarea>
+                        class="w-full border rounded-lg px-2 sm:px-3 py-2 text-xs sm:text-sm"></textarea>
 
                     <!-- =====================
                         ACTIONS
                     ====================== -->
-                    <div class="flex justify-end gap-2 pt-2 border-t">
+                    <div class="flex flex-col sm:flex-row justify-end gap-2 pt-4 border-t">
 
                         <button type="button"
                             onclick="closeMovimientoModal()"
-                            class="px-4 py-2 rounded-lg border text-sm hover:bg-muted">
+                            class="w-full sm:w-auto inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-xs sm:text-sm font-medium hover:bg-muted">
                             Cancelar
                         </button>
 
                         <button
                             id="btnRegistrarMovimiento"
                             type="submit"
-                            class="inline-flex items-center justify-center gap-2 rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 transition-all">
+                            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-md bg-secondary px-4 py-2 text-xs sm:text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 transition-all">
                             <i data-lucide="check-circle" class="h-4 w-4"></i>
                             Registrar entrada
                         </button>
@@ -553,14 +563,49 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
                 </form>
             </div>
+            </div>
         </div>
-    </main>
 
-    <script>
-        window.API_BASE = "<?= rtrim(BASE_URL, '/'); ?>/src/controllers/";
-        window.ID_USUARIO = <?= (int)$idUsuario; ?>;
-    </script>
-    <script src="<?= BASE_URL ?>src/assets/js/movimientos/movimientos.js?v=<?= time(); ?>"></script>
+        <!-- CONFIRM DEVOLUCION MODAL -->
+        <div id="confirmDevolucionModal" class="fixed inset-0 z-[60] hidden">
+            <div class="fixed inset-0 z-0 bg-black/50 backdrop-blur-md" onclick="closeConfirmDevolucionModal()"></div>
+
+            <div class="absolute inset-0 z-10 flex items-center justify-center">
+                <div class="relative mx-4 w-full max-w-md rounded-2xl bg-white shadow-xl p-6">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-900">Confirmar devolución</h3>
+                            <p class="text-sm text-gray-500">Revisa el resumen antes de continuar</p>
+                        </div>
+                        <button type="button" onclick="closeConfirmDevolucionModal()"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100">
+                            <i data-lucide="x" class="h-4 w-4"></i>
+                        </button>
+                    </div>
+
+                    <div id="confirmDevolucionText" class="text-sm text-gray-700 whitespace-pre-line"></div>
+
+                    <div class="mt-6 flex flex-col sm:flex-row justify-end gap-2">
+                        <button type="button" onclick="closeConfirmDevolucionModal()"
+                            class="w-full sm:w-auto inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
+                            Cancelar
+                        </button>
+                        <button type="button" id="confirmDevolucionOk"
+                            class="w-full sm:w-auto inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90">
+                            Confirmar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+</div>
+</main>
+
+<script>
+    window.API_BASE = "<?= rtrim(BASE_URL, '/'); ?>/src/controllers/";
+    window.ID_USUARIO = <?= (int)$idUsuario; ?>;
+</script>
+<script src="<?= BASE_URL ?>src/assets/js/movimientos/movimientos.js?v=<?= time(); ?>"></script>
 </body>
-
 </html>
+<?php exit; ?>

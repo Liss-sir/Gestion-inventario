@@ -1,4 +1,26 @@
 /* ===========================
+   INPUTS SIGA – FOCUS STYLING
+   =========================== */
+.input-siga:focus {
+  outline: none;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(57, 169, 0, 0.12) !important;
+  background-color: #FFFFFF !important;
+}
+
+.input-siga:focus-visible {
+  outline: none;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(57, 169, 0, 0.12) !important;
+}
+
+/* Fix para inputs con iconos - sobrescribir padding de input-siga */
+#inputBuscar.input-siga {
+  padding-left: 2.25rem !important;
+  padding-right: 0.75rem !important;
+}
+
+/* ===========================
    ANIMACIÓN – MODAL SLIDE DOWN
    =========================== */
 @keyframes modal-slide-down {

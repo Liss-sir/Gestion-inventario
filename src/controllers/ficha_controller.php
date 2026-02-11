@@ -55,18 +55,16 @@ class FichaController {
 
     /* ================= APRENDICES ================= */
 
-    public function obtenerAprendices() {
-        echo json_encode($this->model->obtenerAprendices());
+    public function obtenerAprendices($id_ficha = null) {
+        echo json_encode($this->model->obtenerAprendices($id_ficha));
     }
 
     public function agregarEstudiantes() {
         $input = json_decode(file_get_contents("php://input"), true);
-        echo json_encode([
-            'success' => $this->model->agregarEstudiantes(
-                $input['id_ficha'],
-                $input['estudiantes']
-            )
-        ]);
+        echo json_encode($this->model->agregarEstudiantes(
+            $input['id_ficha'],
+            $input['estudiantes']
+        ));
     }
 
     public function obtenerEstudiantesFicha($id) {
@@ -159,7 +157,7 @@ switch ($accion) {
         break;
 
     case "aprendices":
-        $controller->obtenerAprendices();
+        $controller->obtenerAprendices($id);
         break;
 
     case "agregarEstudiantes":
