@@ -433,7 +433,6 @@ function insertarNotificacionSimple(PDO $conn, array $data): bool
 
 
 /* ✅ FIX: insertar notificación de CAMBIO_DATOS de forma tolerante */
-/* ✅ FIX: insertar notificación de CAMBIO_DATOS de forma tolerante */
 function insertarNotificacionCambioDatos(PDO $conn, int $idDestinatario, string $jsonMensaje, int $idSolicitante): bool
 {
     try {
@@ -550,6 +549,110 @@ function existsRows(PDO $conn, string $sql, array $params): bool {
   }
 }
 
+/* ================= DEBUG NOTIFICACIONES ================= */
+function debugNotificaciones($conn, $id_usuario) {
+    try {
+        $stmt = $conn->prepare("
+            SELECT id_notificacion, tipo, titulo, mensaje, leida, fecha_creacion 
+            FROM notificaciones 
+            WHERE id_usuario = ? 
+            ORDER BY fecha_creacion DESC 
+            LIMIT 10
+        ");
+        $stmt->execute([$id_usuario]);
+        $notificaciones = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        error_log("=== DEBUG NOTIFICACIONES ===");
+        error_log("Usuario ID: $id_usuario");
+        error_log("Total notificaciones: " . count($notificaciones));
+        foreach ($notificaciones as $notif) {
+            error_log("ID: {$notif['id_notificacion']}, Tipo: {$notif['tipo']}, Título: {$notif['titulo']}, Leída: {$notif['leida']}");
+        }
+        error_log("============================");
+        
+        return $notificaciones;
+    } catch (\Exception $e) {
+        error_log("Error en debugNotificaciones: " . $e->getMessage());
+        return [];
+    }
+}
+
+/* ================= INSERCIÓN SEGURA DE NOTIFICACIONES ================= */
+function insertarNotificacionSegura(PDO $conn, int $id_usuario, string $tipo, string $titulo, string $mensaje): bool {
+    try {
+        // Primero intentar con la función existente
+        $ok = insertarNotificacionSimple($conn, [
+            'id_usuario' => $id_usuario,
+            'tipo' => $tipo,
+            'titulo' => $titulo,
+            'mensaje' => $mensaje,
+            'leida' => 0
+        ]);
+        
+        if ($ok) {
+            error_log("✅ Notificación insertada correctamente con insertarNotificacionSimple");
+            return true;
+        }
+        
+        // Si falla, intentar inserción directa
+        error_log("⚠️ Falló insertarNotificacionSimple, intentando inserción directa...");
+        
+        // Verificar estructura de la tabla
+        $cols = obtenerColsNotificaciones($conn);
+        
+        // Construir SQL dinámico
+        $fields = ['id_usuario', 'tipo', 'titulo', 'mensaje', 'leida'];
+        
+        // Verificar qué columnas realmente existen
+        $existingFields = [];
+        foreach ($fields as $field) {
+            if (in_array($field, $cols, true)) {
+                $existingFields[] = $field;
+            }
+        }
+        
+        // Agregar fecha si existe
+        $colFecha = obtenerColFechaNotificaciones($conn);
+        if ($colFecha !== '') {
+            $existingFields[] = $colFecha;
+        }
+        
+        if (count($existingFields) < 4) { // id_usuario, tipo, titulo, mensaje mínimo
+            error_log("❌ No hay suficientes columnas para insertar notificación");
+            return false;
+        }
+        
+        // Construir SQL
+        $placeholders = array_fill(0, count($existingFields) - ($colFecha !== '' ? 1 : 0), '?');
+        if ($colFecha !== '') {
+            $placeholders[] = 'NOW()';
+        }
+        
+        $sql = "INSERT INTO notificaciones (" . implode(',', $existingFields) . ") 
+                VALUES (" . implode(',', $placeholders) . ")";
+        
+        $stmt = $conn->prepare($sql);
+        
+        // Preparar valores
+        $values = [$id_usuario, $tipo, $titulo, $mensaje, 0];
+        
+        // Ejecutar
+        $result = $stmt->execute($values);
+        
+        if ($result) {
+            error_log("✅ Notificación insertada correctamente con inserción directa");
+            return true;
+        } else {
+            $errorInfo = $stmt->errorInfo();
+            error_log("❌ Error en inserción directa: " . implode(" | ", $errorInfo));
+            return false;
+        }
+        
+    } catch (\Exception $e) {
+        error_log("❌ Excepción en insertarNotificacionSegura: " . $e->getMessage());
+        return false;
+    }
+}
 
 
 /* ============================ */
@@ -1418,10 +1521,7 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         }
         break;
 
-    /* =====================================================
-       ✅ ACTUALIZAR USUARIO (EDITAR)
-       ?accion=actualizar (JSON)
-    ===================================================== */
+    
     case 'actualizar':
 
         $data = json_decode(file_get_contents("php://input"), true);
@@ -1456,7 +1556,6 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             enviarJSON(['error' => 'Cargo no válido'], 400);
         }
 
-
         if ($num_doc !== $usuarioActual['numero_documento']) {
             $existeDoc = $usuario->obtenerPorDocumento($num_doc);
             if ($existeDoc && (int) $existeDoc['id_usuario'] !== (int) $id_usuario) {
@@ -1469,62 +1568,30 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
         }
 
         // ==========================
-        // SERVER-SIDE GUARD: impedir cambiar cargo de Instructor si tiene vinculaciones
+        // VALIDAR CAMBIO DE CARGO INSTRUCTOR
         // ==========================
-        $debug_mode = ($data['_debug'] ?? false) === true;
-        $debug_logs = [];
-
         $cargoActual = trim((string)($usuarioActual['cargo'] ?? ""));
-        $debug_logs[] = ['cargoActual' => $cargoActual, 'nuevoCargo' => $cargo];
 
         if (strcasecmp($cargoActual, 'Instructor') === 0 && strcasecmp(trim((string)$cargo), 'Instructor') !== 0) {
-            $tieneVinculos = false;
-
-            // 1) Si en usuarios existe id_programa y está asignado -> ya es vínculo
             if (!empty($usuarioActual['id_programa'])) {
-                $tieneVinculos = true;
-                $debug_logs[] = ['found' => 'usuarios.id_programa', 'value' => $usuarioActual['id_programa']];
-            }
-
-            // 2) Validaciones adicionales en tablas típicas (si existen)
-            $checks = [];
-            $candidates = [
-                ['table' => 'instructor_programa', 'sql' => "SELECT 1 FROM instructor_programa WHERE id_instructor = :id OR id_usuario = :id LIMIT 1"],
-                ['table' => 'instructores_programas', 'sql' => "SELECT 1 FROM instructores_programas WHERE id_instructor = :id OR id_usuario = :id LIMIT 1"],
-                ['table' => 'fichas_instructores', 'sql' => "SELECT 1 FROM fichas_instructores WHERE id_instructor = :id OR id_usuario = :id LIMIT 1"],
-                ['table' => 'instructor_ficha', 'sql' => "SELECT 1 FROM instructor_ficha WHERE id_instructor = :id OR id_usuario = :id LIMIT 1"],
-            ];
-
-            foreach ($candidates as $cand) {
-                $table = $cand['table'];
-                $debug_logs[] = ['check_table' => $table, 'exists' => tableExists($conn, $table)];
-                if (tableExists($conn, $table)) {
-                    $sql = $cand['sql'];
-                    $found = existsRows($conn, $sql, [':id' => $id_usuario]);
-                    $debug_logs[] = ['table' => $table, 'found' => $found, 'sql' => $sql];
-                    if ($found) {
-                        $tieneVinculos = true;
-                        break;
-                    }
-                }
-            }
-
-            if ($tieneVinculos) {
-                if ($debug_mode) {
-                    enviarJSON([
-                        'success' => false,
-                        'error' => 'No es posible cambiar el cargo porque el usuario tiene asignaciones activas (programa, ficha u otras vinculaciones). Desasigne primero dichas vinculaciones.',
-                        'debug' => $debug_logs
-                    ], 400);
-                } else {
-                    enviarJSON([
-                        'success' => false,
-                        'error' => 'No es posible cambiar el cargo porque el usuario tiene asignaciones activas (programa, ficha u otras vinculaciones). Desasigne primero dichas vinculaciones.'
-                    ], 400);
-                }
+                enviarJSON([
+                    'success' => false,
+                    'error' => 'No es posible cambiar el cargo porque el usuario tiene asignaciones activas.'
+                ], 400);
             }
         }
 
+        // ==========================
+        // GUARDAR DATOS ANTERIORES (PARA NOTIFICACIONES)
+        // ==========================
+        $cargoAnterior = strtoupper(trim($usuarioActual['cargo'] ?? ''));
+        $nuevoCargo = strtoupper(trim($cargo));
+        $programaAnterior = $usuarioActual['id_programa'] ?? null;
+        $programaNuevo = $id_programa ?? null;
+
+        // ==========================
+        // ACTUALIZAR USUARIO
+        // ==========================
         $ok = $usuario->actualizar(
             $id_usuario,
             $nombre,
@@ -1538,23 +1605,115 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             $id_programa
         );
 
-        if ($ok && isset($_SESSION['usuario_id']) && (int) $_SESSION['usuario_id'] === (int) $id_usuario) {
+        if (!$ok) {
+            enviarJSON(['success' => false, 'error' => 'No se pudo actualizar el usuario'], 500);
+        }
+
+        // ==========================
+        // NOTIFICACIÓN: INSTRUCTOR ASIGNADO A PROGRAMA (CORREGIDO)
+        // ==========================
+        if (strtoupper(trim($cargo)) === 'INSTRUCTOR' && !empty($programaNuevo) && $programaAnterior != $programaNuevo) {
+            
+            try {
+                // Traer nombre del programa
+                $stmtProg = $conn->prepare("
+                    SELECT nombre_programa 
+                    FROM programas_formacion 
+                    WHERE id_programa = ?
+                ");
+                $stmtProg->execute([$programaNuevo]);
+                $prog = $stmtProg->fetch(PDO::FETCH_ASSOC);
+
+                $nombrePrograma = $prog['nombre_programa'] ?? 'Programa de formación';
+
+                // Crear mensaje de notificación
+                $titulo = "Asignación de Programa";
+                $mensaje = "Has sido asignado al programa: $nombrePrograma";
+                
+                // ✅ USAR 'ASIGNACION' que SÍ existe en tu ENUM
+                $tipoNotificacion = 'ASIGNACION';
+                
+                // DEBUG: Verificar datos
+                error_log("🔔 Intentando notificar instructor ID: $id_usuario");
+                error_log("🔔 Tipo: $tipoNotificacion");
+                error_log("🔔 Programa: $nombrePrograma");
+                
+                // Usar función segura
+                $okNotif = insertarNotificacionSegura($conn, $id_usuario, $tipoNotificacion, $titulo, $mensaje);
+                
+                if (!$okNotif) {
+                    error_log("⚠️ No se pudo insertar notificación para asignación de programa");
+                    
+                    // Intentar una última opción: inserción directa
+                    try {
+                        // ✅ Usar 'ASIGNACION' que existe
+                        $sqlDirect = "INSERT INTO notificaciones (id_usuario, tipo, titulo, mensaje, leida, fecha_creacion) 
+                                      VALUES (?, 'ASIGNACION', ?, ?, 0, NOW())";
+                        $stmtDirect = $conn->prepare($sqlDirect);
+                        $stmtDirect->execute([$id_usuario, $titulo, $mensaje]);
+                        error_log("✅ Notificación insertada con tipo 'ASIGNACION'");
+                    } catch (Exception $e2) {
+                        error_log("❌ Último intento falló: " . $e2->getMessage());
+                    }
+                } else {
+                    error_log("✅ Notificación de asignación de programa insertada correctamente");
+                }
+                
+                // DEBUG: Verificar notificaciones existentes
+                debugNotificaciones($conn, $id_usuario);
+                
+            } catch (\Exception $e) {
+                error_log("❌ Error en notificación de asignación de programa: " . $e->getMessage());
+                error_log("🔍 Detalles: id_usuario=$id_usuario, programa=$programaNuevo, nombrePrograma=$nombrePrograma");
+            }
+        }
+
+        // ==========================
+        // NOTIFICACIÓN: SUBCOORDINADOR (CORREGIDO)
+        // ==========================
+        if ($cargoAnterior !== 'SUBCOORDINADOR' && $nuevoCargo === 'SUBCOORDINADOR') {
+            
+            try {
+                $titulo = "Cargo asignado";
+                $mensaje = "Has sido asignado como Subcoordinador por coordinación.";
+
+                // ✅ USAR 'ASIGNACION' que SÍ existe en tu ENUM
+                $okNotif = insertarNotificacionSegura($conn, $id_usuario, 'ASIGNACION', $titulo, $mensaje);
+
+                if (!$okNotif) {
+                    error_log("⚠️ Error al insertar notificación de cargo Subcoordinador para usuario $id_usuario");
+                } else {
+                    error_log("✅ Notificación de Subcoordinador insertada correctamente");
+                }
+                
+            } catch (\Exception $e) {
+                error_log("❌ Error en notificación de cargo Subcoordinador: " . $e->getMessage());
+            }
+        }
+
+        
+        if (isset($_SESSION['usuario_id']) && (int) $_SESSION['usuario_id'] === (int) $id_usuario) {
             $_SESSION['usuario_nombre'] = $nombre;
             $_SESSION['usuario_correo'] = $correo;
             $_SESSION['usuario_cargo'] = $cargo;
-
             $_SESSION['usuario_tipo_documento'] = $tipo_doc;
             $_SESSION['usuario_numero_documento'] = $num_doc;
             $_SESSION['usuario_telefono'] = $telefono;
             $_SESSION['usuario_direccion'] = $direccion;
         }
 
-        enviarJSON(
-            $ok
-            ? ['success' => true, 'mensaje' => 'Usuario actualizado correctamente']
-            : ['success' => false, 'error' => 'No se pudo actualizar el usuario'],
-            $ok ? 200 : 500
-        );
+        enviarJSON([
+            'success' => true, 
+            'mensaje' => 'Usuario actualizado correctamente',
+            'debug' => [
+                'cargo_anterior' => $cargoAnterior,
+                'cargo_nuevo' => $nuevoCargo,
+                'programa_anterior' => $programaAnterior,
+                'programa_nuevo' => $programaNuevo,
+                'es_instructor' => (strtoupper(trim($cargo)) === 'INSTRUCTOR' ? 1 : 0),
+                'cambio_programa' => ($programaAnterior != $programaNuevo ? 1 : 0)
+            ]
+        ]);
         break;
 
     /* =====================================================
@@ -2673,4 +2832,4 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
     default:
         enviarJSON(['error' => 'Acción no válida'], 400);
         break;
-}
+} 

@@ -118,96 +118,132 @@ function toastInfo(message) {
   showFlowbiteAlert("info", message);
 }
 
+// ========== HELPER: Construir URLs de API ==========
+function getApiUrl(action) {
+    // Detectar si estamos en /views/ o en la raíz
+    const basePath = window.location.pathname.includes('/views/') 
+        ? '../' 
+        : '';
+    return `${basePath}src/controllers/programa_controller.php?accion=${action}`;
+}
+
+// ========== VARIABLES GLOBALES ==========
+// ✅ ELIMINADA BASE_URL GLOBAL - Usamos getApiUrl()
+
+let currentStep = 1;
+let selectedInstructors = [];
+let allInstructors = [];
+let currentEditStep = 1;
+let selectedEditInstructors = [];
+let allEditInstructors = [];
+let editingProgramId = null;
+let originalInstructorCount = 0;
+
 // ========== HELPER FUNCTION: Filter and show/hide empty states ==========
 function applyFilterAndUpdateEmptyStates() {
-  const searchInput = document.querySelector('input[placeholder="Buscar por nombre..."]')
-  const searchTerm = (searchInput?.value ?? '').toLowerCase().trim()
-  const filterEstado = document.getElementById('selectFiltroEstado').value
+  const searchInput = document.querySelector('input[placeholder="Buscar por nombre..."]');
+  const searchTerm = searchInput && searchInput.value ? searchInput.value.toLowerCase().trim() : '';
+  
+  const filterEstadoElement = document.getElementById('selectFiltroEstado');
+  const filterEstado = filterEstadoElement ? filterEstadoElement.value : '';
   
   // Get all table rows and grid cards
-  const tableRows = document.querySelectorAll('#tableView tbody tr[data-index]')
-  const gridCards = document.querySelectorAll('#gridView [data-index]')
-  const tableView = document.getElementById('tableView')
-  const gridView = document.getElementById('gridView')
-  
-  let visibleRowCount = 0
-  let visibleCardCount = 0
+  const tableRows = document.querySelectorAll('#tableView tbody tr[data-index]');
+  const gridCards = document.querySelectorAll('#gridView [data-index]');
   
   // Filter table rows
   tableRows.forEach(row => {
-    const nombre = row.dataset.nombre?.toLowerCase() ?? ''
-    const estado = String(row.dataset.estado ?? '')
+    const nombre = row.dataset.nombre ? row.dataset.nombre.toLowerCase() : '';
+    const estado = row.dataset.estado ? String(row.dataset.estado) : '';
     
-    const matchesSearch = searchTerm === '' || nombre.includes(searchTerm)
-    const matchesFilter = filterEstado === '' || estado === filterEstado
+    const matchesSearch = searchTerm === '' || nombre.includes(searchTerm);
+    const matchesFilter = filterEstado === '' || estado === filterEstado;
     
     if (matchesSearch && matchesFilter) {
-      row.classList.remove('hidden')
-      visibleRowCount++
+      row.classList.remove('hidden');
     } else {
-      row.classList.add('hidden')
+      row.classList.add('hidden');
     }
-  })
+  });
   
   // Filter grid cards
   gridCards.forEach(card => {
-    const nombre = card.dataset.nombre?.toLowerCase() ?? ''
-    const estado = String(card.dataset.estado ?? '')
+    const nombre = card.dataset.nombre ? card.dataset.nombre.toLowerCase() : '';
+    const estado = card.dataset.estado ? String(card.dataset.estado) : '';
     
-    const matchesSearch = searchTerm === '' || nombre.includes(searchTerm)
-    const matchesFilter = filterEstado === '' || estado === filterEstado
+    const matchesSearch = searchTerm === '' || nombre.includes(searchTerm);
+    const matchesFilter = filterEstado === '' || estado === filterEstado;
     
     if (matchesSearch && matchesFilter) {
-      card.classList.remove('hidden')
-      visibleCardCount++
+      card.classList.remove('hidden');
     } else {
-      card.classList.add('hidden')
+      card.classList.add('hidden');
     }
-  })
+  });
   
-  // Show/hide empty states and tables
-  const emptyState = document.getElementById('emptyStateProgramas')
-  const emptySearch = document.getElementById('emptySearchProgramas')
+  // Determine which view is currently active
+  const tableView = document.getElementById("tableView");
+  const currentView = tableView && tableView.classList.contains("hidden") ? "grid" : "table";
   
-  const totalRows = tableRows.length
-  const totalCards = gridCards.length
-  const totalProgramas = totalRows + totalCards > 0 ? totalRows : totalCards
+  // Check and show empty states according to current view
+  checkAndShowEmptyStates(currentView);
+}
+
+// ========== FUNCIÓN checkAndShowEmptyStates ==========
+function checkAndShowEmptyStates(currentView) {
+  const tableView = document.getElementById("tableView");
+  const gridView = document.getElementById("gridView");
+  const emptyState = document.getElementById("emptyStateProgramas");
+  const emptySearch = document.getElementById("emptySearchProgramas");
+  const tableBtn = document.getElementById("viewTableBtn");
+  const gridBtn = document.getElementById("viewGridBtn");
   
-  if (totalProgramas === 0) {
-    // No programas in system
-    emptyState?.classList.remove('hidden')
-    emptySearch?.classList.add('hidden')
-    tableView?.classList.add('hidden')
-    gridView?.classList.add('hidden')
-  } else if (visibleRowCount === 0 && visibleCardCount === 0) {
-    // Programas exist but no results for current search/filter
-    emptyState?.classList.add('hidden')
-    emptySearch?.classList.remove('hidden')
-    tableView?.classList.add('hidden')
-    gridView?.classList.add('hidden')
+  if (!tableView || !gridView || !emptyState || !emptySearch) return;
+  
+  // Count visible elements in BOTH views
+  const visibleRows = document.querySelectorAll('#tableView tbody tr[data-index]:not(.hidden)').length;
+  const visibleCards = document.querySelectorAll('#gridView [data-index]:not(.hidden)').length;
+  const hasVisibleItems = visibleRows > 0 || visibleCards > 0;
+  
+  // Check if there are any programs in total in the system
+  const totalRows = document.querySelectorAll('#tableView tbody tr[data-index]').length;
+  const totalCards = document.querySelectorAll('#gridView [data-index]').length;
+  const hasAnyPrograms = totalRows > 0 || totalCards > 0;
+  
+  // Determine what to show
+  if (!hasAnyPrograms) {
+    // No programs in the system - show empty message
+    emptyState.classList.remove('hidden');
+    emptySearch.classList.add('hidden');
+    tableView.classList.add('hidden');
+    gridView.classList.add('hidden');
+  } else if (!hasVisibleItems) {
+    // There are programs but NONE match the search
+    emptyState.classList.add('hidden');
+    emptySearch.classList.remove('hidden');
+    tableView.classList.add('hidden');
+    gridView.classList.add('hidden');
   } else {
-    // Results found
-    emptyState?.classList.add('hidden')
-    emptySearch?.classList.add('hidden')
-    tableView?.classList.remove('hidden')
-    // Note: gridView will be shown/hidden by toggleView()
-    if (!gridView?.classList.contains('hidden')) {
-      gridView?.classList.remove('hidden')
+    // There are visible results - determine which view to show
+    emptyState.classList.add('hidden');
+    emptySearch.classList.add('hidden');
+    
+    if (currentView === 'grid') {
+      tableView.classList.add('hidden');
+      gridView.classList.remove('hidden');
+    } else {
+      tableView.classList.remove('hidden');
+      gridView.classList.add('hidden');
     }
   }
 }
-
-// ========== VARIABLES GLOBALES PARA EL MODAL DE CREACIÓN ==========
-let currentStep = 1;
-let selectedInstructors = []; // Array para almacenar ID de instructores seleccionados
-let allInstructors = []; // Array con todos los instructores disponibles
 
 // ========== FUNCIONES PARA EL MODAL DE 2 PASOS ==========
 
 // Función para obtener todos los instructores
 async function loadAllInstructors() {
     try {
-        const response = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_instructores`);
+        const response = await fetch(getApiUrl('obtener_instructores'));
         const result = await response.json();
         
         if (result.error) {
@@ -309,7 +345,7 @@ function renderSelectedInstructorsList() {
 }
 
 // Función para alternar la selección de un instructor
-function toggleInstructorSelection(instructorId) {
+window.toggleInstructorSelection = function(instructorId) {
     const index = selectedInstructors.indexOf(instructorId);
     
     if (index === -1) {
@@ -323,10 +359,10 @@ function toggleInstructorSelection(instructorId) {
     // Re-renderizar ambas listas
     renderInstructorsList(allInstructors);
     renderSelectedInstructorsList();
-}
+};
 
 // Función para avanzar al siguiente paso
-function nextStep() {
+window.nextStep = function() {
     const step1 = document.getElementById('createStep1');
     const step2 = document.getElementById('createStep2');
     const btnPrev = document.getElementById('btnPrevStep');
@@ -437,10 +473,10 @@ function nextStep() {
             renderSelectedInstructorsList();
         }
     }
-}
+};
 
 // Función para retroceder al paso anterior
-function prevStep() {
+window.prevStep = function() {
     const step1 = document.getElementById('createStep1');
     const step2 = document.getElementById('createStep2');
     const btnPrev = document.getElementById('btnPrevStep');
@@ -470,10 +506,10 @@ function prevStep() {
         
         currentStep = 1;
     }
-}
+};
 
 // Función para crear programa con instructores
-async function createProgramWithInstructors() {
+window.createProgramWithInstructors = async function() {
     // Obtener datos del formulario
     const codigo = document.getElementById('create_codigo').value.trim();
     const nombre = document.getElementById('create_nombre').value.trim();
@@ -494,7 +530,7 @@ async function createProgramWithInstructors() {
     console.log("Creando programa con datos:", programData);
     console.log("Instructores seleccionados:", selectedInstructors);
     
-    // Validar datos (no validateProgramData para incluir instructores)
+    // Validar datos
     if (!validateProgramData(programData, false, null)) {
         return;
     }
@@ -502,12 +538,12 @@ async function createProgramWithInstructors() {
     // Validar que haya al menos un instructor seleccionado
     if (selectedInstructors.length === 0) {
         toastError("El programa de formación a crear debe de contar con al menos un instructor vinculado");
-            return;
+        return;
     }
     
     try {
         // 1. Crear el programa primero
-        const createResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=crear`, {
+        const createResponse = await fetch(getApiUrl('crear'), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(programData),
@@ -521,11 +557,11 @@ async function createProgramWithInstructors() {
             return;
         }
         
-        // Obtener el ID del programa creado (necesitamos ajustar el controlador para devolverlo)
+        // Obtener el ID del programa creado
         if (!createResult.id_programa) {
             // Si el controlador no devuelve el ID, necesitamos buscarlo por código
             try {
-                const searchResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_por_codigo&codigo=${encodeURIComponent(codigo)}`);
+                const searchResponse = await fetch(getApiUrl('obtener_por_codigo') + `&codigo=${encodeURIComponent(codigo)}`);
                 const searchResult = await searchResponse.json();
                 
                 if (searchResult.id_programa) {
@@ -548,7 +584,7 @@ async function createProgramWithInstructors() {
         
         const programId = createResult.id_programa;
         
-        // 2. Asociar instructores al programa (si hay instructores seleccionados)
+        // 2. Asociar instructores al programa
         if (selectedInstructors.length > 0) {
             try {
                 const instructorsData = {
@@ -556,7 +592,7 @@ async function createProgramWithInstructors() {
                     instructores_ids: selectedInstructors
                 };
                 
-                const instructorsResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=asignar_instructores`, {
+                const instructorsResponse = await fetch(getApiUrl('asignar_instructores'), {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(instructorsData),
@@ -585,22 +621,15 @@ async function createProgramWithInstructors() {
         }, 1500);
         
     } catch (error) {
-        console.error("[v0] Error creando programa:", error);
+        console.error("Error creando programa:", error);
         toastError("Error de conexión al crear el programa");
     }
-}
-
-// ========== VARIABLES GLOBALES PARA EL MODAL DE EDICIÓN ==========
-let currentEditStep = 1;
-let selectedEditInstructors = [];
-let allEditInstructors = [];
-let editingProgramId = null;
-let originalInstructorCount = 0; // Guardar cantidad original de instructores
+};
 
 // ========== FUNCIONES PARA EL MODAL DE EDICIÓN (2 PASOS) ==========
 
 // Función para abrir el modal de edición con 2 pasos
-async function openEditModal(index) {
+window.openEditModal = async function(index) {
     const row = document.querySelector(`tr[data-index="${index}"]`) || document.querySelector(`div[data-index="${index}"]`);
     
     if (!row) {
@@ -655,17 +684,17 @@ async function openEditModal(index) {
     const modal = document.getElementById("editProgramModal");
     modal.classList.remove("hidden");
     modal.classList.add("flex");
-}
+};
 
 // Función para cargar instructores del programa
 async function loadProgramInstructors(programId) {
     try {
         // Obtener instructores actuales del programa
-        const programInstructorsResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_instructores_programa&id_programa=${programId}`);
+        const programInstructorsResponse = await fetch(getApiUrl('obtener_instructores_programa') + `&id_programa=${programId}`);
         const programInstructors = await programInstructorsResponse.json();
 
         // Obtener todos los instructores disponibles
-        const allInstructorsResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_instructores`);
+        const allInstructorsResponse = await fetch(getApiUrl('obtener_instructores'));
         const allInstructors = await allInstructorsResponse.json();
 
         if (programInstructors.error || allInstructors.error) {
@@ -783,7 +812,7 @@ function renderEditSelectedInstructorsList() {
 }
 
 // Función para alternar la selección de un instructor en edición
-function toggleEditInstructorSelection(instructorId) {
+window.toggleEditInstructorSelection = function(instructorId) {
     const index = selectedEditInstructors.indexOf(instructorId);
     
     // Validar que no sea el último instructor
@@ -803,10 +832,10 @@ function toggleEditInstructorSelection(instructorId) {
     // Re-renderizar ambas listas
     renderEditInstructorsList(allEditInstructors);
     renderEditSelectedInstructorsList();
-}
+};
 
 // Función para avanzar al siguiente paso en edición
-function nextEditStep() {
+window.nextEditStep = function() {
     if (currentEditStep === 1) {
         // Validar datos del paso 1
         const codigo = document.getElementById('edit_codigo').value.trim();
@@ -862,10 +891,10 @@ function nextEditStep() {
         
         currentEditStep = 2;
     }
-}
+};
 
 // Función para retroceder al paso anterior en edición
-function prevEditStep() {
+window.prevEditStep = function() {
     if (currentEditStep === 2) {
         // Cambiar al paso 1
         document.getElementById('editStep2').classList.add('hidden');
@@ -882,10 +911,10 @@ function prevEditStep() {
         
         currentEditStep = 1;
     }
-}
+};
 
 // Función para guardar los cambios del programa (ambos pasos)
-async function saveEditedProgram() {
+window.saveEditedProgram = async function() {
     const idPrograma = document.getElementById('edit_id_programa').value;
     const index = document.getElementById('edit_index').value;
     
@@ -948,7 +977,7 @@ async function saveEditedProgram() {
                 return;
             }
             
-            const updateResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=actualizar&id_programa=${idPrograma}`, {
+            const updateResponse = await fetch(getApiUrl('actualizar') + `&id_programa=${idPrograma}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(programData),
@@ -968,7 +997,7 @@ async function saveEditedProgram() {
             instructores_ids: selectedEditInstructors
         };
         
-        const instructorsResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=asignar_instructores`, {
+        const instructorsResponse = await fetch(getApiUrl('asignar_instructores'), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(instructorsData),
@@ -990,7 +1019,7 @@ async function saveEditedProgram() {
         console.error("Error actualizando programa:", error);
         toastError("Error de conexión al actualizar el programa");
     }
-}
+};
 
 // Función auxiliar para verificar cambios en instructores
 async function hasChangesInInstructors(row, newInstructorIds) {
@@ -998,7 +1027,7 @@ async function hasChangesInInstructors(row, newInstructorIds) {
     const programId = row.dataset.idPrograma;
     
     try {
-        const response = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_instructores_programa&id_programa=${programId}`);
+        const response = await fetch(getApiUrl('obtener_instructores_programa') + `&id_programa=${programId}`);
         const originalInstructors = await response.json();
         
         if (originalInstructors.error) {
@@ -1027,7 +1056,7 @@ async function hasChangesInInstructors(row, newInstructorIds) {
 }
 
 // Función para cerrar el modal de edición
-function closeEditModal() {
+window.closeEditModal = function() {
     const modal = document.getElementById("editProgramModal");
     
     // Resetear estado
@@ -1069,10 +1098,10 @@ function closeEditModal() {
     
     modal.classList.add("hidden");
     modal.classList.remove("flex");
-}
+};
 
 // Función para cerrar el modal de creación
-function closeCreateModal() {
+window.closeCreateModal = function() {
     const modal = document.getElementById("createProgramModal");
     
     // Resetear estado
@@ -1137,173 +1166,69 @@ function closeCreateModal() {
     
     modal.classList.add("hidden");
     modal.classList.remove("flex");
-}
+};
 
 // Function to switch between table and grid view
-function toggleView(view) {
-  const tableView = document.getElementById("tableView")
-  const gridView = document.getElementById("gridView")
-  const tableBtn = document.getElementById("viewTableBtn")
-  const gridBtn = document.getElementById("viewGridBtn")
-  const emptyState = document.getElementById("emptyStateProgramas")
-  const emptySearch = document.getElementById("emptySearchProgramas")
+window.toggleView = function(view) {
+  const tableView = document.getElementById("tableView");
+  const gridView = document.getElementById("gridView");
+  const tableBtn = document.getElementById("viewTableBtn");
+  const gridBtn = document.getElementById("viewGridBtn");
 
   // Close all open menus when changing view
-  closeAllMenus()
+  closeAllMenus();
 
   if (view === "table") {
     // Show table view
-    tableView.classList.remove("hidden")
-    gridView.classList.add("hidden")
-    tableBtn.classList.add("bg-muted", "text-foreground")
-    gridBtn.classList.remove("bg-muted", "text-foreground")
-    gridBtn.classList.add("text-muted-foreground")
+    tableView.classList.remove("hidden");
+    gridView.classList.add("hidden");
+    tableBtn.classList.add("bg-muted", "text-foreground");
+    gridBtn.classList.remove("bg-muted", "text-foreground");
+    gridBtn.classList.add("text-muted-foreground");
   } else {
     // Show grid view
-    tableView.classList.add("hidden")
-    gridView.classList.remove("hidden")
-    gridBtn.classList.add("bg-muted", "text-foreground")
-    tableBtn.classList.remove("bg-muted", "text-foreground")
-    tableBtn.classList.add("text-muted-foreground")
+    tableView.classList.add("hidden");
+    gridView.classList.remove("hidden");
+    gridBtn.classList.add("bg-muted", "text-foreground");
+    tableBtn.classList.remove("bg-muted", "text-foreground");
+    tableBtn.classList.add("text-muted-foreground");
   }
 
   // After changing view, check if we should show empty states
-  checkAndShowEmptyStates(view)
-}
-
-// New function to check and show empty states according to current view
-function checkAndShowEmptyStates(currentView) {
-  const tableView = document.getElementById("tableView")
-  const gridView = document.getElementById("gridView")
-  const emptyState = document.getElementById("emptyStateProgramas")
-  const emptySearch = document.getElementById("emptySearchProgramas")
-  const tableBtn = document.getElementById("viewTableBtn")
-  const gridBtn = document.getElementById("viewGridBtn")
-  
-  // Count visible elements in BOTH views
-  const visibleRows = document.querySelectorAll('#tableView tbody tr[data-index]:not(.hidden)')
-  const visibleCards = document.querySelectorAll('#gridView [data-index]:not(.hidden)')
-  const hasVisibleItems = visibleRows.length > 0 || visibleCards.length > 0
-  
-  // Check if there are any programs in total in the system
-  const totalRows = document.querySelectorAll('#tableView tbody tr[data-index]').length
-  const totalCards = document.querySelectorAll('#gridView [data-index]').length
-  const hasAnyPrograms = totalRows > 0 || totalCards > 0
-  
-  // Determine what to show
-  if (!hasAnyPrograms) {
-    // No programs in the system - show empty message
-    emptyState?.classList.remove('hidden')
-    emptySearch?.classList.add('hidden')
-    tableView?.classList.add('hidden')
-    gridView?.classList.add('hidden')
-  } else if (!hasVisibleItems) {
-    // There are programs but NONE match the search
-    emptyState?.classList.add('hidden')
-    emptySearch?.classList.remove('hidden')
-    tableView?.classList.add('hidden')
-    gridView?.classList.add('hidden')
-  } else {
-    // There are visible results - determine which view to show based on buttons
-    emptyState?.classList.add('hidden')
-    emptySearch?.classList.add('hidden')
-    
-    // Look which button is active (has bg-muted class)
-    const isTableBtnActive = tableBtn?.classList.contains('bg-muted')
-    const isGridBtnActive = gridBtn?.classList.contains('bg-muted')
-    
-    // By default, if both or none is active, show table
-    if (isGridBtnActive && !isTableBtnActive) {
-      // Grid button is active → show grid
-      tableView?.classList.add('hidden')
-      gridView?.classList.remove('hidden')
-    } else {
-      // Table button is active or ambiguous state → show table
-      tableView?.classList.remove('hidden')
-      gridView?.classList.add('hidden')
-    }
-  }
-}
-
-// También modifica applyFilterAndUpdateEmptyStates para usar la nueva función
-function applyFilterAndUpdateEmptyStates() {
-  const searchInput = document.querySelector('input[placeholder="Buscar por nombre..."]')
-  const searchTerm = (searchInput?.value ?? '').toLowerCase().trim()
-  const filterEstado = document.getElementById('selectFiltroEstado').value
-  
-  // Get all table rows and grid cards
-  const tableRows = document.querySelectorAll('#tableView tbody tr[data-index]')
-  const gridCards = document.querySelectorAll('#gridView [data-index]')
-  
-  // Filter table rows
-  tableRows.forEach(row => {
-    const nombre = row.dataset.nombre?.toLowerCase() ?? ''
-    const estado = String(row.dataset.estado ?? '')
-    
-    const matchesSearch = searchTerm === '' || nombre.includes(searchTerm)
-    const matchesFilter = filterEstado === '' || estado === filterEstado
-    
-    if (matchesSearch && matchesFilter) {
-      row.classList.remove('hidden')
-    } else {
-      row.classList.add('hidden')
-    }
-  })
-  
-  // Filter grid cards
-  gridCards.forEach(card => {
-    const nombre = card.dataset.nombre?.toLowerCase() ?? ''
-    const estado = String(card.dataset.estado ?? '')
-    
-    const matchesSearch = searchTerm === '' || nombre.includes(searchTerm)
-    const matchesFilter = filterEstado === '' || estado === filterEstado
-    
-    if (matchesSearch && matchesFilter) {
-      card.classList.remove('hidden')
-    } else {
-      card.classList.add('hidden')
-    }
-  })
-  
-  // Determine which view is currently active
-  const tableView = document.getElementById("tableView")
-  const currentView = tableView.classList.contains("hidden") ? "grid" : "table"
-  
-  // Check and show empty states according to current view
-  checkAndShowEmptyStates(currentView)
-}
+  checkAndShowEmptyStates(view);
+};
 
 // Function to toggle action menu
-function toggleActionMenu(index) {
-  const menu = document.getElementById("actionMenu" + index)
-  const isHidden = menu.classList.contains("hidden")
+window.toggleActionMenu = function(index) {
+  const menu = document.getElementById("actionMenu" + index);
+  const isHidden = menu.classList.contains("hidden");
 
   // Close all other menus
-  closeAllMenus()
+  closeAllMenus();
 
   // Toggle current menu
   if (isHidden) {
-    menu.classList.remove("hidden")
+    menu.classList.remove("hidden");
   }
-}
+};
 
 // Function to close all menus
 function closeAllMenus() {
-  const allMenus = document.querySelectorAll('[id^="actionMenu"]')
+  const allMenus = document.querySelectorAll('[id^="actionMenu"]');
   allMenus.forEach((menu) => {
-    menu.classList.add("hidden")
-  })
+    menu.classList.add("hidden");
+  });
 }
 
 // Close menus when clicking outside
 document.addEventListener("click", (event) => {
-  const isMenuButton = event.target.closest('button[onclick^="toggleActionMenu"]')
-  const isMenuContent = event.target.closest('[id^="actionMenu"]')
+  const isMenuButton = event.target.closest('button[onclick^="toggleActionMenu"]');
+  const isMenuContent = event.target.closest('[id^="actionMenu"]');
 
   if (!isMenuButton && !isMenuContent) {
-    closeAllMenus()
+    closeAllMenus();
   }
-})
+});
 
 // ========== FUNCTION TO ASSIGN COLORS ACCORDING TO LEVEL ==========
 function getLevelStyles(nivel) {
@@ -1331,10 +1256,9 @@ function getLevelStyles(nivel) {
 }
 
 // Modify the openViewModal function to use styles according to level
-function openViewModal(index) {
+window.openViewModal = function(index) {
     const modal = document.getElementById("viewProgramModal");
-    const row =
-        document.querySelector(`tr[data-index="${index}"]`) || document.querySelector(`div[data-index="${index}"]`);
+    const row = document.querySelector(`tr[data-index="${index}"]`) || document.querySelector(`div[data-index="${index}"]`);
 
     if (row) {
         document.getElementById("view_name").textContent = row.dataset.nombre;
@@ -1351,9 +1275,6 @@ function openViewModal(index) {
 
         // Clear previous list
         instructoresList.innerHTML = '';
-
-        // Debug (puedes remover esto después)
-        console.log('Datos de instructores:', instructores);
 
         // Check if instructors data exists and is valid
         if (!instructores || 
@@ -1424,7 +1345,7 @@ function openViewModal(index) {
         }
 
         // Normalize state and display human-friendly badge (Activo / Inactivo)
-        const estadoAttrView = String(row.dataset.estado ?? '').trim();
+        const estadoAttrView = String(row.dataset.estado || '').trim();
         const estadoHuman = (estadoAttrView === '1' || estadoAttrView === '0')
             ? (estadoAttrView === '1' ? 'Activo' : 'Inactivo')
             : (estadoAttrView.toLowerCase() === 'activo' ? 'Activo' : 'Inactivo');
@@ -1472,21 +1393,21 @@ function openViewModal(index) {
 
     modal.classList.remove("hidden");
     modal.classList.add("flex");
-}
+};
 
 // Close view program details modal
-function closeViewModal() {
-  const modal = document.getElementById("viewProgramModal")
-  modal.classList.add("hidden")
-  modal.classList.remove("flex")
-}
+window.closeViewModal = function() {
+  const modal = document.getElementById("viewProgramModal");
+  modal.classList.add("hidden");
+  modal.classList.remove("flex");
+};
 
 // Open create program modal
-function openCreateModal() {
-  const modal = document.getElementById("createProgramModal")
-  modal.classList.remove("hidden")
-  modal.classList.add("flex")
-}
+window.openCreateModal = function() {
+  const modal = document.getElementById("createProgramModal");
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+};
 
 // =========================
 // VALIDATION FUNCTIONS
@@ -1629,12 +1550,7 @@ function hasChanges(originalData, currentData) {
 // ************************************** Main DOMContentLoaded ***********************************************
 
 document.addEventListener("DOMContentLoaded", () => {
-  const pathParts = window.location.pathname.split("/")
-  const basePath =
-    pathParts.slice(0, pathParts.findIndex((p) => p === "views" || p === "programas.php") || -1).join("/") || ""
-  const BASE_URL = window.location.origin + basePath + "/"
-
-  console.log("[v0] BASE_URL configured as:", BASE_URL)
+  // ✅ ELIMINADA TODA REFERENCIA A BASE_URL - Usamos getApiUrl()
 
   // Variable to store original data when editing
   let originalEditData = null;
@@ -1665,19 +1581,19 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnCreateProgram = document.getElementById('btnCreateProgram');
   
   if (btnNextStep) {
-    btnNextStep.addEventListener('click', nextStep);
+    btnNextStep.addEventListener('click', window.nextStep);
   }
   
   if (btnPrevStep) {
-    btnPrevStep.addEventListener('click', prevStep);
+    btnPrevStep.addEventListener('click', window.prevStep);
   }
   
   if (btnCreateProgram) {
-    btnCreateProgram.addEventListener('click', createProgramWithInstructors);
+    btnCreateProgram.addEventListener('click', window.createProgramWithInstructors);
   }
 
   // Create Program Form (paso 1)
-  const createForm = document.getElementById("createProgramForm")
+  const createForm = document.getElementById("createProgramForm");
   if (createForm) {
     // Only allow numbers in the duration field
     const duracionInput = document.getElementById("create_duracion");
@@ -1696,39 +1612,37 @@ document.addEventListener("DOMContentLoaded", () => {
   const editBtnSaveProgram = document.getElementById('editBtnSaveProgram');
   
   if (editBtnNextStep) {
-    editBtnNextStep.addEventListener('click', nextEditStep);
+    editBtnNextStep.addEventListener('click', window.nextEditStep);
   }
   
   if (editBtnPrevStep) {
-    editBtnPrevStep.addEventListener('click', prevEditStep);
+    editBtnPrevStep.addEventListener('click', window.prevEditStep);
   }
   
   if (editBtnSaveProgram) {
-    editBtnSaveProgram.addEventListener('click', saveEditedProgram);
+    editBtnSaveProgram.addEventListener('click', window.saveEditedProgram);
   }
 
   // State toggle buttons (use data-action="toggle-state")
   document.querySelectorAll('[id^="actionMenu"] button[data-action="toggle-estado"]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
-      const row = e.target.closest('tr') || e.target.closest('div[data-index]')
-      const idPrograma = row.dataset.idPrograma
+      const row = e.target.closest('tr') || e.target.closest('div[data-index]');
+      const idPrograma = row.dataset.idPrograma;
 
       // Current state: supports '1'/'0' or 'Active'/'Inactive'
-      const estadoAttr = String(row.dataset.estado ?? '').trim()
+      const estadoAttr = String(row.dataset.estado || '').trim();
       const estadoActual = (estadoAttr === '1' || estadoAttr === '0')
         ? Number(estadoAttr)
-        : (estadoAttr.toLowerCase() === 'activo' ? 1 : 0)
-      const nuevoEstado = estadoActual ? 0 : 1
-
-      const actionText = nuevoEstado ? "activar" : "desactivar";
+        : (estadoAttr.toLowerCase() === 'activo' ? 1 : 0);
+      const nuevoEstado = estadoActual ? 0 : 1;
 
       try {
-        const res = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=cambiar_estado`, {
+        const res = await fetch(getApiUrl('cambiar_estado'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id_programa: idPrograma, estado: nuevoEstado })
-        })
-        const result = await res.json()
+        });
+        const result = await res.json();
         if(result.mensaje) {
           toastSuccess(nuevoEstado ? "Programa activado correctamente." : "Programa desactivado correctamente.");
           setTimeout(() => {
@@ -1741,59 +1655,23 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error(err);
         toastError('Error de conexión al cambiar el estado');
       }
-    })
-  })
-
-  // State filter (table + grid)
-  const selectFiltroEstado = document.getElementById('selectFiltroEstado')
-  if (selectFiltroEstado) {
-    const applyFilter = () => {
-      const val = selectFiltroEstado.value // '' | '1' | '0'
-
-      // Table rows
-      document.querySelectorAll('#tableView tbody tr[data-index]').forEach(row => {
-        const estado = String(row.dataset.estado ?? '').trim()
-        if (val === '') {
-          row.style.display = ''
-        } else if (estado === val) {
-          row.style.display = ''
-        } else {
-          row.style.display = 'none'
-        }
-      })
-
-      // Grid cards
-      document.querySelectorAll('#gridView [data-index]').forEach(card => {
-        const estado = String(card.dataset.estado ?? '').trim()
-        if (val === '') {
-          card.style.display = ''
-        } else if (estado === val) {
-          card.style.display = ''
-        } else {
-          card.style.display = 'none'
-        }
-      })
-    }
-
-    selectFiltroEstado.addEventListener('change', applyFilter)
-  }
+    });
+  });
 
   // Checkboxes in grid view
   document.querySelectorAll('#gridView input[type="checkbox"]').forEach(chk => {
     chk.addEventListener('change', async (e) => {
-      const card = e.target.closest('div[data-index]')
-      const idPrograma = card.dataset.idPrograma
-      const nuevoEstado = e.target.checked ? 1 : 0
+      const card = e.target.closest('div[data-index]');
+      const idPrograma = card.dataset.idPrograma;
+      const nuevoEstado = e.target.checked ? 1 : 0;
       
-      const actionText = nuevoEstado ? "activar" : "desactivar";
-
       try {
-        const res = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=cambiar_estado`, {
+        const res = await fetch(getApiUrl('cambiar_estado'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id_programa: idPrograma, estado: nuevoEstado })
-        })
-        const result = await res.json()
+        });
+        const result = await res.json();
         if(result.mensaje) {
           toastSuccess(nuevoEstado ? "Programa activado correctamente." : "Programa desactivado correctamente.");
           setTimeout(() => {
@@ -1810,24 +1688,24 @@ document.addEventListener("DOMContentLoaded", () => {
         // Revert checkbox on error
         e.target.checked = !e.target.checked;
       }
-    })
-  })
+    });
+  });
 
   // ========== SEARCH AND FILTER EVENT LISTENERS ==========
   // Search input listener
-  const searchInput = document.querySelector('input[placeholder="Buscar por nombre..."]')
+  const searchInput = document.querySelector('input[placeholder="Buscar por nombre..."]');
   if (searchInput) {
-    searchInput.addEventListener('input', applyFilterAndUpdateEmptyStates)
+    searchInput.addEventListener('input', applyFilterAndUpdateEmptyStates);
   }
 
-  // State filter listener (already exists but enhance it)
-  const filterSelect = document.getElementById('selectFiltroEstado')
+  // State filter listener
+  const filterSelect = document.getElementById('selectFiltroEstado');
   if (filterSelect) {
-    filterSelect.addEventListener('change', applyFilterAndUpdateEmptyStates)
+    filterSelect.addEventListener('change', applyFilterAndUpdateEmptyStates);
   }
 
   // Initial call to check empty states on page load
-  applyFilterAndUpdateEmptyStates()
+  applyFilterAndUpdateEmptyStates();
   
   // ========== ESC KEY TO CLOSE MODALS ==========
   document.addEventListener("keydown", (e) => {
@@ -1850,8 +1728,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // In the DOMContentLoaded event, add this initialization:
-  const tableView = document.getElementById("tableView")
-  const initialView = tableView.classList.contains("hidden") ? "grid" : "table"
-  checkAndShowEmptyStates(initialView)
-})
+  // Inicializar vista inicial
+  const tableView = document.getElementById("tableView");
+  const initialView = tableView && tableView.classList.contains("hidden") ? "grid" : "table";
+  checkAndShowEmptyStates(initialView);
+});
