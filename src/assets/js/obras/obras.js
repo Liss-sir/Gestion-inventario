@@ -35,8 +35,7 @@ if (!window.__obrasJSLoaded) {
   
   // Verificar si es instructor sin ficha
   const instructorSinFicha = window.INSTRUCTOR_SIN_FICHA || false;
-  
-  console.log("🔍 VERIFICACIÓN INSTRUCTOR:", { esInstructor, fichaInstructor, instructorSinFicha, usuarioActual });
+  console.log("VERIFICACIÓN INSTRUCTOR:", { esInstructor, fichaInstructor, instructorSinFicha, usuarioActual });
 
   // ==============================
   // PERMISOS FRONT (desde PHP)
@@ -60,7 +59,7 @@ if (!window.__obrasJSLoaded) {
     };
   })();
 
-  console.log("✅ PERMISOS OBRAS:", OBRAS_PERMS);
+  console.log("PERMISOS OBRAS:", OBRAS_PERMS);
 
   // ==============================
   // CONFIGURACIÓN DE API - URL FIJA
@@ -197,7 +196,7 @@ if (!window.__obrasJSLoaded) {
       // Si es instructor, filtrar solo las obras de su ficha
       if (esInstructor && fichaInstructor) {
         obrasData = obrasData.filter(obra => obra.id_ficha === fichaInstructor);
-        console.log(`📚 Obras filtradas para instructor (ficha ${fichaInstructor}): ${obrasData.length}`);
+        console.log(`Obras filtradas para instructor (ficha ${fichaInstructor}): ${obrasData.length}`);
       }
       
       obras = obrasData;
@@ -258,54 +257,166 @@ if (!window.__obrasJSLoaded) {
     if (!select) return;
 
     if (fichas.length === 0) {
-      select.innerHTML =
-        '<option value="" disabled selected class="text-red-500">No hay fichas disponibles</option>';
-      return;
+        select.innerHTML = '<option value="" disabled selected class="text-red-500">No hay fichas disponibles</option>';
+        select.disabled = true;
+        return;
     }
 
-    select.innerHTML =
-      '<option value="" disabled selected class="text-gray-500">Selecciona una Ficha</option>';
+    select.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona una Ficha</option>';
 
     fichas.forEach((ficha) => {
-      const option = document.createElement("option");
-      option.value = ficha.id_ficha;
-      option.textContent = ficha.numero_ficha;
-      select.appendChild(option);
+        const option = document.createElement("option");
+        option.value = ficha.id_ficha;
+        option.textContent = ficha.numero_ficha;
+        select.appendChild(option);
     });
 
-    // Si es instructor, preseleccionar y deshabilitar su ficha
-    if (esInstructor && fichaInstructor) {
-      select.value = fichaInstructor;
-      select.disabled = true;
-      console.log("✅ Ficha preseleccionada para instructor:", fichaInstructor);
-    }
-
-    const selectAprendiz = document.getElementById("create_aprendiz_individual");
-    if (selectAprendiz) {
-      selectAprendiz.innerHTML =
-        '<option value="" disabled selected>Selecciona primero una ficha</option>';
+    // IMPORTANTE: Nunca deshabilitar para instructores
+    select.disabled = false;
+    
+    if (esInstructor) {
+        console.log("Fichas disponibles para instructor:", fichas.length);
+        
+        // Si solo tiene una ficha, preseleccionarla automáticamente
+        if (fichas.length === 1) {
+            select.value = fichas[0].id_ficha;
+            // Disparar el evento change para cargar RAEs y aprendices
+            setTimeout(() => {
+                select.dispatchEvent(new Event('change'));
+            }, 100);
+        }
     }
   }
 
-  function llenarSelectRaes() {
-    const select = document.getElementById("create_rae");
-    if (!select) return;
+  // ==============================
+  // CARGAR RAES POR FICHA (NUEVO)
+  // ==============================
+  async function cargarRaesPorFicha(idFicha) {
+    try {
+      if (!idFicha) {
+        // Si no hay ficha, cargar todos los RAEs activos
+        await cargarTodosRaes();
+        return;
+      }
+      
+      console.log("Cargando RAEs para ficha ID:", idFicha);
+      
+      const data = await fetchAPI({
+        accion: "obtener_raes_por_ficha",
+        id_ficha: idFicha
+      });
+      
+      if (data && !data.error) {
+        // Actualizar el select de RAEs con los datos filtrados
+        llenarSelectRaesPorFicha(data);
+      } else {
+        console.error("Error al cargar RAEs por ficha:", data?.error);
+        // Fallback: cargar todos los RAEs
+        await cargarTodosRaes();
+      }
+    } catch (error) {
+      console.error("Error en cargarRaesPorFicha:", error);
+      // Fallback: cargar todos los RAEs
+      await cargarTodosRaes();
+    }
+  }
 
-    if (raes.length === 0) {
-      select.innerHTML =
-        '<option value="" disabled selected class="text-red-500">No hay RAEs disponibles</option>';
+  async function cargarTodosRaes() {
+    try {
+      const data = await fetchAPI({ accion: "obtener_raes" });
+      if (data && !data.error) {
+        raes = Array.isArray(data) ? data : [];
+        llenarSelectRaes();
+      }
+    } catch (error) {
+      console.error("Error cargando todos los RAEs:", error);
+    }
+  }
+
+  function llenarSelectRaesPorFicha(raesData) {
+    const selectCreate = document.getElementById("create_rae");
+    const selectEdit = document.getElementById("edit_rae");
+    
+    if (!raesData || raesData.length === 0) {
+      const message = "No hay RAEs disponibles para esta ficha";
+      if (selectCreate) {
+        selectCreate.innerHTML = `<option value="" disabled selected class="text-red-500">${message}</option>`;
+      }
+      if (selectEdit) {
+        selectEdit.innerHTML = `<option value="" disabled selected class="text-red-500">${message}</option>`;
+      }
       return;
     }
+    
+    // Para modal crear
+    if (selectCreate) {
+      selectCreate.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona un RAE</option>';
+      raesData.forEach((rae) => {
+        const option = document.createElement("option");
+        option.value = rae.id_rae;
+        option.textContent = `${rae.codigo_rae} - ${rae.descripcion_rae}`;
+        option.setAttribute("data-codigo", rae.codigo_rae);
+        option.setAttribute("data-descripcion", rae.descripcion_rae);
+        selectCreate.appendChild(option);
+      });
+    }
+    
+    // Para modal editar
+    if (selectEdit) {
+      selectEdit.innerHTML = '<option value="" disabled class="text-gray-500">Selecciona un RAE</option>';
+      raesData.forEach((rae) => {
+        const option = document.createElement("option");
+        option.value = rae.id_rae;
+        option.textContent = `${rae.codigo_rae} - ${rae.descripcion_rae}`;
+        option.setAttribute("data-codigo", rae.codigo_rae);
+        option.setAttribute("data-descripcion", rae.descripcion_rae);
+        selectEdit.appendChild(option);
+      });
+    }
+  }
 
-    select.innerHTML =
-      '<option value="" disabled selected class="text-gray-500">Selecciona un RAE</option>';
-
-    raes.forEach((rae) => {
-      const option = document.createElement("option");
-      option.value = rae.id_rae;
-      option.textContent = rae.descripcion_rae;
-      select.appendChild(option);
-    });
+  function llenarSelectRaes(selectedId = null) {
+    const selectCreate = document.getElementById("create_rae");
+    const selectEdit = document.getElementById("edit_rae");
+    
+    if (raes.length === 0) {
+      const message = "No hay RAEs disponibles";
+      if (selectCreate) {
+        selectCreate.innerHTML = `<option value="" disabled selected class="text-red-500">${message}</option>`;
+      }
+      if (selectEdit) {
+        selectEdit.innerHTML = `<option value="" disabled selected class="text-red-500">${message}</option>`;
+      }
+      return;
+    }
+    
+    // Para modal crear
+    if (selectCreate) {
+      selectCreate.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona un RAE</option>';
+      raes.forEach((rae) => {
+        const option = document.createElement("option");
+        option.value = rae.id_rae;
+        option.textContent = `${rae.codigo_rae} - ${rae.descripcion_rae}`;
+        option.setAttribute("data-codigo", rae.codigo_rae);
+        option.setAttribute("data-descripcion", rae.descripcion_rae);
+        if (selectedId && rae.id_rae == selectedId) option.selected = true;
+        selectCreate.appendChild(option);
+      });
+    }
+    
+    // Para modal editar
+    if (selectEdit) {
+      selectEdit.innerHTML = '<option value="" disabled class="text-gray-500">Selecciona un RAE</option>';
+      raes.forEach((rae) => {
+        const option = document.createElement("option");
+        option.value = rae.id_rae;
+        option.textContent = `${rae.codigo_rae} - ${rae.descripcion_rae}`;
+        option.setAttribute("data-codigo", rae.codigo_rae);
+        option.setAttribute("data-descripcion", rae.descripcion_rae);
+        if (selectedId && rae.id_rae == selectedId) option.selected = true;
+        selectEdit.appendChild(option);
+      });
+    }
   }
 
   function llenarSelectInstructores() {
@@ -744,6 +855,39 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
+  // MANEJAR CAMBIO DE FICHA (NUEVO)
+  // ==============================
+  async function handleFichaChange() {
+    const fichaId = this.value;
+    const raeSelect = document.getElementById("create_rae");
+    const raeEditSelect = document.getElementById("edit_rae");
+    
+    if (!fichaId) {
+      if (raeSelect) {
+        raeSelect.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona primero una ficha</option>';
+        raeSelect.disabled = true;
+      }
+      if (raeEditSelect) {
+        raeEditSelect.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona primero una ficha</option>';
+        raeEditSelect.disabled = true;
+      }
+      return;
+    }
+    
+    if (raeSelect) {
+      raeSelect.innerHTML = '<option value="" disabled selected>Cargando RAEs...</option>';
+      raeSelect.disabled = false;
+    }
+    
+    if (raeEditSelect) {
+      raeEditSelect.innerHTML = '<option value="" disabled selected>Cargando RAEs...</option>';
+      raeEditSelect.disabled = false;
+    }
+    
+    await cargarRaesPorFicha(fichaId);
+  }
+
+  // ==============================
   // MODAL CREAR
   // ==============================
   async function openCreateModal() {
@@ -771,40 +915,53 @@ if (!window.__obrasJSLoaded) {
     const tipo = document.getElementById("create_tipo");
     if (tipo) tipo.value = "Individual";
 
-    // Resetear disabled si es instructor para que se cargue correctamente
-    if (esInstructor) {
-      const create_ficha = document.getElementById("create_ficha");
-      const create_instructor = document.getElementById("create_instructor");
-      if (create_ficha) create_ficha.disabled = false;
-      if (create_instructor) create_instructor.disabled = false;
-    }
-
-    // Rellenar selects nuevamente
+    // Resetear selects
     llenarSelectFichas();
     llenarSelectRaes();
     llenarSelectInstructores();
 
-    // Volver a deshabilitar si es instructor
+    // Configurar para instructores
     if (esInstructor) {
-      const create_ficha = document.getElementById("create_ficha");
-      const create_instructor = document.getElementById("create_instructor");
-      if (create_ficha) create_ficha.disabled = true;
-      if (create_instructor) create_instructor.disabled = true;
+        const create_ficha = document.getElementById("create_ficha");
+        const create_instructor = document.getElementById("create_instructor");
+        
+        // SOLO el instructor debe estar bloqueado, NO la ficha
+        if (create_instructor && usuarioActual.usuarioId) {
+            create_instructor.value = usuarioActual.usuarioId;
+            create_instructor.disabled = true; // El instructor no puede cambiarse
+        }
+        
+        // IMPORTANTE: NO deshabilitar el select de fichas
+        // El select ya está habilitado en llenarSelectFichas()
+        
+        // Cargar RAEs si ya tiene una ficha seleccionada automáticamente
+        if (create_ficha && create_ficha.value) {
+            await cargarRaesPorFicha(create_ficha.value);
+            // También cargar aprendices si es individual
+            if (tipo && tipo.value === "Individual") {
+                cargarAprendicesParaSelect(create_ficha.value);
+            }
+        }
     }
 
+    // Mostrar/ocultar container de aprendiz individual según tipo
     const container = document.getElementById("containerAprendizIndividual");
-    if (container) container.classList.remove("hidden");
-
-    const selectAprendiz = document.getElementById("create_aprendiz_individual");
-    if (selectAprendiz) {
-      selectAprendiz.innerHTML =
-        '<option value="" disabled selected>Selecciona una ficha primero</option>';
+    if (container) {
+        const tipoValue = document.getElementById("create_tipo")?.value;
+        if (tipoValue === "Individual") {
+            container.classList.remove("hidden");
+        } else {
+            container.classList.add("hidden");
+        }
     }
 
-    // Si es instructor, cargar aprendices de su ficha automáticamente
-    if (esInstructor && fichaInstructor) {
-      console.log("📚 Cargando aprendices para instructor de ficha:", fichaInstructor);
-      cargarAprendicesParaSelect(fichaInstructor);
+    // Configurar event listener para cambio de ficha
+    const fichaSelect = document.getElementById("create_ficha");
+    if (fichaSelect) {
+        // Remover event listeners anteriores si existen
+        fichaSelect.removeEventListener("change", handleFichaChange);
+        // Agregar nuevo
+        fichaSelect.addEventListener("change", handleFichaChange);
     }
 
     // Reset flujo creación
@@ -812,7 +969,14 @@ if (!window.__obrasJSLoaded) {
   }
 
   function closeCreateModal() {
-    document.getElementById("modalCreate")?.classList.add("hidden");
+    const modal = document.getElementById("modalCreate");
+    if (modal) modal.classList.add("hidden");
+    
+    // Resetear form
+    const form = document.getElementById("formCreate");
+    if (form) form.reset();
+    
+    resetearCreacion();
   }
 
   // ==============================
@@ -974,9 +1138,23 @@ if (!window.__obrasJSLoaded) {
 
       obraOriginal = obra;
 
+      // Llenar selects con las fichas del instructor
       llenarSelectFichasEdit(obra.id_ficha);
       llenarSelectRaesEdit(obra.id_rae);
       llenarSelectInstructoresEdit(obra.id_instructor);
+
+      // Después de cargar la obra, cargar RAEs específicos de la ficha
+      if (obra && obra.id_ficha) {
+        await cargarRaesPorFicha(obra.id_ficha);
+        
+        // Establecer el RAE seleccionado después de cargar
+        setTimeout(() => {
+          const raeSelect = document.getElementById("edit_rae");
+          if (raeSelect && obra.id_rae) {
+            raeSelect.value = obra.id_rae;
+          }
+        }, 100);
+      }
 
       document.getElementById("edit_id").value = obra.id_actividad;
       document.getElementById("edit_nombre").value = obra.nombre_actividad;
@@ -985,13 +1163,43 @@ if (!window.__obrasJSLoaded) {
       document.getElementById("edit_fecha_inicio").value = obra.fecha_inicio;
       document.getElementById("edit_fecha_fin").value = obra.fecha_fin;
 
-      // DESACTIVAR CAMPOS QUE NO SE DEBEN EDITAR
-      document.getElementById("edit_ficha").disabled = true;
-      document.getElementById("edit_rae").disabled = true;
-      document.getElementById("edit_instructor").disabled = true;
-      document.getElementById("edit_tipo").disabled = true;
-      document.getElementById("edit_fecha_inicio").disabled = true;
-      document.getElementById("edit_fecha_fin").disabled = true;
+      // CONFIGURACIÓN PARA INSTRUCTOR
+      if (esInstructor) {
+        const fichaSelect = document.getElementById("edit_ficha");
+        const instructorSelect = document.getElementById("edit_instructor");
+        const raeSelect = document.getElementById("edit_rae");
+        
+        // VERIFICAR: El instructor debe tener acceso a esta ficha
+        const obraFichaId = obra.id_ficha;
+        const tieneAcceso = fichas.some(f => f.id_ficha == obraFichaId);
+        
+        if (!tieneAcceso) {
+          toastError("No tienes acceso a editar esta obra. La ficha no está entre tus asignaciones.");
+          return;
+        }
+        
+        // IMPORTANTE: Permitir cambiar entre fichas del instructor
+        if (fichaSelect) {
+          fichaSelect.disabled = false; // ← DESBLOQUEADO
+        }
+        
+        // Instructor bloqueado (es él mismo)
+        if (instructorSelect) {
+          instructorSelect.disabled = true;
+        }
+        
+        // Cargar RAEs específicos de la ficha actual
+        if (obra.id_ficha) {
+          await cargarRaesPorFicha(obra.id_ficha);
+          
+          // Asegurar que el RAE seleccionado sea visible
+          setTimeout(() => {
+            if (raeSelect && obra.id_rae) {
+              raeSelect.value = obra.id_rae;
+            }
+          }, 150);
+        }
+      }
 
       document.getElementById("modalEdit").classList.remove("hidden");
     } catch (error) {
@@ -1001,15 +1209,23 @@ if (!window.__obrasJSLoaded) {
   }
 
   function closeEditModal() {
-    document.getElementById("modalEdit")?.classList.add("hidden");
+    const modal = document.getElementById("modalEdit");
+    if (modal) modal.classList.add("hidden");
     
     // REACTIVAR CAMPOS AL CERRAR PARA PRÓXIMAS EDICIONES
-    document.getElementById("edit_ficha").disabled = false;
-    document.getElementById("edit_rae").disabled = false;
-    document.getElementById("edit_instructor").disabled = false;
-    document.getElementById("edit_tipo").disabled = false;
-    document.getElementById("edit_fecha_inicio").disabled = false;
-    document.getElementById("edit_fecha_fin").disabled = false;
+    const editFicha = document.getElementById("edit_ficha");
+    const editRae = document.getElementById("edit_rae");
+    const editInstructor = document.getElementById("edit_instructor");
+    const editTipo = document.getElementById("edit_tipo");
+    const editFechaInicio = document.getElementById("edit_fecha_inicio");
+    const editFechaFin = document.getElementById("edit_fecha_fin");
+    
+    if (editFicha) editFicha.disabled = false;
+    if (editRae) editRae.disabled = false;
+    if (editInstructor) editInstructor.disabled = esInstructor;
+    if (editTipo) editTipo.disabled = false;
+    if (editFechaInicio) editFechaInicio.disabled = false;
+    if (editFechaFin) editFechaFin.disabled = false;
     
     originalEditData = null;
     obraOriginal = null;
@@ -1029,6 +1245,16 @@ if (!window.__obrasJSLoaded) {
     }
 
     const id = parseInt(document.getElementById("edit_id").value, 10);
+    const fichaId = parseInt(document.getElementById("edit_ficha").value, 10);
+
+    if (esInstructor) {
+      // Verificar que la ficha seleccionada esté entre las fichas del instructor
+      const fichaSeleccionada = fichas.some(f => f.id_ficha == fichaId);
+      if (!fichaSeleccionada) {
+        toastError("No tiene acceso a esta ficha. Seleccione una ficha a la que esté asignado.");
+        return;
+      }
+    }
 
     const currentData = {
       id_ficha: parseInt(document.getElementById("edit_ficha").value, 10),
@@ -1129,7 +1355,8 @@ if (!window.__obrasJSLoaded) {
   }
 
   function closeDetailsModal() {
-    document.getElementById("modalDetails")?.classList.add("hidden");
+    const modal = document.getElementById("modalDetails");
+    if (modal) modal.classList.add("hidden");
   }
 
   // ==============================
@@ -1159,20 +1386,26 @@ if (!window.__obrasJSLoaded) {
     if (!select) return;
 
     if (fichas.length === 0) {
-      select.innerHTML =
-        '<option value="" disabled selected class="text-red-500">No hay fichas disponibles</option>';
-      return;
+        select.innerHTML = '<option value="" disabled selected class="text-red-500">No hay fichas disponibles</option>';
+        select.disabled = true;
+        return;
     }
 
     select.innerHTML = '<option value="" disabled class="text-gray-500">Selecciona una Ficha</option>';
 
     fichas.forEach((ficha) => {
-      const option = document.createElement("option");
-      option.value = ficha.id_ficha;
-      option.textContent = ficha.numero_ficha;
-      if (selectedId && ficha.id_ficha == selectedId) option.selected = true;
-      select.appendChild(option);
+        const option = document.createElement("option");
+        option.value = ficha.id_ficha;
+        option.textContent = ficha.numero_ficha;
+        if (selectedId && ficha.id_ficha == selectedId) option.selected = true;
+        select.appendChild(option);
     });
+
+    // IMPORTANTE: Para instructores, permitir cambiar entre sus fichas
+    if (esInstructor) {
+        select.disabled = false; // Permitir cambiar entre fichas
+        console.log("Editando: Fichas disponibles para instructor:", fichas.length);
+    }
   }
 
   function llenarSelectRaesEdit(selectedId = null) {
@@ -1190,7 +1423,9 @@ if (!window.__obrasJSLoaded) {
     raes.forEach((rae) => {
       const option = document.createElement("option");
       option.value = rae.id_rae;
-      option.textContent = rae.descripcion_rae;
+      option.textContent = `${rae.codigo_rae} - ${rae.descripcion_rae}`;
+      option.setAttribute("data-codigo", rae.codigo_rae);
+      option.setAttribute("data-descripcion", rae.descripcion_rae);
       if (selectedId && rae.id_rae == selectedId) option.selected = true;
       select.appendChild(option);
     });
@@ -1367,7 +1602,11 @@ if (!window.__obrasJSLoaded) {
       return false;
     }
 
-    if (!validarDescripcion(data.descripcion)) return false;
+    if (!validarDescripcion(data.descripcion)) {
+      toastError("La descripción debe tener al menos 10 caracteres.");
+      return false;
+    }
+    
     if (!validarFechas(data.fecha_inicio, data.fecha_fin)) return false;
 
     // Validación extra: individual requiere aprendiz
@@ -1402,7 +1641,6 @@ if (!window.__obrasJSLoaded) {
 
   function validarDescripcion(descripcion) {
     if (!descripcion || descripcion.trim().length < 10) {
-      toastError("La descripción debe tener al menos 10 caracteres.");
       return false;
     }
     return true;
@@ -1562,13 +1800,24 @@ if (!window.__obrasJSLoaded) {
   }
 
   function closeSeleccionarModal() {
-    document.getElementById("modalSeleccionarAprendiz")?.classList.add("hidden");
+    const modal = document.getElementById("modalSeleccionarAprendiz");
+    if (modal) modal.classList.add("hidden");
     resetearCreacion();
   }
 
   function openAsignarModal() {
-    document.getElementById("infoObraCreada").textContent =
-      `${obraCreadaData?.nombre_actividad || ""} - Ficha: ${fichaSeleccionadaId || ""}`;
+    const infoObra = document.getElementById("infoObraCreada");
+    if (infoObra && obraCreadaData) {
+        let codigoFicha = fichaSeleccionadaId; // Por defecto mostrar ID
+        if (fichas && Array.isArray(fichas)) {
+            const fichaEncontrada = fichas.find(f => f.id_ficha == fichaSeleccionadaId);
+            if (fichaEncontrada) {
+                codigoFicha = fichaEncontrada.numero_ficha || fichaEncontrada.codigo_ficha || fichaEncontradaId;
+            }
+        }
+        
+        infoObra.textContent = `${obraCreadaData?.nombre_actividad || ""} - Ficha: ${codigoFicha}`;
+    }
 
     const select = document.getElementById("selectAprendiz");
     if (!select) return;
@@ -1592,11 +1841,13 @@ if (!window.__obrasJSLoaded) {
     aprendicesSeleccionados = [];
     actualizarListaAprendicesSeleccionados();
 
-    document.getElementById("modalAsignarAprendices")?.classList.remove("hidden");
+    const modal = document.getElementById("modalAsignarAprendices");
+    if (modal) modal.classList.remove("hidden");
   }
 
   function closeAsignarModal() {
-    document.getElementById("modalAsignarAprendices")?.classList.add("hidden");
+    const modal = document.getElementById("modalAsignarAprendices");
+    if (modal) modal.classList.add("hidden");
     resetearCreacion();
   }
 
@@ -1682,7 +1933,21 @@ if (!window.__obrasJSLoaded) {
               class="text-red-600 hover:text-red-800 p-1"
               title="Remover"
             >
-              <i class="fas fa-times"></i>
+              <span class="sr-only">Cerrar</span>
+              <svg
+                class="h-5 w-5"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
             </button>
           </div>
         `
@@ -1802,45 +2067,71 @@ if (!window.__obrasJSLoaded) {
     aplicarPermisosUI();
 
     // Bind submit para CREATE (formEdit ya tiene onsubmit en HTML)
-    document.getElementById("formCreate")?.addEventListener("submit", handleCreateObra);
+    const formCreate = document.getElementById("formCreate");
+    if (formCreate) {
+      formCreate.addEventListener("submit", handleCreateObra);
+    }
 
     cargarObras();
 
     // Listeners del modal create (tipo y ficha)
-    document.getElementById("create_tipo")?.addEventListener("change", function () {
-      const container = document.getElementById("containerAprendizIndividual");
-      if (!container) return;
+    const createTipo = document.getElementById("create_tipo");
+    if (createTipo) {
+      createTipo.addEventListener("change", function () {
+        const container = document.getElementById("containerAprendizIndividual");
+        if (!container) return;
 
-      if (this.value === "Individual") {
-        container.classList.remove("hidden");
-
-        const fichaId = document.getElementById("create_ficha")?.value;
-        if (fichaId) {
-          cargarAprendicesParaSelect(fichaId);
-        } else {
-          const selectAprendiz = document.getElementById("create_aprendiz_individual");
-          if (selectAprendiz) {
-            selectAprendiz.innerHTML =
-              '<option value="" disabled selected>Selecciona primero una ficha</option>';
+        if (this.value === "Individual") {
+          container.classList.remove("hidden");
+          
+          // IMPORTANTE: Verificar que el select de fichas NO esté deshabilitado
+          const fichaSelect = document.getElementById("create_ficha");
+          if (fichaSelect && !fichaSelect.disabled && fichaSelect.value) {
+            cargarAprendicesParaSelect(fichaSelect.value);
+          } else {
+            const selectAprendiz = document.getElementById("create_aprendiz_individual");
+            if (selectAprendiz) {
+              selectAprendiz.innerHTML = '<option value="" disabled selected>Selecciona primero una ficha</option>';
+            }
           }
+        } else {
+          container.classList.add("hidden");
         }
-      } else {
-        container.classList.add("hidden");
-      }
-    });
+      });
+    }
 
-    document.getElementById("create_ficha")?.addEventListener("change", function () {
-      const tipo = document.getElementById("create_tipo")?.value;
-      if (tipo === "Individual" && this.value) {
-        cargarAprendicesParaSelect(this.value);
-      }
-    });
+    const createFicha = document.getElementById("create_ficha");
+    if (createFicha) {
+      createFicha.addEventListener("change", function () {
+        // IMPORTANTE: Verificar que NO esté deshabilitado
+        if (this.disabled) {
+          console.warn("Select de ficha está deshabilitado, no se puede cambiar");
+          return;
+        }
+        
+        const tipo = document.getElementById("create_tipo")?.value;
+        if (tipo === "Individual" && this.value) {
+          cargarAprendicesParaSelect(this.value);
+        }
+        
+        // También cargar RAEs específicos de esta ficha
+        if (this.value) {
+          handleFichaChange.call(this);
+        }
+      });
+    }
 
     // Si tienes buscador por input
-    document.getElementById("searchInput")?.addEventListener("input", searchObras);
+    const searchInput = document.getElementById("searchInput");
+    if (searchInput) {
+      searchInput.addEventListener("input", searchObras);
+    }
 
     // Si tienes input filtro en modal grupal
-    document.getElementById("searchAprendiz")?.addEventListener("input", filtrarAprendices);
+    const searchAprendiz = document.getElementById("searchAprendiz");
+    if (searchAprendiz) {
+      searchAprendiz.addEventListener("input", filtrarAprendices);
+    }
 
     // CERRAR MENÚS CUANDO SE HACE CLICK AFUERA (DENTRO DE DOMCONTENTLOADED)
     document.addEventListener("click", (event) => {
@@ -1916,4 +2207,29 @@ if (!window.__obrasJSLoaded) {
 
   window.toggleActionMenu = toggleActionMenu;
   window.closeAllMenus = closeAllMenus;
+
+  // AÑADIR estas funciones que también se usan:
+  window.asignarAprendizIndividual = asignarAprendizIndividual;
+  window.resetearCreacion = resetearCreacion;
+  window.cargarRaesPorFicha = cargarRaesPorFicha;
+  window.handleFichaChange = handleFichaChange;
+  window.verificarEstadoSelects = verificarEstadoSelects;
+
+  // Función para debug
+  function verificarEstadoSelects() {
+    console.log("🔍 Estado de selects:");
+    
+    const create_ficha = document.getElementById("create_ficha");
+    const edit_ficha = document.getElementById("edit_ficha");
+    const create_instructor = document.getElementById("create_instructor");
+    const edit_instructor = document.getElementById("edit_instructor");
+    
+    if (create_ficha) console.log("create_ficha disabled:", create_ficha.disabled, "value:", create_ficha.value);
+    if (edit_ficha) console.log("edit_ficha disabled:", edit_ficha.disabled, "value:", edit_ficha.value);
+    if (create_instructor) console.log("create_instructor disabled:", create_instructor.disabled, "value:", create_instructor.value);
+    if (edit_instructor) console.log("edit_instructor disabled:", edit_instructor.disabled, "value:", edit_instructor.value);
+    
+    console.log("esInstructor:", esInstructor);
+    console.log("fichas disponibles:", fichas.length);
+  }
 }

@@ -118,132 +118,96 @@ function toastInfo(message) {
   showFlowbiteAlert("info", message);
 }
 
-// ========== HELPER: Construir URLs de API ==========
-function getApiUrl(action) {
-    // Detectar si estamos en /views/ o en la raíz
-    const basePath = window.location.pathname.includes('/views/') 
-        ? '../' 
-        : '';
-    return `${basePath}src/controllers/programa_controller.php?accion=${action}`;
-}
-
-// ========== VARIABLES GLOBALES ==========
-// ✅ ELIMINADA BASE_URL GLOBAL - Usamos getApiUrl()
-
-let currentStep = 1;
-let selectedInstructors = [];
-let allInstructors = [];
-let currentEditStep = 1;
-let selectedEditInstructors = [];
-let allEditInstructors = [];
-let editingProgramId = null;
-let originalInstructorCount = 0;
-
 // ========== HELPER FUNCTION: Filter and show/hide empty states ==========
 function applyFilterAndUpdateEmptyStates() {
-  const searchInput = document.querySelector('input[placeholder="Buscar por nombre..."]');
-  const searchTerm = searchInput && searchInput.value ? searchInput.value.toLowerCase().trim() : '';
-  
-  const filterEstadoElement = document.getElementById('selectFiltroEstado');
-  const filterEstado = filterEstadoElement ? filterEstadoElement.value : '';
+  const searchInput = document.querySelector('input[placeholder="Buscar por nombre..."]')
+  const searchTerm = (searchInput?.value ?? '').toLowerCase().trim()
+  const filterEstado = document.getElementById('selectFiltroEstado').value
   
   // Get all table rows and grid cards
-  const tableRows = document.querySelectorAll('#tableView tbody tr[data-index]');
-  const gridCards = document.querySelectorAll('#gridView [data-index]');
+  const tableRows = document.querySelectorAll('#tableView tbody tr[data-index]')
+  const gridCards = document.querySelectorAll('#gridView [data-index]')
+  const tableView = document.getElementById('tableView')
+  const gridView = document.getElementById('gridView')
+  
+  let visibleRowCount = 0
+  let visibleCardCount = 0
   
   // Filter table rows
   tableRows.forEach(row => {
-    const nombre = row.dataset.nombre ? row.dataset.nombre.toLowerCase() : '';
-    const estado = row.dataset.estado ? String(row.dataset.estado) : '';
+    const nombre = row.dataset.nombre?.toLowerCase() ?? ''
+    const estado = String(row.dataset.estado ?? '')
     
-    const matchesSearch = searchTerm === '' || nombre.includes(searchTerm);
-    const matchesFilter = filterEstado === '' || estado === filterEstado;
+    const matchesSearch = searchTerm === '' || nombre.includes(searchTerm)
+    const matchesFilter = filterEstado === '' || estado === filterEstado
     
     if (matchesSearch && matchesFilter) {
-      row.classList.remove('hidden');
+      row.classList.remove('hidden')
+      visibleRowCount++
     } else {
-      row.classList.add('hidden');
+      row.classList.add('hidden')
     }
-  });
+  })
   
   // Filter grid cards
   gridCards.forEach(card => {
-    const nombre = card.dataset.nombre ? card.dataset.nombre.toLowerCase() : '';
-    const estado = card.dataset.estado ? String(card.dataset.estado) : '';
+    const nombre = card.dataset.nombre?.toLowerCase() ?? ''
+    const estado = String(card.dataset.estado ?? '')
     
-    const matchesSearch = searchTerm === '' || nombre.includes(searchTerm);
-    const matchesFilter = filterEstado === '' || estado === filterEstado;
+    const matchesSearch = searchTerm === '' || nombre.includes(searchTerm)
+    const matchesFilter = filterEstado === '' || estado === filterEstado
     
     if (matchesSearch && matchesFilter) {
-      card.classList.remove('hidden');
+      card.classList.remove('hidden')
+      visibleCardCount++
     } else {
-      card.classList.add('hidden');
+      card.classList.add('hidden')
     }
-  });
+  })
   
-  // Determine which view is currently active
-  const tableView = document.getElementById("tableView");
-  const currentView = tableView && tableView.classList.contains("hidden") ? "grid" : "table";
+  // Show/hide empty states and tables
+  const emptyState = document.getElementById('emptyStateProgramas')
+  const emptySearch = document.getElementById('emptySearchProgramas')
   
-  // Check and show empty states according to current view
-  checkAndShowEmptyStates(currentView);
-}
-
-// ========== FUNCIÓN checkAndShowEmptyStates ==========
-function checkAndShowEmptyStates(currentView) {
-  const tableView = document.getElementById("tableView");
-  const gridView = document.getElementById("gridView");
-  const emptyState = document.getElementById("emptyStateProgramas");
-  const emptySearch = document.getElementById("emptySearchProgramas");
-  const tableBtn = document.getElementById("viewTableBtn");
-  const gridBtn = document.getElementById("viewGridBtn");
+  const totalRows = tableRows.length
+  const totalCards = gridCards.length
+  const totalProgramas = totalRows + totalCards > 0 ? totalRows : totalCards
   
-  if (!tableView || !gridView || !emptyState || !emptySearch) return;
-  
-  // Count visible elements in BOTH views
-  const visibleRows = document.querySelectorAll('#tableView tbody tr[data-index]:not(.hidden)').length;
-  const visibleCards = document.querySelectorAll('#gridView [data-index]:not(.hidden)').length;
-  const hasVisibleItems = visibleRows > 0 || visibleCards > 0;
-  
-  // Check if there are any programs in total in the system
-  const totalRows = document.querySelectorAll('#tableView tbody tr[data-index]').length;
-  const totalCards = document.querySelectorAll('#gridView [data-index]').length;
-  const hasAnyPrograms = totalRows > 0 || totalCards > 0;
-  
-  // Determine what to show
-  if (!hasAnyPrograms) {
-    // No programs in the system - show empty message
-    emptyState.classList.remove('hidden');
-    emptySearch.classList.add('hidden');
-    tableView.classList.add('hidden');
-    gridView.classList.add('hidden');
-  } else if (!hasVisibleItems) {
-    // There are programs but NONE match the search
-    emptyState.classList.add('hidden');
-    emptySearch.classList.remove('hidden');
-    tableView.classList.add('hidden');
-    gridView.classList.add('hidden');
+  if (totalProgramas === 0) {
+    // No programas in system
+    emptyState?.classList.remove('hidden')
+    emptySearch?.classList.add('hidden')
+    tableView?.classList.add('hidden')
+    gridView?.classList.add('hidden')
+  } else if (visibleRowCount === 0 && visibleCardCount === 0) {
+    // Programas exist but no results for current search/filter
+    emptyState?.classList.add('hidden')
+    emptySearch?.classList.remove('hidden')
+    tableView?.classList.add('hidden')
+    gridView?.classList.add('hidden')
   } else {
-    // There are visible results - determine which view to show
-    emptyState.classList.add('hidden');
-    emptySearch.classList.add('hidden');
-    
-    if (currentView === 'grid') {
-      tableView.classList.add('hidden');
-      gridView.classList.remove('hidden');
-    } else {
-      tableView.classList.remove('hidden');
-      gridView.classList.add('hidden');
+    // Results found
+    emptyState?.classList.add('hidden')
+    emptySearch?.classList.add('hidden')
+    tableView?.classList.remove('hidden')
+    // Note: gridView will be shown/hidden by toggleView()
+    if (!gridView?.classList.contains('hidden')) {
+      gridView?.classList.remove('hidden')
     }
   }
 }
+
+// ========== VARIABLES GLOBALES PARA EL MODAL DE CREACIÓN ==========
+let currentStep = 1;
+let selectedInstructors = []; // Array para almacenar ID de instructores seleccionados
+let allInstructors = []; // Array con todos los instructores disponibles
 
 // ========== FUNCIONES PARA EL MODAL DE 2 PASOS ==========
 
 // Función para obtener todos los instructores
 async function loadAllInstructors() {
     try {
-        const response = await fetch(getApiUrl('obtener_instructores'));
+        const response = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_instructores`);
         const result = await response.json();
         
         if (result.error) {
@@ -333,7 +297,21 @@ function renderSelectedInstructorsList() {
                     <button type="button" 
                         onclick="toggleInstructorSelection(${instructor.id_usuario})"
                         class="text-muted-foreground hover:text-destructive">
-                        <i class="fas fa-times"></i>
+                        <span class="sr-only">Cerrar</span>
+                        <svg
+                            class="h-5 w-5"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
                     </button>
                 </div>
             `;
@@ -345,7 +323,7 @@ function renderSelectedInstructorsList() {
 }
 
 // Función para alternar la selección de un instructor
-window.toggleInstructorSelection = function(instructorId) {
+function toggleInstructorSelection(instructorId) {
     const index = selectedInstructors.indexOf(instructorId);
     
     if (index === -1) {
@@ -359,10 +337,147 @@ window.toggleInstructorSelection = function(instructorId) {
     // Re-renderizar ambas listas
     renderInstructorsList(allInstructors);
     renderSelectedInstructorsList();
-};
+}
+
+// ========== FUNCIONES DE VALIDACIÓN MEJORADAS ==========
+
+/**
+ * Validates that code contains at least one letter and one number
+ */
+function isValidCodeFormat(codigo) {
+    const hasLetter = /[a-zA-Z]/g.test(codigo);
+    const hasNumber = /[0-9]/g.test(codigo);
+    return hasLetter && hasNumber;
+}
+
+/**
+ * Checks if a code already exists in the current programs table/grid
+ * excludeIndex: if provided, exclude this program from the check
+ */
+async function codeAlreadyExistsAPI(codigo, excludeId = null) {
+    try {
+        const response = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_por_codigo&codigo=${encodeURIComponent(codigo)}`);
+        const result = await response.json();
+        
+        // Si hay un error (como que no se encontró), devolver falso
+        if (result.error) {
+            return false;
+        }
+        
+        // Si se encontró un programa, verificar si es el mismo que estamos editando
+        if (excludeId && result.id_programa == excludeId) {
+            return false;
+        }
+        
+        return true; // Código existe
+    } catch (error) {
+        console.error("Error checking code existence:", error);
+        return false; // En caso de error, asumir que no existe
+    }
+}
+
+/**
+ * Validates program data before sending to server - for step 1 validation
+ */
+function validateStep1Data(data, isEdit = false, excludeId = null) {
+    // Check required fields
+    if (!data.codigo_programa || !data.nombre_programa || !data.nivel_programa || 
+        !data.descripcion_programa || !data.duracion_horas) {
+        toastError("Todos los campos marcados con * son obligatorios.");
+        return false;
+    }
+
+    // Validate code length (max 10 characters)
+    if (data.codigo_programa.trim().length > 10) {
+        toastError("El código del programa no puede exceder los 10 caracteres.");
+        return false;
+    }
+
+    // Validate code format (at least 3 characters)
+    if (data.codigo_programa.trim().length < 3) {
+        toastError("El código del programa debe tener al menos 3 caracteres.");
+        return false;
+    }
+
+    // Validate code contains at least one letter and one number
+    if (!isValidCodeFormat(data.codigo_programa)) {
+        toastError("El código debe contener al menos una letra y un número.");
+        return false;
+    }
+
+    // Validate name length (max 25 characters)
+    if (data.nombre_programa.trim().length > 25) {
+        toastError("El nombre del programa no puede exceder los 25 caracteres.");
+        return false;
+    }
+
+    // Validate name length (min 5 characters)
+    if (data.nombre_programa.trim().length < 5) {
+        toastError("El nombre del programa debe tener al menos 5 caracteres.");
+        return false;
+    }
+
+    // Validate description length (max 200 characters)
+    if (data.descripcion_programa.trim().length > 200) {
+        toastError("La descripción no puede exceder los 200 caracteres.");
+        return false;
+    }
+
+    // Validate description length (min 10 characters)
+    if (data.descripcion_programa.trim().length < 10) {
+        toastError("La descripción debe tener al menos 10 caracteres.");
+        return false;
+    }
+
+    // Validate duration (must be a positive number)
+    if (isNaN(data.duracion_horas) || data.duracion_horas <= 0) {
+        toastError("La duración debe ser un número positivo de horas.");
+        return false;
+    }
+
+    // Validate level - acepta versiones con y sin acentos
+    const nivelNormalizado = data.nivel_programa.toLowerCase();
+    const esValido = nivelNormalizado.includes('técnico') || 
+                   nivelNormalizado.includes('tecnico') ||
+                   nivelNormalizado.includes('tecnólogo') || 
+                   nivelNormalizado.includes('tecnologo');
+    
+    if (!esValido) {
+        toastError("El nivel debe ser 'Técnico' o 'Tecnólogo'.");
+        return false;
+    }
+
+    return true;
+}
+
+// Función para validar datos del paso 1 (síncrona para uso inmediato)
+async function validateStep1(codigo, nombre, nivel, descripcion, duracionHoras, isEdit = false, excludeId = null) {
+    // Crear objeto de datos para validación
+    const data = {
+        codigo_programa: codigo,
+        nombre_programa: nombre,
+        nivel_programa: nivel,
+        descripcion_programa: descripcion,
+        duracion_horas: duracionHoras
+    };
+    
+    // Validar formato básico
+    if (!validateStep1Data(data, isEdit, excludeId)) {
+        return false;
+    }
+    
+    // Verificar si el código ya existe (llamada a API)
+    const codeExists = await codeAlreadyExistsAPI(codigo, excludeId);
+    if (codeExists) {
+        toastError("Ya hay un programa de formación con el código ingresado");
+        return false;
+    }
+    
+    return true;
+}
 
 // Función para avanzar al siguiente paso
-window.nextStep = function() {
+async function nextStep() {
     const step1 = document.getElementById('createStep1');
     const step2 = document.getElementById('createStep2');
     const btnPrev = document.getElementById('btnPrevStep');
@@ -378,17 +493,29 @@ window.nextStep = function() {
         const codigo = document.getElementById('create_codigo').value.trim();
         const nombre = document.getElementById('create_nombre').value.trim();
         const descripcion = document.getElementById('create_descripcion').value.trim();
-        const duracion = document.getElementById('create_duracion').value.trim();
+        const duracionText = document.getElementById('create_duracion').value.trim();
+        const nivel = document.getElementById('create_nivel').value;
         
-        // Validar que no estén vacíos
-        if (!codigo || !nombre || !descripcion || !duracion) {
-            toastError('Todos los campos del paso 1 son obligatorios');
-            
-            // Resaltar campos vacíos
-            if (!codigo) document.getElementById('create_codigo').classList.add('border-red-500');
-            if (!nombre) document.getElementById('create_nombre').classList.add('border-red-500');
-            if (!descripcion) document.getElementById('create_descripcion').classList.add('border-red-500');
-            if (!duracion) document.getElementById('create_duracion').classList.add('border-red-500');
+        // Convertir duración a número
+        const duracionHoras = parseInt(duracionText.replace(/[^\d]/g, '')) || 0;
+        
+        // Validar datos del paso 1
+        const isValid = await validateStep1(codigo, nombre, nivel, descripcion, duracionHoras, false, null);
+        
+        if (!isValid) {
+            // Resaltar campos con error
+            if (!codigo || codigo.length < 3 || codigo.length > 10) {
+                document.getElementById('create_codigo').classList.add('border-red-500');
+            }
+            if (!nombre || nombre.length < 5 || nombre.length > 25) {
+                document.getElementById('create_nombre').classList.add('border-red-500');
+            }
+            if (!descripcion || descripcion.length < 10 || descripcion.length > 200) {
+                document.getElementById('create_descripcion').classList.add('border-red-500');
+            }
+            if (!duracionText || duracionHoras <= 0) {
+                document.getElementById('create_duracion').classList.add('border-red-500');
+            }
             
             // Remover clase de error después de 2 segundos
             setTimeout(() => {
@@ -398,37 +525,6 @@ window.nextStep = function() {
                 document.getElementById('create_duracion').classList.remove('border-red-500');
             }, 2000);
             
-            return;
-        }
-        
-        // Validar duración numérica
-        const duracionNum = parseInt(duracion.replace(/[^\d]/g, ''));
-        if (isNaN(duracionNum) || duracionNum <= 0) {
-            toastError('La duración debe ser un número positivo');
-            document.getElementById('create_duracion').classList.add('border-red-500');
-            setTimeout(() => {
-                document.getElementById('create_duracion').classList.remove('border-red-500');
-            }, 2000);
-            return;
-        }
-        
-        // Validar código básico (mínimo 3 caracteres)
-        if (codigo.length < 3) {
-            toastError('El código debe tener al menos 3 caracteres');
-            document.getElementById('create_codigo').classList.add('border-red-500');
-            setTimeout(() => {
-                document.getElementById('create_codigo').classList.remove('border-red-500');
-            }, 2000);
-            return;
-        }
-        
-        // Validar nombre básico (mínimo 5 caracteres)
-        if (nombre.length < 5) {
-            toastError('El nombre debe tener al menos 5 caracteres');
-            document.getElementById('create_nombre').classList.add('border-red-500');
-            setTimeout(() => {
-                document.getElementById('create_nombre').classList.remove('border-red-500');
-            }, 2000);
             return;
         }
         
@@ -473,10 +569,10 @@ window.nextStep = function() {
             renderSelectedInstructorsList();
         }
     }
-};
+}
 
 // Función para retroceder al paso anterior
-window.prevStep = function() {
+function prevStep() {
     const step1 = document.getElementById('createStep1');
     const step2 = document.getElementById('createStep2');
     const btnPrev = document.getElementById('btnPrevStep');
@@ -506,10 +602,10 @@ window.prevStep = function() {
         
         currentStep = 1;
     }
-};
+}
 
 // Función para crear programa con instructores
-window.createProgramWithInstructors = async function() {
+async function createProgramWithInstructors() {
     // Obtener datos del formulario
     const codigo = document.getElementById('create_codigo').value.trim();
     const nombre = document.getElementById('create_nombre').value.trim();
@@ -530,7 +626,7 @@ window.createProgramWithInstructors = async function() {
     console.log("Creando programa con datos:", programData);
     console.log("Instructores seleccionados:", selectedInstructors);
     
-    // Validar datos
+    // Validar datos (no validateProgramData para incluir instructores)
     if (!validateProgramData(programData, false, null)) {
         return;
     }
@@ -538,12 +634,12 @@ window.createProgramWithInstructors = async function() {
     // Validar que haya al menos un instructor seleccionado
     if (selectedInstructors.length === 0) {
         toastError("El programa de formación a crear debe de contar con al menos un instructor vinculado");
-        return;
+            return;
     }
     
     try {
         // 1. Crear el programa primero
-        const createResponse = await fetch(getApiUrl('crear'), {
+        const createResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=crear`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(programData),
@@ -557,11 +653,11 @@ window.createProgramWithInstructors = async function() {
             return;
         }
         
-        // Obtener el ID del programa creado
+        // Obtener el ID del programa creado (necesitamos ajustar el controlador para devolverlo)
         if (!createResult.id_programa) {
             // Si el controlador no devuelve el ID, necesitamos buscarlo por código
             try {
-                const searchResponse = await fetch(getApiUrl('obtener_por_codigo') + `&codigo=${encodeURIComponent(codigo)}`);
+                const searchResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_por_codigo&codigo=${encodeURIComponent(codigo)}`);
                 const searchResult = await searchResponse.json();
                 
                 if (searchResult.id_programa) {
@@ -584,7 +680,7 @@ window.createProgramWithInstructors = async function() {
         
         const programId = createResult.id_programa;
         
-        // 2. Asociar instructores al programa
+        // 2. Asociar instructores al programa (si hay instructores seleccionados)
         if (selectedInstructors.length > 0) {
             try {
                 const instructorsData = {
@@ -592,7 +688,7 @@ window.createProgramWithInstructors = async function() {
                     instructores_ids: selectedInstructors
                 };
                 
-                const instructorsResponse = await fetch(getApiUrl('asignar_instructores'), {
+                const instructorsResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=asignar_instructores`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(instructorsData),
@@ -621,15 +717,22 @@ window.createProgramWithInstructors = async function() {
         }, 1500);
         
     } catch (error) {
-        console.error("Error creando programa:", error);
+        console.error("[v0] Error creando programa:", error);
         toastError("Error de conexión al crear el programa");
     }
-};
+}
+
+// ========== VARIABLES GLOBALES PARA EL MODAL DE EDICIÓN ==========
+let currentEditStep = 1;
+let selectedEditInstructors = [];
+let allEditInstructors = [];
+let editingProgramId = null;
+let originalInstructorCount = 0; // Guardar cantidad original de instructores
 
 // ========== FUNCIONES PARA EL MODAL DE EDICIÓN (2 PASOS) ==========
 
 // Función para abrir el modal de edición con 2 pasos
-window.openEditModal = async function(index) {
+async function openEditModal(index) {
     const row = document.querySelector(`tr[data-index="${index}"]`) || document.querySelector(`div[data-index="${index}"]`);
     
     if (!row) {
@@ -684,17 +787,17 @@ window.openEditModal = async function(index) {
     const modal = document.getElementById("editProgramModal");
     modal.classList.remove("hidden");
     modal.classList.add("flex");
-};
+}
 
 // Función para cargar instructores del programa
 async function loadProgramInstructors(programId) {
     try {
         // Obtener instructores actuales del programa
-        const programInstructorsResponse = await fetch(getApiUrl('obtener_instructores_programa') + `&id_programa=${programId}`);
+        const programInstructorsResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_instructores_programa&id_programa=${programId}`);
         const programInstructors = await programInstructorsResponse.json();
 
         // Obtener todos los instructores disponibles
-        const allInstructorsResponse = await fetch(getApiUrl('obtener_instructores'));
+        const allInstructorsResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_instructores`);
         const allInstructors = await allInstructorsResponse.json();
 
         if (programInstructors.error || allInstructors.error) {
@@ -812,7 +915,7 @@ function renderEditSelectedInstructorsList() {
 }
 
 // Función para alternar la selección de un instructor en edición
-window.toggleEditInstructorSelection = function(instructorId) {
+function toggleEditInstructorSelection(instructorId) {
     const index = selectedEditInstructors.indexOf(instructorId);
     
     // Validar que no sea el último instructor
@@ -832,27 +935,39 @@ window.toggleEditInstructorSelection = function(instructorId) {
     // Re-renderizar ambas listas
     renderEditInstructorsList(allEditInstructors);
     renderEditSelectedInstructorsList();
-};
+}
 
 // Función para avanzar al siguiente paso en edición
-window.nextEditStep = function() {
+async function nextEditStep() {
     if (currentEditStep === 1) {
         // Validar datos del paso 1
         const codigo = document.getElementById('edit_codigo').value.trim();
         const nombre = document.getElementById('edit_nombre').value.trim();
         const descripcion = document.getElementById('edit_descripcion').value.trim();
-        const duracion = document.getElementById('edit_duracion').value.trim();
+        const duracionText = document.getElementById('edit_duracion').value.trim();
         const nivel = document.getElementById('edit_nivel').value;
+        const idPrograma = document.getElementById('edit_id_programa').value;
         
-        // Validar que no estén vacíos
-        if (!codigo || !nombre || !descripcion || !duracion || !nivel) {
-            toastError('Todos los campos del paso 1 son obligatorios');
-            
-            // Resaltar campos vacíos
-            if (!codigo) document.getElementById('edit_codigo').classList.add('border-red-500');
-            if (!nombre) document.getElementById('edit_nombre').classList.add('border-red-500');
-            if (!descripcion) document.getElementById('edit_descripcion').classList.add('border-red-500');
-            if (!duracion) document.getElementById('edit_duracion').classList.add('border-red-500');
+        // Convertir duración a número
+        const duracionHoras = parseInt(duracionText.replace(/[^\d]/g, '')) || 0;
+        
+        // Validar datos del paso 1
+        const isValid = await validateStep1(codigo, nombre, nivel, descripcion, duracionHoras, true, idPrograma);
+        
+        if (!isValid) {
+            // Resaltar campos con error
+            if (!codigo || codigo.length < 3 || codigo.length > 10) {
+                document.getElementById('edit_codigo').classList.add('border-red-500');
+            }
+            if (!nombre || nombre.length < 5 || nombre.length > 25) {
+                document.getElementById('edit_nombre').classList.add('border-red-500');
+            }
+            if (!descripcion || descripcion.length < 10 || descripcion.length > 200) {
+                document.getElementById('edit_descripcion').classList.add('border-red-500');
+            }
+            if (!duracionText || duracionHoras <= 0) {
+                document.getElementById('edit_duracion').classList.add('border-red-500');
+            }
             
             // Remover clase de error después de 2 segundos
             setTimeout(() => {
@@ -862,17 +977,6 @@ window.nextEditStep = function() {
                 document.getElementById('edit_duracion').classList.remove('border-red-500');
             }, 2000);
             
-            return;
-        }
-        
-        // Validar duración numérica
-        const duracionNum = parseInt(duracion.replace(/[^\d]/g, ''));
-        if (isNaN(duracionNum) || duracionNum <= 0) {
-            toastError('La duración debe ser un número positivo');
-            document.getElementById('edit_duracion').classList.add('border-red-500');
-            setTimeout(() => {
-                document.getElementById('edit_duracion').classList.remove('border-red-500');
-            }, 2000);
             return;
         }
         
@@ -891,10 +995,10 @@ window.nextEditStep = function() {
         
         currentEditStep = 2;
     }
-};
+}
 
 // Función para retroceder al paso anterior en edición
-window.prevEditStep = function() {
+function prevEditStep() {
     if (currentEditStep === 2) {
         // Cambiar al paso 1
         document.getElementById('editStep2').classList.add('hidden');
@@ -911,10 +1015,10 @@ window.prevEditStep = function() {
         
         currentEditStep = 1;
     }
-};
+}
 
 // Función para guardar los cambios del programa (ambos pasos)
-window.saveEditedProgram = async function() {
+async function saveEditedProgram() {
     const idPrograma = document.getElementById('edit_id_programa').value;
     const index = document.getElementById('edit_index').value;
     
@@ -925,6 +1029,20 @@ window.saveEditedProgram = async function() {
     const descripcion = document.getElementById('edit_descripcion').value.trim();
     const duracionText = document.getElementById('edit_duracion').value.trim();
     const duracionHoras = parseInt(duracionText.replace(/[^\d]/g, '')) || 0;
+    
+    // Obtener estado actual del programa desde el dataset
+    const row = document.querySelector(`tr[data-index="${index}"]`) || document.querySelector(`div[data-index="${index}"]`);
+    
+    if (!row) {
+        toastError("No se pudo encontrar el programa para actualizar");
+        return;
+    }
+    
+    // Obtener estado del dataset
+    const estadoAttr = String(row.dataset.estado ?? '').trim();
+    const estado = (estadoAttr === '1' || estadoAttr === '0') 
+        ? Number(estadoAttr) 
+        : (estadoAttr.toLowerCase() === 'activo' ? 1 : 0);
     
     // Validar que haya al menos un instructor seleccionado
     if (selectedEditInstructors.length === 0) {
@@ -939,10 +1057,12 @@ window.saveEditedProgram = async function() {
         nivel_programa: nivel,
         descripcion_programa: descripcion,
         duracion_horas: duracionHoras,
+        estado: estado, // AHORA ESTÁ DEFINIDO
     };
     
+    console.log("Datos a enviar para actualizar:", programData);
+    
     // Obtener datos originales para comparar cambios
-    const row = document.querySelector(`tr[data-index="${index}"]`) || document.querySelector(`div[data-index="${index}"]`);
     const originalData = {
         codigo: row.dataset.codigo,
         nombre: row.dataset.nombre,
@@ -977,7 +1097,7 @@ window.saveEditedProgram = async function() {
                 return;
             }
             
-            const updateResponse = await fetch(getApiUrl('actualizar') + `&id_programa=${idPrograma}`, {
+            const updateResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=actualizar&id_programa=${idPrograma}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(programData),
@@ -997,7 +1117,7 @@ window.saveEditedProgram = async function() {
             instructores_ids: selectedEditInstructors
         };
         
-        const instructorsResponse = await fetch(getApiUrl('asignar_instructores'), {
+        const instructorsResponse = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=asignar_instructores`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(instructorsData),
@@ -1019,7 +1139,7 @@ window.saveEditedProgram = async function() {
         console.error("Error actualizando programa:", error);
         toastError("Error de conexión al actualizar el programa");
     }
-};
+}
 
 // Función auxiliar para verificar cambios en instructores
 async function hasChangesInInstructors(row, newInstructorIds) {
@@ -1027,7 +1147,7 @@ async function hasChangesInInstructors(row, newInstructorIds) {
     const programId = row.dataset.idPrograma;
     
     try {
-        const response = await fetch(getApiUrl('obtener_instructores_programa') + `&id_programa=${programId}`);
+        const response = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_instructores_programa&id_programa=${programId}`);
         const originalInstructors = await response.json();
         
         if (originalInstructors.error) {
@@ -1056,7 +1176,7 @@ async function hasChangesInInstructors(row, newInstructorIds) {
 }
 
 // Función para cerrar el modal de edición
-window.closeEditModal = function() {
+function closeEditModal() {
     const modal = document.getElementById("editProgramModal");
     
     // Resetear estado
@@ -1098,10 +1218,10 @@ window.closeEditModal = function() {
     
     modal.classList.add("hidden");
     modal.classList.remove("flex");
-};
+}
 
 // Función para cerrar el modal de creación
-window.closeCreateModal = function() {
+function closeCreateModal() {
     const modal = document.getElementById("createProgramModal");
     
     // Resetear estado
@@ -1166,69 +1286,173 @@ window.closeCreateModal = function() {
     
     modal.classList.add("hidden");
     modal.classList.remove("flex");
-};
+}
 
 // Function to switch between table and grid view
-window.toggleView = function(view) {
-  const tableView = document.getElementById("tableView");
-  const gridView = document.getElementById("gridView");
-  const tableBtn = document.getElementById("viewTableBtn");
-  const gridBtn = document.getElementById("viewGridBtn");
+function toggleView(view) {
+  const tableView = document.getElementById("tableView")
+  const gridView = document.getElementById("gridView")
+  const tableBtn = document.getElementById("viewTableBtn")
+  const gridBtn = document.getElementById("viewGridBtn")
+  const emptyState = document.getElementById("emptyStateProgramas")
+  const emptySearch = document.getElementById("emptySearchProgramas")
 
   // Close all open menus when changing view
-  closeAllMenus();
+  closeAllMenus()
 
   if (view === "table") {
     // Show table view
-    tableView.classList.remove("hidden");
-    gridView.classList.add("hidden");
-    tableBtn.classList.add("bg-muted", "text-foreground");
-    gridBtn.classList.remove("bg-muted", "text-foreground");
-    gridBtn.classList.add("text-muted-foreground");
+    tableView.classList.remove("hidden")
+    gridView.classList.add("hidden")
+    tableBtn.classList.add("bg-muted", "text-foreground")
+    gridBtn.classList.remove("bg-muted", "text-foreground")
+    gridBtn.classList.add("text-muted-foreground")
   } else {
     // Show grid view
-    tableView.classList.add("hidden");
-    gridView.classList.remove("hidden");
-    gridBtn.classList.add("bg-muted", "text-foreground");
-    tableBtn.classList.remove("bg-muted", "text-foreground");
-    tableBtn.classList.add("text-muted-foreground");
+    tableView.classList.add("hidden")
+    gridView.classList.remove("hidden")
+    gridBtn.classList.add("bg-muted", "text-foreground")
+    tableBtn.classList.remove("bg-muted", "text-foreground")
+    tableBtn.classList.add("text-muted-foreground")
   }
 
   // After changing view, check if we should show empty states
-  checkAndShowEmptyStates(view);
-};
+  checkAndShowEmptyStates(view)
+}
+
+// New function to check and show empty states according to current view
+function checkAndShowEmptyStates(currentView) {
+  const tableView = document.getElementById("tableView")
+  const gridView = document.getElementById("gridView")
+  const emptyState = document.getElementById("emptyStateProgramas")
+  const emptySearch = document.getElementById("emptySearchProgramas")
+  const tableBtn = document.getElementById("viewTableBtn")
+  const gridBtn = document.getElementById("viewGridBtn")
+  
+  // Count visible elements in BOTH views
+  const visibleRows = document.querySelectorAll('#tableView tbody tr[data-index]:not(.hidden)')
+  const visibleCards = document.querySelectorAll('#gridView [data-index]:not(.hidden)')
+  const hasVisibleItems = visibleRows.length > 0 || visibleCards.length > 0
+  
+  // Check if there are any programs in total in the system
+  const totalRows = document.querySelectorAll('#tableView tbody tr[data-index]').length
+  const totalCards = document.querySelectorAll('#gridView [data-index]').length
+  const hasAnyPrograms = totalRows > 0 || totalCards > 0
+  
+  // Determine what to show
+  if (!hasAnyPrograms) {
+    // No programs in the system - show empty message
+    emptyState?.classList.remove('hidden')
+    emptySearch?.classList.add('hidden')
+    tableView?.classList.add('hidden')
+    gridView?.classList.add('hidden')
+  } else if (!hasVisibleItems) {
+    // There are programs but NONE match the search
+    emptyState?.classList.add('hidden')
+    emptySearch?.classList.remove('hidden')
+    tableView?.classList.add('hidden')
+    gridView?.classList.add('hidden')
+  } else {
+    // There are visible results - determine which view to show based on buttons
+    emptyState?.classList.add('hidden')
+    emptySearch?.classList.add('hidden')
+    
+    // Look which button is active (has bg-muted class)
+    const isTableBtnActive = tableBtn?.classList.contains('bg-muted')
+    const isGridBtnActive = gridBtn?.classList.contains('bg-muted')
+    
+    // By default, if both or none is active, show table
+    if (isGridBtnActive && !isTableBtnActive) {
+      // Grid button is active → show grid
+      tableView?.classList.add('hidden')
+      gridView?.classList.remove('hidden')
+    } else {
+      // Table button is active or ambiguous state → show table
+      tableView?.classList.remove('hidden')
+      gridView?.classList.add('hidden')
+    }
+  }
+}
+
+// También modifica applyFilterAndUpdateEmptyStates para usar la nueva función
+function applyFilterAndUpdateEmptyStates() {
+  const searchInput = document.querySelector('input[placeholder="Buscar por nombre..."]')
+  const searchTerm = (searchInput?.value ?? '').toLowerCase().trim()
+  const filterEstado = document.getElementById('selectFiltroEstado').value
+  
+  // Get all table rows and grid cards
+  const tableRows = document.querySelectorAll('#tableView tbody tr[data-index]')
+  const gridCards = document.querySelectorAll('#gridView [data-index]')
+  
+  // Filter table rows
+  tableRows.forEach(row => {
+    const nombre = row.dataset.nombre?.toLowerCase() ?? ''
+    const estado = String(row.dataset.estado ?? '')
+    
+    const matchesSearch = searchTerm === '' || nombre.includes(searchTerm)
+    const matchesFilter = filterEstado === '' || estado === filterEstado
+    
+    if (matchesSearch && matchesFilter) {
+      row.classList.remove('hidden')
+    } else {
+      row.classList.add('hidden')
+    }
+  })
+  
+  // Filter grid cards
+  gridCards.forEach(card => {
+    const nombre = card.dataset.nombre?.toLowerCase() ?? ''
+    const estado = String(card.dataset.estado ?? '')
+    
+    const matchesSearch = searchTerm === '' || nombre.includes(searchTerm)
+    const matchesFilter = filterEstado === '' || estado === filterEstado
+    
+    if (matchesSearch && matchesFilter) {
+      card.classList.remove('hidden')
+    } else {
+      card.classList.add('hidden')
+    }
+  })
+  
+  // Determine which view is currently active
+  const tableView = document.getElementById("tableView")
+  const currentView = tableView.classList.contains("hidden") ? "grid" : "table"
+  
+  // Check and show empty states according to current view
+  checkAndShowEmptyStates(currentView)
+}
 
 // Function to toggle action menu
-window.toggleActionMenu = function(index) {
-  const menu = document.getElementById("actionMenu" + index);
-  const isHidden = menu.classList.contains("hidden");
+function toggleActionMenu(index) {
+  const menu = document.getElementById("actionMenu" + index)
+  const isHidden = menu.classList.contains("hidden")
 
   // Close all other menus
-  closeAllMenus();
+  closeAllMenus()
 
   // Toggle current menu
   if (isHidden) {
-    menu.classList.remove("hidden");
+    menu.classList.remove("hidden")
   }
-};
+}
 
 // Function to close all menus
 function closeAllMenus() {
-  const allMenus = document.querySelectorAll('[id^="actionMenu"]');
+  const allMenus = document.querySelectorAll('[id^="actionMenu"]')
   allMenus.forEach((menu) => {
-    menu.classList.add("hidden");
-  });
+    menu.classList.add("hidden")
+  })
 }
 
 // Close menus when clicking outside
 document.addEventListener("click", (event) => {
-  const isMenuButton = event.target.closest('button[onclick^="toggleActionMenu"]');
-  const isMenuContent = event.target.closest('[id^="actionMenu"]');
+  const isMenuButton = event.target.closest('button[onclick^="toggleActionMenu"]')
+  const isMenuContent = event.target.closest('[id^="actionMenu"]')
 
   if (!isMenuButton && !isMenuContent) {
-    closeAllMenus();
+    closeAllMenus()
   }
-});
+})
 
 // ========== FUNCTION TO ASSIGN COLORS ACCORDING TO LEVEL ==========
 function getLevelStyles(nivel) {
@@ -1255,15 +1479,29 @@ function getLevelStyles(nivel) {
     }
 }
 
-// Modify the openViewModal function to use styles according to level
-window.openViewModal = function(index) {
+// Busca la función openViewModal en programas.js y actualízala así:
+function openViewModal(index) {
     const modal = document.getElementById("viewProgramModal");
     const row = document.querySelector(`tr[data-index="${index}"]`) || document.querySelector(`div[data-index="${index}"]`);
 
     if (row) {
         document.getElementById("view_name").textContent = row.dataset.nombre;
         document.getElementById("view_code").textContent = row.dataset.codigo;
-        document.getElementById("view_description").textContent = row.dataset.descripcion;
+        
+        // Descripción con manejo de texto largo
+        const descripcion = row.dataset.descripcion || 'Sin descripción';
+        const descripcionElement = document.getElementById('view_description');
+        descripcionElement.textContent = descripcion;
+        
+        // Ajustar altura automáticamente si el contenido es muy largo
+        if (descripcion.length > 200) {
+            descripcionElement.parentElement.classList.remove('max-h-32');
+            descripcionElement.parentElement.classList.add('max-h-48');
+        } else {
+            descripcionElement.parentElement.classList.remove('max-h-48');
+            descripcionElement.parentElement.classList.add('max-h-32');
+        }
+        
         document.getElementById("view_nivel").textContent = row.dataset.nivel;
         document.getElementById("view_duracion").textContent = row.dataset.duracion;
 
@@ -1271,22 +1509,28 @@ window.openViewModal = function(index) {
         const instructores = row.dataset.instructores;
         const instructoresList = document.getElementById('view_instructores_list');
         const noInstructoresMsg = document.getElementById('view_no_instructores');
+        const instructoresCount = document.getElementById('view_instructores_count');
         const container = document.getElementById('view_instructores_container');
 
         // Clear previous list
         instructoresList.innerHTML = '';
+
+        // Obtener número de instructores del dataset
+        const numInstructores = row.dataset.numInstructores || '0';
+        instructoresCount.textContent = numInstructores;
 
         // Check if instructors data exists and is valid
         if (!instructores || 
             instructores === 'No hay instructores vinculados' || 
             instructores === '0' || 
             instructores.trim() === '' ||
-            instructores === 'undefined') {
+            instructores === 'undefined' ||
+            numInstructores === '0') {
             
             // No instructors
             noInstructoresMsg.classList.remove('hidden');
             instructoresList.classList.add('hidden');
-            container.classList.remove('border', 'border-gray-200', 'p-2', 'rounded-md');
+            instructoresCount.textContent = '0';
             
         } else {
             // Try different separators since we don't know the exact format
@@ -1313,30 +1557,40 @@ window.openViewModal = function(index) {
                 instructor.toLowerCase() !== 'no hay instructores vinculados'
             );
             
+            // Actualizar contador con el número real
+            instructoresCount.textContent = instructorsArray.length.toString();
+            
             // Verificar si después del filtrado quedan instructores
             if (instructorsArray.length === 0) {
                 noInstructoresMsg.classList.remove('hidden');
                 instructoresList.classList.add('hidden');
-                container.classList.remove('border', 'border-gray-200', 'p-2', 'rounded-md');
             } else {
                 // Hide "no instructors" message
                 noInstructoresMsg.classList.add('hidden');
                 instructoresList.classList.remove('hidden');
                 
-                // Add border and padding if there are instructors
-                container.classList.add('border', 'border-gray-200', 'p-2', 'rounded-md');
+                // Ajustar altura según cantidad de instructores
+                if (instructorsArray.length > 5) {
+                    container.classList.add('max-h-56');
+                } else if (instructorsArray.length > 3) {
+                    container.classList.add('max-h-48');
+                } else {
+                    container.classList.add('max-h-40');
+                }
                 
                 // Create list items for each instructor
                 instructorsArray.forEach(instructor => {
                     if (instructor && instructor.trim() !== '') {
                         const li = document.createElement('li');
-                        li.className = 'flex items-center gap-2 text-foreground py-1 px-1 hover:bg-gray-50 rounded transition-colors';
+                        li.className = 'flex items-center gap-2 text-foreground py-2 px-2 hover:bg-muted/30 rounded transition-colors border-b border-border/30 last:border-b-0';
                         li.innerHTML = `
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0 text-gray-500">
-                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                <circle cx="9" cy="7" r="4"/>
-                            </svg>
-                            <span class="truncate text-sm">${instructor}</span>
+                            <div class="flex-shrink-0 w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                </svg>
+                            </div>
+                            <span class="text-sm break-words flex-1">${instructor}</span>
                         `;
                         instructoresList.appendChild(li);
                     }
@@ -1345,7 +1599,7 @@ window.openViewModal = function(index) {
         }
 
         // Normalize state and display human-friendly badge (Activo / Inactivo)
-        const estadoAttrView = String(row.dataset.estado || '').trim();
+        const estadoAttrView = String(row.dataset.estado ?? '').trim();
         const estadoHuman = (estadoAttrView === '1' || estadoAttrView === '0')
             ? (estadoAttrView === '1' ? 'Activo' : 'Inactivo')
             : (estadoAttrView.toLowerCase() === 'activo' ? 'Activo' : 'Inactivo');
@@ -1393,24 +1647,24 @@ window.openViewModal = function(index) {
 
     modal.classList.remove("hidden");
     modal.classList.add("flex");
-};
+}
 
 // Close view program details modal
-window.closeViewModal = function() {
-  const modal = document.getElementById("viewProgramModal");
-  modal.classList.add("hidden");
-  modal.classList.remove("flex");
-};
+function closeViewModal() {
+  const modal = document.getElementById("viewProgramModal")
+  modal.classList.add("hidden")
+  modal.classList.remove("flex")
+}
 
 // Open create program modal
-window.openCreateModal = function() {
-  const modal = document.getElementById("createProgramModal");
-  modal.classList.remove("hidden");
-  modal.classList.add("flex");
-};
+function openCreateModal() {
+  const modal = document.getElementById("createProgramModal")
+  modal.classList.remove("hidden")
+  modal.classList.add("flex")
+}
 
 // =========================
-// VALIDATION FUNCTIONS
+// VALIDATION FUNCTIONS (existing ones)
 // =========================
 
 /**
@@ -1550,7 +1804,12 @@ function hasChanges(originalData, currentData) {
 // ************************************** Main DOMContentLoaded ***********************************************
 
 document.addEventListener("DOMContentLoaded", () => {
-  // ✅ ELIMINADA TODA REFERENCIA A BASE_URL - Usamos getApiUrl()
+  const pathParts = window.location.pathname.split("/")
+  const basePath =
+    pathParts.slice(0, pathParts.findIndex((p) => p === "views" || p === "programas.php") || -1).join("/") || ""
+  const BASE_URL = window.location.origin + basePath + "/"
+
+  console.log("[v0] BASE_URL configured as:", BASE_URL)
 
   // Variable to store original data when editing
   let originalEditData = null;
@@ -1581,25 +1840,56 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnCreateProgram = document.getElementById('btnCreateProgram');
   
   if (btnNextStep) {
-    btnNextStep.addEventListener('click', window.nextStep);
+    btnNextStep.addEventListener('click', nextStep);
   }
   
   if (btnPrevStep) {
-    btnPrevStep.addEventListener('click', window.prevStep);
+    btnPrevStep.addEventListener('click', prevStep);
   }
   
   if (btnCreateProgram) {
-    btnCreateProgram.addEventListener('click', window.createProgramWithInstructors);
+    btnCreateProgram.addEventListener('click', createProgramWithInstructors);
   }
 
   // Create Program Form (paso 1)
-  const createForm = document.getElementById("createProgramForm");
+  const createForm = document.getElementById("createProgramForm")
   if (createForm) {
     // Only allow numbers in the duration field
     const duracionInput = document.getElementById("create_duracion");
     if (duracionInput) {
       duracionInput.addEventListener("input", function(e) {
         this.value = this.value.replace(/[^\d]/g, '');
+      });
+    }
+    
+    // Validación en tiempo real para límites de caracteres
+    const codigoInput = document.getElementById("create_codigo");
+    if (codigoInput) {
+      codigoInput.addEventListener("input", function(e) {
+        if (this.value.length > 10) {
+          this.value = this.value.substring(0, 10);
+          toastError("El código no puede exceder los 10 caracteres");
+        }
+      });
+    }
+    
+    const nombreInput = document.getElementById("create_nombre");
+    if (nombreInput) {
+      nombreInput.addEventListener("input", function(e) {
+        if (this.value.length > 25) {
+          this.value = this.value.substring(0, 25);
+          toastError("El nombre no puede exceder los 25 caracteres");
+        }
+      });
+    }
+    
+    const descripcionInput = document.getElementById("create_descripcion");
+    if (descripcionInput) {
+      descripcionInput.addEventListener("input", function(e) {
+        if (this.value.length > 200) {
+          this.value = this.value.substring(0, 200);
+          toastError("La descripción no puede exceder los 200 caracteres");
+        }
       });
     }
   }
@@ -1612,37 +1902,39 @@ document.addEventListener("DOMContentLoaded", () => {
   const editBtnSaveProgram = document.getElementById('editBtnSaveProgram');
   
   if (editBtnNextStep) {
-    editBtnNextStep.addEventListener('click', window.nextEditStep);
+    editBtnNextStep.addEventListener('click', nextEditStep);
   }
   
   if (editBtnPrevStep) {
-    editBtnPrevStep.addEventListener('click', window.prevEditStep);
+    editBtnPrevStep.addEventListener('click', prevEditStep);
   }
   
   if (editBtnSaveProgram) {
-    editBtnSaveProgram.addEventListener('click', window.saveEditedProgram);
+    editBtnSaveProgram.addEventListener('click', saveEditedProgram);
   }
 
   // State toggle buttons (use data-action="toggle-state")
   document.querySelectorAll('[id^="actionMenu"] button[data-action="toggle-estado"]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
-      const row = e.target.closest('tr') || e.target.closest('div[data-index]');
-      const idPrograma = row.dataset.idPrograma;
+      const row = e.target.closest('tr') || e.target.closest('div[data-index]')
+      const idPrograma = row.dataset.idPrograma
 
       // Current state: supports '1'/'0' or 'Active'/'Inactive'
-      const estadoAttr = String(row.dataset.estado || '').trim();
+      const estadoAttr = String(row.dataset.estado ?? '').trim()
       const estadoActual = (estadoAttr === '1' || estadoAttr === '0')
         ? Number(estadoAttr)
-        : (estadoAttr.toLowerCase() === 'activo' ? 1 : 0);
-      const nuevoEstado = estadoActual ? 0 : 1;
+        : (estadoAttr.toLowerCase() === 'activo' ? 1 : 0)
+      const nuevoEstado = estadoActual ? 0 : 1
+
+      const actionText = nuevoEstado ? "activar" : "desactivar";
 
       try {
-        const res = await fetch(getApiUrl('cambiar_estado'), {
+        const res = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=cambiar_estado`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id_programa: idPrograma, estado: nuevoEstado })
-        });
-        const result = await res.json();
+        })
+        const result = await res.json()
         if(result.mensaje) {
           toastSuccess(nuevoEstado ? "Programa activado correctamente." : "Programa desactivado correctamente.");
           setTimeout(() => {
@@ -1655,23 +1947,59 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error(err);
         toastError('Error de conexión al cambiar el estado');
       }
-    });
-  });
+    })
+  })
+
+  // State filter (table + grid)
+  const selectFiltroEstado = document.getElementById('selectFiltroEstado')
+  if (selectFiltroEstado) {
+    const applyFilter = () => {
+      const val = selectFiltroEstado.value // '' | '1' | '0'
+
+      // Table rows
+      document.querySelectorAll('#tableView tbody tr[data-index]').forEach(row => {
+        const estado = String(row.dataset.estado ?? '').trim()
+        if (val === '') {
+          row.style.display = ''
+        } else if (estado === val) {
+          row.style.display = ''
+        } else {
+          row.style.display = 'none'
+        }
+      })
+
+      // Grid cards
+      document.querySelectorAll('#gridView [data-index]').forEach(card => {
+        const estado = String(card.dataset.estado ?? '').trim()
+        if (val === '') {
+          card.style.display = ''
+        } else if (estado === val) {
+          card.style.display = ''
+        } else {
+          card.style.display = 'none'
+        }
+      })
+    }
+
+    selectFiltroEstado.addEventListener('change', applyFilter)
+  }
 
   // Checkboxes in grid view
   document.querySelectorAll('#gridView input[type="checkbox"]').forEach(chk => {
     chk.addEventListener('change', async (e) => {
-      const card = e.target.closest('div[data-index]');
-      const idPrograma = card.dataset.idPrograma;
-      const nuevoEstado = e.target.checked ? 1 : 0;
+      const card = e.target.closest('div[data-index]')
+      const idPrograma = card.dataset.idPrograma
+      const nuevoEstado = e.target.checked ? 1 : 0
       
+      const actionText = nuevoEstado ? "activar" : "desactivar";
+
       try {
-        const res = await fetch(getApiUrl('cambiar_estado'), {
+        const res = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=cambiar_estado`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id_programa: idPrograma, estado: nuevoEstado })
-        });
-        const result = await res.json();
+        })
+        const result = await res.json()
         if(result.mensaje) {
           toastSuccess(nuevoEstado ? "Programa activado correctamente." : "Programa desactivado correctamente.");
           setTimeout(() => {
@@ -1688,24 +2016,24 @@ document.addEventListener("DOMContentLoaded", () => {
         // Revert checkbox on error
         e.target.checked = !e.target.checked;
       }
-    });
-  });
+    })
+  })
 
   // ========== SEARCH AND FILTER EVENT LISTENERS ==========
   // Search input listener
-  const searchInput = document.querySelector('input[placeholder="Buscar por nombre..."]');
+  const searchInput = document.querySelector('input[placeholder="Buscar por nombre..."]')
   if (searchInput) {
-    searchInput.addEventListener('input', applyFilterAndUpdateEmptyStates);
+    searchInput.addEventListener('input', applyFilterAndUpdateEmptyStates)
   }
 
-  // State filter listener
-  const filterSelect = document.getElementById('selectFiltroEstado');
+  // State filter listener (already exists but enhance it)
+  const filterSelect = document.getElementById('selectFiltroEstado')
   if (filterSelect) {
-    filterSelect.addEventListener('change', applyFilterAndUpdateEmptyStates);
+    filterSelect.addEventListener('change', applyFilterAndUpdateEmptyStates)
   }
 
   // Initial call to check empty states on page load
-  applyFilterAndUpdateEmptyStates();
+  applyFilterAndUpdateEmptyStates()
   
   // ========== ESC KEY TO CLOSE MODALS ==========
   document.addEventListener("keydown", (e) => {
@@ -1728,8 +2056,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Inicializar vista inicial
-  const tableView = document.getElementById("tableView");
-  const initialView = tableView && tableView.classList.contains("hidden") ? "grid" : "table";
-  checkAndShowEmptyStates(initialView);
-});
+  // In the DOMContentLoaded event, add this initialization:
+  const tableView = document.getElementById("tableView")
+  const initialView = tableView.classList.contains("hidden") ? "grid" : "table"
+  checkAndShowEmptyStates(initialView)
+})

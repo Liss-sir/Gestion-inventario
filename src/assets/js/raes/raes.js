@@ -7,6 +7,23 @@ const PROGRAMAS_API_URL = "src/controllers/programa_controller.php";
 // Variables globales
 let currentRaes = [];
 let originalEditData = null; // For change validation during editing
+let currentRaeHasActiveActivities = false;
+
+async function verificarActividadesActivas(idRae) {
+    try {
+        const res = await fetch(`${RAE_API_URL}?accion=verificar_actividades&id_rae=${idRae}`, {
+            headers: { Accept: "application/json" },
+        });
+        
+        if (!res.ok) throw new Error("Error al verificar actividades");
+        
+        const data = await res.json();
+        return data.tiene_actividades_activas || false;
+    } catch (err) {
+        console.error("Error verificando actividades:", err);
+        return false;
+    }
+}
 
 // =========================
 // INPUT VALIDATION ONLY NUMBERS
@@ -332,14 +349,8 @@ function closeDetailsModal() {
     document.getElementById("detailsModal").classList.add("hidden");
 }
 
-function openEditModal(id, descripcion, programa, codigo, programId) {
-    // ✅ GUARD: si no puede editar, NO abrir modal (Instructor: solo listar/ver detalles)
-    const p = window.RAES_PERMS || {};
-    if (!p.canEditar) {
-        toastError("No tienes permisos para editar RAEs");
-        return;
-    }
-
+// Función auxiliar para abrir el modal de edición
+function abrirModalEdicion(id, descripcion, programa, codigo, programId, tieneActividades) {
     // Close all dropdown menus
     const allMenus = document.querySelectorAll('[id^="actionMenu"]');
     allMenus.forEach((menu) => menu.classList.add("hidden"));
@@ -363,7 +374,68 @@ function openEditModal(id, descripcion, programa, codigo, programId) {
 
     document.getElementById("editRaeDescription").value = descripcion;
     const programSelect = document.getElementById("editRaeProgram");
+    
     if (programSelect) {
+        // Si tiene actividades activas, aplicar estilos directamente
+        if (tieneActividades) {
+            // Deshabilitar completamente el select
+            programSelect.disabled = true;
+            
+            // Aplicar clases de Tailwind para aspecto deshabilitado
+            programSelect.classList.add(
+                "bg-gray-100", 
+                "cursor-not-allowed", 
+                "opacity-75",
+                "border-gray-300"
+            );
+            programSelect.classList.remove(
+                "bg-card",
+                "cursor-pointer"
+            );
+            
+            // Agregar icono de advertencia al label si existe
+            const programLabel = document.querySelector('label[for="editRaeProgram"]');
+            if (programLabel) {
+                // Verificar si ya existe el span de advertencia
+                let warningSpan = programLabel.querySelector('.text-amber-600');
+                if (!warningSpan) {
+                    warningSpan = document.createElement("span");
+                    warningSpan.className = "ml-2 text-xs text-amber-600 font-normal flex items-center gap-1";
+                    warningSpan.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.72-1.36 3.485 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                        Bloqueado por actividades activas
+                    `;
+                    programLabel.appendChild(warningSpan);
+                }
+            }
+        } else {
+            // Habilitar el select
+            programSelect.disabled = false;
+            
+            // Restaurar estilos normales
+            programSelect.classList.remove(
+                "bg-gray-100", 
+                "cursor-not-allowed", 
+                "opacity-75",
+                "border-gray-300"
+            );
+            programSelect.classList.add(
+                "bg-card",
+                "cursor-pointer"
+            );
+            
+            // Remover mensaje de advertencia si existe
+            const programLabel = document.querySelector('label[for="editRaeProgram"]');
+            if (programLabel) {
+                const warningSpan = programLabel.querySelector('.text-amber-600');
+                if (warningSpan) {
+                    warningSpan.remove();
+                }
+            }
+        }
+        
         // Prefer programId if it comes (numeric value that matches option.value)
         if (programId !== undefined && programId !== null && programId !== "") {
             programSelect.value = programId;
@@ -397,14 +469,69 @@ function openEditModal(id, descripcion, programa, codigo, programId) {
 }
 
 function closeEditModal() {
+    // Limpiar el estado de actividades activas
+    currentRaeHasActiveActivities = false;
+    
+    // Restaurar select completamente
+    const programSelect = document.getElementById("editRaeProgram");
+    if (programSelect) {
+        programSelect.disabled = false;
+        programSelect.classList.remove(
+            "bg-gray-100", 
+            "cursor-not-allowed", 
+            "opacity-75",
+            "border-gray-300"
+        );
+        programSelect.classList.add(
+            "bg-card",
+            "cursor-pointer"
+        );
+    }
+    
+    // Remover mensaje de advertencia del label si existe
+    const programLabel = document.querySelector('label[for="editRaeProgram"]');
+    if (programLabel) {
+        const warningSpan = programLabel.querySelector('.text-amber-600');
+        if (warningSpan) {
+            warningSpan.remove();
+        }
+    }
+    
     document.getElementById("editModal").classList.add("hidden");
     originalEditData = null; // Clear original data
+}
+
+function openEditModal(id, descripcion, programa, codigo, programId) {
+    // GUARD: si no puede editar, NO abrir modal (Instructor: solo listar/ver detalles)
+    const p = window.RAES_PERMS || {};
+    if (!p.canEditar) {
+        toastError("No tienes permisos para editar RAEs");
+        return;
+    }
+
+    // Primero verificar si tiene actividades activas
+    verificarActividadesActivas(id).then((tieneActividades) => {
+        currentRaeHasActiveActivities = tieneActividades;
+        
+        // Si tiene actividades activas, mostrar advertencia informativa
+        if (tieneActividades) {
+            toastInfo("Este RAE tiene actividades activas asociadas. El cambio de programa de formación está deshabilitado para evitar conflictos en el sistema.");
+        }
+        
+        // Abrir el modal después de verificar
+        abrirModalEdicion(id, descripcion, programa, codigo, programId, tieneActividades);
+    }).catch((err) => {
+        console.error("Error verificando actividades:", err);
+        // Si hay error, abrir modal igual pero asumiendo que no tiene actividades
+        currentRaeHasActiveActivities = false;
+        abrirModalEdicion(id, descripcion, programa, codigo, programId, false);
+    });
 }
 
 function openCreateModal() {
     const p = window.RAES_PERMS || {};
 
-    // ✅ Instructor: si solo lista/ver detalles, canCrear vendrá false y quedará bloqueado
+    // Instructor: si solo lista/ver detalles, canCrear vendrá false y quedará bloqueado
     if (!p.canCrear) {
         toastError("No tienes permisos para crear RAEs");
         return;
@@ -422,34 +549,6 @@ function openCreateModal() {
 function closeCreateModal() {
     document.getElementById("createModal").classList.add("hidden");
 }
-
-// Close modals by clicking outside of them
-document.getElementById("detailsModal").addEventListener("click", function (event) {
-    if (event.target === this) {
-        closeDetailsModal();
-    }
-});
-
-document.getElementById("editModal").addEventListener("click", function (event) {
-    if (event.target === this) {
-        closeEditModal();
-    }
-});
-
-document.getElementById("createModal").addEventListener("click", function (event) {
-    if (event.target === this) {
-        closeCreateModal();
-    }
-});
-
-// Close modals with the Escape key
-document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-        closeDetailsModal();
-        closeEditModal();
-        closeCreateModal();
-    }
-});
 
 // -------------------------
 // Dynamic loading of RAE
@@ -543,14 +642,14 @@ async function loadPrograms() {
 
 // Create RAE: read inputs and send to the API
 async function createRae() {
-    // ✅ GUARD: Instructor (solo listar/ver detalles) no puede crear
+    // GUARD: Instructor (solo listar/ver detalles) no puede crear
     const p = window.RAES_PERMS || {};
     if (!p.canCrear) {
         toastError("No tienes permisos para crear RAEs");
         return;
     }
 
-    const codigoInput = document.getElementById("createRaeCodigo"); // ✅ FIX: evita codigoInput undefined
+    const codigoInput = document.getElementById("createRaeCodigo");
     const codigo = (codigoInput?.value || "").trim();
     const id_programa = (document.getElementById("createRaeProgram")?.value || "").trim();
     const descripcion = (document.getElementById("createRaeDescription")?.value || "").trim();
@@ -572,6 +671,13 @@ async function createRae() {
     if (!descripcion) {
         toastError("La descripción del RAE es obligatoria");
         document.getElementById("createRaeDescription").focus();
+        return;
+    }
+
+    if (descripcion.length > 200) {
+        toastError("La descripción no puede exceder los 200 caracteres");
+        document.getElementById("createRaeDescription").focus();
+        document.getElementById("createRaeDescription").select();
         return;
     }
 
@@ -610,7 +716,7 @@ async function createRae() {
 
 // RAE Update (edition) - WITH CHANGE VALIDATION
 async function updateRae() {
-    // ✅ GUARD: Instructor (solo listar/ver detalles) no puede editar
+    // GUARD: Instructor (solo listar/ver detalles) no puede editar
     const p = window.RAES_PERMS || {};
     if (!p.canEditar) {
         toastError("No tienes permisos para editar RAEs");
@@ -620,7 +726,7 @@ async function updateRae() {
     const id = (document.getElementById("editRaeId")?.value || "").trim();
     const descripcion = (document.getElementById("editRaeDescription")?.value || "").trim();
 
-    const codigoInput = document.getElementById("editRaeCodigo"); // ✅ FIX: evita codigoInput undefined
+    const codigoInput = document.getElementById("editRaeCodigo"); // FIX: evita codigoInput undefined
     const codigo = (codigoInput?.value || "").trim();
 
     const id_programa = (document.getElementById("editRaeProgram")?.value || "").trim();
@@ -642,6 +748,22 @@ async function updateRae() {
         toastError("La descripción del RAE es obligatoria");
         document.getElementById("editRaeDescription").focus();
         return;
+    }
+
+    if (descripcion.length > 200) {
+        toastError("La descripción no puede exceder los 200 caracteres");
+        document.getElementById("editRaeDescription").focus();
+        document.getElementById("editRaeDescription").select();
+        return;
+    }
+
+    // Si tiene actividades activas y está intentando cambiar el programa, mostrar error
+    if (currentRaeHasActiveActivities) {
+        // Verificar si el programa está cambiando
+        if (originalEditData && id_programa && originalEditData.id_programa !== id_programa) {
+            toastError("No se puede cambiar el programa de formación porque este RAE tiene actividades activas asociadas. Esto podría causar conflictos en el sistema.");
+            return;
+        }
     }
 
     // Validating changes in edit mode
@@ -807,7 +929,7 @@ function renderTable(items) {
         const ep = encodeURIComponent(programa);
 
         const tr = document.createElement("tr");
-        tr.className = "border-b border-border hover:bg-muted transition-colors";
+        tr.className = "border-b border-border";
         tr.setAttribute("data-pid", pid || "");
         tr.setAttribute("data-nivel", nivelPrograma || "");
 
@@ -818,11 +940,11 @@ function renderTable(items) {
                     <div class="w-10 h-10 bg-avatar-secondary-39 rounded-md flex items-center justify-center flex-shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#007832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-open-icon lucide-book-open"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
                     </div>
-                    <span class="text-sm font-medium">${descripcion}</span>
+                    <span class="text-sm">${descripcion}</span>
                 </div>
             </td>
             <td class="py-4 px-4">
-                <div class="flex items-center gap-2 text-sm font-medium">
+                <div class="flex items-center gap-2 text-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-graduation-cap-icon lucide-graduation-cap"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
                     <span>${programa}</span>
                 </div>
@@ -968,7 +1090,7 @@ function renderGrid(items) {
                     <svg xmlns="http://www.w3.org/2000/svg" width="33" height="33" viewBox="0 0 24 24" fill="none" stroke="#007832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-open-icon lucide-book-open"><path d="M12 7v14"></path><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"></path></svg>
                 </div>
                 <div class="flex-1">
-                    <h3 class="text-lg font-semibold text-foreground leading-tight">${descripcion}</h3>
+                    <h3 class="text-lg text-foreground leading-tight">${descripcion}</h3>
                 </div>
 
                 ${
