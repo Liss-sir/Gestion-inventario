@@ -423,7 +423,7 @@ function setupDescriptionCounter(textareaId, counterId) {
 }
 
 function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
-  const nameRegex = /^[A-Za-z0-9ÁÉÍÓÚÜÑñáéíóúüñ\s\-.]{3,80}$/
+  const nameRegex = /^[^<>]{3,80}$/;
   const codeRegex = /^[0-9]{3,30}$/
 
   if (!data.nombre) {
@@ -433,7 +433,7 @@ function validateMaterialPayload(data, { isEdit = false, id = null } = {}) {
   }
 
   if (!nameRegex.test(data.nombre)) {
-    showAlert("El nombre solo puede tener letras/números y 3-80 caracteres", "info")
+    showAlert("El nombre debe tener entre 3 y 80 caracteres y no puede contener los símbolos < o >.", "info");
     document.getElementById(isEdit ? "editNombre" : "nombre")?.focus()
     return false
   }
