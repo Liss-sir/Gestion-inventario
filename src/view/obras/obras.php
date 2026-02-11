@@ -107,8 +107,8 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               <p class="text-3xl font-bold text-foreground" id="totalObras">0</p>
               <p class="text-xs text-muted-foreground mt-1 opacity-75">Registradas en el sistema</p>
             </div>
-            <div class="p-3 rounded-2xl bg-[#007832]/30 inline-flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#007832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-construction-icon lucide-construction"><rect x="2" y="6" width="20" height="8" rx="1"/><path d="M17 14v7"/><path d="M7 14v7"/><path d="M17 3v3"/><path d="M7 3v3"/><path d="M10 14 2.3 6.3"/><path d="m14 6 7.7 7.7"/><path d="m8 6 8 8"/></svg>
+            <div class="p-3 rounded-2xl bg-[#FDC300]/30 inline-flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FDC300" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-construction-icon lucide-construction"><rect x="2" y="6" width="20" height="8" rx="1"/><path d="M17 14v7"/><path d="M7 14v7"/><path d="M17 3v3"/><path d="M7 3v3"/><path d="M10 14 2.3 6.3"/><path d="m14 6 7.7 7.7"/><path d="m8 6 8 8"/></svg>
             </div>
           </div>
         </div>
@@ -135,8 +135,8 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               <p class="text-3xl font-bold text-foreground" id="obrasFinalizadas">0</p>
               <p class="text-xs text-muted-foreground mt-1 opacity-75">Completadas o inactivas</p>
             </div>
-            <div class="p-3 rounded-2xl bg-[#007832]/30 inline-flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#007832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bookmark-check-icon lucide-bookmark-check"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z"/><path d="m9 10 2 2 4-4"/></svg>
+            <div class="p-3 rounded-2xl bg-[#50E5F9]/30 inline-flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#50E5F9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bookmark-check-icon lucide-bookmark-check"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z"/><path d="m9 10 2 2 4-4"/></svg>
             </div>
           </div>
         </div>
