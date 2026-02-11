@@ -51,8 +51,6 @@ if (!window.__usuariosJSLoaded) {
       "Sin rol asignado": "badge-rolfunc-default",
     };
 
-
-
     // =========================
     // VALID VALUES BASED ON DATABASE RULES
     // =========================
@@ -269,28 +267,27 @@ if (!window.__usuariosJSLoaded) {
     const detalleUsuarioContent = document.getElementById("detalleUsuarioContent");
 
     // =========================
-// MODAL ASIGNAR ROL FUNCIONAL (roles_funcionales)
-// =========================
-const modalAsignarRol = document.getElementById("modalAsignarRol");
-const btnCerrarModalAsignarRol = document.getElementById("btnCerrarModalAsignarRol");
-const btnCancelarModalAsignarRol = document.getElementById("btnCancelarModalAsignarRol");
-const btnGuardarAsignarRol = document.getElementById("btnGuardarAsignarRol");
+    // MODAL ASIGNAR ROL FUNCIONAL (roles_funcionales)
+    // =========================
+    const modalAsignarRol = document.getElementById("modalAsignarRol");
+    const btnCerrarModalAsignarRol = document.getElementById("btnCerrarModalAsignarRol");
+    const btnCancelarModalAsignarRol = document.getElementById("btnCancelarModalAsignarRol");
+    const btnGuardarAsignarRol = document.getElementById("btnGuardarAsignarRol");
 
-const hiddenAsignarRolUserId = document.getElementById("hiddenAsignarRolUserId");
-const asignarRolNombreUsuario = document.getElementById("asignarRolNombreUsuario");
-const selectAsignarRol = document.getElementById("selectAsignarRol");
-const asignarRolCargoUsuario = document.getElementById("asignarRolCargoUsuario");
+    const hiddenAsignarRolUserId = document.getElementById("hiddenAsignarRolUserId");
+    const asignarRolNombreUsuario = document.getElementById("asignarRolNombreUsuario");
+    const selectAsignarRol = document.getElementById("selectAsignarRol");
+    const asignarRolCargoUsuario = document.getElementById("asignarRolCargoUsuario");
 
-// NEW: selects for bodegas/subbodegas inside assign-role modal
-const wrapperBodegaAsignarRol = document.getElementById("wrapper_bodega_asignar_rol");
-const selectBodegaAsignarRol = document.getElementById("selectBodegaAsignarRol");
-const wrapperSubbodegaAsignarRol = document.getElementById("wrapper_subbodega_asignar_rol");
-const selectSubbodegaAsignarRol = document.getElementById("selectSubbodegaAsignarRol");
+    // NEW: selects for bodegas/subbodegas inside assign-role modal
+    const wrapperBodegaAsignarRol = document.getElementById("wrapper_bodega_asignar_rol");
+    const selectBodegaAsignarRol = document.getElementById("selectBodegaAsignarRol");
+    const wrapperSubbodegaAsignarRol = document.getElementById("wrapper_subbodega_asignar_rol");
+    const selectSubbodegaAsignarRol = document.getElementById("selectSubbodegaAsignarRol");
 
-// Dataset roles funcionales en memoria
-let rolesFuncionales = [];
-let rolesFuncionalesMap = {};
-
+    // Dataset roles funcionales en memoria
+    let rolesFuncionales = [];
+    let rolesFuncionalesMap = {};
 
     // =========================
     // SAFE DOM EVENT BINDING
@@ -425,66 +422,61 @@ let rolesFuncionalesMap = {};
     }
 
     // =========================
-// ✅ ROLE LABEL PRETTIFIER (roles_funcionales)
-// =========================
-function formatRolFuncionalLabel(rawName) {
-  return String(rawName || "")
-    .trim()
-    .replace(/[_-]+/g, " ") // quita "_" y "-" si existieran
-    .split(" ")
-    .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-}
+    // ✅ ROLE LABEL PRETTIFIER (roles_funcionales)
+    // =========================
+    function formatRolFuncionalLabel(rawName) {
+      return String(rawName || "")
+        .trim()
+        .replace(/[_-]+/g, " ") // quita "_" y "-" si existieran
+        .split(" ")
+        .filter(Boolean)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ");
+    }
 
-// =========================
-// ✅ GET ROLE FUNCIONAL FROM USER (safe)
-// =========================
-function getRolFuncionalFromUser(user) {
-  if (!user) return "";
+    // =========================
+    // ✅ GET ROLE FUNCIONAL FROM USER (safe)
+    // =========================
+    function getRolFuncionalFromUser(user) {
+      if (!user) return "";
 
-  // ✅ Prueba campos típicos (según como venga del backend)
-  const raw =
-    user.rol_funcional ||
-    user.nombre_rol_funcional ||
-    user.rol_funcional_nombre ||
-    user.rol_asignado ||
-    user.rol_asignado_nombre ||
-    "";
+      // ✅ Prueba campos típicos (según como venga del backend)
+      const raw =
+        user.rol_funcional ||
+        user.nombre_rol_funcional ||
+        user.rol_funcional_nombre ||
+        user.rol_asignado ||
+        user.rol_asignado_nombre ||
+        "";
 
-  return raw ? formatRolFuncionalLabel(raw) : "";
-}
+      return raw ? formatRolFuncionalLabel(raw) : "";
+    }
 
-// =========================
-// ✅ BADGE HTML: ROL FUNCIONAL (MISMO LOOK QUE ROL)
-// =========================
-function renderRolFuncionalBadgeHTML(user) {
-  const rolFuncional = getRolFuncionalFromUser(user);
+    // =========================
+    // ✅ BADGE HTML: ROL FUNCIONAL (MISMO LOOK QUE ROL)
+    // =========================
+    function renderRolFuncionalBadgeHTML(user) {
+      const rolFuncional = getRolFuncionalFromUser(user);
 
-  // ✅ Siempre mostramos algo
-  const label = rolFuncional ? rolFuncional : "Sin rol asignado";
+      // ✅ Siempre mostramos algo
+      const label = rolFuncional ? rolFuncional : "Sin rol asignado";
 
-  // ✅ Estilos según el rol funcional
-  let badgeClass = "badge-rolfunc-default";
+      // ✅ Estilos según el rol funcional
+      let badgeClass = "badge-rolfunc-default";
 
-  if (label.toLowerCase().includes("inventario")) {
-    badgeClass = "badge-rolfunc-inventario";
-  } else if (label.toLowerCase().includes("bodega")) {
-    badgeClass = "badge-rolfunc-bodega";
-  }
+      if (label.toLowerCase().includes("inventario")) {
+        badgeClass = "badge-rolfunc-inventario";
+      } else if (label.toLowerCase().includes("bodega")) {
+        badgeClass = "badge-rolfunc-bodega";
+      }
 
-  // ✅ MISMO LOOK que Rol (pill)
-  return `
-    <span class="badge-rolfunc-base ${badgeClass}">
-      ${label}
-    </span>
-  `;
-}
-
-
-
-
-
+      // ✅ MISMO LOOK que Rol (pill)
+      return `
+        <span class="badge-rolfunc-base ${badgeClass}">
+          ${label}
+        </span>
+      `;
+    }
 
     // =========================
     // PROFILE PHOTO HELPERS (NON-INTRUSIVE)
@@ -601,101 +593,97 @@ function renderRolFuncionalBadgeHTML(user) {
      * Shows or hides the training program field depending on the selected role.
      */
     function actualizarVisibilidadPrograma() {
-  if (!inputPrograma || !wrapperPrograma || !inputCargo) return;
-  // Decide no mostrar el selector de programa incluso si el cargo es Instructor.
-  // El sistema mantiene las opciones en memoria pero el UI no las muestra.
-  try {
-    wrapperPrograma.classList.add("hidden");
-    inputPrograma.value = "";
-    inputPrograma.disabled = true;
-  } catch (e) {
-    // no-fatal
-  }
-}
-
-
+      if (!inputPrograma || !wrapperPrograma || !inputCargo) return;
+      // Decide no mostrar el selector de programa incluso si el cargo es Instructor.
+      // El sistema mantiene las opciones en memoria pero el UI no las muestra.
+      try {
+        wrapperPrograma.classList.add("hidden");
+        inputPrograma.value = "";
+        inputPrograma.disabled = true;
+      } catch (e) {
+        // no-fatal
+      }
+    }
 
     /**
      * Renders the training program options based on the loaded dataset.
      */
     function renderOpcionesPrograma() {
-  if (!inputPrograma) return;
+      if (!inputPrograma) return;
 
-  // Si no hay programas todavía, placeholder
-  if (!Array.isArray(programas) || programas.length === 0) {
-    inputPrograma.disabled = true;
-    inputPrograma.innerHTML = `<option value="">Cargando programas...</option>`;
-    return;
-  }
+      // Si no hay programas todavía, placeholder
+      if (!Array.isArray(programas) || programas.length === 0) {
+        inputPrograma.disabled = true;
+        inputPrograma.innerHTML = `<option value="">Cargando programas...</option>`;
+        return;
+      }
 
-  // ✅ Pintar siempre desde cero
-  inputPrograma.innerHTML = `<option value="">Seleccione un programa</option>`;
+      // ✅ Pintar siempre desde cero
+      inputPrograma.innerHTML = `<option value="">Seleccione un programa</option>`;
 
-  const frag = document.createDocumentFragment();
+      const frag = document.createDocumentFragment();
 
-  programas.forEach((p) => {
-    const opt = document.createElement("option");
-    opt.value = String(p.id_programa);
-    opt.textContent = p.nombre_programa || "";
-    frag.appendChild(opt);
-  });
+      programas.forEach((p) => {
+        const opt = document.createElement("option");
+        opt.value = String(p.id_programa);
+        opt.textContent = p.nombre_programa || "";
+        frag.appendChild(opt);
+      });
 
-  inputPrograma.appendChild(frag);
+      inputPrograma.appendChild(frag);
 
-  // ✅ FIX: aseguramos habilitado incluso si venía con atributo disabled
-  inputPrograma.disabled = false;
-  inputPrograma.removeAttribute("disabled");
-}
-        // NEW: Ensure to reset the selected value
-        inputPrograma.value = "";
-
-
+      // ✅ FIX: aseguramos habilitado incluso si venía con atributo disabled
+      inputPrograma.disabled = false;
+      inputPrograma.removeAttribute("disabled");
+      
+      // Reset selected value
+      inputPrograma.value = "";
+    }
 
     /**
      * ✅ ADDED (NO-DELETE): Extract JSON safely from server output
      * This prevents breaking when PHP outputs warnings or spaces before JSON.
      */
     function extractJSON(text) {
-  if (!text) return null;
+      if (!text) return null;
 
-  const t = String(text).trim();
+      const t = String(text).trim();
 
-  // ✅ 1) Si ya es JSON puro (array u objeto), parsea directo
-  if (t.startsWith("[") || t.startsWith("{")) {
-    try {
-      return JSON.parse(t);
-    } catch (e) {
-      // seguimos con extracción tolerante
+      // ✅ 1) Si ya es JSON puro (array u objeto), parsea directo
+      if (t.startsWith("[") || t.startsWith("{")) {
+        try {
+          return JSON.parse(t);
+        } catch (e) {
+          // seguimos con extracción tolerante
+        }
+      }
+
+      // ✅ 2) Buscar primero ARRAY si existe antes que OBJETO
+      const firstArr = t.indexOf("[");
+      const firstObj = t.indexOf("{");
+
+      // Si hay array y aparece primero -> parsea array
+      if (firstArr !== -1 && (firstObj === -1 || firstArr < firstObj)) {
+        const endArr = t.lastIndexOf("]");
+        if (endArr !== -1 && endArr > firstArr) {
+          try {
+            return JSON.parse(t.slice(firstArr, endArr + 1));
+          } catch (e) {}
+        }
+      }
+
+      // Si hay objeto -> parsea objeto
+      if (firstObj !== -1) {
+        const endObj = t.lastIndexOf("}");
+        if (endObj !== -1 && endObj > firstObj) {
+          try {
+            return JSON.parse(t.slice(firstObj, endObj + 1));
+          } catch (e) {}
+        }
+      }
+
+      return null;
     }
-  }
-
-  // ✅ 2) Buscar primero ARRAY si existe antes que OBJETO
-  const firstArr = t.indexOf("[");
-  const firstObj = t.indexOf("{");
-
-  // Si hay array y aparece primero -> parsea array
-  if (firstArr !== -1 && (firstObj === -1 || firstArr < firstObj)) {
-    const endArr = t.lastIndexOf("]");
-    if (endArr !== -1 && endArr > firstArr) {
-      try {
-        return JSON.parse(t.slice(firstArr, endArr + 1));
-      } catch (e) {}
-    }
-  }
-
-  // Si hay objeto -> parsea objeto
-  if (firstObj !== -1) {
-    const endObj = t.lastIndexOf("}");
-    if (endObj !== -1 && endObj > firstObj) {
-      try {
-        return JSON.parse(t.slice(firstObj, endObj + 1));
-      } catch (e) {}
-    }
-  }
-
-  return null;
-}
-
 
     /**
      * ✅ ADDED (NO-DELETE): Normalize backend responses:
@@ -705,70 +693,69 @@ function renderRolFuncionalBadgeHTML(user) {
      * - { success: true, data: [...] }
      */
     function normalizeListResponse(parsed) {
-  if (!parsed) return [];
-  if (Array.isArray(parsed)) return parsed;
-  if (typeof parsed === "object") {
-    if (Array.isArray(parsed.data)) return parsed.data;
-    if (Array.isArray(parsed.usuarios)) return parsed.usuarios;
-    if (Array.isArray(parsed.programas)) return parsed.programas;
+      if (!parsed) return [];
+      if (Array.isArray(parsed)) return parsed;
+      if (typeof parsed === "object") {
+        if (Array.isArray(parsed.data)) return parsed.data;
+        if (Array.isArray(parsed.usuarios)) return parsed.usuarios;
+        if (Array.isArray(parsed.programas)) return parsed.programas;
 
-    // ✅ FIX: roles funcionales
-    if (Array.isArray(parsed.roles)) return parsed.roles;
-  }
-  return [];
-}
-
-// =====================================================
-// ✅ VALIDAR BLOQUEO DE CAMBIO DE CARGO (Instructor)
-// =====================================================
-async function validarCambioCargoInstructor(id_usuario, nuevoCargo) {
-  // Primero intentar con fetchJSONSafe para tolerar warnings/espacios en la respuesta
-  const acciones = ["validar_cambio_cargo", "puede_cambiar_cargo", "validarCambioCargo"];
-
-  for (const accion of acciones) {
-    try {
-      const url = `${API_URL}?accion=${accion}&t=${Date.now()}`;
-
-      // Usamos fetchJSONSafe que extrae JSON incluso si hay ruido en la respuesta
-      const { parsed, text } = await fetchJSONSafe(url, { method: "POST",
-        body: JSON.stringify({ id_usuario, nuevo_cargo: nuevoCargo }),
-      });
-
-      // Si no parseó, seguir con la siguiente acción
-      if (!parsed) continue;
-
-      // Normalizar distintos nombres de campo que pudiera devolver el backend
-      const canChange =
-        typeof parsed.can_change !== "undefined"
-          ? parsed.can_change
-          : typeof parsed.puede_cambiar !== "undefined"
-          ? parsed.puede_cambiar
-          : typeof parsed.canChange !== "undefined"
-          ? parsed.canChange
-          : null;
-
-      const successFlag = typeof parsed.success !== "undefined" ? !!parsed.success : true;
-      const message = parsed.message || parsed.mensaje || parsed.error || "";
-
-      if (canChange !== null) {
-        return { success: successFlag, can_change: Number(canChange), message };
+        // ✅ FIX: roles funcionales
+        if (Array.isArray(parsed.roles)) return parsed.roles;
       }
-
-      // Si la respuesta tiene el formato esperado 'success' y 'message' pero no el flag,
-      // interpretar success===false como bloqueo conservador
-      if (typeof parsed.success !== "undefined" && parsed.success === false) {
-        return { success: false, can_change: 0, message: message || "No es posible cambiar el cargo." };
-      }
-    } catch (e) {
-      // ignorar y probar la siguiente acción
-      console.error('validarCambioCargoInstructor error para accion', accion, e);
+      return [];
     }
-  }
 
-  return null;
-}
+    // =====================================================
+    // ✅ VALIDAR BLOQUEO DE CAMBIO DE CARGO (Instructor)
+    // =====================================================
+    async function validarCambioCargoInstructor(id_usuario, nuevoCargo) {
+      // Primero intentar con fetchJSONSafe para tolerar warnings/espacios en la respuesta
+      const acciones = ["validar_cambio_cargo", "puede_cambiar_cargo", "validarCambioCargo"];
 
+      for (const accion of acciones) {
+        try {
+          const url = `${API_URL}?accion=${accion}&t=${Date.now()}`;
 
+          // Usamos fetchJSONSafe que extrae JSON incluso si hay ruido en la respuesta
+          const { parsed, text } = await fetchJSONSafe(url, { 
+            method: "POST",
+            body: JSON.stringify({ id_usuario, nuevo_cargo: nuevoCargo }),
+          });
+
+          // Si no parseó, seguir con la siguiente acción
+          if (!parsed) continue;
+
+          // Normalizar distintos nombres de campo que pudiera devolver el backend
+          const canChange =
+            typeof parsed.can_change !== "undefined"
+              ? parsed.can_change
+              : typeof parsed.puede_cambiar !== "undefined"
+              ? parsed.puede_cambiar
+              : typeof parsed.canChange !== "undefined"
+              ? parsed.canChange
+              : null;
+
+          const successFlag = typeof parsed.success !== "undefined" ? !!parsed.success : true;
+          const message = parsed.message || parsed.mensaje || parsed.error || "";
+
+          if (canChange !== null) {
+            return { success: successFlag, can_change: Number(canChange), message };
+          }
+
+          // Si la respuesta tiene el formato esperado 'success' y 'message' pero no el flag,
+          // interpretar success===false como bloqueo conservador
+          if (typeof parsed.success !== "undefined" && parsed.success === false) {
+            return { success: false, can_change: 0, message: message || "No es posible cambiar el cargo." };
+          }
+        } catch (e) {
+          // ignorar y probar la siguiente acción
+          console.error('validarCambioCargoInstructor error para accion', accion, e);
+        }
+      }
+
+      return null;
+    }
 
     /**
      * ✅ ADDED (NO-DELETE): Fetch helper that tolerates extra output
@@ -849,407 +836,399 @@ async function validarCambioCargoInstructor(id_usuario, nuevoCargo) {
       _sessionGuardTimer = setInterval(checkSessionGuard, SESSION_CHECK_INTERVAL_SECONDS * 1000);
     }
 
-   
+    // =========================
+    // ROLES FUNCIONALES (DB: roles_funcionales)
+    // =========================
 
-// =========================
-// ROLES FUNCIONALES (DB: roles_funcionales)
-// =========================
+    async function cargarRolesFuncionales() {
+      const posiblesAcciones = ["listar_roles_funcionales", "listarRolesFuncionales", "roles_funcionales"];
 
-async function cargarRolesFuncionales() {
-  const posiblesAcciones = ["listar_roles_funcionales", "listarRolesFuncionales", "roles_funcionales"];
+      try {
+        rolesFuncionales = [];
+        rolesFuncionalesMap = {};
 
-  try {
-    rolesFuncionales = [];
-    rolesFuncionalesMap = {};
+        // Placeholder mientras carga
+        if (selectAsignarRol) {
+          selectAsignarRol.disabled = true;
+          selectAsignarRol.innerHTML = `<option value="">Cargando roles...</option>`;
+        }
 
-    // Placeholder mientras carga
-    if (selectAsignarRol) {
-      selectAsignarRol.disabled = true;
-      selectAsignarRol.innerHTML = `<option value="">Cargando roles...</option>`;
-    }
+        let lista = [];
 
-    let lista = [];
+        for (const accion of posiblesAcciones) {
+          const url = `${API_URL}?accion=${accion}&t=${Date.now()}`;
+          const { parsed, text } = await fetchJSONSafe(url, { method: "GET" });
 
-    for (const accion of posiblesAcciones) {
-      const url = `${API_URL}?accion=${accion}&t=${Date.now()}`;
-      const { parsed, text } = await fetchJSONSafe(url, { method: "GET" });
+          console.log(`Respuesta listar roles_funcionales (accion=${accion}) cruda:`, text);
 
-      console.log(`Respuesta listar roles_funcionales (accion=${accion}) cruda:`, text);
+          if (!parsed) continue;
+          if (typeof parsed === "object" && !Array.isArray(parsed) && parsed.error) continue;
 
-      if (!parsed) continue;
-      if (typeof parsed === "object" && !Array.isArray(parsed) && parsed.error) continue;
+          // acepta [...] o {data:[...]}
+          const arr = normalizeListResponse(parsed);
+          if (Array.isArray(arr)) {
+            lista = arr;
+            break;
+          }
+        }
 
-      // acepta [...] o {data:[...]}
-      const arr = normalizeListResponse(parsed);
-      if (Array.isArray(arr)) {
-        lista = arr;
-        break;
+        // Normalización robusta
+        rolesFuncionales = (lista || [])
+          .map((r) => {
+            const id = r.id_rol ?? r.id ?? null;
+            const nombre = r.nombre_rol ?? r.nombre ?? "";
+            return {
+              id_rol: id !== null ? String(id) : null,
+              nombre_rol: String(nombre || "").trim(),
+            };
+          })
+          .filter((r) => r.id_rol && r.nombre_rol);
+
+        rolesFuncionales.forEach((r) => {
+          rolesFuncionalesMap[String(r.id_rol)] = r.nombre_rol;
+        });
+
+        renderOpcionesRolesFuncionales();
+      } catch (e) {
+        console.error("Error cargando roles funcionales:", e);
+
+        if (selectAsignarRol) {
+          selectAsignarRol.disabled = true;
+          selectAsignarRol.innerHTML = `<option value="">No se pudieron cargar roles</option>`;
+        }
+
+        toastError("Ocurrió un error al cargar los roles funcionales.");
       }
     }
 
-    // Normalización robusta
-    rolesFuncionales = (lista || [])
-      .map((r) => {
-        const id = r.id_rol ?? r.id ?? null;
-        const nombre = r.nombre_rol ?? r.nombre ?? "";
-        return {
-          id_rol: id !== null ? String(id) : null,
-          nombre_rol: String(nombre || "").trim(),
-        };
-      })
-      .filter((r) => r.id_rol && r.nombre_rol);
+    function renderOpcionesRolesFuncionales() {
+      if (!selectAsignarRol) return;
 
-    rolesFuncionales.forEach((r) => {
-      rolesFuncionalesMap[String(r.id_rol)] = r.nombre_rol;
-    });
+      if (!Array.isArray(rolesFuncionales) || rolesFuncionales.length === 0) {
+        selectAsignarRol.disabled = true;
+        selectAsignarRol.innerHTML = `<option value="">No hay roles disponibles</option>`;
+        return;
+      }
 
-    renderOpcionesRolesFuncionales();
-  } catch (e) {
-    console.error("Error cargando roles funcionales:", e);
+      selectAsignarRol.innerHTML = `<option value="">Seleccione un rol</option>`;
 
-    if (selectAsignarRol) {
-      selectAsignarRol.disabled = true;
-      selectAsignarRol.innerHTML = `<option value="">No se pudieron cargar roles</option>`;
+      const frag = document.createDocumentFragment();
+      rolesFuncionales.forEach((r) => {
+        const opt = document.createElement("option");
+        opt.value = String(r.id_rol);
+        opt.textContent = formatRolFuncionalLabel(r.nombre_rol);
+        frag.appendChild(opt);
+      });
+
+      selectAsignarRol.appendChild(frag);
+      selectAsignarRol.disabled = false;
+      selectAsignarRol.removeAttribute("disabled");
     }
 
-    toastError("Ocurrió un error al cargar los roles funcionales.");
-  }
-}
+    // -------------------------
+    // BODEGAS / SUBBODEGAS HELPERS
+    // -------------------------
+    async function cargarBodegasAsignarRol() {
+      if (!selectBodegaAsignarRol) return;
+      selectBodegaAsignarRol.innerHTML = '<option value="">Cargando bodegas...</option>';
 
-function renderOpcionesRolesFuncionales() {
-  if (!selectAsignarRol) return;
+      try {
+        const res = await fetch('src/controllers/bodega_controller.php?accion=listar');
+        const data = await res.json();
+        if (!data || !data.success) {
+          selectBodegaAsignarRol.innerHTML = '<option value="">No hay bodegas</option>';
+          return;
+        }
 
-  if (!Array.isArray(rolesFuncionales) || rolesFuncionales.length === 0) {
-    selectAsignarRol.disabled = true;
-    selectAsignarRol.innerHTML = `<option value="">No hay roles disponibles</option>`;
-    return;
-  }
+        const bodegas = Array.isArray(data.data) ? data.data : [];
+        if (bodegas.length === 0) {
+          selectBodegaAsignarRol.innerHTML = '<option value="">No hay bodegas disponibles</option>';
+          return;
+        }
 
-  selectAsignarRol.innerHTML = `<option value="">Seleccione un rol</option>`;
+        const frag = document.createDocumentFragment();
+        frag.appendChild(new Option('Seleccione una bodega', ''));
+        bodegas.forEach(b => {
+          const opt = document.createElement('option');
+          opt.value = b.id_bodega || b.id || b.id_bodega;
+          opt.textContent = b.nombre || b.nombre_bodega || b.nombre;
+          frag.appendChild(opt);
+        });
 
-  const frag = document.createDocumentFragment();
-  rolesFuncionales.forEach((r) => {
-    const opt = document.createElement("option");
-    opt.value = String(r.id_rol);
-    opt.textContent = formatRolFuncionalLabel(r.nombre_rol);
-    frag.appendChild(opt);
-  });
-
-  selectAsignarRol.appendChild(frag);
-  selectAsignarRol.disabled = false;
-  selectAsignarRol.removeAttribute("disabled");
-}
-
-// -------------------------
-// BODEGAS / SUBBODEGAS HELPERS
-// -------------------------
-async function cargarBodegasAsignarRol() {
-  if (!selectBodegaAsignarRol) return;
-  selectBodegaAsignarRol.innerHTML = '<option value="">Cargando bodegas...</option>';
-
-  try {
-    const res = await fetch('src/controllers/bodega_controller.php?accion=listar');
-    const data = await res.json();
-    if (!data || !data.success) {
-      selectBodegaAsignarRol.innerHTML = '<option value="">No hay bodegas</option>';
-      return;
+        selectBodegaAsignarRol.innerHTML = '';
+        selectBodegaAsignarRol.appendChild(frag);
+      } catch (e) {
+        console.error('Error cargando bodegas para asignar rol:', e);
+        selectBodegaAsignarRol.innerHTML = '<option value="">Error cargando bodegas</option>';
+      }
     }
 
-    const bodegas = Array.isArray(data.data) ? data.data : [];
-    if (bodegas.length === 0) {
-      selectBodegaAsignarRol.innerHTML = '<option value="">No hay bodegas disponibles</option>';
-      return;
+    async function cargarSubbodegasAsignarRol(idBodega) {
+      if (!selectSubbodegaAsignarRol) return;
+      selectSubbodegaAsignarRol.innerHTML = '<option value="">Cargando sub-bodegas...</option>';
+
+      try {
+        const res = await fetch(`src/controllers/sub_bodega_controller.php?accion=por_bodega&id_bodega=${encodeURIComponent(idBodega)}`);
+        const data = await res.json();
+        if (!data || data.success === false) {
+          selectSubbodegaAsignarRol.innerHTML = '<option value="">No hay sub-bodegas</option>';
+          return;
+        }
+
+        const subs = Array.isArray(data.data) ? data.data : [];
+        if (subs.length === 0) {
+          selectSubbodegaAsignarRol.innerHTML = '<option value="">No hay sub-bodegas disponibles</option>';
+          return;
+        }
+
+        const frag = document.createDocumentFragment();
+        frag.appendChild(new Option('Seleccione una sub-bodega', ''));
+        subs.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id_subbodega || s.id || s.id_subbodega;
+          opt.textContent = s.nombre_subbodega || s.nombre || s.nombre_subbodega;
+          frag.appendChild(opt);
+        });
+
+        selectSubbodegaAsignarRol.innerHTML = '';
+        selectSubbodegaAsignarRol.appendChild(frag);
+      } catch (e) {
+        console.error('Error cargando subbodegas para asignar rol:', e);
+        selectSubbodegaAsignarRol.innerHTML = '<option value="">Error cargando sub-bodegas</option>';
+      }
     }
 
-    const frag = document.createDocumentFragment();
-    frag.appendChild(new Option('Seleccione una bodega', ''));
-    bodegas.forEach(b => {
-      const opt = document.createElement('option');
-      opt.value = b.id_bodega || b.id || b.id_bodega;
-      opt.textContent = b.nombre || b.nombre_bodega || b.nombre;
-      frag.appendChild(opt);
-    });
+    function openModalAsignarRol(user) {
+      if (!modalAsignarRol || !hiddenAsignarRolUserId || !asignarRolNombreUsuario || !selectAsignarRol) return;
 
-    selectBodegaAsignarRol.innerHTML = '';
-    selectBodegaAsignarRol.appendChild(frag);
-  } catch (e) {
-    console.error('Error cargando bodegas para asignar rol:', e);
-    selectBodegaAsignarRol.innerHTML = '<option value="">Error cargando bodegas</option>';
-  }
-}
+      // Mostrar modal usando tu patrón
+      modalAsignarRol.classList.add("active");
+      modalAsignarRol.classList.remove("hidden");
 
-async function cargarSubbodegasAsignarRol(idBodega) {
-  if (!selectSubbodegaAsignarRol) return;
-  selectSubbodegaAsignarRol.innerHTML = '<option value="">Cargando sub-bodegas...</option>';
+      hiddenAsignarRolUserId.value = String(user.id);
+      asignarRolNombreUsuario.textContent = user.nombre_completo || "--";
 
-  try {
-    const res = await fetch(`src/controllers/sub_bodega_controller.php?accion=por_bodega&id_bodega=${encodeURIComponent(idBodega)}`);
-    const data = await res.json();
-    if (!data || data.success === false) {
-      selectSubbodegaAsignarRol.innerHTML = '<option value="">No hay sub-bodegas</option>';
-      return;
-    }
+      if (asignarRolCargoUsuario) {
+        asignarRolCargoUsuario.textContent = roleLabels[user.cargo] || user.cargo || "--";
+      }
 
-    const subs = Array.isArray(data.data) ? data.data : [];
-    if (subs.length === 0) {
-      selectSubbodegaAsignarRol.innerHTML = '<option value="">No hay sub-bodegas disponibles</option>';
-      return;
-    }
+      // Cargar roles si aún no existen
+      // Reset selection
+      selectAsignarRol.value = "";
 
-    const frag = document.createDocumentFragment();
-    frag.appendChild(new Option('Seleccione una sub-bodega', ''));
-    subs.forEach(s => {
-      const opt = document.createElement('option');
-      opt.value = s.id_subbodega || s.id || s.id_subbodega;
-      opt.textContent = s.nombre_subbodega || s.nombre || s.nombre_subbodega;
-      frag.appendChild(opt);
-    });
+      // Local helper: apply restrictions for 'Aprendiz' after options exist
+      function applyAprendizRestrictions() {
+        try {
+          const cargoUser = (user.cargo || "").toString().trim();
+          if (cargoUser === "Aprendiz") {
+            for (const opt of Array.from(selectAsignarRol.options)) {
+              const txt = (opt.text || "").toString().toLowerCase();
+              const forbidden = (txt.includes("encarg") && (txt.includes("bodega") || txt.includes("subbodega") || txt.includes("inventario"))) ||
+                                txt.includes("encargado bodega") || txt.includes("encargado subbodega") || txt.includes("encargado inventario");
 
-    selectSubbodegaAsignarRol.innerHTML = '';
-    selectSubbodegaAsignarRol.appendChild(frag);
-  } catch (e) {
-    console.error('Error cargando subbodegas para asignar rol:', e);
-    selectSubbodegaAsignarRol.innerHTML = '<option value="">Error cargando sub-bodegas</option>';
-  }
-}
-
-function openModalAsignarRol(user) {
-  if (!modalAsignarRol || !hiddenAsignarRolUserId || !asignarRolNombreUsuario || !selectAsignarRol) return;
-
-  // Mostrar modal usando tu patrón
-  modalAsignarRol.classList.add("active");
-  modalAsignarRol.classList.remove("hidden");
-
-  hiddenAsignarRolUserId.value = String(user.id);
-  asignarRolNombreUsuario.textContent = user.nombre_completo || "--";
-
-  if (asignarRolCargoUsuario) {
-  asignarRolCargoUsuario.textContent = roleLabels[user.cargo] || user.cargo || "--";
-}
-
-
-  // Cargar roles si aún no existen
-  // Reset selection
-  selectAsignarRol.value = "";
-
-  // Local helper: apply restrictions for 'Aprendiz' after options exist
-  function applyAprendizRestrictions() {
-    try {
-      const cargoUser = (user.cargo || "").toString().trim();
-      if (cargoUser === "Aprendiz") {
-        for (const opt of Array.from(selectAsignarRol.options)) {
-          const txt = (opt.text || "").toString().toLowerCase();
-          const forbidden = (txt.includes("encarg") && (txt.includes("bodega") || txt.includes("subbodega") || txt.includes("inventario"))) ||
-                            txt.includes("encargado bodega") || txt.includes("encargado subbodega") || txt.includes("encargado inventario");
-
-          if (forbidden) {
-            opt.disabled = true;
-            opt.title = "No se puede asignar este rol a un usuario con cargo 'Aprendiz'.";
+              if (forbidden) {
+                opt.disabled = true;
+                opt.title = "No se puede asignar este rol a un usuario con cargo 'Aprendiz'.";
+              } else {
+                opt.disabled = false;
+                if (opt.title && opt.title.includes("No se puede asignar")) opt.removeAttribute("title");
+              }
+            }
           } else {
-            opt.disabled = false;
+            // enable all options for other cargos
+            for (const opt of Array.from(selectAsignarRol.options)) {
+              if (opt.disabled) opt.disabled = false;
+              if (opt.title && opt.title.includes("No se puede asignar")) opt.removeAttribute("title");
+            }
+          }
+        } catch (e) {
+          console.error('Error aplicando restricciones por cargo en selectAsignarRol:', e);
+        }
+      }
+
+      // Load or render roles, and ensure restrictions are applied after options are present
+      if (!Array.isArray(rolesFuncionales) || rolesFuncionales.length === 0) {
+        // cargarRolesFuncionales will call renderOpcionesRolesFuncionales internally, but we also
+        // run applyAprendizRestrictions once the async load completes to avoid races.
+        cargarRolesFuncionales().then(() => {
+          // slight delay to ensure DOM options are updated
+          setTimeout(applyAprendizRestrictions, 20);
+        }).catch((e) => {
+          console.error('Error cargando roles funcionales:', e);
+        });
+      } else {
+        renderOpcionesRolesFuncionales();
+        // ensure restrictions after rendering
+        setTimeout(applyAprendizRestrictions, 0);
+      }
+
+      // ✅ Cargar rol actual del usuario (si tiene uno)
+      setTimeout(async () => {
+        const rolActual = await obtenerRolFuncionalUsuario(user.id);
+        if (rolActual?.id_rol) {
+          selectAsignarRol.value = String(rolActual.id_rol);
+        }
+      }, 50);
+    }
+
+    function closeModalAsignarRol() {
+      if (!modalAsignarRol) return;
+      modalAsignarRol.classList.remove("active");
+      modalAsignarRol.classList.add("hidden");
+
+      if (hiddenAsignarRolUserId) hiddenAsignarRolUserId.value = "";
+      if (asignarRolNombreUsuario) asignarRolNombreUsuario.textContent = "--";
+      if (selectAsignarRol) selectAsignarRol.value = "";
+
+      // Re-enable any options that were disabled by cargo-specific logic
+      try {
+        if (selectAsignarRol) {
+          for (const opt of Array.from(selectAsignarRol.options)) {
+            if (opt.disabled) opt.disabled = false;
             if (opt.title && opt.title.includes("No se puede asignar")) opt.removeAttribute("title");
           }
         }
-      } else {
-        // enable all options for other cargos
-        for (const opt of Array.from(selectAsignarRol.options)) {
-          if (opt.disabled) opt.disabled = false;
-          if (opt.title && opt.title.includes("No se puede asignar")) opt.removeAttribute("title");
+      } catch (e) {
+        console.error('Error re-habilitando opciones de selectAsignarRol al cerrar modal:', e);
+      }
+    }
+
+    async function asignarRolFuncional() {
+      if (!hiddenAsignarRolUserId || !selectAsignarRol) return;
+
+      const id_usuario = String(hiddenAsignarRolUserId.value || "").trim();
+      const id_rol = String(selectAsignarRol.value || "").trim();
+
+      if (!id_usuario) {
+        toastError("No se detectó el usuario para asignar rol.");
+        return;
+      }
+
+      if (!id_rol) {
+        toastError("Debes seleccionar un rol funcional.");
+        return;
+      }
+
+      // ✅ Visibilidad REAL (la maneja el WRAPPER, no el select)
+      const bodegaVisible =
+        !!wrapperBodegaAsignarRol && !wrapperBodegaAsignarRol.classList.contains("hidden");
+
+      const subbodegaVisible =
+        !!wrapperSubbodegaAsignarRol && !wrapperSubbodegaAsignarRol.classList.contains("hidden");
+
+      // ✅ Si es rol de bodega/subbodega, EXIGIR selección
+      const id_bodega = String(selectBodegaAsignarRol?.value || "").trim();
+      const id_subbodega = String(selectSubbodegaAsignarRol?.value || "").trim();
+
+      if (bodegaVisible && !id_bodega) {
+        toastError("Debes seleccionar una bodega para este rol.");
+        selectBodegaAsignarRol?.focus();
+        return;
+      }
+
+      if (subbodegaVisible && !id_subbodega) {
+        toastError("Debes seleccionar una sub-bodega para este rol.");
+        selectSubbodegaAsignarRol?.focus();
+        return;
+      }
+
+      try {
+        // ✅ Payload base
+        const payload = { id_usuario, id_rol };
+
+        // EXTRA SAFETY: prevent assigning certain functional roles to users with cargo 'Aprendiz'
+        try {
+          const usuarioObj = users.find(u => String(u.id) === String(id_usuario));
+          const cargoUser = usuarioObj ? (usuarioObj.cargo || "").toString().trim() : "";
+          if (cargoUser === "Aprendiz") {
+            // find selected option text
+            const selectedOpt = selectAsignarRol.options[selectAsignarRol.selectedIndex];
+            const selectedText = selectedOpt ? (selectedOpt.text || "").toString().toLowerCase() : "";
+
+            const isForbidden = (selectedText.includes("encarg") && (selectedText.includes("bodega") || selectedText.includes("subbodega") || selectedText.includes("inventario"))) ||
+                                selectedText.includes("encargado bodega") || selectedText.includes("encargado subbodega") || selectedText.includes("encargado inventario");
+
+            if (isForbidden) {
+              toastError("No es posible asignar ese rol funcional a un usuario con cargo 'Aprendiz'.");
+              return;
+            }
+          }
+        } catch (e) {
+          console.error('Error validando restricciones por cargo antes de asignar rol:', e);
         }
-      }
-    } catch (e) {
-      console.error('Error aplicando restricciones por cargo en selectAsignarRol:', e);
-    }
-  }
 
-  // Load or render roles, and ensure restrictions are applied after options are present
-  if (!Array.isArray(rolesFuncionales) || rolesFuncionales.length === 0) {
-    // cargarRolesFuncionales will call renderOpcionesRolesFuncionales internally, but we also
-    // run applyAprendizRestrictions once the async load completes to avoid races.
-    cargarRolesFuncionales().then(() => {
-      // slight delay to ensure DOM options are updated
-      setTimeout(applyAprendizRestrictions, 20);
-    }).catch((e) => {
-      console.error('Error cargando roles funcionales:', e);
-    });
-  } else {
-    renderOpcionesRolesFuncionales();
-    // ensure restrictions after rendering
-    setTimeout(applyAprendizRestrictions, 0);
-  }
+        // ✅ Agregar ids SOLO cuando aplica (y ya validados)
+        if (bodegaVisible) payload.id_bodega = id_bodega;
+        if (subbodegaVisible) payload.id_subbodega = id_subbodega;
 
-  // ✅ Cargar rol actual del usuario (si tiene uno)
-setTimeout(async () => {
-  const rolActual = await obtenerRolFuncionalUsuario(user.id);
-  if (rolActual?.id_rol) {
-    selectAsignarRol.value = String(rolActual.id_rol);
-  }
-}, 50);
+        // ✅ Se envía al backend
+        const data = await callApi(`${API_URL}?accion=asignar_rol_funcional`, payload);
 
-}
+        console.log("Payload enviado asignar_rol_funcional:", payload);
+        console.log("Respuesta asignar_rol_funcional:", data);
 
-function closeModalAsignarRol() {
-  if (!modalAsignarRol) return;
-  modalAsignarRol.classList.remove("active");
-  modalAsignarRol.classList.add("hidden");
-
-  if (hiddenAsignarRolUserId) hiddenAsignarRolUserId.value = "";
-  if (asignarRolNombreUsuario) asignarRolNombreUsuario.textContent = "--";
-  if (selectAsignarRol) selectAsignarRol.value = "";
-
-  // Re-enable any options that were disabled by cargo-specific logic
-  try {
-    if (selectAsignarRol) {
-      for (const opt of Array.from(selectAsignarRol.options)) {
-        if (opt.disabled) opt.disabled = false;
-        if (opt.title && opt.title.includes("No se puede asignar")) opt.removeAttribute("title");
-      }
-    }
-  } catch (e) {
-    console.error('Error re-habilitando opciones de selectAsignarRol al cerrar modal:', e);
-  }
-}
-
-async function asignarRolFuncional() {
-  if (!hiddenAsignarRolUserId || !selectAsignarRol) return;
-
-  const id_usuario = String(hiddenAsignarRolUserId.value || "").trim();
-  const id_rol = String(selectAsignarRol.value || "").trim();
-
-  if (!id_usuario) {
-    toastError("No se detectó el usuario para asignar rol.");
-    return;
-  }
-
-  if (!id_rol) {
-    toastError("Debes seleccionar un rol funcional.");
-    return;
-  }
-
-  // ✅ Visibilidad REAL (la maneja el WRAPPER, no el select)
-  const bodegaVisible =
-    !!wrapperBodegaAsignarRol && !wrapperBodegaAsignarRol.classList.contains("hidden");
-
-  const subbodegaVisible =
-    !!wrapperSubbodegaAsignarRol && !wrapperSubbodegaAsignarRol.classList.contains("hidden");
-
-  // ✅ Si es rol de bodega/subbodega, EXIGIR selección
-  const id_bodega = String(selectBodegaAsignarRol?.value || "").trim();
-  const id_subbodega = String(selectSubbodegaAsignarRol?.value || "").trim();
-
-  if (bodegaVisible && !id_bodega) {
-    toastError("Debes seleccionar una bodega para este rol.");
-    selectBodegaAsignarRol?.focus();
-    return;
-  }
-
-  if (subbodegaVisible && !id_subbodega) {
-    toastError("Debes seleccionar una sub-bodega para este rol.");
-    selectSubbodegaAsignarRol?.focus();
-    return;
-  }
-
-  try {
-    // ✅ Payload base
-    const payload = { id_usuario, id_rol };
-
-    // EXTRA SAFETY: prevent assigning certain functional roles to users with cargo 'Aprendiz'
-    try {
-      const usuarioObj = users.find(u => String(u.id) === String(id_usuario));
-      const cargoUser = usuarioObj ? (usuarioObj.cargo || "").toString().trim() : "";
-      if (cargoUser === "Aprendiz") {
-        // find selected option text
-        const selectedOpt = selectAsignarRol.options[selectAsignarRol.selectedIndex];
-        const selectedText = selectedOpt ? (selectedOpt.text || "").toString().toLowerCase() : "";
-
-        const isForbidden = (selectedText.includes("encarg") && (selectedText.includes("bodega") || selectedText.includes("subbodega") || selectedText.includes("inventario"))) ||
-                            selectedText.includes("encargado bodega") || selectedText.includes("encargado subbodega") || selectedText.includes("encargado inventario");
-
-        if (isForbidden) {
-          toastError("No es posible asignar ese rol funcional a un usuario con cargo 'Aprendiz'.");
+        if (data?.success === false || data?.error) {
+          toastError(data?.error || "No se pudo asignar el rol funcional.");
           return;
         }
+
+        toastSuccess(data?.mensaje || "Rol funcional asignado correctamente");
+
+        closeModalAsignarRol();
+
+        // Refrescar tabla
+        await cargarUsuarios();
+      } catch (e) {
+        console.error("Error asignando rol funcional:", e);
+        toastError("Error de red/servidor al asignar el rol funcional.");
       }
-    } catch (e) {
-      console.error('Error validando restricciones por cargo antes de asignar rol:', e);
     }
 
-    // ✅ Agregar ids SOLO cuando aplica (y ya validados)
-    if (bodegaVisible) payload.id_bodega = id_bodega;
-    if (subbodegaVisible) payload.id_subbodega = id_subbodega;
+    /**
+     * Desasigna el rol funcional de un usuario (elimina la relación)
+     */
+    async function desasignarRolFuncional() {
+      if (!hiddenAsignarRolUserId) return;
 
-    // ✅ Se envía al backend
-    const data = await callApi(`${API_URL}?accion=asignar_rol_funcional`, payload);
+      const id_usuario = String(hiddenAsignarRolUserId.value || "").trim();
 
-    console.log("Payload enviado asignar_rol_funcional:", payload);
-    console.log("Respuesta asignar_rol_funcional:", data);
+      if (!id_usuario) {
+        toastError("No se detectó el usuario para desasignar rol.");
+        return;
+      }
 
-    if (data?.success === false || data?.error) {
-      toastError(data?.error || "No se pudo asignar el rol funcional.");
-      return;
+      try {
+        const data = await callApi(`${API_URL}?accion=desasignar_rol_funcional`, { id_usuario });
+
+        console.log("Respuesta desasignar_rol_funcional:", data);
+
+        if (data?.success === false || data?.error) {
+          toastError(data?.error || "No se pudo quitar el rol funcional.");
+          return;
+        }
+
+        toastSuccess(data?.mensaje || "Rol funcional quitado correctamente");
+        closeModalAsignarRol();
+        await cargarUsuarios();
+      } catch (e) {
+        console.error("Error desasignando rol funcional:", e);
+        toastError("Error de red/servidor al quitar el rol funcional.");
+      }
     }
 
-    toastSuccess(data?.mensaje || "Rol funcional asignado correctamente");
+    async function obtenerRolFuncionalUsuario(id_usuario) {
+      try {
+        const url = `${API_URL}?accion=obtener_rol_funcional_usuario&id_usuario=${id_usuario}&t=${Date.now()}`;
+        const { parsed } = await fetchJSONSafe(url, { method: "GET" });
 
-    closeModalAsignarRol();
+        if (!parsed) return null;
+        if (parsed.success === false) return null;
 
-    // Refrescar tabla
-    await cargarUsuarios();
-  } catch (e) {
-    console.error("Error asignando rol funcional:", e);
-    toastError("Error de red/servidor al asignar el rol funcional.");
-  }
-}
-
-/**
- * Desasigna el rol funcional de un usuario (elimina la relación)
- */
-async function desasignarRolFuncional() {
-  if (!hiddenAsignarRolUserId) return;
-
-  const id_usuario = String(hiddenAsignarRolUserId.value || "").trim();
-
-  if (!id_usuario) {
-    toastError("No se detectó el usuario para desasignar rol.");
-    return;
-  }
-
-  try {
-    const data = await callApi(`${API_URL}?accion=desasignar_rol_funcional`, { id_usuario });
-
-    console.log("Respuesta desasignar_rol_funcional:", data);
-
-    if (data?.success === false || data?.error) {
-      toastError(data?.error || "No se pudo quitar el rol funcional.");
-      return;
+        return parsed.rol || null; // {id_rol, nombre_rol}
+      } catch (e) {
+        return null;
+      }
     }
-
-    toastSuccess(data?.mensaje || "Rol funcional quitado correctamente");
-    closeModalAsignarRol();
-    await cargarUsuarios();
-  } catch (e) {
-    console.error("Error desasignando rol funcional:", e);
-    toastError("Error de red/servidor al quitar el rol funcional.");
-  }
-}
-
-
-async function obtenerRolFuncionalUsuario(id_usuario) {
-  try {
-    const url = `${API_URL}?accion=obtener_rol_funcional_usuario&id_usuario=${id_usuario}&t=${Date.now()}`;
-    const { parsed } = await fetchJSONSafe(url, { method: "GET" });
-
-    if (!parsed) return null;
-    if (parsed.success === false) return null;
-
-    return parsed.rol || null; // {id_rol, nombre_rol}
-  } catch (e) {
-    return null;
-  }
-}
-
-
-
 
     // =========================
     // PASSWORD GENERATOR (LETTERS + NUMBERS + SPECIAL CHARACTERS)
@@ -1364,147 +1343,129 @@ async function obtenerRolFuncionalUsuario(id_usuario) {
         inputNumeroDocumento.value = editUser.numero_documento;
         inputTelefono.value = editUser.telefono;
         inputCargo.value = editUser.cargo;
+        
         // =====================================================
-// ✅ BLOQUEO: si es Instructor con vínculos, no permitir cambiar cargo
-// =====================================================
-(async () => {
-  try {
-      if (inputCargo && editUser?.id) {
-      // Guardar cargo original para revertir cambios
-      inputCargo.dataset.originalCargo = String(editUser.cargo || "");
-
-      // Bandera de bloqueo (por defecto no)
-      inputCargo.dataset.lockedInstructorChange = "0";
-
-      // Normalizamos cargo actual
-      const cargoActualNormalized = String(editUser.cargo || "").trim().toLowerCase();
-
-      // Handler reutilizable que revierte cambios si está bloqueado
-      const original = String(inputCargo.dataset.originalCargo || "");
-      const preventChangeHandler = function (e) {
-        try {
-          if (String(inputCargo.dataset.lockedInstructorChange) === "1") {
-            inputCargo.value = original;
-            const msg = inputCargo.title ||
-              "No es posible cambiar el cargo porque este instructor tiene vinculaciones activas.";
-            toastError(msg);
-          }
-        } catch (err) {
-          // ignore
-        }
-      };
-
-      // Attach immediately to prevent quick user changes before validation completes
-      try {
-        inputCargo.addEventListener("change", preventChangeHandler);
-        inputCargo.addEventListener("input", preventChangeHandler);
-        // store ref so we can remove it later if needed
-        inputCargo._preventChangeHandler = preventChangeHandler;
-      } catch (e) {}
-
-      // If cargo es Instructor, deshabilitamos temporalmente mientras validamos el backend
-      if (cargoActualNormalized === "instructor") {
-        // // Si editUser ya trae id_programa, eso es vínculo: bloquear inmediatamente
-        // if (editUser && (editUser.id_programa || editUser.idPrograma || editUser.programa)) {
-        //   inputCargo.dataset.lockedInstructorChange = "1";
-        //   try {
-        //     inputCargo.disabled = true;
-        //     inputCargo.classList.add("opacity-60", "cursor-not-allowed");
-        //     inputCargo.title = "No se puede cambiar el cargo porque el instructor tiene un programa asignado.";
-        //     try { toastError(inputCargo.title); } catch (e) {}
-        //   } catch (e) {}
-        // }
-
-        // marcar checking para UX y evitar interacción si no bloqueado por id_programa
-        if (String(inputCargo.dataset.lockedInstructorChange) !== "1") {
+        // ✅ BLOQUEO: si es Instructor con vínculos, no permitir cambiar cargo
+        // =====================================================
+        (async () => {
           try {
-            inputCargo.disabled = true;
-            inputCargo.classList.add("opacity-60", "cursor-not-allowed");
-            inputCargo.title = "Verificando vinculaciones...";
-          } catch (e) {}
-        }
+            if (inputCargo && editUser?.id) {
+              // Guardar cargo original para revertir cambios
+              inputCargo.dataset.originalCargo = String(editUser.cargo || "");
 
-        // Intentar validar; si la respuesta es nula la tratamos como "no bloqueo" para no romper UX
-  const resp = await validarCambioCargoInstructor(String(editUser.id), "Aprendiz");
-  try { console.log("openModalUsuario -> validarCambioCargoInstructor resp:", resp); } catch (e) {}
+              // Bandera de bloqueo (por defecto no)
+              inputCargo.dataset.lockedInstructorChange = "0";
 
-        // COMPROBACION ADICIONAL: consultar instructores_programas directamente
-        try {
-          const res = await fetch(`${API_URL}?accion=esta_vinculado_programa`, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_usuario: String(editUser.id) })
-          });
+              // Normalizamos cargo actual
+              const cargoActualNormalized = String(editUser.cargo || "").trim().toLowerCase();
 
-          const txt = await res.text();
-          const parsed = (function (t) { try { return JSON.parse(t); } catch (e) { return null; } })(txt);
-          try { console.log('openModalUsuario -> esta_vinculado_programa resp:', parsed, txt); } catch (e) {}
+              // Handler reutilizable que revierte cambios si está bloqueado
+              const original = String(inputCargo.dataset.originalCargo || "");
+              const preventChangeHandler = function (e) {
+                try {
+                  if (String(inputCargo.dataset.lockedInstructorChange) === "1") {
+                    inputCargo.value = original;
+                    const msg = inputCargo.title ||
+                      "No es posible cambiar el cargo porque este instructor tiene vinculaciones activas.";
+                    toastError(msg);
+                  }
+                } catch (err) {
+                  // ignore
+                }
+              };
 
-          // if (parsed && (parsed.vinculado === 1 || parsed.vinculado === '1')) {
-          //   inputCargo.dataset.lockedInstructorChange = "1";
-          //   inputCargo.disabled = true;
-          //   inputCargo.classList.add("opacity-60", "cursor-not-allowed");
-          //   inputCargo.title = "No se puede cambiar el cargo porque el instructor está vinculado a un programa.";
-          //   try { showLockMessageOnce(inputCargo.title); } catch (e) {}
-          // }
-        } catch (e) {
-          // ignore
-        }
+              // Attach immediately to prevent quick user changes before validation completes
+              try {
+                inputCargo.addEventListener("change", preventChangeHandler);
+                inputCargo.addEventListener("input", preventChangeHandler);
+                // store ref so we can remove it later if needed
+                inputCargo._preventChangeHandler = preventChangeHandler;
+              } catch (e) {}
 
-        if (resp && resp.success === true && Number(resp.can_change) === 0) {
-          inputCargo.dataset.lockedInstructorChange = "1";
-          inputCargo.disabled = true;
-          inputCargo.classList.add("opacity-60", "cursor-not-allowed");
-      inputCargo.title = resp.message || "No se puede cambiar el cargo porque tiene vínculos activos.";
-      try { showLockMessageOnce(inputCargo.title); } catch (e) {}
-        } else if (resp && (resp.success === false || Number(resp.can_change) === 0)) {
-          inputCargo.dataset.lockedInstructorChange = "1";
-          inputCargo.disabled = true;
-          inputCargo.classList.add("opacity-60", "cursor-not-allowed");
-      inputCargo.title = resp.message || "No se puede cambiar el cargo porque tiene vínculos activos.";
-      try { showLockMessageOnce(inputCargo.title); } catch (e) {}
-        } else {
-          // permitir cambio: removemos bloqueo y título SOLO si no fue bloqueado por otra comprobación
-          if (String(inputCargo.dataset.lockedInstructorChange) !== "1") {
-            inputCargo.dataset.lockedInstructorChange = "0";
-            inputCargo.disabled = false;
-            inputCargo.classList.remove("opacity-60", "cursor-not-allowed");
-            inputCargo.removeAttribute("title");
+              // If cargo es Instructor, deshabilitamos temporalmente mientras validamos el backend
+              if (cargoActualNormalized === "instructor") {
+                // marcar checking para UX y evitar interacción si no bloqueado por id_programa
+                if (String(inputCargo.dataset.lockedInstructorChange) !== "1") {
+                  try {
+                    inputCargo.disabled = true;
+                    inputCargo.classList.add("opacity-60", "cursor-not-allowed");
+                    inputCargo.title = "Verificando vinculaciones...";
+                  } catch (e) {}
+                }
 
-            // removemos el preventChangeHandler porque ahora no es necesario
-            try {
-              if (inputCargo._preventChangeHandler) {
-                inputCargo.removeEventListener("change", inputCargo._preventChangeHandler);
-                inputCargo.removeEventListener("input", inputCargo._preventChangeHandler);
-                delete inputCargo._preventChangeHandler;
+                // Intentar validar; si la respuesta es nula la tratamos como "no bloqueo" para no romper UX
+                const resp = await validarCambioCargoInstructor(String(editUser.id), "Aprendiz");
+                try { console.log("openModalUsuario -> validarCambioCargoInstructor resp:", resp); } catch (e) {}
+
+                // COMPROBACION ADICIONAL: consultar instructores_programas directamente
+                try {
+                  const res = await fetch(`${API_URL}?accion=esta_vinculado_programa`, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_usuario: String(editUser.id) })
+                  });
+
+                  const txt = await res.text();
+                  const parsed = (function (t) { try { return JSON.parse(t); } catch (e) { return null; } })(txt);
+                  try { console.log('openModalUsuario -> esta_vinculado_programa resp:', parsed, txt); } catch (e) {}
+                } catch (e) {
+                  // ignore
+                }
+
+                if (resp && resp.success === true && Number(resp.can_change) === 0) {
+                  inputCargo.dataset.lockedInstructorChange = "1";
+                  inputCargo.disabled = true;
+                  inputCargo.classList.add("opacity-60", "cursor-not-allowed");
+                  inputCargo.title = resp.message || "No se puede cambiar el cargo porque tiene vínculos activos.";
+                  try { showLockMessageOnce(inputCargo.title); } catch (e) {}
+                } else if (resp && (resp.success === false || Number(resp.can_change) === 0)) {
+                  inputCargo.dataset.lockedInstructorChange = "1";
+                  inputCargo.disabled = true;
+                  inputCargo.classList.add("opacity-60", "cursor-not-allowed");
+                  inputCargo.title = resp.message || "No se puede cambiar el cargo porque tiene vínculos activos.";
+                  try { showLockMessageOnce(inputCargo.title); } catch (e) {}
+                } else {
+                  // permitir cambio: removemos bloqueo y título SOLO si no fue bloqueado por otra comprobación
+                  if (String(inputCargo.dataset.lockedInstructorChange) !== "1") {
+                    inputCargo.dataset.lockedInstructorChange = "0";
+                    inputCargo.disabled = false;
+                    inputCargo.classList.remove("opacity-60", "cursor-not-allowed");
+                    inputCargo.removeAttribute("title");
+
+                    // removemos el preventChangeHandler porque ahora no es necesario
+                    try {
+                      if (inputCargo._preventChangeHandler) {
+                        inputCargo.removeEventListener("change", inputCargo._preventChangeHandler);
+                        inputCargo.removeEventListener("input", inputCargo._preventChangeHandler);
+                        delete inputCargo._preventChangeHandler;
+                      }
+                    } catch (e) {}
+                  } else {
+                    // Si ya fue bloqueado por otra comprobación (ej. instructores_programas), mantenemos bloqueo
+                    inputCargo.disabled = true;
+                    inputCargo.classList.add("opacity-60", "cursor-not-allowed");
+                  }
+                }
+              } else {
+                // No es instructor -> habilitar y quitar prevent handler si estaba
+                try {
+                  inputCargo.dataset.lockedInstructorChange = "0";
+                  inputCargo.disabled = false;
+                  inputCargo.classList.remove("opacity-60", "cursor-not-allowed");
+                  inputCargo.removeAttribute("title");
+                  if (inputCargo._preventChangeHandler) {
+                    inputCargo.removeEventListener("change", inputCargo._preventChangeHandler);
+                    inputCargo.removeEventListener("input", inputCargo._preventChangeHandler);
+                    delete inputCargo._preventChangeHandler;
+                  }
+                } catch (e) {}
               }
-            } catch (e) {}
-          } else {
-            // Si ya fue bloqueado por otra comprobación (ej. instructores_programas), mantenemos bloqueo
-            inputCargo.disabled = true;
-            inputCargo.classList.add("opacity-60", "cursor-not-allowed");
+            }
+          } catch (e) {
+            // no-fatal
           }
-        }
-      } else {
-        // No es instructor -> habilitar y quitar prevent handler si estaba
-        try {
-          inputCargo.dataset.lockedInstructorChange = "0";
-          inputCargo.disabled = false;
-          inputCargo.classList.remove("opacity-60", "cursor-not-allowed");
-          inputCargo.removeAttribute("title");
-          if (inputCargo._preventChangeHandler) {
-            inputCargo.removeEventListener("change", inputCargo._preventChangeHandler);
-            inputCargo.removeEventListener("input", inputCargo._preventChangeHandler);
-            delete inputCargo._preventChangeHandler;
-          }
-        } catch (e) {}
-      }
-    }
-  } catch (e) {
-    // no-fatal
-  }
-})();
+        })();
 
         inputCorreo.value = editUser.correo;
         inputPassword.value = "";
@@ -1614,7 +1575,6 @@ async function obtenerRolFuncionalUsuario(id_usuario) {
           : null;
 
       detalleUsuarioContent.innerHTML = `
-      
         <div class="flex items-center gap-4">
           ${renderAvatarHTML(user, "h-16 w-16", "text-xl")}
           <div>
@@ -1664,10 +1624,6 @@ async function obtenerRolFuncionalUsuario(id_usuario) {
             <span class="col-span-2">${user.fecha_creacion || ""}</span>
           </div>
 
-          
-
-          
-
           ${
             programaNombre
               ? `
@@ -1700,43 +1656,42 @@ async function obtenerRolFuncionalUsuario(id_usuario) {
           const rows = [];
 
           if (bodegas.length > 0) {
-      const itemsHtml = bodegas
-        .map((b, idx) => {
-          const nombre = b.nombre_bodega || b.nombre || `Bodega #${b.id_bodega}`;
-          const asignador = b.asignado_por_nombre || b.asignado_por || "N/A";
-          const fecha = b.fecha_asignacion || "N/A";
+            const itemsHtml = bodegas
+              .map((b, idx) => {
+                const nombre = b.nombre_bodega || b.nombre || `Bodega #${b.id_bodega}`;
+                const asignador = b.asignado_por_nombre || b.asignado_por || "N/A";
+                const fecha = b.fecha_asignacion || "N/A";
 
-          return `
-            <div class="${idx > 0 ? "mt-3 pt-3 border-t border-gray-200" : ""}">
-              <div class="grid grid-cols-3 gap-2">
-                <span class="text-sm">Bodega asignada:</span>
-                <span class="col-span-2 text-sm">${nombre}</span>
+                return `
+                  <div class="${idx > 0 ? "mt-3 pt-3 border-t border-gray-200" : ""}">
+                    <div class="grid grid-cols-3 gap-2">
+                      <span class="text-sm">Bodega asignada:</span>
+                      <span class="col-span-2 text-sm">${nombre}</span>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 mt-1">
+                      <span class="text-sm">Asignada por:</span>
+                      <span class="col-span-2 text-sm">${asignador}</span>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 mt-1">
+                      <span class="text-sm">Fecha:</span>
+                      <span class="col-span-2 text-sm">${fecha}</span>
+                    </div>
+                  </div>
+                `;
+              })
+              .join("");
+
+            rows.push(`
+              <hr class="my-3 border-gray-200" />
+              <div class="grid  gap-2 mt-3">
+                <div class="col-span-2">
+                  ${itemsHtml}
+                </div>
               </div>
-
-              <div class="grid grid-cols-3 gap-2 mt-1">
-                <span class="text-sm">Asignada por:</span>
-                <span class="col-span-2 text-sm">${asignador}</span>
-              </div>
-
-              <div class="grid grid-cols-3 gap-2 mt-1">
-                <span class="text-sm">Fecha:</span>
-                <span class="col-span-2 text-sm">${fecha}</span>
-              </div>
-            </div>
-          `;
-        })
-        .join("");
-
-      rows.push(`
-        <hr class="my-3 border-gray-200" />
-        <div class="grid  gap-2 mt-3">
-          <div class="col-span-2">
-            ${itemsHtml}
-          </div>
-        </div>
-      `);
-    }
-
+            `);
+          }
 
           if (subbodegas.length > 0) {
             const itemsHtml = subbodegas
@@ -1912,6 +1867,61 @@ async function obtenerRolFuncionalUsuario(id_usuario) {
         console.error("Error al cargar usuarios:", error);
         users = [];
         renderTable();
+      }
+    }
+
+    // =========================
+    // ✅ NUEVA FUNCIÓN: CARGAR PROGRAMAS DE FORMACIÓN
+    // =========================
+    async function cargarProgramas() {
+      console.log("📚 Cargando programas de formación...");
+      
+      try {
+        const url = `${PROGRAMAS_API_URL}?accion=listar&t=${Date.now()}`;
+        const { parsed, text } = await fetchJSONSafe(url, { method: "GET" });
+        
+        console.log("Respuesta programas cruda:", text);
+        
+        if (!parsed) {
+          console.error("❌ No se pudo parsear respuesta de programas");
+          programas = [];
+          programasMap = {};
+          renderOpcionesPrograma();
+          return;
+        }
+        
+        // Normalizar respuesta (acepta array directo o {data: [...]})
+        let lista = [];
+        if (Array.isArray(parsed)) {
+          lista = parsed;
+        } else if (parsed.data && Array.isArray(parsed.data)) {
+          lista = parsed.data;
+        } else if (parsed.programas && Array.isArray(parsed.programas)) {
+          lista = parsed.programas;
+        }
+        
+        // Mapear programas
+        programas = lista.map(p => ({
+          id_programa: p.id_programa || p.id,
+          nombre_programa: p.nombre_programa || p.nombre || "Sin nombre"
+        })).filter(p => p.id_programa);
+        
+        // Crear mapa para búsqueda rápida
+        programasMap = {};
+        programas.forEach(p => {
+          programasMap[String(p.id_programa)] = p.nombre_programa;
+        });
+        
+        console.log(`✅ ${programas.length} programas cargados:`, programas);
+        
+        // Renderizar opciones en el select del modal
+        renderOpcionesPrograma();
+        
+      } catch (error) {
+        console.error("❌ Error cargando programas:", error);
+        programas = [];
+        programasMap = {};
+        renderOpcionesPrograma();
       }
     }
 
@@ -2232,169 +2242,168 @@ async function obtenerRolFuncionalUsuario(id_usuario) {
         tr.className = "hover:bg-muted/40";
 
         const estadoBadgeClass = user.estado ? "badge-estado-activo" : "badge-estado-inactivo";
-tr.innerHTML = `
-  <td class="px-4 py-3 align-middle">
-    <div class="flex items-center gap-3">
-      ${renderAvatarHTML(user, "h-9 w-9", "text-sm")}
-      <div>
-        <p class="font-medium text-sm">${user.nombre_completo}</p>
-        <p class="text-xs text-muted-foreground">${user.correo}</p>
-      </div>
-    </div>
-  </td>
+        tr.innerHTML = `
+          <td class="px-4 py-3 align-middle">
+            <div class="flex items-center gap-3">
+              ${renderAvatarHTML(user, "h-9 w-9", "text-sm")}
+              <div>
+                <p class="font-medium text-sm">${user.nombre_completo}</p>
+                <p class="text-xs text-muted-foreground">${user.correo}</p>
+              </div>
+            </div>
+          </td>
 
-  <td class="px-4 py-3 align-middle">
-    <span class="text-sm">${user.tipo_documento} ${user.numero_documento}</span>
-  </td>
+          <td class="px-4 py-3 align-middle">
+            <span class="text-sm">${user.tipo_documento} ${user.numero_documento}</span>
+          </td>
 
-  <!-- ✅ COLUMNA ROL (CARGO) -->
-  <td class="px-4 py-3 align-middle">
-    <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-      roleBadgeStyles[user.cargo] || "badge-role-default"
-    }">
-      ${roleLabels[user.cargo] || user.cargo}
-    </span>
-  </td>
+          <!-- ✅ COLUMNA ROL (CARGO) -->
+          <td class="px-4 py-3 align-middle">
+            <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+              roleBadgeStyles[user.cargo] || "badge-role-default"
+            }">
+              ${roleLabels[user.cargo] || user.cargo}
+            </span>
+          </td>
 
-  <!-- ✅ NUEVA COLUMNA: ROL FUNCIONAL -->
-  <td class="px-4 py-3 align-middle">
-    ${renderRolFuncionalBadgeHTML(user)}
-  </td>
+          <!-- ✅ NUEVA COLUMNA: ROL FUNCIONAL -->
+          <td class="px-4 py-3 align-middle">
+            ${renderRolFuncionalBadgeHTML(user)}
+          </td>
 
-  <td class="px-4 py-3 align-middle">
-    <span class="text-sm">${user.telefono}</span>
-  </td>
+          <td class="px-4 py-3 align-middle">
+            <span class="text-sm">${user.telefono}</span>
+          </td>
 
-  <td class="px-4 py-3 align-middle">
-    <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${estadoBadgeClass}">
-      ${user.estado ? "Activo" : "Inactivo"}
-    </span>
-  </td>
+          <td class="px-4 py-3 align-middle">
+            <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${estadoBadgeClass}">
+              ${user.estado ? "Activo" : "Inactivo"}
+            </span>
+          </td>
 
-  <td class="px-4 py-3 align-middle text-right">
-    <div class="relative inline-block text-left">
-      <button
-        type="button"
-        class="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted text-slate-800"
-        data-menu-trigger="${user.id}"
-      >
-        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
-             viewBox="0 0 24 24">
-          <circle cx="5" cy="12" r="1.5"></circle>
-          <circle cx="12" cy="12" r="1.5"></circle>
-          <circle cx="19" cy="12" r="1.5"></circle>
-        </svg>
-      </button>
-
-      <div
-        class="dropdown-menu hidden absolute right-0 mt-2 w-48 rounded-xl border border-border bg-popover shadow-md py-1"
-        data-menu="${user.id}"
-      >
-        <button
-          type="button"
-          class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
-          data-action="ver"
-          data-id="${user.id}"
-        >
-          <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-               viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M1 12S4.5 5 12 5s11 7 11 7-3.5 7-11 7S1 12 1 12z"/>
-            <circle cx="12" cy="12" r="3"></circle>
-          </svg>
-          Ver detalles
-        </button>
-
-        <button
-          type="button"
-          class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
-          data-action="editar"
-          data-id="${user.id}"
-        >
-          <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-               viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M12 20h9"/>
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M16.5 3.5a2.121 2.121 0 0 1 3 3L9 17l-4 1 1-4 10.5-10.5z"/>
-          </svg>
-          Editar
-        </button>
-
-        ${user.cargo === "Aprendiz" ? "" : `
-        <button
-          type="button"
-          class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
-          data-action="asignar_rol"
-          data-id="${user.id}"
-        >
-          <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-              viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M20 21v-1a4 4 0 0 0-4-4h-1" />
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M4 21v-1a4 4 0 0 1 4-4h4" />
-          </svg>
-          Asignar rol
-        </button>
-        `}
-
-        ${user.id_rol_funcional ? `
-        <button
-          type="button"
-          class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
-          data-action="quitar_rol"
-          data-id="${user.id}"
-        >
-          <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-               viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-          Quitar rol
-        </button>
-        ` : ''}
-
-        <hr class="border-border my-1">
-
-        <button
-          type="button"
-          class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
-          data-action="toggle"
-          data-id="${user.id}"
-        >
-          ${
-            user.estado
-              ? `
-                <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                  <circle cx="9" cy="7" r="3"></circle>
-                  <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M4 21v-1a4 4 0 0 1 4-4h2"/>
-                  <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M17 17l4 4m0-4l-4 4"/>
+          <td class="px-4 py-3 align-middle text-right">
+            <div class="relative inline-block text-left">
+              <button
+                type="button"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted text-slate-800"
+                data-menu-trigger="${user.id}"
+              >
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+                     viewBox="0 0 24 24">
+                  <circle cx="5" cy="12" r="1.5"></circle>
+                  <circle cx="12" cy="12" r="1.5"></circle>
+                  <circle cx="19" cy="12" r="1.5"></circle>
                 </svg>
-                Desactivar
-              `
-              : `
-                <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                  <circle cx="9" cy="7" r="3"></circle>
-                  <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M4 21v-1a4 4 0 0 1 4-4h2"/>
-                  <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M16 19l2 2 4-4"/>
-                </svg>
-                Activar
-              `
-          }
-        </button>
-      </div>
-    </div>
-  </td>
-`;
+              </button>
 
+              <div
+                class="dropdown-menu hidden absolute right-0 mt-2 w-48 rounded-xl border border-border bg-popover shadow-md py-1"
+                data-menu="${user.id}"
+              >
+                <button
+                  type="button"
+                  class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
+                  data-action="ver"
+                  data-id="${user.id}"
+                >
+                  <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                       viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M1 12S4.5 5 12 5s11 7 11 7-3.5 7-11 7S1 12 1 12z"/>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  Ver detalles
+                </button>
+
+                <button
+                  type="button"
+                  class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
+                  data-action="editar"
+                  data-id="${user.id}"
+                >
+                  <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                       viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M12 20h9"/>
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M16.5 3.5a2.121 2.121 0 0 1 3 3L9 17l-4 1 1-4 10.5-10.5z"/>
+                  </svg>
+                  Editar
+                </button>
+
+                ${user.cargo === "Aprendiz" ? "" : `
+                <button
+                  type="button"
+                  class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
+                  data-action="asignar_rol"
+                  data-id="${user.id}"
+                >
+                  <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                      viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M20 21v-1a4 4 0 0 0-4-4h-1" />
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M4 21v-1a4 4 0 0 1 4-4h4" />
+                  </svg>
+                  Asignar rol
+                </button>
+                `}
+
+                ${user.id_rol_funcional ? `
+                <button
+                  type="button"
+                  class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
+                  data-action="quitar_rol"
+                  data-id="${user.id}"
+                >
+                  <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                       viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Quitar rol
+                </button>
+                ` : ''}
+
+                <hr class="border-border my-1">
+
+                <button
+                  type="button"
+                  class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
+                  data-action="toggle"
+                  data-id="${user.id}"
+                >
+                  ${
+                    user.estado
+                      ? `
+                        <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                          <circle cx="9" cy="7" r="3"></circle>
+                          <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M4 21v-1a4 4 0 0 1 4-4h2"/>
+                          <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M17 17l4 4m0-4l-4 4"/>
+                        </svg>
+                        Desactivar
+                      `
+                      : `
+                        <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                          <circle cx="9" cy="7" r="3"></circle>
+                          <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M4 21v-1a4 4 0 0 1 4-4h2"/>
+                          <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M16 19l2 2 4-4"/>
+                        </svg>
+                        Activar
+                      `
+                  }
+                </button>
+              </div>
+            </div>
+          </td>
+        `;
 
         tbodyUsuarios.appendChild(tr);
       });
@@ -2417,8 +2426,6 @@ tr.innerHTML = `
                 <p class="text-[11px] sm:text-xs text-muted-foreground">${user.tipo_documento} ${user.numero_documento}</p>
               </div>
             </div>
-
-            
 
             <div class="relative inline-block text-left">
               <button
@@ -2466,40 +2473,40 @@ tr.innerHTML = `
                   </svg>
                   Editar
                 </button>
-        ${user.cargo === "Aprendiz" ? "" : `
-        <button
-        type="button"
-        class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
-        data-action="asignar_rol"
-        data-id="${user.id}"
-      >
-        <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-        viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M20 21v-1a4 4 0 0 0-4-4h-1" />
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="M4 21v-1a4 4 0 0 1 4-4h4" />
-        </svg>
-        Asignar rol
-      </button>
-        `}
+                ${user.cargo === "Aprendiz" ? "" : `
+                <button
+                  type="button"
+                  class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
+                  data-action="asignar_rol"
+                  data-id="${user.id}"
+                >
+                  <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M15 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M20 21v-1a4 4 0 0 0-4-4h-1" />
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M4 21v-1a4 4 0 0 1 4-4h4" />
+                  </svg>
+                  Asignar rol
+                </button>
+                `}
 
-        ${user.id_rol_funcional ? `
-        <button
-          type="button"
-          class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
-          data-action="quitar_rol"
-          data-id="${user.id}"
-        >
-          <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-               viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-          Quitar rol
-        </button>
-        ` : ''}
+                ${user.id_rol_funcional ? `
+                <button
+                  type="button"
+                  class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted"
+                  data-action="quitar_rol"
+                  data-id="${user.id}"
+                >
+                  <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                       viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Quitar rol
+                </button>
+                ` : ''}
 
                 <hr class="border-border my-1">
                 <button
@@ -2572,8 +2579,6 @@ tr.innerHTML = `
             </div>
           </div>
 
-          
-
           <hr class="border-border my-1" />
 
           <div class="flex justify-end">
@@ -2620,181 +2625,180 @@ tr.innerHTML = `
      * Uses event delegation to keep a single listener bound for the entire module lifecycle.
      */
     function attachMenuEvents() {
-  if (_menuEventsAttached) return;
-  _menuEventsAttached = true;
+      if (_menuEventsAttached) return;
+      _menuEventsAttached = true;
 
-  // =========================
-  // ✅ PORTAL HELPERS (NO CLIP BY OVERFLOW)
-  // =========================
-  function portalizeMenu(menu, trigger) {
-    if (!menu || !trigger) return;
+      // =========================
+      // ✅ PORTAL HELPERS (NO CLIP BY OVERFLOW)
+      // =========================
+      function portalizeMenu(menu, trigger) {
+        if (!menu || !trigger) return;
 
-    // Si ya está portaleado, solo reposiciona
-    if (menu.dataset.portaled === "1") {
-      positionMenuFixed(menu, trigger);
-      return;
-    }
+        // Si ya está portaleado, solo reposiciona
+        if (menu.dataset.portaled === "1") {
+          positionMenuFixed(menu, trigger);
+          return;
+        }
 
-    // Crear placeholder donde estaba el menú
-    const placeholder = document.createElement("span");
-    placeholder.style.display = "none";
-    placeholder.dataset.menuPlaceholder = menu.getAttribute("data-menu") || "";
+        // Crear placeholder donde estaba el menú
+        const placeholder = document.createElement("span");
+        placeholder.style.display = "none";
+        placeholder.dataset.menuPlaceholder = menu.getAttribute("data-menu") || "";
 
-    // Guardar referencia del placeholder
-    menu._placeholderEl = placeholder;
+        // Guardar referencia del placeholder
+        menu._placeholderEl = placeholder;
 
-    // Insertar placeholder antes del menú
-    menu.parentNode.insertBefore(placeholder, menu);
+        // Insertar placeholder antes del menú
+        menu.parentNode.insertBefore(placeholder, menu);
 
-    // Mover el menú al body (ESCAPA overflow-hidden)
-    document.body.appendChild(menu);
+        // Mover el menú al body (ESCAPA overflow-hidden)
+        document.body.appendChild(menu);
 
-    // Marcar como portaleado
-    menu.dataset.portaled = "1";
+        // Marcar como portaleado
+        menu.dataset.portaled = "1";
 
-    // Forzar estilos flotantes
-    menu.style.position = "fixed";
-    menu.style.zIndex = "99999";
-    menu.style.marginTop = "0";
+        // Forzar estilos flotantes
+        menu.style.position = "fixed";
+        menu.style.zIndex = "99999";
+        menu.style.marginTop = "0";
 
-    // Posicionarlo según el botón
-    positionMenuFixed(menu, trigger);
-  }
-
-  function restoreMenu(menu) {
-    if (!menu) return;
-
-    // Si no está portaleado, nada
-    if (menu.dataset.portaled !== "1") return;
-
-    const placeholder = menu._placeholderEl;
-    if (placeholder && placeholder.parentNode) {
-      placeholder.parentNode.insertBefore(menu, placeholder);
-      placeholder.remove();
-    }
-
-    menu.dataset.portaled = "0";
-    menu.style.position = "";
-    menu.style.top = "";
-    menu.style.left = "";
-    menu.style.zIndex = "";
-    menu.style.marginTop = "";
-  }
-
-  function positionMenuFixed(menu, trigger) {
-    if (!menu || !trigger) return;
-
-    // Necesitamos que esté visible para medir ancho/alto
-    menu.classList.remove("hidden");
-
-    const rect = trigger.getBoundingClientRect();
-    const menuRect = menu.getBoundingClientRect();
-
-    // Preferimos abrir hacia abajo
-    let top = rect.bottom + 8;
-    let left = rect.right - menuRect.width;
-
-    // ✅ Ajuste si se sale por la derecha
-    const maxLeft = window.innerWidth - menuRect.width - 12;
-    if (left > maxLeft) left = maxLeft;
-    if (left < 12) left = 12;
-
-    // ✅ Ajuste si se sale por abajo (abre hacia arriba)
-    const maxTop = window.innerHeight - menuRect.height - 12;
-    if (top > maxTop) {
-      top = rect.top - menuRect.height - 8;
-    }
-    if (top < 12) top = 12;
-
-    menu.style.top = `${top}px`;
-    menu.style.left = `${left}px`;
-  }
-
-  const closeAllMenus = () => {
-    document.querySelectorAll("[data-menu]").forEach((el) => {
-      el.classList.add("hidden");
-      el.classList.remove("show");
-
-      // ✅ devolver a su lugar si estaba portaleado
-      restoreMenu(el);
-    });
-  };
-
-  document.addEventListener("click", (e) => {
-    const trigger = e.target.closest("[data-menu-trigger]");
-    const actionBtn = e.target.closest("[data-menu] [data-action]");
-    const anyMenu = e.target.closest("[data-menu]");
-
-    // 1) Click en opción del menú
-    if (actionBtn) {
-      e.stopPropagation();
-
-      const action = actionBtn.getAttribute("data-action");
-      const id = actionBtn.getAttribute("data-id");
-      const user = users.find((u) => String(u.id) === String(id));
-      if (!user) {
-        closeAllMenus();
-        return;
+        // Posicionarlo según el botón
+        positionMenuFixed(menu, trigger);
       }
 
-      if (action === "ver") openModalVerUsuario(user);
-      else if (action === "editar") openModalUsuario(user);
-      else if (action === "toggle") toggleStatus(id);
-      else if (action === "asignar_rol") openModalAsignarRol(user);
-      else if (action === "quitar_rol") {
-        // Abrir modal de confirmación (manejado por funciones abajo)
-        openConfirmarQuitarRol(user);
+      function restoreMenu(menu) {
+        if (!menu) return;
+
+        // Si no está portaleado, nada
+        if (menu.dataset.portaled !== "1") return;
+
+        const placeholder = menu._placeholderEl;
+        if (placeholder && placeholder.parentNode) {
+          placeholder.parentNode.insertBefore(menu, placeholder);
+          placeholder.remove();
+        }
+
+        menu.dataset.portaled = "0";
+        menu.style.position = "";
+        menu.style.top = "";
+        menu.style.left = "";
+        menu.style.zIndex = "";
+        menu.style.marginTop = "";
       }
 
-      closeAllMenus();
-      return;
-    }
+      function positionMenuFixed(menu, trigger) {
+        if (!menu || !trigger) return;
 
-    // 2) Click en los 3 punticos
-    if (trigger) {
-      e.stopPropagation();
+        // Necesitamos que esté visible para medir ancho/alto
+        menu.classList.remove("hidden");
 
-      const wrapper =
-        trigger.closest(".relative") ||
-        trigger.closest(".inline-block") ||
-        trigger.closest("td") ||
-        trigger.closest("div");
+        const rect = trigger.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
 
-      if (!wrapper) return;
+        // Preferimos abrir hacia abajo
+        let top = rect.bottom + 8;
+        let left = rect.right - menuRect.width;
 
-      const menu = wrapper.querySelector("[data-menu]");
-      if (!menu) return;
+        // ✅ Ajuste si se sale por la derecha
+        const maxLeft = window.innerWidth - menuRect.width - 12;
+        if (left > maxLeft) left = maxLeft;
+        if (left < 12) left = 12;
 
-      const isHidden = menu.classList.contains("hidden");
+        // ✅ Ajuste si se sale por abajo (abre hacia arriba)
+        const maxTop = window.innerHeight - menuRect.height - 12;
+        if (top > maxTop) {
+          top = rect.top - menuRect.height - 8;
+        }
+        if (top < 12) top = 12;
 
-      // Cerrar otros menús
-      closeAllMenus();
+        menu.style.top = `${top}px`;
+        menu.style.left = `${left}px`;
+      }
 
-      if (isHidden) {
-        // ✅ PORTALIZAR para evitar recorte por overflow
-        portalizeMenu(menu, trigger);
+      const closeAllMenus = () => {
+        document.querySelectorAll("[data-menu]").forEach((el) => {
+          el.classList.add("hidden");
+          el.classList.remove("show");
 
-        requestAnimationFrame(() => {
-          menu.classList.add("show");
+          // ✅ devolver a su lugar si estaba portaleado
+          restoreMenu(el);
         });
-      } else {
-        closeAllMenus();
-      }
+      };
 
-      return;
+      document.addEventListener("click", (e) => {
+        const trigger = e.target.closest("[data-menu-trigger]");
+        const actionBtn = e.target.closest("[data-menu] [data-action]");
+        const anyMenu = e.target.closest("[data-menu]");
+
+        // 1) Click en opción del menú
+        if (actionBtn) {
+          e.stopPropagation();
+
+          const action = actionBtn.getAttribute("data-action");
+          const id = actionBtn.getAttribute("data-id");
+          const user = users.find((u) => String(u.id) === String(id));
+          if (!user) {
+            closeAllMenus();
+            return;
+          }
+
+          if (action === "ver") openModalVerUsuario(user);
+          else if (action === "editar") openModalUsuario(user);
+          else if (action === "toggle") toggleStatus(id);
+          else if (action === "asignar_rol") openModalAsignarRol(user);
+          else if (action === "quitar_rol") {
+            // Abrir modal de confirmación (manejado por funciones abajo)
+            openConfirmarQuitarRol(user);
+          }
+
+          closeAllMenus();
+          return;
+        }
+
+        // 2) Click en los 3 punticos
+        if (trigger) {
+          e.stopPropagation();
+
+          const wrapper =
+            trigger.closest(".relative") ||
+            trigger.closest(".inline-block") ||
+            trigger.closest("td") ||
+            trigger.closest("div");
+
+          if (!wrapper) return;
+
+          const menu = wrapper.querySelector("[data-menu]");
+          if (!menu) return;
+
+          const isHidden = menu.classList.contains("hidden");
+
+          // Cerrar otros menús
+          closeAllMenus();
+
+          if (isHidden) {
+            // ✅ PORTALIZAR para evitar recorte por overflow
+            portalizeMenu(menu, trigger);
+
+            requestAnimationFrame(() => {
+              menu.classList.add("show");
+            });
+          } else {
+            closeAllMenus();
+          }
+
+          return;
+        }
+
+        // 3) Click fuera cierra todo
+        if (!anyMenu) {
+          closeAllMenus();
+        }
+      });
+
+      // ✅ Recalcular posición si haces scroll o resize
+      window.addEventListener("scroll", closeAllMenus, true);
+      window.addEventListener("resize", closeAllMenus);
     }
-
-    // 3) Click fuera cierra todo
-    if (!anyMenu) {
-      closeAllMenus();
-    }
-  });
-
-  // ✅ Recalcular posición si haces scroll o resize
-  window.addEventListener("scroll", closeAllMenus, true);
-  window.addEventListener("resize", closeAllMenus);
-}
-
 
     // =========================
     // GLOBAL EVENT LISTENERS
@@ -2829,179 +2833,173 @@ tr.innerHTML = `
     safeOn(btnVistaTarjetas, "click", setVistaTarjetas);
 
     // =========================
-// MODAL ASIGNAR ROL - EVENTS
-// =========================
-safeOn(btnCerrarModalAsignarRol, "click", closeModalAsignarRol);
-safeOn(btnCancelarModalAsignarRol, "click", closeModalAsignarRol);
+    // MODAL ASIGNAR ROL - EVENTS
+    // =========================
+    safeOn(btnCerrarModalAsignarRol, "click", closeModalAsignarRol);
+    safeOn(btnCancelarModalAsignarRol, "click", closeModalAsignarRol);
 
-safeOn(btnGuardarAsignarRol, "click", async () => {
-  await asignarRolFuncional();
-});
-
-// Listener para quitar rol desde el modal
-// (antes había un listener para btnQuitarAsignarRol, ahora usamos el modal de confirmación)
-
-// Cuando cambia el rol seleccionado en el modal de asignar rol
-safeOn(selectAsignarRol, "change", (e) => {
-  const selectedText =
-    selectAsignarRol.options[selectAsignarRol.selectedIndex]?.text || "";
-
-  const isEncargadoBodega = /bodega/i.test(selectedText) && !/subbodega/i.test(selectedText);
-  const isEncargadoSubbodega = /subbodega/i.test(selectedText) || /sub-bodega/i.test(selectedText);
-
-  // ✅ Mostrar/ocultar wrappers
-  if (wrapperBodegaAsignarRol)
-    wrapperBodegaAsignarRol.classList.toggle("hidden", !isEncargadoBodega && !isEncargadoSubbodega);
-
-  if (wrapperSubbodegaAsignarRol)
-    wrapperSubbodegaAsignarRol.classList.toggle("hidden", !isEncargadoSubbodega);
-
-  // ✅ Reset selects para evitar “valores pegados”
-  if (selectBodegaAsignarRol) {
-    selectBodegaAsignarRol.value = "";
-    selectBodegaAsignarRol.innerHTML = '<option value="">Cargando bodegas...</option>';
-  }
-
-  if (selectSubbodegaAsignarRol) {
-    selectSubbodegaAsignarRol.value = "";
-    selectSubbodegaAsignarRol.innerHTML = '<option value="">Seleccione una bodega primero</option>';
-  }
-
-  // ✅ Cargar bodegas cuando aplica
-  if (isEncargadoBodega || isEncargadoSubbodega) {
-    cargarBodegasAsignarRol();
-  }
-});
-
-
-// Al cambiar la bodega, cargar subbodegas si el wrapper está visible
-safeOn(selectBodegaAsignarRol, 'change', (e) => {
-  const id = selectBodegaAsignarRol.value;
-  if (!id) {
-    if (selectSubbodegaAsignarRol) selectSubbodegaAsignarRol.innerHTML = '<option value="">Seleccione una bodega primero</option>';
-    return;
-  }
-  // Solo cargar subbodegas si el wrapper está visible (es relevante para subbodega roles)
-  if (wrapperSubbodegaAsignarRol && !wrapperSubbodegaAsignarRol.classList.contains('hidden')) {
-    cargarSubbodegasAsignarRol(id);
-  }
-});
-
-// Cerrar modal si das click fuera del cuadro (overlay)
-if (modalAsignarRol) {
-  modalAsignarRol.addEventListener("click", (e) => {
-    if (e.target === modalAsignarRol) closeModalAsignarRol();
-  });
-}
-
-// =========================
-// MODAL CONFIRMACIÓN: QUITAR ROL FUNCIONAL
-// =========================
-const modalConfirmarQuitarRol = document.getElementById('modalConfirmarQuitarRol');
-const btnCerrarModalConfirmarQuitarRol = document.getElementById('btnCerrarModalConfirmarQuitarRol');
-const btnCancelarModalConfirmarQuitarRol = document.getElementById('btnCancelarModalConfirmarQuitarRol');
-const btnConfirmarQuitarRol = document.getElementById('btnConfirmarQuitarRol');
-const hiddenConfirmarQuitarUserId = document.getElementById('hiddenConfirmarQuitarUserId');
-const confirmarQuitarNombreUsuario = document.getElementById('confirmarQuitarNombreUsuario');
-const confirmarQuitarRolFuncional = document.getElementById('confirmarQuitarRolFuncional');
-
-function openConfirmarQuitarRol(user) {
-  if (!modalConfirmarQuitarRol) return;
-  modalConfirmarQuitarRol.classList.remove('hidden');
-  modalConfirmarQuitarRol.classList.add('active');
-
-  try {
-  if (window.lucide && typeof window.lucide.replace === "function") {
-    window.lucide.replace({
-      width: 18,
-      height: 18,
-      attrs: { "stroke-width": "1.5" } // ✅ más minimalista
+    safeOn(btnGuardarAsignarRol, "click", async () => {
+      await asignarRolFuncional();
     });
-  }
-} catch (e) {}
 
+    // Cuando cambia el rol seleccionado en el modal de asignar rol
+    safeOn(selectAsignarRol, "change", (e) => {
+      const selectedText =
+        selectAsignarRol.options[selectAsignarRol.selectedIndex]?.text || "";
 
-  // Animación de entrada (scale + fade)
-  try {
-    const inner = document.getElementById('modalConfirmarQuitarRolInner');
-    if (inner) {
-      inner.classList.remove('scale-95', 'opacity-0');
-      inner.classList.add('scale-100', 'opacity-100');
+      const isEncargadoBodega = /bodega/i.test(selectedText) && !/subbodega/i.test(selectedText);
+      const isEncargadoSubbodega = /subbodega/i.test(selectedText) || /sub-bodega/i.test(selectedText);
+
+      // ✅ Mostrar/ocultar wrappers
+      if (wrapperBodegaAsignarRol)
+        wrapperBodegaAsignarRol.classList.toggle("hidden", !isEncargadoBodega && !isEncargadoSubbodega);
+
+      if (wrapperSubbodegaAsignarRol)
+        wrapperSubbodegaAsignarRol.classList.toggle("hidden", !isEncargadoSubbodega);
+
+      // ✅ Reset selects para evitar “valores pegados”
+      if (selectBodegaAsignarRol) {
+        selectBodegaAsignarRol.value = "";
+        selectBodegaAsignarRol.innerHTML = '<option value="">Cargando bodegas...</option>';
+      }
+
+      if (selectSubbodegaAsignarRol) {
+        selectSubbodegaAsignarRol.value = "";
+        selectSubbodegaAsignarRol.innerHTML = '<option value="">Seleccione una bodega primero</option>';
+      }
+
+      // ✅ Cargar bodegas cuando aplica
+      if (isEncargadoBodega || isEncargadoSubbodega) {
+        cargarBodegasAsignarRol();
+      }
+    });
+
+    // Al cambiar la bodega, cargar subbodegas si el wrapper está visible
+    safeOn(selectBodegaAsignarRol, 'change', (e) => {
+      const id = selectBodegaAsignarRol.value;
+      if (!id) {
+        if (selectSubbodegaAsignarRol) selectSubbodegaAsignarRol.innerHTML = '<option value="">Seleccione una bodega primero</option>';
+        return;
+      }
+      // Solo cargar subbodegas si el wrapper está visible (es relevante para subbodega roles)
+      if (wrapperSubbodegaAsignarRol && !wrapperSubbodegaAsignarRol.classList.contains('hidden')) {
+        cargarSubbodegasAsignarRol(id);
+      }
+    });
+
+    // Cerrar modal si das click fuera del cuadro (overlay)
+    if (modalAsignarRol) {
+      modalAsignarRol.addEventListener("click", (e) => {
+        if (e.target === modalAsignarRol) closeModalAsignarRol();
+      });
     }
-  } catch (e) {}
 
-  if (hiddenConfirmarQuitarUserId) hiddenConfirmarQuitarUserId.value = String(user.id);
-  if (confirmarQuitarNombreUsuario) confirmarQuitarNombreUsuario.textContent = user.nombre_completo || '--';
-  // Mostrar rol funcional (si está disponible en el objeto user o en el mapa cargado)
-  if (typeof confirmarQuitarRolFuncional !== 'undefined' && confirmarQuitarRolFuncional) {
-    const rawRol = user.rol_funcional || user.nombre_rol_funcional || (user.id_rol_funcional ? rolesFuncionalesMap[String(user.id_rol_funcional)] : '') || '';
-    const rolText = rawRol ? formatRolFuncionalLabel(rawRol) : '';
-    confirmarQuitarRolFuncional.textContent = rolText || 'Sin rol asignado';
-  }
+    // =========================
+    // MODAL CONFIRMACIÓN: QUITAR ROL FUNCIONAL
+    // =========================
+    const modalConfirmarQuitarRol = document.getElementById('modalConfirmarQuitarRol');
+    const btnCerrarModalConfirmarQuitarRol = document.getElementById('btnCerrarModalConfirmarQuitarRol');
+    const btnCancelarModalConfirmarQuitarRol = document.getElementById('btnCancelarModalConfirmarQuitarRol');
+    const btnConfirmarQuitarRol = document.getElementById('btnConfirmarQuitarRol');
+    const hiddenConfirmarQuitarUserId = document.getElementById('hiddenConfirmarQuitarUserId');
+    const confirmarQuitarNombreUsuario = document.getElementById('confirmarQuitarNombreUsuario');
+    const confirmarQuitarRolFuncional = document.getElementById('confirmarQuitarRolFuncional');
 
-  // Renderizar iconos Lucide si la librería está cargada
-  try {
-    if (window.lucide && typeof window.lucide.replace === 'function') {
-      window.lucide.replace({ width: 18, height: 18 });
+    function openConfirmarQuitarRol(user) {
+      if (!modalConfirmarQuitarRol) return;
+      modalConfirmarQuitarRol.classList.remove('hidden');
+      modalConfirmarQuitarRol.classList.add('active');
+
+      try {
+        if (window.lucide && typeof window.lucide.replace === "function") {
+          window.lucide.replace({
+            width: 18,
+            height: 18,
+            attrs: { "stroke-width": "1.5" }
+          });
+        }
+      } catch (e) {}
+
+      // Animación de entrada (scale + fade)
+      try {
+        const inner = document.getElementById('modalConfirmarQuitarRolInner');
+        if (inner) {
+          inner.classList.remove('scale-95', 'opacity-0');
+          inner.classList.add('scale-100', 'opacity-100');
+        }
+      } catch (e) {}
+
+      if (hiddenConfirmarQuitarUserId) hiddenConfirmarQuitarUserId.value = String(user.id);
+      if (confirmarQuitarNombreUsuario) confirmarQuitarNombreUsuario.textContent = user.nombre_completo || '--';
+      // Mostrar rol funcional (si está disponible en el objeto user o en el mapa cargado)
+      if (typeof confirmarQuitarRolFuncional !== 'undefined' && confirmarQuitarRolFuncional) {
+        const rawRol = user.rol_funcional || user.nombre_rol_funcional || (user.id_rol_funcional ? rolesFuncionalesMap[String(user.id_rol_funcional)] : '') || '';
+        const rolText = rawRol ? formatRolFuncionalLabel(rawRol) : '';
+        confirmarQuitarRolFuncional.textContent = rolText || 'Sin rol asignado';
+      }
+
+      // Renderizar iconos Lucide si la librería está cargada
+      try {
+        if (window.lucide && typeof window.lucide.replace === 'function') {
+          window.lucide.replace({ width: 18, height: 18 });
+        }
+      } catch (e) {
+        // no-fatal
+      }
     }
-  } catch (e) {
-    // no-fatal
-  }
-}
 
-function closeConfirmarQuitarRol() {
-  if (!modalConfirmarQuitarRol) return;
-  // Animación de salida
-  try {
-    const inner = document.getElementById('modalConfirmarQuitarRolInner');
-    if (inner) {
-      inner.classList.add('scale-95', 'opacity-0');
-      inner.classList.remove('scale-100', 'opacity-100');
+    function closeConfirmarQuitarRol() {
+      if (!modalConfirmarQuitarRol) return;
+      // Animación de salida
+      try {
+        const inner = document.getElementById('modalConfirmarQuitarRolInner');
+        if (inner) {
+          inner.classList.add('scale-95', 'opacity-0');
+          inner.classList.remove('scale-100', 'opacity-100');
+        }
+      } catch (e) {}
+
+      setTimeout(() => {
+        modalConfirmarQuitarRol.classList.add('hidden');
+        modalConfirmarQuitarRol.classList.remove('active');
+      }, 180);
+      if (hiddenConfirmarQuitarUserId) hiddenConfirmarQuitarUserId.value = '';
+      if (confirmarQuitarNombreUsuario) confirmarQuitarNombreUsuario.textContent = '--';
     }
-  } catch (e) {}
 
-  setTimeout(() => {
-    modalConfirmarQuitarRol.classList.add('hidden');
-    modalConfirmarQuitarRol.classList.remove('active');
-  }, 180);
-  if (hiddenConfirmarQuitarUserId) hiddenConfirmarQuitarUserId.value = '';
-  if (confirmarQuitarNombreUsuario) confirmarQuitarNombreUsuario.textContent = '--';
-}
+    safeOn(btnCerrarModalConfirmarQuitarRol, 'click', closeConfirmarQuitarRol);
+    safeOn(btnCancelarModalConfirmarQuitarRol, 'click', closeConfirmarQuitarRol);
 
-safeOn(btnCerrarModalConfirmarQuitarRol, 'click', closeConfirmarQuitarRol);
-safeOn(btnCancelarModalConfirmarQuitarRol, 'click', closeConfirmarQuitarRol);
+    safeOn(btnConfirmarQuitarRol, 'click', async () => {
+      const id = hiddenConfirmarQuitarUserId ? String(hiddenConfirmarQuitarUserId.value || '') : '';
+      if (!id) {
+        toastError('Usuario no identificado para quitar rol.');
+        closeConfirmarQuitarRol();
+        return;
+      }
 
-safeOn(btnConfirmarQuitarRol, 'click', async () => {
-  const id = hiddenConfirmarQuitarUserId ? String(hiddenConfirmarQuitarUserId.value || '') : '';
-  if (!id) {
-    toastError('Usuario no identificado para quitar rol.');
-    closeConfirmarQuitarRol();
-    return;
-  }
+      try {
+        const data = await callApi(`${API_URL}?accion=desasignar_rol_funcional`, { id_usuario: id });
+        if (data?.success === false || data?.error) {
+          toastError(data?.error || 'No se pudo quitar el rol funcional.');
+        } else {
+          toastSuccess(data?.mensaje || 'Rol funcional quitado correctamente');
+          await cargarUsuarios();
+        }
+      } catch (e) {
+        console.error('Error en confirmar quitar rol:', e);
+        toastError('Error de red/servidor al quitar el rol funcional.');
+      } finally {
+        closeConfirmarQuitarRol();
+      }
+    });
 
-  try {
-    const data = await callApi(`${API_URL}?accion=desasignar_rol_funcional`, { id_usuario: id });
-    if (data?.success === false || data?.error) {
-      toastError(data?.error || 'No se pudo quitar el rol funcional.');
-    } else {
-      toastSuccess(data?.mensaje || 'Rol funcional quitado correctamente');
-      await cargarUsuarios();
+    // Cerrar modal confirmar si das click fuera del cuadro (overlay)
+    if (modalConfirmarQuitarRol) {
+      modalConfirmarQuitarRol.addEventListener('click', (e) => {
+        if (e.target === modalConfirmarQuitarRol) closeConfirmarQuitarRol();
+      });
     }
-  } catch (e) {
-    console.error('Error en confirmar quitar rol:', e);
-    toastError('Error de red/servidor al quitar el rol funcional.');
-  } finally {
-    closeConfirmarQuitarRol();
-  }
-});
-
-// Cerrar modal confirmar si das click fuera del cuadro (overlay)
-if (modalConfirmarQuitarRol) {
-  modalConfirmarQuitarRol.addEventListener('click', (e) => {
-    if (e.target === modalConfirmarQuitarRol) closeConfirmarQuitarRol();
-  });
-}
-
 
     // ================================
     // FORM VALIDATION AND SUBMISSION
@@ -3548,9 +3546,8 @@ if (modalConfirmarQuitarRol) {
           closeModalVerUsuario();
         }
         if (modalAsignarRol && modalAsignarRol.classList.contains("active")) {
-  closeModalAsignarRol();
-}
-
+          closeModalAsignarRol();
+        }
       }
     });
 
@@ -3586,10 +3583,9 @@ if (modalConfirmarQuitarRol) {
     // INITIAL LOAD
     // ================================
     cargarUsuarios();
-    cargarProgramas();
+    cargarProgramas(); // ✅ AHORA SÍ ESTÁ DEFINIDA
     setVistaTabla();
     cargarRolesFuncionales();
-
 
     // ✅ ADDED: start auto refresh (without affecting your base flow)
     startAutoRefresh();
