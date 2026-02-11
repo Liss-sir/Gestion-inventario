@@ -387,54 +387,87 @@ select.no-arrow { background-image: none; padding-right: 0.75rem; }
   white-space: nowrap;
 }
 
+/* Aplicar el estilo base a todos los badges sin usar composes */
+.badge-role-coordinador,
+.badge-role-instructor,
+.badge-role-pasante,
+.badge-role-encargado-inventario,
+.badge-role-encargado-bodega,
+.badge-role-parendiz,
+.badge-role-default,
+.badge-mov-entrada,
+.badge-mov-salida,
+.badge-mov-devolucion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0.125rem 0.75rem;        /* pill */
+  font-size: 0.75rem;               /* text-xs */
+  font-weight: 500;                 /* font-medium */
+  white-space: nowrap;
+}
+
 /* Coordinador – usa chart-4 (morado/azulado) */
 /* Coordinador – ahora sí morado SENA */
 .badge-role-coordinador {
-  composes: badge-role-base;
   background-color: color-mix(in srgb, var(--chart-5) 29%, transparent);
   color: var(--chart-5);
 }
 
 /* Instructor – verde principal */
 .badge-role-instructor {
-  composes: badge-role-base;
   background-color: color-mix(in srgb, var(--primary) 29%, transparent);
   color: var(--primary);
 }
 
 /* Pasante – amarillo */
 .badge-role-pasante {
-  composes: badge-role-base;
   background-color: color-mix(in srgb, var(--chart-3) 29%, transparent);
   color: var(--chart-3);
 }
 
 /* Encargado de Inventario – cian */
 .badge-role-encargado-inventario {
-  composes: badge-role-base;
   background-color: color-mix(in srgb, var(--chart-2) 29%, transparent);
   color: var(--chart-2);
 }
 
 /* Encargado de Bodega – verde oscuro */
 .badge-role-encargado-bodega {
-  composes: badge-role-base;
   background-color: color-mix(in srgb, var(--chart-1) 29%, transparent);
   color: var(--chart-1);
 }
 
 /* Aprendiz/Parendiz – azul institucional */
 .badge-role-parendiz {
-  composes: badge-role-base;
   background-color: color-mix(in srgb, var(--foreground) 29%, transparent);
   color: var(--foreground);
 }
 
 /* Rol por defecto (por si llega alguno no mapeado) */
 .badge-role-default {
-  composes: badge-role-base;
   background-color: color-mix(in srgb, var(--secondary) 29%, transparent);
   color: var(--secondary);
+}
+
+/* =========================================
+   BADGES DE MOVIMIENTOS – MISMO ESTILO CARGO
+   ========================================= */
+
+.badge-mov-entrada {
+  background-color: color-mix(in srgb, var(--primary) 29%, transparent);
+  color: var(--primary);
+}
+
+.badge-mov-salida {
+  background-color: color-mix(in srgb, var(--chart-3) 29%, transparent);
+  color: var(--chart-3);
+}
+
+.badge-mov-devolucion {
+  background-color: color-mix(in srgb, var(--chart-5) 29%, transparent);
+  color: var(--chart-5);
 }
 
 /* =========================================

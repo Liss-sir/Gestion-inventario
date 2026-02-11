@@ -480,12 +480,6 @@ function renderRolFuncionalBadgeHTML(user) {
     </span>
   `;
 }
-
-
-
-
-
-
     // =========================
     // PROFILE PHOTO HELPERS (NON-INTRUSIVE)
     // =========================
