@@ -9,9 +9,9 @@ class EvidenciaModel {
         $this->conn = $db;
     }
 
-    /* List evidences */
-    public function listar() {
-        $sql = "SELECT 
+    /* List evidences (supports optional filters: id_programa, id_ficha) */
+    public function listar($filters = []) {
+        $baseSql = "SELECT 
                     e.id_evidencia,
                     e.foto,
                     e.descripcion_obra,
@@ -46,10 +46,54 @@ class EvidenciaModel {
                 LEFT JOIN solicitudes_material s
                     ON m.id_solicitud = s.id_solicitud
                 LEFT JOIN actividades_formacion a
-                    ON s.id_actividad = a.id_actividad
-                ORDER BY e.fecha_hora DESC";
+                    ON s.id_actividad = a.id_actividad";
+
+        $where = " WHERE 1=1";
+        $params = [];
+
+        // Single-value filters
+        if (!empty($filters['id_programa'])) {
+            $where .= " AND m.id_programa = :id_programa";
+            $params[':id_programa'] = (int)$filters['id_programa'];
+        }
+
+        if (!empty($filters['id_ficha'])) {
+            $where .= " AND m.id_ficha = :id_ficha";
+            $params[':id_ficha'] = (int)$filters['id_ficha'];
+        }
+
+        // Array-based filters (multiple allowed ids) — useful for Instructor scoping
+        if (!empty($filters['id_programas']) && is_array($filters['id_programas'])) {
+            // build placeholders
+            $placeholders = [];
+            foreach ($filters['id_programas'] as $i => $pid) {
+                $ph = ':id_prog_' . $i;
+                $placeholders[] = $ph;
+                $params[$ph] = (int)$pid;
+            }
+            if (count($placeholders) > 0) {
+                $where .= ' AND m.id_programa IN (' . implode(',', $placeholders) . ')';
+            }
+        }
+
+        if (!empty($filters['id_fichas']) && is_array($filters['id_fichas'])) {
+            $placeholders = [];
+            foreach ($filters['id_fichas'] as $i => $fid) {
+                $ph = ':id_fic_' . $i;
+                $placeholders[] = $ph;
+                $params[$ph] = (int)$fid;
+            }
+            if (count($placeholders) > 0) {
+                $where .= ' AND m.id_ficha IN (' . implode(',', $placeholders) . ')';
+            }
+        }
+
+        $sql = $baseSql . $where . " ORDER BY e.fecha_hora DESC";
 
         $stmt = $this->conn->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, $v, PDO::PARAM_INT);
+        }
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

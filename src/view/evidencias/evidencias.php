@@ -33,18 +33,20 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       <div class="space-y-6 animate-fade-in-up">
 
         <!-- HEADER -->
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 class="text-2xl font-bold tracking-tight">Evidencias de Formación</h1>
             <p class="text-muted-foreground">Registro de evidencias de uso de materiales de formación</p>
           </div>
 
+                    <!-- (Filters moved below header for layout parity with 'materiales' module) -->
+
           <!-- Botón Nueva Evidencia -->
-          <button
-            id="btnNuevaEvidencia"
-            type="button"
-            class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2"
-          >
+                    <button
+                        id="btnNuevaEvidencia"
+                        type="button"
+                        class="w-full sm:w-auto inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2"
+                    >
             <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
@@ -52,10 +54,42 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </button>
         </div>
 
-        <!-- Evidence Grid -->
-        <div id="evidenceGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            <!-- Las tarjetas se generarán dinámicamente con JavaScript -->
-        </div>
+<!-- Contenedor de controles (buscador + filtros) similar a módulo materiales -->
+<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full">
+
+    <!-- Espacio izquierdo (puede alojar un buscador si se necesita) -->
+    <div class="relative w-full sm:max-w-xs hidden sm:block">
+        <!-- placeholder empty to keep spacing consistent -->
+    </div>
+
+    <!-- FILTROS A LA DERECHA -->
+    <div class="flex items-center gap-2 sm:justify-end">
+        <!-- Ícono de filtro -->
+        <svg class="h-7 w-7 sm:h-4 sm:w-4 text-muted-foreground shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+            <path
+                d="M5 5h14a1 1 0 0 1 .8 1.6L15 12v4.5a1 1 0 0 1-.553.894l-3 1.5A1 1 0 0 1 10 18v-6L4.2 6.6A1 1 0 0 1 5 5z"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            />
+        </svg>
+
+        <select id="filterPrograma" class="select-mobile-lg w-full sm:w-auto h-11 sm:h-10 rounded-md border border-input bg-background px-4 pr-12 text-base sm:text-sm">
+            <option value="">Todos los programas</option>
+        </select>
+
+        <select id="filterFicha" class="select-mobile-lg w-full sm:w-auto h-11 sm:h-10 rounded-md border border-input bg-background px-4 pr-12 text-base sm:text-sm" disabled>
+            <option value="">Todas las fichas</option>
+        </select>
+    </div>
+
+</div>
+
+                <!-- Evidence Grid -->
+                <div id="evidenceGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <!-- Las tarjetas se generarán dinámicamente con JavaScript -->
+                </div>
       </div>
     </main>
 
@@ -195,6 +229,17 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </div>
     </div>
        
-    <script src="<?= BASE_URL ?>/src/assets/js/evidencias/evidencias.js"></script>
+        <script>
+            window.CURRENT_USER = <?php
+                $cu = [
+                    'id' => $_SESSION['usuario_id'] ?? null,
+                    'cargo' => $_SESSION['usuario_cargo'] ?? $_SESSION['cargo'] ?? null,
+                    'programas' => $_SESSION['usuario_programas'] ?? [],
+                    'fichas' => $_SESSION['usuario_fichas'] ?? []
+                ];
+                echo json_encode($cu, JSON_UNESCAPED_UNICODE);
+            ?>;
+        </script>
+        <script src="<?= BASE_URL ?>/src/assets/js/evidencias/evidencias.js"></script>
 </body>
 </html>

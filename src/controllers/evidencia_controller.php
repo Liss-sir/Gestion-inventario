@@ -15,7 +15,62 @@ class EvidenciaController {
 
     /* GET - List evidences */
     public function index() {
-        sendJSON($this->model->listar());
+        $filters = [];
+        // Read basic GET filters
+        if (isset($_GET['id_programa']) && $_GET['id_programa'] !== '') {
+            $filters['id_programa'] = (int)$_GET['id_programa'];
+        }
+        if (isset($_GET['id_ficha']) && $_GET['id_ficha'] !== '') {
+            $filters['id_ficha'] = (int)$_GET['id_ficha'];
+        }
+
+        // If the logged user is Instructor, restrict results to their programs/fichas
+        session_start();
+        $cargo = $_SESSION['usuario_cargo'] ?? $_SESSION['cargo'] ?? null;
+        if ($cargo && strtolower($cargo) === 'instructor') {
+            // Expect session arrays: usuario_programas and usuario_fichas
+            $sessionPrograms = $_SESSION['usuario_programas'] ?? [];
+            $sessionFichas = $_SESSION['usuario_fichas'] ?? [];
+
+            // Normalize to arrays of IDs
+            $progIds = [];
+            if (is_array($sessionPrograms)) {
+                foreach ($sessionPrograms as $p) {
+                    if (is_array($p) && isset($p['id_programa'])) $progIds[] = (int)$p['id_programa'];
+                    elseif (is_object($p) && isset($p->id_programa)) $progIds[] = (int)$p->id_programa;
+                    elseif (is_scalar($p)) $progIds[] = (int)$p;
+                }
+            }
+
+            $fichaIds = [];
+            if (is_array($sessionFichas)) {
+                foreach ($sessionFichas as $f) {
+                    if (is_array($f) && isset($f['id_ficha'])) $fichaIds[] = (int)$f['id_ficha'];
+                    elseif (is_object($f) && isset($f->id_ficha)) $fichaIds[] = (int)$f->id_ficha;
+                    elseif (is_scalar($f)) $fichaIds[] = (int)$f;
+                }
+            }
+
+            // If instructor has no linked programs AND no linked fichas, return empty result
+            if (empty($progIds) && empty($fichaIds)) {
+                sendJSON([]);
+            }
+
+            // If client requested an id_programa, ensure it's within allowed list; otherwise return empty
+            if (isset($filters['id_programa']) && !empty($progIds) && !in_array($filters['id_programa'], $progIds)) {
+                sendJSON([]);
+            }
+
+            if (isset($filters['id_ficha']) && !empty($fichaIds) && !in_array($filters['id_ficha'], $fichaIds)) {
+                sendJSON([]);
+            }
+
+            // Pass array constraints to model so it only returns instructor-linked rows
+            if (!empty($progIds)) $filters['id_programas'] = array_values(array_unique($progIds));
+            if (!empty($fichaIds)) $filters['id_fichas'] = array_values(array_unique($fichaIds));
+        }
+
+        sendJSON($this->model->listar($filters));
     }
 
     /* GET - Get evidence by ID */
