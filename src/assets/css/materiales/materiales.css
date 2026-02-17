@@ -611,3 +611,80 @@ select {
   font-style: italic;
 }
 
+/* ===========================
+   RESPONSIVE – MOBILE
+   =========================== */
+@media (max-width: 767px) {
+  /* Ocultar botones de toggle en móvil */
+  .inline-flex.rounded-lg.border.border-border.bg-card.shadow-sm {
+    display: none !important;
+  }
+
+  /* Forzar vista de tarjetas en móvil */
+  #cardView {
+    display: block !important;
+  }
+
+  #tableView {
+    display: none !important;
+  }
+
+  /* Contenedor de botones (header): apilado en móvil con margen consistente */
+  main .flex.items-center.gap-3 {
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  /* Botón Nuevo Material: ancho completo */
+  #btnNuevoMaterial {
+    width: 100%;
+  }
+
+  /* Contenedor búsqueda y filtro: apilado en móvil con margen consistente */
+  .flex.justify-between.items-center.w-full {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Buscador: ancho completo */
+  .relative.w-full.max-w-xs {
+    width: 100%;
+    max-width: none;
+  }
+
+  /* Contenedor filtro con ícono: hacerlo relativo para posicionamiento */
+  .flex.justify-between.items-center.w-full .flex.items-center.gap-2 {
+    width: 100%;
+    gap: 0;
+    position: relative;
+  }
+
+  /* Ícono de filtro: posicionar dentro del input */
+  .flex.justify-between.items-center.w-full .flex.items-center.gap-2 svg {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Select filtro: ancho completo con padding para el ícono */
+  .flex.justify-between.items-center.w-full .flex.items-center.gap-2 #selectFiltroRol {
+    width: 100%;
+    padding: 0.5rem 2.25rem 0.5rem 2.25rem !important;
+    max-width: 100%;
+    font-size: 0.875rem !important;
+    box-sizing: border-box;
+  }
+
+  /* Contenedor del filtro: asegurar que no se desborde */
+  main .flex.justify-between.items-center.w-full {
+    overflow: visible;
+  }
+}
+

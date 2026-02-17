@@ -1556,7 +1556,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   initEmptyStates()
   await fetchMaterials()
   setupEventListeners()
-  // await cargarProgramas()
+  // Forzar vista tarjeta en móvil
+  if (window.innerWidth < 768) {
+    currentView = "card"
+    document.getElementById("cardView").classList.remove("hidden")
+    document.getElementById("tableView").classList.add("hidden")
+    renderCards()
+  }
 })
 
 function setupEventListeners() {
