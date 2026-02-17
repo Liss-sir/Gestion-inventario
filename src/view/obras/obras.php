@@ -144,18 +144,15 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       </div>
 
       <!-- ================================== -->
-      <!-- WORKS LIST                         -->
+      <!-- *********** WORKS LIST *********** -->
       <!-- ================================== -->
       <div class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-
         <div class="p-6 border-b border-border">
           <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 class="text-xl font-semibold text-foreground">Lista de Obras</h2>
               <p class="text-sm text-muted-foreground mt-1">Administra las obras y actividades formativas</p>
             </div>
-
-            <!-- SI ES APRENDIZ: NO VE "NUEVA OBRA" -->
             <?php if ($canCrearObra): ?>
               <button
                 onclick="openCreateModal()"
@@ -192,12 +189,53 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </div>
         </div>
 
-        <!-- Works container -->
-        <div id="obrasContainer" class="p-6">
-          <!-- Loading -->
-          <div class="text-center py-12" id="loading">
-            <i class="fas fa-spinner fa-spin text-3xl text-muted-foreground mb-3"></i>
-            <p class="text-muted-foreground">Cargando obras...</p>
+        <!-- Works container with its sibling empty-search message -->
+        <div class="relative">
+          <!-- Empty search message (hermano del container, no hijo) -->
+          <div id="emptySearchObras" 
+               class="hidden flex flex-col items-center justify-center text-center border border-border rounded-2xl p-10 w-full">
+            <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
+              <svg class="h-7 w-7 text-muted-foreground"
+                   xmlns="http://www.w3.org/2000/svg"
+                   fill="none"
+                   viewBox="0 0 24 24"
+                   stroke="currentColor"
+                   stroke-width="1.8">
+                <circle cx="11" cy="11" r="6" stroke-linecap="round" stroke-linejoin="round"></circle>
+                <line x1="16" y1="16" x2="20" y2="20" stroke-linecap="round" stroke-linejoin="round"></line>
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold mt-4">No se encontraron resultados</h3>
+            <p class="text-sm text-muted-foreground mt-1 max-w-md">
+              No se encontraron obras que coincidan con los criterios de búsqueda actuales.
+            </p>
+          </div>
+
+          <div id="emptyStateObras" class="hidden overflow-visible rounded-lg border border-border bg-card relative p-6 mb-6">
+            <div class="flex flex-col items-center justify-center py-8 px-4">
+              <div class="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                </svg>
+              </div>
+              <h3 class="text-lg font-semibold text-foreground mb-2">No hay obras registradas</h3>
+              <p class="text-sm text-muted-foreground text-center max-w-md">
+                <?php if ($canCrearObra): ?>
+                  Comienza creando una nueva obra usando el botón "Nueva Obra".
+                <?php else: ?>
+                  Actualmente no hay obras registradas en el sistema.
+                <?php endif; ?>
+              </p>
+            </div>
+          </div>
+
+          <!-- Obras container -->
+          <div id="obrasContainer" class="p-6">
+            <!-- Loading -->
+            <div class="text-center py-12" id="loading">
+              <i class="fas fa-spinner fa-spin text-3xl text-muted-foreground mb-3"></i>
+              <p class="text-muted-foreground">Cargando obras...</p>
+            </div>
           </div>
         </div>
 
@@ -545,6 +583,9 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
     </div>
   </div>
 
+  <!-- ========================================= -->
+  <!-- ASSIGN LEARNERS MODAL (GRUPAL)            -->
+  <!-- ========================================= -->
   <div id="modalAsignarAprendices" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
     <div class="bg-card rounded-xl border border-border shadow-xl w-[68vh] max-w-3xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between p-6 pb-0">
@@ -618,61 +659,61 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
     </div>
   </div>
 
-<!-- ========================================= -->
-<!-- SELECT LEARNER MODAL (INDIVIDUAL)          -->
-<!-- ========================================= -->
-<div id="modalSeleccionarAprendiz" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
-  <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-    <div class="rounded-full p-1 hover:bg-muted">
-      <div class="flex flex-col items-start justify-between p-0">
-        <h3 class="text-xl font-semibold text-foreground">Seleccionar Aprendiz</h3>
-        <p class="text-sm text-muted-foreground opacity-75">Selecciona el aprendiz que realizará esta obra individual</p>
-      </div>
-      <button onclick="closeSeleccionarModal()" class="rounded-full p-1 hover:bg-muted">
-        <span class="sr-only">Cerrar</span>
-        <svg
-          class="h-5 w-5"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M6 18L18 6M6 6l12 12"
-          />
-        </svg>
-      </button>
-    </div>
-
-    <div class="p-6 space-y-4">
-      <div>
-        <label class="block text-xs text-muted-foreground mb-1">Aprendiz *</label>
-        <select 
-            id="selectAprendizIndividual"
-            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-        >
-            <option value="" selected disabled>Cargando aprendices...</option>
-        </select>
+  <!-- ========================================= -->
+  <!-- SELECT LEARNER MODAL (INDIVIDUAL)          -->
+  <!-- ========================================= -->
+  <div id="modalSeleccionarAprendiz" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
+    <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div class="rounded-full p-1 hover:bg-muted">
+        <div class="flex flex-col items-start justify-between p-0">
+          <h3 class="text-xl font-semibold text-foreground">Seleccionar Aprendiz</h3>
+          <p class="text-sm text-muted-foreground opacity-75">Selecciona el aprendiz que realizará esta obra individual</p>
+        </div>
+        <button onclick="closeSeleccionarModal()" class="rounded-full p-1 hover:bg-muted">
+          <span class="sr-only">Cerrar</span>
+          <svg
+            class="h-5 w-5"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
       </div>
 
-      <div class="flex gap-3 pt-4 justify-end">
-        <button type="button" onclick="closeSeleccionarModal()" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
-            Cancelar
-        </button>
-        <button
-            type="button"
-            onclick="finalizarCreacionIndividual()"
-            class="inline-flex items-center justify-center rounded-md bg-secondary px-10 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2 transition-colors"
-        >
-            Finalizar
-        </button>
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs text-muted-foreground mb-1">Aprendiz *</label>
+          <select 
+              id="selectAprendizIndividual"
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+              <option value="" selected disabled>Cargando aprendices...</option>
+          </select>
+        </div>
+
+        <div class="flex gap-3 pt-4 justify-end">
+          <button type="button" onclick="closeSeleccionarModal()" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
+              Cancelar
+          </button>
+          <button
+              type="button"
+              onclick="finalizarCreacionIndividual()"
+              class="inline-flex items-center justify-center rounded-md bg-secondary px-10 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2 transition-colors"
+          >
+              Finalizar
+          </button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
   <!-- ========================================= -->
   <!-- ALERT CONTAINER (FLOWBITE-LIKE TOASTS)    -->

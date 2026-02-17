@@ -1,4 +1,4 @@
-﻿﻿﻿﻿/* ============================================================
+﻿﻿/* ============================================================
    GUARD GLOBAL (evita doble carga del script)
 ============================================================ */
 if (!window.__obrasJSLoaded) {
@@ -152,9 +152,15 @@ if (!window.__obrasJSLoaded) {
   // ==============================
   async function cargarObras() {
     try {
-      // Ocultar el mensaje de no resultados al cargar
+      // Ocultar ambos mensajes al cargar
       const emptySearchElement = document.getElementById("emptySearchObras");
+      const emptyStateElement = document.getElementById("emptyStateObras");
+      
       if (emptySearchElement) emptySearchElement.classList.add("hidden");
+      if (emptyStateElement) emptyStateElement.classList.add("hidden");
+
+      const container = document.getElementById("obrasContainer");
+      if (container) container.classList.remove("hidden");
       
       // Si es instructor sin ficha, mostrar mensaje especial
       if (instructorSinFicha) {
@@ -481,185 +487,208 @@ if (!window.__obrasJSLoaded) {
 
   function renderObras(obrasData) {
     const container = document.getElementById("obrasContainer");
+    const emptySearchElement = document.getElementById("emptySearchObras");
+    const emptyStateElement = document.getElementById("emptyStateObras");
+    
     if (!container) return;
 
-    // Ocultar el mensaje de no resultados si está visible
-    const emptySearchElement = document.getElementById("emptySearchObras");
-    if (emptySearchElement) emptySearchElement.classList.add("hidden");
+    // Ocultar el loading
+    const loadingElement = document.getElementById("loading");
+    if (loadingElement) loadingElement.style.display = "none";
 
-    // Mostrar el contenedor de obras
-    container.classList.remove("hidden");
-    
-    const worksListContent = container.closest('.rounded-xl.border.border-border.bg-card.shadow-sm.overflow-hidden')?.querySelector('.p-6:last-child');
-    if (worksListContent) worksListContent.classList.remove("hidden");
-
+    // Validar si hay datos para mostrar
     if (!Array.isArray(obrasData) || obrasData.length === 0) {
-      container.innerHTML = `
-        <div class="text-center py-12 text-gray-500">
-          <i class="fas fa-folder-open text-4xl mb-3"></i>
-          <p>No se encontraron obras</p>
-        </div>
-      `;
+      // Ocultar el contenedor de obras
+      container.classList.add("hidden");
+      container.innerHTML = ''; // Limpiar contenido
+      
+      // Verificar si es por búsqueda o por falta total de datos
+      const searchInput = document.getElementById("searchInput");
+      const searchTerm = (searchInput?.value || "").toLowerCase().trim();
+      
+      if (searchTerm !== "") {
+        // Hay término de búsqueda pero no resultados - mostrar emptySearch
+        if (emptySearchElement) {
+          emptySearchElement.classList.remove("hidden");
+        }
+        if (emptyStateElement) {
+          emptyStateElement.classList.add("hidden");
+        }
+      } else {
+        // No hay obras en absoluto - mostrar emptyState
+        if (emptyStateElement) {
+          emptyStateElement.classList.remove("hidden");
+        }
+        if (emptySearchElement) {
+          emptySearchElement.classList.add("hidden");
+        }
+      }
       return;
     }
 
-    container.innerHTML = obrasData
-      .map((obra, index) => {
-        // ESTADO BADGE (SIEMPRE VISIBLE)
+    // Hay datos, mostrar container y ocultar mensajes vacíos
+    container.classList.remove("hidden");
+    if (emptySearchElement) {
+      emptySearchElement.classList.add("hidden");
+    }
+    if (emptyStateElement) {
+      emptyStateElement.classList.add("hidden");
+    }
+
+    // Generar HTML de las obras
+    container.innerHTML = obrasData.map((obra, index) => {
         const estadoBadge = `
-          <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-            obra.estado === "Activa" ? "bg-[#39A900]/50 text-[#007832]" : "bg-[#000000]/40 text-[#000000] opacity-70"
-          }">
-            ${obra.estado === "Activa" ? "Activa" : "Finalizada"}
-          </span>
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                obra.estado === "Activa" ? "bg-[#39A900]/50 text-[#007832]" : "bg-[#000000]/40 text-[#000000] opacity-70"
+            }">
+                ${obra.estado === "Activa" ? "Activa" : "Finalizada"}
+            </span>
         `;
 
-        // MENÚ DE ACCIONES CON 3 PUNTOS
         const actionMenu = `
-          <div class="relative">
-            <button 
-              onclick="toggleActionMenu(${index})"
-              class="text-muted-foreground hover:text-foreground p-2 hover:bg-muted rounded-lg transition-colors"
-              title="Más acciones"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="12" cy="5" r="2"/>
-                <circle cx="12" cy="12" r="2"/>
-                <circle cx="12" cy="19" r="2"/>
-              </svg>
-            </button>
-
-            <div id="actionMenu${index}" class="hidden absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg z-50 min-w-[180px]">
-              <button 
-                onclick="openDetailsModal(${obra.id_actividad}); closeAllMenus();"
-                class="w-full text-left px-4 py-2 text-sm text-foreground flex items-center gap-2 rounded-t-lg transition-colors duration-150 cursor-pointer hover:bg-gray-100"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye">
-                  <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-                Visualizar
-              </button>
-
-              ${OBRAS_PERMS.canEditar ? `
+            <div class="relative">
                 <button 
-                  onclick="openEditModal(${obra.id_actividad}); closeAllMenus();"
-                  class="w-full text-left px-4 py-2 text-sm text-foreground flex items-center gap-2 transition-colors duration-150 cursor-pointer hover:bg-gray-100"
+                    onclick="toggleActionMenu(${index})"
+                    class="text-muted-foreground hover:text-foreground p-2 hover:bg-muted rounded-lg transition-colors"
+                    title="Más acciones"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-pen">
-                    <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>
-                  </svg>
-                  Editar
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="12" cy="5" r="2"/>
+                        <circle cx="12" cy="12" r="2"/>
+                        <circle cx="12" cy="19" r="2"/>
+                    </svg>
                 </button>
-              ` : ''}
 
-              ${OBRAS_PERMS.canCambiarEstado ? `
-                <button 
-                  onclick="toggleEstado(${obra.id_actividad}, ${obra.estado === 'Activa' ? 'false' : 'true'}); closeAllMenus();"
-                  class="w-full text-left px-4 py-2 text-sm text-foreground flex items-center gap-2 rounded-b-lg transition-colors duration-150 cursor-pointer hover:bg-gray-100 border-t border-border"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-power">
-                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
-                    <line x1="12" y1="2" x2="12" y2="12"/>
-                  </svg>
-                  ${obra.estado === "Activa" ? "Finalizar" : "Activar"}
-                </button>
-              ` : ''}
+                <div id="actionMenu${index}" class="hidden absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg z-50 min-w-[180px]">
+                    <button 
+                        onclick="openDetailsModal(${obra.id_actividad}); closeAllMenus();"
+                        class="w-full text-left px-4 py-2 text-sm text-foreground flex items-center gap-2 rounded-t-lg transition-colors duration-150 cursor-pointer hover:bg-gray-100"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye">
+                            <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        Visualizar
+                    </button>
+
+                    ${OBRAS_PERMS.canEditar ? `
+                        <button 
+                            onclick="openEditModal(${obra.id_actividad}); closeAllMenus();"
+                            class="w-full text-left px-4 py-2 text-sm text-foreground flex items-center gap-2 transition-colors duration-150 cursor-pointer hover:bg-gray-100"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-pen">
+                                <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>
+                            </svg>
+                            Editar
+                        </button>
+                    ` : ''}
+
+                    ${OBRAS_PERMS.canCambiarEstado ? `
+                        <button 
+                            onclick="toggleEstado(${obra.id_actividad}, ${obra.estado === 'Activa' ? 'false' : 'true'}); closeAllMenus();"
+                            class="w-full text-left px-4 py-2 text-sm text-foreground flex items-center gap-2 rounded-b-lg transition-colors duration-150 cursor-pointer hover:bg-gray-100 border-t border-border"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-power">
+                                <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                                <line x1="12" y1="2" x2="12" y2="12"/>
+                            </svg>
+                            ${obra.estado === "Activa" ? "Finalizar" : "Activar"}
+                        </button>
+                    ` : ''}
+                </div>
             </div>
-          </div>
         `;
 
         return `
-          <div class="border border-l-4 ${
-            obra.estado === "Activa" ? "border-l-[#007832]" : "border-l-[#64748b]"
-          } rounded-lg p-5 mb-4 hover:shadow-md transition-shadow bg-white">
-            <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-              <div class="flex-1">
-                <div class="flex items-start justify-between gap-2 mb-2">
-                  <h3 class="text-lg font-semibold text-gray-900">${obra.nombre_actividad}</h3>
+            <div class="border border-l-4 ${
+                obra.estado === "Activa" ? "border-l-[#007832]" : "border-l-[#64748b]"
+            } rounded-lg p-5 mb-4 hover:shadow-md transition-shadow bg-white">
+                <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                    <div class="flex-1">
+                        <div class="flex items-start justify-between gap-2 mb-2">
+                            <h3 class="text-lg font-semibold text-gray-900">${obra.nombre_actividad}</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-4 line-clamp-2">${obra.descripcion || "Sin descripción"}</p>
+
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-3">
+                            <div>
+                                <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round"
+                                        class="lucide lucide-folder-kanban h-5 w-5 shrink-0">
+                                        <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path>
+                                        <path d="M8 10v4"></path><path d="M12 10v2"></path><path d="M16 10v6"></path>
+                                    </svg> Ficha
+                                </p>
+                                <p class="text-sm font-medium text-gray-900">${obra.numero_ficha || "N/A"}</p>
+                            </div>
+
+                            <div>
+                                <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                        viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round"
+                                        class="lucide lucide-users">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                        <path d="M16 3.128a4 4 0 0 1 0 7.744"/>
+                                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                    </svg> Tipo
+                                </p>
+                                <span class="inline-block px-2 py-1 ${
+                                    obra.tipo_trabajo === "Grupal" ? "bg-[#00304d]/30 text-[#00304d]" : "bg-[#007832]/65"
+                                } text-white text-xs font-semibold rounded-full">${obra.tipo_trabajo}</span>
+                            </div>
+
+                            <div>
+                                <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                        viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round"
+                                        class="lucide lucide-calendar">
+                                        <path d="M8 2v4"/><path d="M16 2v4"/>
+                                        <rect width="18" height="18" x="3" y="4" rx="2"/>
+                                        <path d="M3 10h18"/>
+                                    </svg> Inicio
+                                </p>
+                                <p class="text-sm font-medium text-gray-900">${formatDate(obra.fecha_inicio)}</p>
+                            </div>
+
+                            <div>
+                                <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                        viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round"
+                                        class="lucide lucide-calendar">
+                                        <path d="M8 2v4"/><path d="M16 2v4"/>
+                                        <rect width="18" height="18" x="3" y="4" rx="2"/>
+                                        <path d="M3 10h18"/>
+                                    </svg> Fin
+                                </p>
+                                <p class="text-sm font-medium text-gray-900">${formatDate(obra.fecha_fin)}</p>
+                            </div>
+                        </div>
+
+                        <div class="text-sm text-gray-600">
+                            <span class="font-medium">Instructor:</span> ${
+                                esInstructor ? "Tu obra" : (obra.nombre_instructor || "No asignado")
+                            }
+                        </div>
+                        <div class="text-sm text-gray-600 mt-1">
+                            <span class="font-medium">RAE:</span> ${obra.descripcion_rae || "No asignado"}
+                        </div>
+                    </div>
+
+                    <div class="flex flex-row items-center gap-3">
+                        ${actionMenu}
+                        ${estadoBadge}
+                    </div>
                 </div>
-                <p class="text-sm text-gray-600 mb-4 line-clamp-2">${obra.descripcion || "Sin descripción"}</p>
-
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-3">
-                  <div>
-                    <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round"
-                        class="lucide lucide-folder-kanban h-5 w-5 shrink-0">
-                        <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path>
-                        <path d="M8 10v4"></path><path d="M12 10v2"></path><path d="M16 10v6"></path>
-                      </svg> Ficha
-                    </p>
-                    <p class="text-sm font-medium text-gray-900">${obra.numero_ficha || "N/A"}</p>
-                  </div>
-
-                  <div>
-                    <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                        viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round"
-                        class="lucide lucide-users">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                        <path d="M16 3.128a4 4 0 0 1 0 7.744"/>
-                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                        <circle cx="9" cy="7" r="4"/>
-                      </svg> Tipo
-                    </p>
-                    <span class="inline-block px-2 py-1 ${
-                      obra.tipo_trabajo === "Grupal" ? "bg-[#00304d]/30 text-[#00304d]" : "bg-[#007832]/65"
-                    } text-white text-xs font-semibold rounded-full">${obra.tipo_trabajo}</span>
-                  </div>
-
-                  <div>
-                    <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                        viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round"
-                        class="lucide lucide-calendar">
-                        <path d="M8 2v4"/><path d="M16 2v4"/>
-                        <rect width="18" height="18" x="3" y="4" rx="2"/>
-                        <path d="M3 10h18"/>
-                      </svg> Inicio
-                    </p>
-                    <p class="text-sm font-medium text-gray-900">${formatDate(obra.fecha_inicio)}</p>
-                  </div>
-
-                  <div>
-                    <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                        viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round"
-                        class="lucide lucide-calendar">
-                        <path d="M8 2v4"/><path d="M16 2v4"/>
-                        <rect width="18" height="18" x="3" y="4" rx="2"/>
-                        <path d="M3 10h18"/>
-                      </svg> Fin
-                    </p>
-                    <p class="text-sm font-medium text-gray-900">${formatDate(obra.fecha_fin)}</p>
-                  </div>
-                </div>
-
-                <div class="text-sm text-gray-600">
-                  <span class="font-medium">Instructor:</span> ${
-                    esInstructor ? "Tu obra" : (obra.nombre_instructor || "No asignado")
-                  }
-                </div>
-                <div class="text-sm text-gray-600 mt-1">
-                  <span class="font-medium">RAE:</span> ${obra.descripcion_rae || "No asignado"}
-                </div>
-              </div>
-
-              <div class="flex flex-row items-center gap-3">
-                ${actionMenu}
-                ${estadoBadge}
-              </div>
             </div>
-          </div>
         `;
-      })
-      .join("");
+    }).join("");
   }
 
   function formatDate(dateString) {
@@ -701,9 +730,15 @@ if (!window.__obrasJSLoaded) {
     if (instructorSinFicha) return;
     
     const searchInput = document.getElementById("searchInput");
-    const searchTerm = (searchInput?.value || "").toLowerCase();
+    const searchTerm = (searchInput?.value || "").toLowerCase().trim();
 
-    if (searchTerm.trim() === "") {
+    // Ocultar emptyState cuando se está buscando
+    const emptyStateElement = document.getElementById("emptyStateObras");
+    if (emptyStateElement) {
+      emptyStateElement.classList.add("hidden");
+    }
+
+    if (searchTerm === "") {
       renderObras(obras);
       return;
     }
@@ -717,26 +752,7 @@ if (!window.__obrasJSLoaded) {
         (obra.descripcion_rae && obra.descripcion_rae.toLowerCase().includes(searchTerm))
       );
     });
-
-    // ✅ ACTUALIZADO: Usar emptySearchObras cuando no hay resultados
-    const emptySearchElement = document.getElementById("emptySearchObras");
-    const obrasContainer = document.getElementById("obrasContainer");
-    const worksListContainer = document.querySelector('.rounded-xl.border.border-border.bg-card.shadow-sm.overflow-hidden .p-6:last-child');
-    
-    if (results.length === 0 && emptySearchElement) {
-      // Ocultar el contenedor de obras y mostrar el mensaje de no resultados
-      if (obrasContainer) obrasContainer.classList.add("hidden");
-      if (worksListContainer) worksListContainer.classList.add("hidden");
-      
-      emptySearchElement.classList.remove("hidden");
-    } else {
-      // Ocultar el mensaje de no resultados y mostrar las obras normalmente
-      if (emptySearchElement) emptySearchElement.classList.add("hidden");
-      if (obrasContainer) obrasContainer.classList.remove("hidden");
-      if (worksListContainer) worksListContainer.classList.remove("hidden");
-      
-      renderObras(results);
-    }
+    renderObras(results);
   }
 
   // ==============================
@@ -2102,14 +2118,13 @@ if (!window.__obrasJSLoaded) {
 
     if (!emptySearchObrasContainer) {
       const obrasContainer = document.getElementById("obrasContainer");
-      const worksListContainer = document.querySelector('.rounded-xl.border.border-border.bg-card.shadow-sm.overflow-hidden');
       
-      if (obrasContainer && worksListContainer) {
+      if (obrasContainer) {
         emptySearchObrasContainer = document.createElement("div");
         emptySearchObrasContainer.id = "emptySearchObras";
         
         emptySearchObrasContainer.className =
-          "hidden mt-10 mb-6 flex flex-col items-center justify-center text-center border border-border rounded-2xl p-10 w-full";
+          "hidden flex flex-col items-center justify-center text-center border border-border rounded-2xl p-10 w-full";
         
         emptySearchObrasContainer.innerHTML = `
           <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
@@ -2130,7 +2145,38 @@ if (!window.__obrasJSLoaded) {
         `;
         
         // Insertar antes del contenedor de obras
-        worksListContainer.parentNode.insertBefore(emptySearchObrasContainer, worksListContainer);
+        obrasContainer.parentNode.insertBefore(emptySearchObrasContainer, obrasContainer);
+      }
+    }
+
+    // Empty state para cuando no hay obras
+    let emptyStateObras = document.getElementById("emptyStateObras");
+
+    if (!emptyStateObras) {
+      const obrasContainer = document.getElementById("obrasContainer");
+      
+      if (obrasContainer) {
+        emptyStateObras = document.createElement("div");
+        emptyStateObras.id = "emptyStateObras";
+        
+        emptyStateObras.className = "hidden overflow-visible rounded-lg border border-border bg-card relative p-6 mb-6";
+        
+        emptyStateObras.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-8 px-4">
+            <div class="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-foreground mb-2">No hay obras registradas</h3>
+            <p class="text-sm text-muted-foreground text-center max-w-md">
+              ${OBRAS_PERMS.canCrear ? 'Comienza creando una nueva obra usando el botón "Nueva Obra".' : 'Actualmente no hay obras registradas en el sistema.'}
+            </p>
+          </div>
+        `;
+        
+        // Insertar antes del contenedor de obras
+        obrasContainer.parentNode.insertBefore(emptyStateObras, obrasContainer);
       }
     }
 
