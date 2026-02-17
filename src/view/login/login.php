@@ -42,6 +42,7 @@ if (isset($_SESSION['usuario_id'])) {
 }
 
 $loginError = "";
+$loginErrorType = "error"; // 'error' | 'warning' | 'info' | 'success'
 
 // ===============================
 // ✅ Mostrar mensaje si viene por reason (timeout, revoked, etc.)
@@ -50,14 +51,19 @@ $reason = $_GET['reason'] ?? '';
 
 if ($reason === 'idle_timeout') {
     $loginError = "Tu sesión expiró por inactividad. Inicia sesión nuevamente.";
+    $loginErrorType = "warning";
 } elseif ($reason === 'session_revoked') {
-    $loginError = "Tu sesión fue cerrada porque se inició sesión desde otro dispositivo.";
+    $loginError = "Tu sesión fue cerrada porque iniciaste sesión desde otro dispositivo o navegador.";
+    $loginErrorType = "warning";
 } elseif ($reason === 'disabled') {
     $loginError = "Tu cuenta está desactivada. Contacta al administrador.";
+    $loginErrorType = "error";
 } elseif ($reason === 'no_session') {
     $loginError = "Debes iniciar sesión para continuar.";
+    $loginErrorType = "info";
 } elseif ($reason === 'no_token') {
     $loginError = "Tu sesión no es válida. Inicia sesión nuevamente.";
+    $loginErrorType = "warning";
 }
 
 // =======================================================
@@ -173,29 +179,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
 
                         // =========================================================
-                        // ✅ CERRAR SESIONES PEGADAS SIN TOCAR LA DB
+                        // ✅ BLOQUEAR NUEVO LOGIN SI YA HAY SESIÓN ACTIVA
                         // =========================================================
+                        $haySesionActiva = false;
                         try {
-                            $stmtCloseOld = $conn->prepare("
-                                UPDATE sesiones_usuarios
-                                SET activa = 0
-                                WHERE id_usuario = :id
-                                  AND activa = 1
-                            ");
-                            $stmtCloseOld->execute([
+                            $stmtSesionActiva = $conn->prepare("\n                                SELECT 1\n                                FROM sesiones_usuarios\n                                WHERE id_usuario = :id\n                                  AND activa = 1\n                                LIMIT 1\n                            ");
+                            $stmtSesionActiva->execute([
                                 ':id' => (int)$user['id_usuario']
                             ]);
+                            $haySesionActiva = (bool)$stmtSesionActiva->fetchColumn();
                         } catch (Throwable $e) {
-                            // No romper el login si falla el cierre
+                            $haySesionActiva = false;
                         }
 
-                        // CREAR SESIÓN ÚNICA EN BD
+                        if ($haySesionActiva) {
+                            $loginError = "Ya tienes una sesión activa en otro dispositivo o navegador. Para continuar, primero cierra la sesión anterior desde ese dispositivo o espera a que expire por inactividad.";
+                            $loginErrorType = "warning";
+                        } else {
+
+                        // CREAR SESIÓN EN BD
                         $tokenSesion = bin2hex(random_bytes(32));
 
-                        $stmtCreate = $conn->prepare("
-                            INSERT INTO sesiones_usuarios (id_usuario, token_sesion)
-                            VALUES (:id_usuario, :token)
-                        ");
+                        $stmtCreate = $conn->prepare("\n                            INSERT INTO sesiones_usuarios (id_usuario, token_sesion)\n                            VALUES (:id_usuario, :token)\n                        ");
                         $stmtCreate->execute([
                             ':id_usuario' => (int)$user['id_usuario'],
                             ':token'      => $tokenSesion
@@ -377,6 +382,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         header('Location: ' . BASE_URL . '../../../index.php?page=' . $redirectPage);
                         exit;
 
+                        } // fin validación sesión activa
+
                     } // fin else estado activo
 
                 } else {
@@ -416,15 +423,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <h1 class="text-2xl font-bold">Bienvenido a SIGA</h1>
         <p class="mt-1 text-gray-500">Sistema de Gestión de Almacén</p>
       </div>
-
-      <?php if ($loginError !== ""): ?>
-        <p class="mt-2 text-sm text-red-600">
-          <?= htmlspecialchars($loginError) ?>
-        </p>
-      <?php endif; ?>
     </div>
 
-    <div class="pt-4 px-6 pb-6">
+    <?php if ($loginError !== ""): ?>
+      <?php
+        // Definir clases según tipo de mensaje
+        $alertClasses = [
+          'error'   => 'text-red-700 bg-red-50 border border-red-200',
+          'warning' => 'text-yellow-700 bg-yellow-50 border border-yellow-200',
+          'info'    => 'text-blue-700 bg-blue-50 border border-blue-200',
+          'success' => 'text-green-700 bg-green-50 border border-green-200'
+        ];
+        $alertClass = $alertClasses[$loginErrorType] ?? $alertClasses['error'];
+      ?>
+      <div class="px-6">
+        <div class="<?= $alertClass ?> px-4 py-3 rounded-lg text-sm mb-4">
+          <?= htmlspecialchars($loginError) ?>
+        </div>
+      </div>
+    <?php endif; ?>
+
+    <div class="px-6 pb-6">
       <form id="loginForm" class="space-y-4" method="POST">
 
         <div class="space-y-2">

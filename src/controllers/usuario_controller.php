@@ -132,6 +132,20 @@ function revocarSesionesUsuario(PDO $conn, int $idUsuario): void
 }
 
 /**
+ * Verifica si el usuario ya tiene una sesión activa en BD.
+ */
+function usuarioTieneSesionActiva(PDO $conn, int $idUsuario): bool
+{
+    try {
+        $stmt = $conn->prepare("\n            SELECT 1\n            FROM sesiones_usuarios\n            WHERE id_usuario = :id\n              AND activa = 1\n            LIMIT 1\n        ");
+        $stmt->execute([':id' => $idUsuario]);
+        return (bool) $stmt->fetchColumn();
+    } catch (\Exception $e) {
+        return false;
+    }
+}
+
+/**
  * Crea token_sesion nuevo en sesiones_usuarios.
  * Devuelve token o null si falla (no bloquea login).
  */
@@ -1846,7 +1860,14 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
             ], 401);
         }
 
-        revocarSesionesUsuario($conn, (int) $user['id_usuario']);
+        if (usuarioTieneSesionActiva($conn, (int) $user['id_usuario'])) {
+            enviarJSON([
+                'success' => false,
+                'error' => 'Ya tienes una sesión activa en otro dispositivo o navegador. Para continuar, primero cierra la sesión anterior desde ese dispositivo o espera a que expire por inactividad.',
+                'code' => 'session_active'
+            ], 409);
+        }
+
         $newToken = crearTokenSesionBD($conn, (int) $user['id_usuario']);
 
         $_SESSION['usuario'] = [
