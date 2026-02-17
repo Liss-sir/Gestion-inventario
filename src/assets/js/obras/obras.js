@@ -1,4 +1,4 @@
-﻿﻿/* ============================================================
+﻿﻿﻿﻿/* ============================================================
    GUARD GLOBAL (evita doble carga del script)
 ============================================================ */
 if (!window.__obrasJSLoaded) {
@@ -152,6 +152,10 @@ if (!window.__obrasJSLoaded) {
   // ==============================
   async function cargarObras() {
     try {
+      // Ocultar el mensaje de no resultados al cargar
+      const emptySearchElement = document.getElementById("emptySearchObras");
+      if (emptySearchElement) emptySearchElement.classList.add("hidden");
+      
       // Si es instructor sin ficha, mostrar mensaje especial
       if (instructorSinFicha) {
         const container = document.getElementById("obrasContainer");
@@ -479,6 +483,16 @@ if (!window.__obrasJSLoaded) {
     const container = document.getElementById("obrasContainer");
     if (!container) return;
 
+    // Ocultar el mensaje de no resultados si está visible
+    const emptySearchElement = document.getElementById("emptySearchObras");
+    if (emptySearchElement) emptySearchElement.classList.add("hidden");
+
+    // Mostrar el contenedor de obras
+    container.classList.remove("hidden");
+    
+    const worksListContent = container.closest('.rounded-xl.border.border-border.bg-card.shadow-sm.overflow-hidden')?.querySelector('.p-6:last-child');
+    if (worksListContent) worksListContent.classList.remove("hidden");
+
     if (!Array.isArray(obrasData) || obrasData.length === 0) {
       container.innerHTML = `
         <div class="text-center py-12 text-gray-500">
@@ -494,7 +508,7 @@ if (!window.__obrasJSLoaded) {
         // ESTADO BADGE (SIEMPRE VISIBLE)
         const estadoBadge = `
           <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-            obra.estado === "Activa" ? "bg-emerald-100 text-emerald-700" : "bg-gray-200 text-gray-700"
+            obra.estado === "Activa" ? "bg-[#39A900]/50 text-[#007832]" : "bg-[#000000]/40 text-[#000000] opacity-70"
           }">
             ${obra.estado === "Activa" ? "Activa" : "Finalizada"}
           </span>
@@ -594,7 +608,7 @@ if (!window.__obrasJSLoaded) {
                       </svg> Tipo
                     </p>
                     <span class="inline-block px-2 py-1 ${
-                      obra.tipo_trabajo === "Grupal" ? "bg-[#00304d]" : "bg-secondary"
+                      obra.tipo_trabajo === "Grupal" ? "bg-[#00304d]/30 text-[#00304d]" : "bg-[#007832]/65"
                     } text-white text-xs font-semibold rounded-full">${obra.tipo_trabajo}</span>
                   </div>
 
@@ -704,7 +718,25 @@ if (!window.__obrasJSLoaded) {
       );
     });
 
-    renderObras(results);
+    // ✅ ACTUALIZADO: Usar emptySearchObras cuando no hay resultados
+    const emptySearchElement = document.getElementById("emptySearchObras");
+    const obrasContainer = document.getElementById("obrasContainer");
+    const worksListContainer = document.querySelector('.rounded-xl.border.border-border.bg-card.shadow-sm.overflow-hidden .p-6:last-child');
+    
+    if (results.length === 0 && emptySearchElement) {
+      // Ocultar el contenedor de obras y mostrar el mensaje de no resultados
+      if (obrasContainer) obrasContainer.classList.add("hidden");
+      if (worksListContainer) worksListContainer.classList.add("hidden");
+      
+      emptySearchElement.classList.remove("hidden");
+    } else {
+      // Ocultar el mensaje de no resultados y mostrar las obras normalmente
+      if (emptySearchElement) emptySearchElement.classList.add("hidden");
+      if (obrasContainer) obrasContainer.classList.remove("hidden");
+      if (worksListContainer) worksListContainer.classList.remove("hidden");
+      
+      renderObras(results);
+    }
   }
 
   // ==============================
@@ -1323,8 +1355,8 @@ if (!window.__obrasJSLoaded) {
       badge.textContent = obra.estado === "Activa" ? "Activa" : "Finalizada";
       badge.className =
         obra.estado === "Activa"
-          ? "inline-block px-3 py-1 bg-secondary text-white text-xs font-semibold rounded-full"
-          : "inline-block px-3 py-1 bg-gray-500 text-white text-xs font-semibold rounded-full";
+          ? "inline-block px-3 py-1 bg-[#007832]/65 text-white text-xs font-semibold rounded-full"
+          : "inline-block px-3 py-1 bg-[#000000]/40 text-[#000000] text-xs rounded-full";
 
       document.getElementById("details_descripcion").textContent = obra.descripcion || "Sin descripción";
       document.getElementById("details_ficha").textContent = obra.numero_ficha || "N/A";
@@ -1333,8 +1365,8 @@ if (!window.__obrasJSLoaded) {
       tipoElement.textContent = obra.tipo_trabajo;
       tipoElement.className =
         obra.tipo_trabajo === "Grupal"
-          ? "inline-block px-2 py-1 bg-[#00304d] text-white text-xs font-semibold rounded-full"
-          : "inline-block px-2 py-1 bg-secondary text-white text-xs font-semibold rounded-full";
+          ? "inline-block px-2 py-1 bg-[#00304D]/30 text-[#00304D] text-xs font-semibold rounded-full"
+          : "inline-block px-2 py-1 bg-[#007832]/65 text-white text-xs font-semibold rounded-full";
 
       // Si es instructor, no mostrar nombre del instructor (mostrar "Tu obra" o no mostrar)
       if (esInstructor) {
@@ -2062,6 +2094,45 @@ if (!window.__obrasJSLoaded) {
   // ==============================
   document.addEventListener("DOMContentLoaded", () => {
     console.log("Inicializando módulo de obras...");
+
+    // ==============================
+    // EMPTY SEARCH CONTAINER FOR OBRAS (FUERA DEL CONTAINER)
+    // ==============================
+    let emptySearchObrasContainer = document.getElementById("emptySearchObras");
+
+    if (!emptySearchObrasContainer) {
+      const obrasContainer = document.getElementById("obrasContainer");
+      const worksListContainer = document.querySelector('.rounded-xl.border.border-border.bg-card.shadow-sm.overflow-hidden');
+      
+      if (obrasContainer && worksListContainer) {
+        emptySearchObrasContainer = document.createElement("div");
+        emptySearchObrasContainer.id = "emptySearchObras";
+        
+        emptySearchObrasContainer.className =
+          "hidden mt-10 mb-6 flex flex-col items-center justify-center text-center border border-border rounded-2xl p-10 w-full";
+        
+        emptySearchObrasContainer.innerHTML = `
+          <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
+            <svg class="h-7 w-7 text-muted-foreground"
+                 xmlns="http://www.w3.org/2000/svg"
+                 fill="none"
+                 viewBox="0 0 24 24"
+                 stroke="currentColor"
+                 stroke-width="1.8">
+              <circle cx="11" cy="11" r="6" stroke-linecap="round" stroke-linejoin="round"></circle>
+              <line x1="16" y1="16" x2="20" y2="20" stroke-linecap="round" stroke-linejoin="round"></line>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold mt-4">No se encontraron resultados</h3>
+          <p class="text-sm text-muted-foreground mt-1 max-w-md">
+            No se encontraron obras que coincidan con los criterios de búsqueda actuales.
+          </p>
+        `;
+        
+        // Insertar antes del contenedor de obras
+        worksListContainer.parentNode.insertBefore(emptySearchObrasContainer, worksListContainer);
+      }
+    }
 
     setupSidebarDetection();
     aplicarPermisosUI();
