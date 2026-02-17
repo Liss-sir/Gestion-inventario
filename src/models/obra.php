@@ -48,10 +48,10 @@ class ObraModel {
 
     /* OBTENER RAES ACTIVOS */
     public function obtenerRaesActivos() {
-        $sql = "SELECT id_rae, descripcion_rae 
-                FROM raes 
-                WHERE estado = 'Activo' 
-                ORDER BY descripcion_rae";
+        $sql = "SELECT id_rae, codigo_rae, descripcion_rae 
+            FROM raes 
+            WHERE estado = 'Activo' 
+            ORDER BY codigo_rae";
         
         try {
             $stmt = $this->conn->prepare($sql);
@@ -59,6 +59,37 @@ class ObraModel {
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             error_log("Error obteniendo RAEs: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /* OBTENER RAES VINCULADOS A LA FICHA (POR PROGRAMA) */
+    public function obtenerRaesPorFicha($idFicha) {
+        try {
+            // Obtener el programa asociado a la ficha
+            $sqlFicha = "SELECT id_programa FROM fichas WHERE id_ficha = ? LIMIT 1";
+            $stmtFicha = $this->conn->prepare($sqlFicha);
+            $stmtFicha->execute([$idFicha]);
+            $ficha = $stmtFicha->fetch(PDO::FETCH_ASSOC);
+
+            if (!$ficha || empty($ficha['id_programa'])) {
+                return [];
+            }
+
+            $idPrograma = $ficha['id_programa'];
+
+            $sql = "SELECT id_rae, codigo_rae, descripcion_rae
+                    FROM raes
+                    WHERE id_programa = ?
+                    AND estado = 'Activo'
+                    ORDER BY codigo_rae";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([$idPrograma]);
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Error obteniendo RAEs por ficha: " . $e->getMessage());
             return [];
         }
     }
@@ -77,6 +108,27 @@ class ObraModel {
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             error_log("Error obteniendo instructores: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /* OBTENER INSTRUCTORES POR FICHA */
+    public function obtenerInstructoresPorFicha($idFicha) {
+        $sql = "SELECT u.id_usuario, u.nombre_completo
+                FROM usuarios u
+                INNER JOIN fichas_instructores fi ON u.id_usuario = fi.id_usuario
+                WHERE fi.id_ficha = ? 
+                AND u.cargo = 'instructor'
+                AND u.estado = 'activo'
+                AND fi.estado = 'Activo'
+                ORDER BY u.nombre_completo";
+        
+        try {
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([$idFicha]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Error obteniendo instructores por ficha: " . $e->getMessage());
             return [];
         }
     }

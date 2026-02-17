@@ -35,6 +35,20 @@ class ObraController {
         echo json_encode($this->model->obtenerRaesActivos());
     }
 
+    public function obtenerRaesPorFicha($idFicha) {
+        try {
+            $raes = $this->model->obtenerRaesPorFicha($idFicha);
+            if ($raes === false) {
+                echo json_encode(["error" => "Error al obtener RAEs por ficha"]);
+            } else {
+                echo json_encode($raes);
+            }
+        } catch (Exception $e) {
+            error_log("Error en obtenerRaesPorFicha: " . $e->getMessage());
+            echo json_encode(["error" => "Error interno del servidor"]);
+        }
+    }
+
     public function obtenerInstructores() {
         try {
             $instructores = $this->model->obtenerInstructoresActivos();
@@ -45,6 +59,20 @@ class ObraController {
             }
         } catch (Exception $e) {
             error_log("Error en obtenerInstructores: " . $e->getMessage());
+            echo json_encode(["error" => "Error interno del servidor"]);
+        }
+    }
+
+    public function obtenerInstructoresPorFicha($idFicha) {
+        try {
+            $instructores = $this->model->obtenerInstructoresPorFicha($idFicha);
+            if ($instructores === false) {
+                echo json_encode(["error" => "Error al obtener instructores por ficha"]);
+            } else {
+                echo json_encode($instructores);
+            }
+        } catch (Exception $e) {
+            error_log("Error en obtenerInstructoresPorFicha: " . $e->getMessage());
             echo json_encode(["error" => "Error interno del servidor"]);
         }
     }
@@ -158,8 +186,28 @@ switch ($accion) {
         $controller->obtenerRaes();
         break;
 
+    case "obtener_raes_por_ficha":
+        $idFicha = $_GET['id_ficha'] ?? ($_POST['id_ficha'] ?? null);
+        if (!$idFicha || !is_numeric($idFicha)) {
+            echo json_encode(["error" => "ID de ficha inválido o no proporcionado"]);
+            break;
+        }
+        $controller->obtenerRaesPorFicha((int)$idFicha);
+        break;
+
     case "obtener_instructores":
         $controller->obtenerInstructores();
+        break;
+
+    case "obtener_instructores_por_ficha":
+        $idFicha = $_GET['id_ficha'] ?? ($_POST['id_ficha'] ?? null);
+        
+        if (!$idFicha || !is_numeric($idFicha)) {
+            echo json_encode(["error" => "ID de ficha inválido o no proporcionado"]);
+            break;
+        }
+        
+        $controller->obtenerInstructoresPorFicha((int)$idFicha);
         break;
 
     case "obtener_aprendices_ficha":
