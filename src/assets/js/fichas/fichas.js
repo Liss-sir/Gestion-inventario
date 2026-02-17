@@ -217,9 +217,6 @@ const detalleFichaContent = document.getElementById("detalleFichaContent")
 // Group leader
 const listaJefeGrupo = document.getElementById("listaJefeGrupo");
 
-console.log("API_URL:", API_URL);
-console.log("PROGRAMAS_API_URL:", PROGRAMAS_API_URL);
-
 // =========================
 // SINGLE PAGINATION CONTAINER
 // =========================
@@ -339,12 +336,10 @@ async function cargarProgramas() {
       })
     } else {
       programas = []
-      console.error("La respuesta de programas no es un array:", data)
     }
 
     renderOpcionesPrograma()
   } catch (error) {
-    console.error("Error al cargar programas:", error)
     toastError("Error al cargar los programas")
     programas = []
     renderOpcionesPrograma()
@@ -369,11 +364,9 @@ async function cargarAprendices(idFicha = null) {
       aprendices = data
     } else {
       aprendices = []
-      console.error("La respuesta de aprendices no es un array:", data)
     }
     setAprendicesLoading(false)
   } catch (error) {
-    console.error("Error al cargar aprendices:", error)
     aprendices = []
     setAprendicesLoading(false)
   }
@@ -388,30 +381,23 @@ async function cargarInstructores(id_programa = null) {
 
     if (id_programa) {
       url = `${API_URL}?accion=instructoresPorPrograma&id_programa=${id_programa}`;
-      console.log("Cargando instructores para programa:", id_programa);
     }
-
-    console.log("Solicitando instructores desde:", url);
     const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     }
 
     const data = await res.json();
-    console.log("Instructores recibidos:", data);
 
     if (Array.isArray(data)) {
       instructores = data;
-      console.log(`Se cargaron ${data.length} instructores para el programa ${id_programa || "todos"}`);
     } else {
       instructores = [];
-      console.error("La respuesta de instructores no es un array:", data);
     }
 
     renderChecklistInstructores();
   }
   catch (error) {
-    console.error("Error al cargar instructores:", error);
     instructores = [];
     renderChecklistInstructores();
   }
@@ -925,23 +911,18 @@ async function cargarEstudiantesDeFicha(idFicha) {
       renderChecklistAprendices()
     }
   } catch (error) {
-    console.error("Error al cargar aprendices de la ficha:", error)
   }
 }
 
 async function cargarInstructoresDeFicha(idFicha) {
   try {
-    console.log(`Cargando instructores para ficha: ${idFicha}`);
-    
     const res = await fetch(`${API_URL}?accion=instructoresFicha&id_ficha=${idFicha}`)
     
     if (!res.ok) {
-      console.error(`Error HTTP: ${res.status}`);
       return;
     }
 
     const data = await res.json();
-    console.log('Datos recibidos de instructores:', data);
     
     if (Array.isArray(data) && data.length > 0) {
       instructoresSeleccionados = data;
@@ -955,10 +936,7 @@ async function cargarInstructoresDeFicha(idFicha) {
           numero_documento: jefe.numero_documento,
           correo: jefe.correo || ''
         };
-        console.log(`Jefe de grupo establecido: ${jefeGrupoSeleccionado.nombre_completo}`);
       }
-      
-      console.log(`Se cargaron ${data.length} instructores`);
 
       // Upload the complete list of instructors for this program
       const ficha = fichas.find(f => String(f.id) === String(idFicha));
@@ -972,7 +950,6 @@ async function cargarInstructoresDeFicha(idFicha) {
     } else {
       instructoresSeleccionados = [];
       jefeGrupoSeleccionado = null;
-      console.log('No se encontraron instructores para esta ficha');
 
       // Upload program instructors if they exist
       const ficha = fichas.find(f => String(f.id) === String(idFicha));
@@ -983,7 +960,6 @@ async function cargarInstructoresDeFicha(idFicha) {
       }
     }
   } catch (error) {
-    console.error("Error al cargar instructores de la ficha:", error);
     instructoresSeleccionados = [];
     jefeGrupoSeleccionado = null;
   }
@@ -1027,7 +1003,6 @@ async function openModalVerFicha(ficha) {
       }
     }
   } catch (error) {
-    console.error("Error al cargar jefe de ficha:", error)
   }
 
   detalleFichaContent.innerHTML = `
@@ -1175,7 +1150,6 @@ async function cargarDetalleAprendices(idFicha) {
     )
     detalleAprendicesOriginal = new Set(detalleAprendicesSeleccionados)
   } catch (error) {
-    console.error("Error al cargar aprendices de la ficha:", error)
     detalleAprendices = []
     detalleAprendicesSeleccionados = new Set()
     detalleAprendicesOriginal = new Set()
@@ -1296,7 +1270,6 @@ async function guardarDetalleAprendices(idFicha) {
       toastError(data.error || "No se pudieron actualizar los aprendices.")
     }
   } catch (error) {
-    console.error("Error al actualizar aprendices:", error)
     toastError("No se pudieron actualizar los aprendices.")
   }
 
@@ -1327,7 +1300,6 @@ async function callApi(url, payload = null) {
     const data = await res.json()
     return data
   } catch (error) {
-    console.error("Error en callApi:", error)
     return { error: error.message || "Error de conexión" }
   }
 }
@@ -1342,7 +1314,6 @@ async function cargarFichas() {
     
     if (!Array.isArray(data)) {
       fichas = []
-      console.error("La respuesta de fichas no es un array:", data)
     } else {
       fichas = data.map((f) => ({
         id: f.id_ficha,
@@ -1357,10 +1328,11 @@ async function cargarFichas() {
       }))
     }
 
+    syncViewModeWithScreen()
     renderTable()
   } catch (error) {
-    console.error("Error al cargar fichas:", error)
     fichas = []
+    syncViewModeWithScreen()
     renderTable()
   }
 }
@@ -1427,7 +1399,6 @@ async function cambiarEstadoFicha(id, accion) {
             toastError(data.message || `Error al ${accion} la ficha`);
         }
     } catch (error) {
-        console.error(`Error al ${accion} ficha:`, error);
         toastError(`Error al ${accion} la ficha`);
     }
 }
@@ -1449,26 +1420,57 @@ async function cancelarFicha(id) {
 // VIEW MODE SWITCH: TABLE / CARDS
 // =========================
 
-function setVistaTabla() {
+const SMALL_SCREEN_MAX = 720
+let vistaPreferida = "tabla"
+
+function isSmallScreen() {
+  return window.matchMedia(`(max-width: ${SMALL_SCREEN_MAX}px)`).matches
+}
+
+function applyVistaTabla() {
   vistaTabla.classList.remove("hidden")
   vistaTarjetas.classList.add("hidden")
 
   btnVistaTabla.classList.add("bg-muted", "text-foreground")
   btnVistaTarjetas.classList.remove("bg-muted")
   btnVistaTarjetas.classList.add("text-muted-foreground")
-
-  renderTable()
 }
 
-function setVistaTarjetas() {
+function applyVistaTarjetas() {
   vistaTabla.classList.add("hidden")
   vistaTarjetas.classList.remove("hidden")
 
   btnVistaTarjetas.classList.add("bg-muted", "text-foreground")
   btnVistaTabla.classList.remove("bg-muted")
   btnVistaTabla.classList.add("text-muted-foreground")
+}
 
+function setVistaTabla() {
+  vistaPreferida = "tabla"
+  applyVistaTabla()
   renderTable()
+}
+
+function setVistaTarjetas() {
+  vistaPreferida = "tarjetas"
+  applyVistaTarjetas()
+  renderTable()
+}
+
+function syncViewModeWithScreen() {
+  if (isSmallScreen()) {
+    btnVistaTabla.classList.add("hidden")
+    applyVistaTarjetas()
+    return
+  }
+
+  btnVistaTabla.classList.remove("hidden")
+
+  if (vistaPreferida === "tarjetas") {
+    applyVistaTarjetas()
+  } else {
+    applyVistaTabla()
+  }
 }
 
 // =========================
@@ -2177,7 +2179,6 @@ if (inputPrograma) {
 // Add student with Enter
 if (selectEstudiante) {
   selectEstudiante.addEventListener("keyup", () => {
-    console.log("Filtro activado:", selectEstudiante.value);
     renderChecklistAprendices()
   })
 }
@@ -2185,7 +2186,6 @@ if (selectEstudiante) {
 // Add instructor with Enter
 if (selectInstructor) {
   selectInstructor.addEventListener("keyup", () => {
-    console.log("Filtro activado:", selectInstructor.value);
     renderChecklistInstructores()
   })
 }
@@ -2210,6 +2210,7 @@ btnCerrarModalVerFicha.addEventListener("click", closeModalVerFicha)
 
 btnVistaTabla.addEventListener("click", setVistaTabla)
 btnVistaTarjetas.addEventListener("click", setVistaTarjetas)
+window.addEventListener("resize", syncViewModeWithScreen)
 
 // ================================
 // FORM VALIDATION AND SUBMISSION
@@ -2418,7 +2419,6 @@ formFicha.addEventListener("submit", async (e) => {
         closeModalFicha();
         await cargarFichas();
     } catch (error) {
-        console.error("Error de red al guardar ficha:", error);
         toastError("Ocurrió un error al guardar la ficha (red/servidor).");
     }
 });
@@ -2522,26 +2522,15 @@ function seleccionarJefeGrupo(index) {
 
 async function inicializar() {
   try {
-    console.log("Iniciando carga de datos...");
-    
-    console.log("Cargando programas...");
     await cargarProgramas();
     
-    console.log("Cargando aprendices e instructores...");
     await Promise.all([
         cargarAprendices(),
         cargarInstructores()
     ]);
     
-    console.log("Cargando fichas...");
     await cargarFichas();
-    
-    console.log("Renderizando vista...");
-    setVistaTabla();
-    
-    console.log("Inicialización completada");
   } catch (error) {
-    console.error("Error en inicialización:", error);
     toastError("Error al cargar los datos iniciales");
   }
 }

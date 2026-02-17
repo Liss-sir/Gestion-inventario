@@ -73,6 +73,24 @@ foreach ($rolesFuncionales as $rf) {
 }
 
 // =====================================================
+// ✅ CONTEXTO PARA FILTROS DE INSTRUCTOR
+// =====================================================
+$cargoActual = permisos_resolver_alias(permisos_getCargo());
+$esInstructor = ($cargoActual === "instructor" && !$tieneRolFuncPoderoso);
+$idUsuarioSesion = (int)($_SESSION['usuario_id'] ?? $_SESSION['id_usuario'] ?? 0);
+
+$fichasInstructor = $_SESSION['usuario_fichas'] ?? [];
+$fichasInstructorIds = [];
+if (is_array($fichasInstructor)) {
+  foreach ($fichasInstructor as $fichaRow) {
+    if (isset($fichaRow['id_ficha'])) {
+      $fichasInstructorIds[] = (int)$fichaRow['id_ficha'];
+    }
+  }
+}
+$fichasInstructorIds = array_values(array_unique(array_filter($fichasInstructorIds)));
+
+// =====================================================
 // ✅ PERMISOS + OVERRIDE POR ROL FUNCIONAL PODEROSO
 // =====================================================
 
@@ -108,12 +126,18 @@ $totalBodegas = (int)($bodRow['total'] ?? 0);
 $bodegasActivas = (int)($bodRow['activas'] ?? 0);
 
 // Movimientos de hoy (entrada/salida + devoluciones)
-$sqlMovHoy = "SELECT SUM(cnt) AS total FROM (
-  SELECT COUNT(*) AS cnt FROM movimientos_material WHERE DATE(fecha_hora) = CURDATE()
-  UNION ALL
-  SELECT COUNT(*) AS cnt FROM devoluciones_material WHERE DATE(fecha_hora) = CURDATE()
-) t";
-$movimientosHoy = (int)($conn->query($sqlMovHoy)->fetchColumn() ?: 0);
+if ($esInstructor) {
+  $stmtMovHoy = $conn->prepare("SELECT COUNT(*) FROM devoluciones_material WHERE id_usuario = :id AND DATE(fecha_hora) = CURDATE()");
+  $stmtMovHoy->execute([':id' => $idUsuarioSesion]);
+  $movimientosHoy = (int)($stmtMovHoy->fetchColumn() ?: 0);
+} else {
+  $sqlMovHoy = "SELECT SUM(cnt) AS total FROM (
+    SELECT COUNT(*) AS cnt FROM movimientos_material WHERE DATE(fecha_hora) = CURDATE()
+    UNION ALL
+    SELECT COUNT(*) AS cnt FROM devoluciones_material WHERE DATE(fecha_hora) = CURDATE()
+  ) t";
+  $movimientosHoy = (int)($conn->query($sqlMovHoy)->fetchColumn() ?: 0);
+}
 
 // Alertas de stock (<=20 unidades) - top 4
 $sqlAlerts = "
@@ -188,19 +212,24 @@ foreach ($metricsNow as $key => $value) {
 $_SESSION['dashboard_prev'] = $metricsNow;
 
 // Solicitudes recientes (máx 4)
-$sqlSol = "
+$sqlSolBase = "
   SELECT sm.id_solicitud, sm.estado, sm.fecha_solicitud,
        COALESCE(u.nombre_completo, 'Sin instructor') AS instructor_nombre,
        COALESCE(f.numero_ficha, 'N/A') AS ficha_numero
   FROM solicitudes_material sm
   LEFT JOIN usuarios u ON u.id_usuario = sm.id_usuario_solicitante
   LEFT JOIN fichas f ON f.id_ficha = sm.id_ficha
-  ORDER BY sm.fecha_solicitud DESC
-  LIMIT 4
 ";
 
-// ✅ FIX: Siempre carga, NO se oculta el cuadro
-$recentSolicitudes = $conn->query($sqlSol)->fetchAll(PDO::FETCH_ASSOC);
+if ($esInstructor) {
+  $sqlSol = $sqlSolBase . " WHERE sm.id_usuario_solicitante = :id ORDER BY sm.fecha_solicitud DESC LIMIT 4";
+  $stmtSol = $conn->prepare($sqlSol);
+  $stmtSol->execute([':id' => $idUsuarioSesion]);
+  $recentSolicitudes = $stmtSol->fetchAll(PDO::FETCH_ASSOC);
+} else {
+  $sqlSol = $sqlSolBase . " ORDER BY sm.fecha_solicitud DESC LIMIT 4";
+  $recentSolicitudes = $conn->query($sqlSol)->fetchAll(PDO::FETCH_ASSOC);
+}
 
 
 // Solicitudes pendientes
@@ -211,34 +240,66 @@ if ($canVerPendientesBtn) {
 
 
 // Movimientos recientes (entrada/salida/devolución) máx 4
-$sqlRecentMov = "
-  SELECT * FROM (
-    SELECT m.fecha_hora, m.tipo_movimiento AS tipo, mf.nombre AS material_nombre, m.cantidad,
-         DATE_FORMAT(m.fecha_hora, '%H:%i') AS hora
-    FROM movimientos_material m
-    LEFT JOIN material_formacion mf ON mf.id_material = m.id_material
-        
-    UNION ALL
+if ($esInstructor) {
+  $sqlRecentMov = "
     SELECT d.fecha_hora, 'devolucion' AS tipo, mf.nombre AS material_nombre, d.cantidad_devuelta AS cantidad,
          DATE_FORMAT(d.fecha_hora, '%H:%i') AS hora
     FROM devoluciones_material d
     LEFT JOIN material_formacion mf ON mf.id_material = d.id_material
-  ) x
-  ORDER BY fecha_hora DESC
-  LIMIT 4
-";
-
-// ✅ FIX: Siempre carga, NO se oculta el cuadro
-$recentMovimientos = $conn->query($sqlRecentMov)->fetchAll(PDO::FETCH_ASSOC);
+    WHERE d.id_usuario = :id
+    ORDER BY d.fecha_hora DESC
+    LIMIT 4
+  ";
+  $stmtMov = $conn->prepare($sqlRecentMov);
+  $stmtMov->execute([':id' => $idUsuarioSesion]);
+  $recentMovimientos = $stmtMov->fetchAll(PDO::FETCH_ASSOC);
+} else {
+  $sqlRecentMov = "
+    SELECT * FROM (
+      SELECT m.fecha_hora, m.tipo_movimiento AS tipo, mf.nombre AS material_nombre, m.cantidad,
+           DATE_FORMAT(m.fecha_hora, '%H:%i') AS hora
+      FROM movimientos_material m
+      LEFT JOIN material_formacion mf ON mf.id_material = m.id_material
+          
+      UNION ALL
+      SELECT d.fecha_hora, 'devolucion' AS tipo, mf.nombre AS material_nombre, d.cantidad_devuelta AS cantidad,
+           DATE_FORMAT(d.fecha_hora, '%H:%i') AS hora
+      FROM devoluciones_material d
+      LEFT JOIN material_formacion mf ON mf.id_material = d.id_material
+    ) x
+    ORDER BY fecha_hora DESC
+    LIMIT 4
+  ";
+  $recentMovimientos = $conn->query($sqlRecentMov)->fetchAll(PDO::FETCH_ASSOC);
+}
 
 
 // Consumo mensual (salidas) Enero-Diciembre
 $consumoData = [];
+$fichaFilterSql = "";
+$fichaFilterParams = [];
+if ($esInstructor) {
+  if (!empty($fichasInstructorIds)) {
+    $placeholders = [];
+    foreach ($fichasInstructorIds as $idx => $fid) {
+      $key = ":ficha" . $idx;
+      $placeholders[] = $key;
+      $fichaFilterParams[$key] = $fid;
+    }
+    $fichaFilterSql = " AND id_ficha IN (" . implode(",", $placeholders) . ")";
+  }
+}
+
 for ($m = 1; $m <= 12; $m++) {
-  $sqlConsumo = "SELECT COALESCE(SUM(cantidad),0) FROM movimientos_material WHERE tipo_movimiento = 'Salida' AND YEAR(fecha_hora) = YEAR(CURDATE()) AND MONTH(fecha_hora) = :m";
-  $stmtC = $conn->prepare($sqlConsumo);
-  $stmtC->execute([':m' => $m]);
-  $totalMes = (int)$stmtC->fetchColumn();
+  if ($esInstructor && empty($fichasInstructorIds)) {
+    $totalMes = 0;
+  } else {
+    $sqlConsumo = "SELECT COALESCE(SUM(cantidad),0) FROM movimientos_material WHERE tipo_movimiento = 'Salida' AND YEAR(fecha_hora) = YEAR(CURDATE()) AND MONTH(fecha_hora) = :m" . $fichaFilterSql;
+    $stmtC = $conn->prepare($sqlConsumo);
+    $params = array_merge([':m' => $m], $fichaFilterParams);
+    $stmtC->execute($params);
+    $totalMes = (int)$stmtC->fetchColumn();
+  }
   $consumoData[] = [
     'name' => date('M', mktime(0,0,0,$m,1)),
     'consumo' => $totalMes
@@ -246,12 +307,29 @@ for ($m = 1; $m <= 12; $m++) {
 }
 
 // Distribución por obra (usa el nombre_actividad como título de obra)
-$sqlCat = "
-  SELECT COALESCE(af.nombre_actividad, 'Sin obra') AS categoria, COUNT(*) AS total
-  FROM actividades_formacion af
-  GROUP BY COALESCE(af.nombre_actividad, 'Sin obra')
-";
-$catRows = $conn->query($sqlCat)->fetchAll(PDO::FETCH_ASSOC);
+if ($esInstructor) {
+  if (!empty($fichasInstructorIds)) {
+    $placeholders = implode(",", array_fill(0, count($fichasInstructorIds), "?"));
+    $sqlCat = "
+      SELECT COALESCE(af.nombre_actividad, 'Sin obra') AS categoria, COUNT(*) AS total
+      FROM actividades_formacion af
+      WHERE af.id_ficha IN (" . $placeholders . ")
+      GROUP BY COALESCE(af.nombre_actividad, 'Sin obra')
+    ";
+    $stmtCat = $conn->prepare($sqlCat);
+    $stmtCat->execute($fichasInstructorIds);
+    $catRows = $stmtCat->fetchAll(PDO::FETCH_ASSOC);
+  } else {
+    $catRows = [];
+  }
+} else {
+  $sqlCat = "
+    SELECT COALESCE(af.nombre_actividad, 'Sin obra') AS categoria, COUNT(*) AS total
+    FROM actividades_formacion af
+    GROUP BY COALESCE(af.nombre_actividad, 'Sin obra')
+  ";
+  $catRows = $conn->query($sqlCat)->fetchAll(PDO::FETCH_ASSOC);
+}
 
 // Paleta de colores reutilizable
 $palette = [

@@ -1861,10 +1861,12 @@ function renderRolFuncionalBadgeHTML(user) {
           })
           .filter((u) => u.id !== null);
 
+        syncViewModeWithScreen();
         renderTable();
       } catch (error) {
         console.error("Error al cargar usuarios:", error);
         users = [];
+        syncViewModeWithScreen();
         renderTable();
       }
     }
@@ -2037,36 +2039,62 @@ function renderRolFuncionalBadgeHTML(user) {
     // VIEW MODE SWITCH: TABLE / CARDS
     // =========================
 
-    /**
-     * Activates the table view and re-renders content.
-     */
-    function setVistaTabla() {
-      if (!vistaTabla || !vistaTarjetas || !btnVistaTabla || !btnVistaTarjetas) return;
+    const SMALL_SCREEN_MAX = 930;
+    let vistaPreferida = "tabla";
 
+    function isSmallScreen() {
+      return window.matchMedia(`(max-width: ${SMALL_SCREEN_MAX}px)`).matches;
+    }
+
+    function applyVistaTabla() {
       vistaTabla.classList.remove("hidden");
       vistaTarjetas.classList.add("hidden");
 
       btnVistaTabla.classList.add("bg-muted", "text-foreground");
       btnVistaTarjetas.classList.remove("bg-muted");
       btnVistaTarjetas.classList.add("text-muted-foreground");
-
-      renderTable();
     }
 
-    /**
-     * Activates the cards view and re-renders content.
-     */
-    function setVistaTarjetas() {
-      if (!vistaTabla || !vistaTarjetas || !btnVistaTabla || !btnVistaTarjetas) return;
-
+    function applyVistaTarjetas() {
       vistaTabla.classList.add("hidden");
       vistaTarjetas.classList.remove("hidden");
 
       btnVistaTarjetas.classList.add("bg-muted", "text-foreground");
       btnVistaTabla.classList.remove("bg-muted");
       btnVistaTabla.classList.add("text-muted-foreground");
+    }
 
+    /**
+     * Activates the table view and re-renders content.
+     */
+    function setVistaTabla() {
+      vistaPreferida = "tabla";
+      applyVistaTabla();
       renderTable();
+    }
+
+    function setVistaTarjetas() {
+      vistaPreferida = "tarjetas";
+      applyVistaTarjetas();
+      renderTable();
+    }
+
+    function syncViewModeWithScreen() {
+      if (!vistaTabla || !vistaTarjetas || !btnVistaTabla || !btnVistaTarjetas) return;
+
+      if (isSmallScreen()) {
+        btnVistaTabla.classList.add("hidden");
+        applyVistaTarjetas();
+        return;
+      }
+
+      btnVistaTabla.classList.remove("hidden");
+
+      if (vistaPreferida === "tarjetas") {
+        applyVistaTarjetas();
+      } else {
+        applyVistaTabla();
+      }
     }
 
     // =========================
@@ -2830,6 +2858,7 @@ function renderRolFuncionalBadgeHTML(user) {
     // View switch buttons
     safeOn(btnVistaTabla, "click", setVistaTabla);
     safeOn(btnVistaTarjetas, "click", setVistaTarjetas);
+    window.addEventListener("resize", syncViewModeWithScreen);
 
     // =========================
     // MODAL ASIGNAR ROL - EVENTS
@@ -3584,6 +3613,7 @@ function renderRolFuncionalBadgeHTML(user) {
     cargarUsuarios();
     cargarProgramas(); // ✅ AHORA SÍ ESTÁ DEFINIDA
     setVistaTabla();
+    syncViewModeWithScreen();
     cargarRolesFuncionales();
 
     // ✅ ADDED: start auto refresh (without affecting your base flow)

@@ -1,6 +1,7 @@
 <?php
 
-class SolicitudMaterialModel {
+class SolicitudMaterialModel
+{
 
     public $db;
 
@@ -31,11 +32,11 @@ class SolicitudMaterialModel {
                 VALUES (?, ?, ?, ?, ?, ?)";
 
         $stmt = $this->db->prepare($sql);
-        
-        $id_actividad = !empty($data['id_actividad']) && $data['id_actividad'] > 0 
-                        ? $data['id_actividad'] 
-                        : null;
-        
+
+        $id_actividad = !empty($data['id_actividad']) && $data['id_actividad'] > 0
+            ? $data['id_actividad']
+            : null;
+
         $stmt->execute([
             $data['id_usuario'] ?? 1,
             $data['id_ficha'],
@@ -98,16 +99,17 @@ class SolicitudMaterialModel {
                 LEFT JOIN raes r ON sm.id_rae = r.id_rae
                 LEFT JOIN programas_formacion p ON sm.id_programa = p.id_programa
                 ORDER BY sm.fecha_solicitud DESC";
-    
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute();
-    
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     // ================= RESPONDER (YA NO DESCUENTA STOCK) =================
     public function responderSolicitud($idSolicitud, $estado, $idAprobador, $observaciones = null)
     {
+
         $estadoNormalizado = ucfirst(strtolower($estado));
 
         if (!in_array($estadoNormalizado, ['Aprobada', 'Rechazada'])) {
@@ -140,16 +142,17 @@ class SolicitudMaterialModel {
             $this->db->commit();
             return $rows > 0;
 
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $this->db->rollBack();
             return false;
         }
     }
 
     /* ===============================
-       CREAR MOVIMIENTO DE SALIDA
-       AHORA SOLO SE USA AL ENTREGAR
-    =============================== */
+     CREAR MOVIMIENTO DE SALIDA
+     AHORA SOLO SE USA AL ENTREGAR
+     =============================== */
     private function crearMovimientoSalidaDeSolicitud($idSolicitud, $idUsuario)
     {
         try {
@@ -193,7 +196,8 @@ class SolicitudMaterialModel {
 
             return true;
 
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             throw $e;
         }
     }
@@ -206,11 +210,11 @@ class SolicitudMaterialModel {
             AND tipo_movimiento = 'Entrada'
             ORDER BY fecha_hora DESC 
             LIMIT 1";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$idMaterial]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if ($result) {
             return [
                 'id_bodega' => $result['id_bodega'],
@@ -274,7 +278,8 @@ class SolicitudMaterialModel {
             $this->db->commit();
             return true;
 
-        } catch (Exception $e) {
+        }
+        catch (Exception $e) {
             $this->db->rollBack();
             return false;
         }
@@ -293,10 +298,10 @@ class SolicitudMaterialModel {
                 INNER JOIN material_formacion mf 
                     ON mf.id_material = sd.id_material
                 WHERE sd.id_solicitud = ?";
-    
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$idSolicitud]);
-    
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -323,7 +328,7 @@ class SolicitudMaterialModel {
                 FROM programas_formacion
                 WHERE estado = 'Activo' 
                 ORDER BY codigo_programa";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -331,7 +336,8 @@ class SolicitudMaterialModel {
 
     public function getRaesPorPrograma($programaId)
     {
-        if ($programaId <= 0) return [];
+        if ($programaId <= 0)
+            return [];
 
         $sql = "SELECT id_rae, codigo_rae, descripcion_rae
                 FROM raes
@@ -348,18 +354,19 @@ class SolicitudMaterialModel {
 
     public function getFichasPorPrograma($programaId)
     {
-        if ($programaId <= 0) return [];
+        if ($programaId <= 0)
+            return [];
 
         $sql = "SELECT id_ficha, numero_ficha, jornada 
                 FROM fichas 
                 WHERE id_programa = :programa_id 
                 AND estado = 'Activa' 
                 ORDER BY numero_ficha";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->bindParam(':programa_id', $programaId, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -379,28 +386,28 @@ class SolicitudMaterialModel {
                 WHERE mf.estado = 'Disponible'
                 GROUP BY mf.id_material
                 ORDER BY mf.nombre";
-        
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     public function getProgramasUsuario($id_usuario)
-    {
-        $sql = "SELECT 
-                    p.id_programa, 
-                    p.codigo_programa, 
-                    p.nombre_programa
-                FROM programas_formacion p
-                INNER JOIN instructor_programa ip 
-                    ON ip.id_programa = p.id_programa
-                WHERE p.estado = 'Activo'
-                AND ip.id_usuario = ?
-                ORDER BY p.codigo_programa";
+{
+    $sql = "SELECT 
+                p.id_programa, 
+                p.codigo_programa, 
+                p.nombre_programa
+            FROM programas_formacion p
+            INNER JOIN instructores_programas ip 
+                ON ip.id_programa = p.id_programa
+            WHERE p.estado = 'Activo'
+              AND ip.id_usuario = ?
+            ORDER BY p.codigo_programa";
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$id_usuario]);
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute([(int)$id_usuario]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
 }
 ?>
