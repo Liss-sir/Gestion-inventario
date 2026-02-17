@@ -1,9 +1,5 @@
 // ============================================================
-//  MÓDULO SOLICITUDES – JS FUNCIONAL (BACKEND/BD INTACTOS)
-//  + NUEVO: marcar "Aprobada" como "Entregada" (accion=entregar)
-//  + NUEVO: filtros Bodega/Subbodega + materiales por stock
-//  ✅ FIX: al escoger BODEGA, cargar materiales de esa bodega (sin exigir subbodega)
-//  ✅ FIX REAL: si backend cae a fallback global en SUBBODEGA, NO mostrar materiales falsos
+//  MÓDULO SOLICITUDES
 // ============================================================
 
 const API = new URL("src/controllers/solicitudes_controller.php", document.baseURI).toString();
@@ -32,7 +28,7 @@ let estadoApp = {
   materialesSeleccionados: [],
   datosFormulario: { programa: "", rae: "", ficha: "", observaciones: "" },
 
-  // ✅ NUEVO: filtros inventario
+  // NUEVO: filtros inventario
   filtrosInventario: {
     bodega: "",
     subbodega: "",
@@ -40,7 +36,7 @@ let estadoApp = {
 };
 
 // ============================================================
-// ✅ USUARIO EN SESIÓN (inyectado desde PHP) - similar a OBRAS
+// USUARIO EN SESIÓN (inyectado desde PHP) - similar a OBRAS
 // ============================================================
 const USUARIO = (() => {
   const u = window.USUARIO_SESION || window.SIGA_USUARIO || window.SIGA_USER || {};
@@ -60,9 +56,36 @@ const USUARIO = (() => {
 
 const CARGOS_FILTRAN_PROPIAS = new Set(["Instructor", "Pasante"]);
 
+// ============================================================
+// INSTRUCTOR: ficha asociada en sesión (patrón OBRAS)
+// ============================================================
+function normalizarCargo(c) {
+  return String(c || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+const ES_INSTRUCTOR = (() => {
+  const c = normalizarCargo(USUARIO.cargo);
+  return c === "instructor" || c.startsWith("instructor");
+})();
+
+const FICHA_INSTRUCTOR = (() => {
+  const u = USUARIO.raw || {};
+  const fichas = Array.isArray(u.fichas) ? u.fichas : [];
+  const primera = fichas[0] || null;
+  const id = primera?.id_ficha ?? primera?.id ?? null;
+  const n = parseInt(id, 10);
+  return Number.isNaN(n) ? null : n;
+})();
+
+console.log("[SOLICITUDES] Instructor?", ES_INSTRUCTOR, "Ficha:", FICHA_INSTRUCTOR);
+
 
 // ============================================================
-// ✅ PERMISOS (inyectados desde PHP)
+// PERMISOS (inyectados desde PHP)
 // ============================================================
 const PERMS = (() => {
   const p = window.SIGA_SOL_PERMS || {};
@@ -99,7 +122,7 @@ const selectores = {
 
   selectActividad: document.getElementById("actividad"),
 
-  // ✅ NUEVO: Bodega/Subbodega
+  // NUEVO: Bodega/Subbodega
   selectBodega: document.getElementById("bodega-select"),
   selectSubBodega: document.getElementById("subbodega-select"),
 
@@ -115,7 +138,7 @@ const selectores = {
 };
 
 // ============================================================
-// ✅ LÍMITES DE CARACTERES (front-end only)
+// LÍMITES DE CARACTERES (front-end only)
 // ============================================================
 const LIMITES = {
   // Ajusta a tu gusto / lo que soporte tu BD
@@ -179,7 +202,7 @@ function initLimitesCaracteres() {
 }
 
 // ============================================================
-//  ✅ UTILIDADES SEGURAS
+//  UTILIDADES SEGURAS
 // ============================================================
 function safeLucideCreateIcons() {
   try {
@@ -506,8 +529,129 @@ const utilidades = {
 };
 
 // ============================================================
-// ✅ HELPER: cargar opciones de materiales de forma segura
+// HELPER: obtener contexto de bodega/subbodega desde filtros
 // ============================================================
+function getContextoInventario() {
+  const { bodega, subbodega } = estadoApp.filtrosInventario || {};
+  const idBodega = String(bodega || "").trim();
+  const idSubbodega = String(subbodega || "").trim();
+
+  // se permite con bodega o con subbodega (por tu lógica previa)
+  const ok = !!(idBodega || idSubbodega);
+
+  return { ok, idBodega, idSubbodega };
+}
+
+// ============================================================
+// HELPER: aplicar bloqueo de materiales según contexto de inventario
+// ============================================================
+function aplicarBloqueoMaterialesPorInventario() {
+  const ctx = getContextoInventario();
+
+  // Solo si NO hay contexto: bloquear y mostrar mensaje
+  if (!ctx.ok) {
+    if (selectores.selectMaterial) {
+      selectores.selectMaterial.innerHTML =
+        '<option value="">Seleccione una bodega o sub-bodega</option>';
+      selectores.selectMaterial.disabled = true;
+    }
+    if (selectores.btnAgregarMaterial) selectores.btnAgregarMaterial.disabled = true;
+    if (selectores.inputCantidad) selectores.inputCantidad.disabled = true;
+    return false;
+  }
+
+  // Si SÍ hay contexto: SOLO habilitar (NO borrar opciones)
+  if (selectores.selectMaterial) selectores.selectMaterial.disabled = false;
+  if (selectores.btnAgregarMaterial) selectores.btnAgregarMaterial.disabled = false;
+  if (selectores.inputCantidad) selectores.inputCantidad.disabled = false;
+
+  return true;
+}
+
+
+// ============================================================
+// HELPER: cargar opciones de materiales de forma segura
+// ============================================================
+
+function idsProgramasAsignadosDesdeSesion(uRaw) {
+  if (!uRaw || typeof uRaw !== "object") return [];
+
+  // soporta varias formas típicas
+  const candidatos = [
+    uRaw.programas_asignados,
+    uRaw.programas,
+    uRaw.programasAsignados,
+    uRaw.programa_ids,
+    uRaw.programaIds,
+    uRaw.ids_programas,
+  ];
+
+  // 1) Si ya viene un array (de ids o de objetos)
+  for (const c of candidatos) {
+    if (Array.isArray(c)) {
+      // puede ser [1,2] o [{id_programa:1}, ...]
+      return c
+        .map((x) => (typeof x === "object" ? (x.id_programa ?? x.id ?? x) : x))
+        .map((v) => parseInt(v, 10))
+        .filter((v) => !Number.isNaN(v));
+    }
+  }
+
+  // 2) Si viene string tipo "1,2,3"
+  for (const c of candidatos) {
+    if (typeof c === "string" && c.trim()) {
+      return c
+        .split(",")
+        .map((v) => parseInt(v.trim(), 10))
+        .filter((v) => !Number.isNaN(v));
+    }
+  }
+
+  return [];
+}
+
+function filtrarProgramasPorUsuario(programas) {
+  if (!Array.isArray(programas)) return [];
+
+  // Solo filtrar si es instructor
+  if (!ES_INSTRUCTOR) return programas;
+
+  // Seguridad: si no hay ficha ni asignaciones, no mostrar nada
+  const idsAsignados = idsProgramasAsignadosDesdeSesion(USUARIO.raw);
+
+  // Caso A: el API de programas ya trae relación con ficha (ideal)
+  const traeFichaEnPrograma = programas.some((p) =>
+    p && (p.id_ficha != null || Array.isArray(p.fichas) || p.ficha_id != null)
+  );
+
+  if (traeFichaEnPrograma && FICHA_INSTRUCTOR) {
+    return programas.filter((p) => {
+      const idFichaDirecta = parseInt(p.id_ficha ?? p.ficha_id ?? null, 10);
+      if (!Number.isNaN(idFichaDirecta)) return idFichaDirecta === FICHA_INSTRUCTOR;
+
+      // Si viene array de fichas
+      if (Array.isArray(p.fichas)) {
+        return p.fichas.some((f) => {
+          const idf = parseInt(f?.id_ficha ?? f?.id ?? null, 10);
+          return !Number.isNaN(idf) && idf === FICHA_INSTRUCTOR;
+        });
+      }
+
+      return false;
+    });
+  }
+
+  // Caso B: usar asignaciones en sesión (fallback seguro)
+  if (!idsAsignados.length) return []; // NO mostrar todos
+
+  return programas.filter((p) => {
+    const id = parseInt(p.id_programa ?? p.id ?? null, 10);
+    return !Number.isNaN(id) && idsAsignados.includes(id);
+  });
+}
+
+
+
 function setMaterialOptions(materialesArray, modo = "normal") {
   if (!selectores.selectMaterial) return;
 
@@ -535,7 +679,7 @@ function setMaterialOptions(materialesArray, modo = "normal") {
 }
 
 // ============================================================
-// ✅ Detectar si respuesta viene realmente filtrada por STOCK
+//  Detectar si respuesta viene realmente filtrada por STOCK
 // (si el backend cae al fallback global, normalmente no trae stock_actual)
 // ============================================================
 function respuestaEsStockFiltrado(arr) {
@@ -544,7 +688,7 @@ function respuestaEsStockFiltrado(arr) {
 }
 
 // ============================================================
-// ✅ CACHE + RENDER DE MATERIALES EN CARD (sin tocar backend)
+//  CACHE + RENDER DE MATERIALES EN CARD (sin tocar backend)
 // ============================================================
 estadoApp.materialesPorSolicitud = {}; // cache por id
 
@@ -591,14 +735,14 @@ async function cargarMaterialesEnCard(card, idSolicitud) {
   const box = card.querySelector(`.sol-card-materiales[data-mats-for="${idSolicitud}"]`);
   if (!box) return;
 
-  // ✅ 1) Si ya existe cache => pintar de una vez (NO spinner infinito)
+  // 1) Si ya existe cache => pintar de una vez (NO spinner infinito)
   if (estadoApp.materialesPorSolicitud[idSolicitud]) {
     box.innerHTML = htmlMaterialesCard(estadoApp.materialesPorSolicitud[idSolicitud]);
     safeLucideCreateIcons();
     return;
   }
 
-  // ✅ 2) Si no hay cache => spinner + fetch
+  // 2) Si no hay cache => spinner + fetch
   box.innerHTML = `
     <div class="mt-3 border-t pt-3 text-sm text-muted-foreground">
       <i data-lucide="loader" class="w-4 h-4 inline-block align-text-bottom animate-spin mr-1"></i>
@@ -628,8 +772,6 @@ async function cargarMaterialesEnCard(card, idSolicitud) {
     `;
   }
 }
-
-
 
 const api = {
   async listarSolicitudes() {
@@ -727,6 +869,112 @@ const api = {
     }
   },
 
+  async cargarRAEs(programaId) {
+    if (!selectores.selectRae) return;
+
+    selectores.selectRae.innerHTML = '<option value="">Cargando RAEs...</option>';
+
+    if (!programaId) {
+      selectores.selectRae.innerHTML = '<option value="">Seleccione programa</option>';
+      return;
+    }
+
+    try {
+      // intenta varios nombres típicos por si tu controller los maneja distinto
+      const url1 = `${API}?accion=raes&programa=${encodeURIComponent(programaId)}`;
+      const url2 = `${API}?accion=rae&programa=${encodeURIComponent(programaId)}`;
+      const url3 = `${API}?accion=raesPorPrograma&id_programa=${encodeURIComponent(programaId)}`;
+
+      let res = await fetch(url1);
+      if (!res.ok) res = await fetch(url2);
+      if (!res.ok) res = await fetch(url3);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+
+      let items = [];
+      if (Array.isArray(data)) items = data;
+      else if (Array.isArray(data.data)) items = data.data;
+      else if (Array.isArray(data.raes)) items = data.raes;
+      else {
+        const vals = Object.values(data || {}).find(v => Array.isArray(v));
+        if (Array.isArray(vals)) items = vals;
+      }
+
+      if (!items.length) {
+        selectores.selectRae.innerHTML = '<option value="">No hay RAEs disponibles</option>';
+        return;
+      }
+
+      selectores.selectRae.innerHTML = '<option value="">Seleccionar RAE</option>';
+      items.forEach(r => {
+        const opt = document.createElement("option");
+        opt.value = r.id_rae ?? r.id ?? "";
+        const fullText = r.codigo_rae
+          ? `${r.codigo_rae} - ${r.descripcion_rae || r.descripcion || ""}`.trim()
+          : (r.descripcion_rae ?? r.descripcion ?? `RAE ${opt.value}`);
+        opt.textContent = truncateText(fullText, 27);
+        opt.title = fullText;
+        selectores.selectRae.appendChild(opt);
+      });
+    } catch (e) {
+      console.error("[SOLICITUDES] error cargarRAEs:", e);
+      selectores.selectRae.innerHTML = '<option value="">Error cargando RAEs</option>';
+    }
+  },
+
+  async cargarFichas(programaId) {
+    if (!selectores.selectFichas) return;
+
+    selectores.selectFichas.innerHTML = '<option value="">Cargando fichas...</option>';
+
+    if (!programaId) {
+      selectores.selectFichas.innerHTML = '<option value="">Seleccione programa</option>';
+      return;
+    }
+
+    try {
+      const url1 = `${API}?accion=fichas&programa=${encodeURIComponent(programaId)}`;
+      const url2 = `${API}?accion=ficha&programa=${encodeURIComponent(programaId)}`;
+      const url3 = `${API}?accion=fichasPorPrograma&id_programa=${encodeURIComponent(programaId)}`;
+
+      let res = await fetch(url1);
+      if (!res.ok) res = await fetch(url2);
+      if (!res.ok) res = await fetch(url3);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+
+      let items = [];
+      if (Array.isArray(data)) items = data;
+      else if (Array.isArray(data.data)) items = data.data;
+      else if (Array.isArray(data.fichas)) items = data.fichas;
+      else {
+        const vals = Object.values(data || {}).find(v => Array.isArray(v));
+        if (Array.isArray(vals)) items = vals;
+      }
+
+      if (!items.length) {
+        selectores.selectFichas.innerHTML = '<option value="">No hay fichas disponibles</option>';
+        return;
+      }
+
+      selectores.selectFichas.innerHTML = '<option value="">Seleccionar ficha</option>';
+      items.forEach(f => {
+        const opt = document.createElement("option");
+        opt.value = f.id_ficha ?? f.id ?? "";
+      const numero = f.numero_ficha ?? f.ficha ?? f.codigo_ficha ?? opt.value;
+      const fullText = `Ficha ${numero}`;
+      opt.textContent = fullText;
+      opt.title = fullText;
+      selectores.selectFichas.appendChild(opt);
+    });
+    } catch (e) {
+      console.error("[SOLICITUDES] error cargarFichas:", e);
+      selectores.selectFichas.innerHTML = '<option value="">Error cargando fichas</option>';
+    }
+  },
+
 
   async crearSolicitud(payload) {
     const res = await fetch(`${API}?accion=crear`, {
@@ -791,10 +1039,6 @@ const api = {
     return data;
   },
 
-  // ✅ NUEVO: cargar materiales con filtro bodega/subbodega
-  // ✅ FIX REAL:
-  //   - Si estás en SUBBODEGA y el backend devuelve fallback global (sin stock_actual),
-  //     NO mostrar materiales falsos.
   async cargarMaterialesFiltrados(bodegaId, subId = 0) {
     try {
       if (!selectores.selectMaterial) return;
@@ -824,26 +1068,18 @@ const api = {
         return;
       }
 
-      // ✅ Si hay subbodega seleccionada y NO viene stock_actual,
-      // significa que el backend probablemente devolvió los materiales globales por fallback
-      // (eso es lo que te está pasando).
       if (parseInt(subId, 10) > 0) {
         const filtradoReal = respuestaEsStockFiltrado(mats);
 
         if (!filtradoReal) {
-          // ✅ NO mostrar materiales globales porque serían incorrectos
           selectores.selectMaterial.innerHTML =
             '<option value="">No hay materiales en esta subbodega</option>';
           return;
         }
 
-        // ✅ si viene filtrado real, lo cargamos normal
         setMaterialOptions(mats, "subbodega");
         return;
       }
-
-      // ✅ Caso SOLO BODEGA (subId = 0)
-      // aquí sí aceptamos respuesta con stock_actual, porque es el caso real filtrado por bodega
       setMaterialOptions(mats, "bodega");
     } catch (e) {
       utilidades.mostrarError(`Error cargando materiales filtrados: ${e.message}`);
@@ -857,140 +1093,152 @@ const api = {
     try {
       // PROGRAMAS
       if (selectores.selectPrograma) {
-        const resProg = await fetch(`${API}?accion=programas`);
-        if (resProg.ok) {
-          const programas = await resProg.json();
-          selectores.selectPrograma.innerHTML = '<option value="">Seleccionar programa</option>';
-          if (Array.isArray(programas)) {
-            programas.forEach((p) => {
-              const opt = document.createElement("option");
-              opt.value = p.id_programa;
-              const fullText = `${p.codigo_programa} - ${p.nombre_programa}`;
-              opt.textContent = truncateText(fullText, 27);
-              opt.title = fullText; // Mostrar texto completo en tooltip
-              selectores.selectPrograma.appendChild(opt);
-            });
+        const cargoNorm = normalizarCargo(USUARIO.cargo);
+
+        const esInstructor =
+          cargoNorm === "instructor" || cargoNorm.startsWith("instructor");
+
+        // SOLO Instructor filtra, PERO solo si el id es válido (>0)
+        const idUsuarioValido =
+          USUARIO.id !== null && !Number.isNaN(USUARIO.id) && Number(USUARIO.id) > 0;
+
+        const usarFiltroInstructor = esInstructor && idUsuarioValido;
+
+
+        // Si es instructor pero el id viene malo (0 / null), NO lo bloquees:
+        if (esInstructor && !idUsuarioValido) {
+          console.warn("[SOLICITUDES] Instructor sin id válido en sesión:", USUARIO);
+          toastError("No se pudo identificar tu usuario en sesión (ID inválido).");
+        }
+
+        const urls = usarFiltroInstructor
+          ? [`${API}?accion=programasPorUsuario&usuario=${encodeURIComponent(USUARIO.id)}`]
+          : [`${API}?accion=programas`];
+
+        let programas = [];
+        let lastError = null;
+
+        for (const url of urls) {
+          try {
+            console.log("[SOLICITUDES] Cargando programas desde:", url);
+            const res = await fetch(url);
+            const raw = await res.text();
+
+            let data;
+            try {
+              data = JSON.parse(raw);
+            } catch {
+              throw new Error("Respuesta no JSON: " + raw.substring(0, 120));
+            }
+
+            if (!res.ok || (data && data.error)) {
+              lastError = data?.error || `HTTP ${res.status}`;
+              console.warn("[SOLICITUDES] programas error:", lastError, "url:", url);
+              continue;
+            }
+
+            if (Array.isArray(data)) programas = data;
+            else if (Array.isArray(data.data)) programas = data.data;
+            else if (Array.isArray(data.programas)) programas = data.programas;
+            else programas = [];
+
+            break;
+          } catch (e) {
+            lastError = e.message;
+            console.warn("[SOLICITUDES] fallo leyendo programas:", e.message);
           }
         }
 
-        // ✅ Evitar duplicar listener
-        if (!selectores.selectPrograma.dataset.boundChange) {
-          selectores.selectPrograma.addEventListener("change", async function () {
-            const programaId = this.value;
+        if (!usarFiltroInstructor) {
+          programas = filtrarProgramasPorUsuario(programas);
+        }
 
+        // Pintar select
+        selectores.selectPrograma.innerHTML = '<option value="">Seleccionar programa</option>';
+        selectores.selectPrograma.disabled = false;
+
+        if (Array.isArray(programas) && programas.length) {
+          programas.forEach((p) => {
+            const opt = document.createElement("option");
+            opt.value = p.id_programa ?? p.id ?? "";
+            const cod = p.codigo_programa ?? p.codigo ?? "";
+            const nom = p.nombre_programa ?? p.nombre ?? "";
+            const fullText = `${cod} - ${nom}`.trim().replace(/^-+\s*/, "");
+            opt.textContent = truncateText(fullText || `Programa ${opt.value}`, 27);
+            opt.title = fullText || opt.textContent;
+            selectores.selectPrograma.appendChild(opt);
+          });
+        } else {
+          const msg = usarFiltroInstructor
+            ? (lastError ? `No se pudieron cargar programas: ${lastError}` : "No tiene programas asignados")
+            : (lastError ? `No se pudieron cargar programas: ${lastError}` : "No hay programas disponibles");
+
+          selectores.selectPrograma.innerHTML = `<option value="">${msg}</option>`;
+          selectores.selectPrograma.disabled = true;
+        }
+
+        // Listener PROGRAMA (UNA sola vez)
+        if (selectores.selectPrograma && !selectores.selectPrograma.dataset.boundProg) {
+          selectores.selectPrograma.addEventListener("change", async () => {
+            const programaId = selectores.selectPrograma.value || "";
+
+            // reset dependientes
+            if (selectores.selectRae) {
+              selectores.selectRae.innerHTML = '<option value="">Seleccione programa</option>';
+              selectores.selectRae.value = "";
+            }
+            if (selectores.selectFichas) {
+              selectores.selectFichas.innerHTML = '<option value="">Seleccione programa</option>';
+              selectores.selectFichas.value = "";
+            }
             if (selectores.selectActividad) {
               selectores.selectActividad.innerHTML = '<option value="">Seleccione ficha y RAE</option>';
+              selectores.selectActividad.value = "";
             }
 
-            if (selectores.selectRae) selectores.selectRae.innerHTML = '<option value="">Seleccionar RAE</option>';
-            if (selectores.selectFichas) selectores.selectFichas.innerHTML = '<option value="">Seleccionar ficha</option>';
+            // cargar dependientes
+            await api.cargarRAEs(programaId);
+            await api.cargarFichas(programaId);
 
-            if (!programaId) return;
-
-            const [resRaes, resFichas] = await Promise.all([
-              fetch(`${API}?accion=raes&programa=${encodeURIComponent(programaId)}`),
-              fetch(`${API}?accion=fichas&programa=${encodeURIComponent(programaId)}`),
-            ]);
-
-            // ✅ ESTO ES LO QUE TE FALTA
-            let raes = [];
-            let fichas = [];
-
-            if (resRaes.ok) raes = await resRaes.json();
-            if (resFichas.ok) fichas = await resFichas.json();
-
-            // Render RAEs
-            if (selectores.selectRae) {
-              selectores.selectRae.innerHTML = '<option value="">Seleccionar RAE</option>';
-              if (Array.isArray(raes) && raes.length) {
-                raes.forEach((r) => {
-                  const opt = document.createElement("option");
-                  opt.value = r.id_rae ?? r.id ?? "";
-                  const fullText = `${r.codigo_rae} - ${r.descripcion_rae}`;
-                  opt.textContent = truncateText(fullText, 27);
-                  opt.title = fullText;
-                  selectores.selectRae.appendChild(opt);
-                });
-              } else {
-                selectores.selectRae.innerHTML = '<option value="">No hay RAEs disponibles</option>';
+            // si eres instructor y tienes FICHA_INSTRUCTOR, autoselecciona (opcional)
+            if (ES_INSTRUCTOR && FICHA_INSTRUCTOR && selectores.selectFichas) {
+              const opt = Array.from(selectores.selectFichas.options)
+                .find(o => String(o.value) === String(FICHA_INSTRUCTOR));
+              if (opt) {
+                selectores.selectFichas.value = String(FICHA_INSTRUCTOR);
+                // si ya hay RAE seleccionado después, actividades se cargarán por los listeners existentes
               }
-            }
-
-            // Render Fichas
-            if (selectores.selectFichas) {
-              selectores.selectFichas.innerHTML = '<option value="">Seleccionar ficha</option>';
-              if (Array.isArray(fichas) && fichas.length) {
-                fichas.forEach((f) => {
-                  const opt = document.createElement("option");
-                  opt.value = f.id_ficha ?? f.id ?? "";
-                  const fullText = `${f.numero_ficha} - ${f.jornada}`;
-                  opt.textContent = truncateText(fullText, 27);
-                  opt.title = fullText;
-                  selectores.selectFichas.appendChild(opt);
-                });
-              } else {
-                selectores.selectFichas.innerHTML = '<option value="">No hay fichas disponibles</option>';
-              }
-            }
-
-            // ✅ Autoselección + cargar actividades
-            if (raes.length === 1 && fichas.length === 1) {
-              const rId = raes[0].id_rae ?? raes[0].id;
-              const fId = fichas[0].id_ficha ?? fichas[0].id;
-              selectores.selectRae.value = rId;
-              selectores.selectFichas.value = fId;
-              api.cargarActividades(fId, rId);
             }
           });
+
+          selectores.selectPrograma.dataset.boundProg = "1";
         }
 
-        // ✅ Marcar que el listener del programa quedó ligado
-        selectores.selectPrograma.dataset.boundChange = "1";
 
-        // ✅ Cargar actividades al cambiar RAE
+
+        // Listener Ficha (UNA sola vez)
+        if (selectores.selectFichas && !selectores.selectFichas.dataset.boundAct) {
+          selectores.selectFichas.addEventListener("change", () => {
+            const fichaId = selectores.selectFichas?.value || "";
+            const raeId = selectores.selectRae?.value || "";
+            api.cargarActividades(fichaId, raeId);
+          });
+          selectores.selectFichas.dataset.boundAct = "1";
+        }
+
+        // Listener RAE (UNA sola vez)
         if (selectores.selectRae && !selectores.selectRae.dataset.boundAct) {
-            selectores.selectRae.addEventListener("change", () => {
-              const fichaId = selectores.selectFichas?.value || "";
-              const raeId = selectores.selectRae?.value || "";
-              api.cargarActividades(fichaId, raeId);
-            });
-            selectores.selectRae.dataset.boundAct = "1";
-          }
-
-          // ✅ Cargar actividades al cambiar Ficha
-          if (selectores.selectFichas && !selectores.selectFichas.dataset.boundAct) {
-            selectores.selectFichas.addEventListener("change", () => {
-              const fichaId = selectores.selectFichas?.value || "";
-              const raeId = selectores.selectRae?.value || "";
-              api.cargarActividades(fichaId, raeId);
-            });
-
-            // ✅ Marcar que el listener del programa quedó ligado
-            selectores.selectPrograma.dataset.boundChange = "1";
-
-            // ✅ Cargar actividades al cambiar RAE
-            if (selectores.selectRae && !selectores.selectRae.dataset.boundAct) {
-              selectores.selectRae.addEventListener("change", () => {
-                const fichaId = selectores.selectFichas?.value || "";
-                const raeId = selectores.selectRae?.value || "";
-                api.cargarActividades(fichaId, raeId);
-              });
-              selectores.selectRae.dataset.boundAct = "1";
-            }
-
-            // ✅ Cargar actividades al cambiar Ficha
-            if (selectores.selectFichas && !selectores.selectFichas.dataset.boundAct) {
-              selectores.selectFichas.addEventListener("change", () => {
-                const fichaId = selectores.selectFichas?.value || "";
-                const raeId = selectores.selectRae?.value || "";
-                api.cargarActividades(fichaId, raeId);
-              });
-              selectores.selectFichas.dataset.boundAct = "1";
-            }
-          }
+          selectores.selectRae.addEventListener("change", () => {
+            const fichaId = selectores.selectFichas?.value || "";
+            const raeId = selectores.selectRae?.value || "";
+            api.cargarActividades(fichaId, raeId);
+          });
+          selectores.selectRae.dataset.boundAct = "1";
         }
+      }
 
-      // ✅ NUEVO: BODEGAS
+
+      // NUEVO: BODEGAS
       if (selectores.selectBodega) {
         selectores.selectBodega.innerHTML = '<option value="">Seleccione una bodega</option>';
 
@@ -1015,14 +1263,16 @@ const api = {
             selectores.selectBodega.innerHTML = '<option value="">Error cargando bodegas</option>';
           }
 
-        // ✅ Evitar duplicar listener
+        // Evitar duplicar listener
         if (!selectores.selectBodega.dataset.boundChange) {
-          // ✅ Subbodegas al cambiar bodega
+          // Subbodegas al cambiar bodega
           selectores.selectBodega.addEventListener("change", async function () {
             const bodegaId = this.value || "";
 
             estadoApp.filtrosInventario.bodega = bodegaId;
             estadoApp.filtrosInventario.subbodega = "";
+            aplicarBloqueoMaterialesPorInventario();
+
 
             // reset subbodega
             if (selectores.selectSubBodega) {
@@ -1035,17 +1285,17 @@ const api = {
               selectores.selectMaterial.innerHTML = '<option value="">Cargando materiales...</option>';
             }
 
-            // ✅ Si NO hay bodega => global
+            // Si NO hay bodega => NO permitir seleccionar materiales
             if (!bodegaId) {
-              const resMat = await fetch(`${API}?accion=materiales`);
-              if (resMat.ok && selectores.selectMaterial) {
-                const mats = await resMat.json();
-                setMaterialOptions(mats, "global");
-              }
+              // importantísimo: deja filtros limpios y bloquea UI
+              estadoApp.filtrosInventario.bodega = "";
+              estadoApp.filtrosInventario.subbodega = "";
+
+              aplicarBloqueoMaterialesPorInventario();
               return;
             }
 
-            // ✅ FIX: al elegir SOLO bodega, cargar materiales de esa bodega
+            // FIX: al elegir SOLO bodega, cargar materiales de esa bodega
             await api.cargarMaterialesFiltrados(bodegaId, 0);
 
             // Cargar subbodegas
@@ -1078,12 +1328,11 @@ const api = {
               }
             }
           });
-
           selectores.selectBodega.dataset.boundChange = "1";
         }
       }
 
-      // ✅ Al cambiar subbodega, filtrar materiales
+      // Al cambiar subbodega, filtrar materiales
       if (selectores.selectSubBodega && !selectores.selectSubBodega.dataset.boundChange) {
         selectores.selectSubBodega.addEventListener("change", async function () {
           const subId = this.value || "";
@@ -1091,29 +1340,27 @@ const api = {
 
           estadoApp.filtrosInventario.subbodega = subId;
 
-          if (!bodegaId) return;
+          if (!bodegaId) {
+            aplicarBloqueoMaterialesPorInventario();
+            return;
+          }
 
-          // ✅ sin subbodega => vuelve a bodega
+          // sin subbodega => vuelve a bodega
           if (!subId) {
             await api.cargarMaterialesFiltrados(bodegaId, 0);
             return;
           }
 
-          // ✅ con subbodega => filtrar por subbodega
+          // con subbodega => filtrar por subbodega
           await api.cargarMaterialesFiltrados(bodegaId, subId);
         });
 
         selectores.selectSubBodega.dataset.boundChange = "1";
       }
 
-      // ✅ CARGA INICIAL DE MATERIALES (sin filtros)
-      const resMat = await fetch(`${API}?accion=materiales`);
-      if (resMat.ok && selectores.selectMaterial) {
-        const mats = await resMat.json();
-        setMaterialOptions(mats, "global");
-      } else if (selectores.selectMaterial) {
-        selectores.selectMaterial.innerHTML = '<option value="">Error cargando materiales</option>';
-      }
+      // Al cargar selectores, bloquea materiales hasta elegir bodega/subbodega
+      aplicarBloqueoMaterialesPorInventario();
+
     } catch (e) {
       utilidades.mostrarError(`Error cargando selectores: ${e.message}`);
     }
@@ -1293,7 +1540,7 @@ const render = {
 
       cont.appendChild(card);
 
-      // ✅ Cargar materiales reales (sin tocar backend)
+      // Cargar materiales reales (sin tocar backend)
       cargarMaterialesEnCard(card, s.id);
     });
 
@@ -1391,6 +1638,11 @@ const materiales = {
   agregarMaterial() {
     if (!selectores.selectMaterial || !selectores.inputCantidad) return;
 
+    const ok = aplicarBloqueoMaterialesPorInventario();
+    if (!ok) {
+      return utilidades.mostrarError("Seleccione una bodega o sub-bodega antes de agregar materiales.");
+    } 
+
     const id = selectores.selectMaterial.value;
     const cantidad = parseInt(selectores.inputCantidad.value, 10);
 
@@ -1464,7 +1716,7 @@ const paginacion = {
 
 // ============================================================
 //  BOTONES: Aceptar / Rechazar / Entregar
-//  ✅ CORRECCIÓN: evitar duplicar eventos con data-bound
+//  CORRECCIÓN: evitar duplicar eventos con data-bound
 // ============================================================
 function agregarEventosBotonesAccion() {
   if (PERMS.aceptar) {
@@ -1615,7 +1867,7 @@ const modal = {
     estadoApp.datosFormulario = { programa: "", rae: "", ficha: "", observaciones: "" };
     estadoApp.materialesSeleccionados = [];
 
-    // ✅ reiniciar filtros inventario
+    // reiniciar filtros inventario
     estadoApp.filtrosInventario = { bodega: "", subbodega: "" };
 
     if (selectores.formNueva) selectores.formNueva.reset();
@@ -1625,7 +1877,7 @@ const modal = {
       selectores.selectActividad.value = "";
     }
 
-    // ✅ reset selects bodega/subbodega visualmente
+    // reset selects bodega/subbodega visualmente
     if (selectores.selectBodega) selectores.selectBodega.value = "";
     if (selectores.selectSubBodega) {
       selectores.selectSubBodega.value = "";
@@ -1697,7 +1949,7 @@ const modal = {
       return;
     }
 
-    if (!USUARIO?.id) {
+    if (USUARIO.id === null || Number.isNaN(USUARIO.id)) {
       utilidades.mostrarError("No se pudo identificar el usuario en sesión.");
       return;
     }
@@ -1802,6 +2054,7 @@ const app = {
 
     await this.cargarSolicitudes();
     await api.cargarSelectores();
+    aplicarBloqueoMaterialesPorInventario();
     eventos.inicializar();
   },
 
@@ -1822,7 +2075,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initLimitesCaracteres();
   app.inicializar();
 
-  // ✅ Si no tiene permiso para crear, ocultamos el botón
+  // Si no tiene permiso para crear, ocultamos el botón
   if (selectores.btnNueva && !PERMS.crear) {
     selectores.btnNueva.style.display = "none";
   }
