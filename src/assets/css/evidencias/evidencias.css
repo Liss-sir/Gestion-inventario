@@ -148,3 +148,12 @@
   overflow-y: auto;
   padding-right: 0.5rem;
 }
+
+@media (max-width: 639px) {
+  #filterPrograma.select-mobile-lg:not([multiple]),
+  #filterFicha.select-mobile-lg:not([multiple]) {
+    background-size: 18px;
+    background-position: right 1rem center;
+    padding-right: 3.25rem;
+  }
+}

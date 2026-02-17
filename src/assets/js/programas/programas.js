@@ -297,7 +297,21 @@ function renderSelectedInstructorsList() {
                     <button type="button" 
                         onclick="toggleInstructorSelection(${instructor.id_usuario})"
                         class="text-muted-foreground hover:text-destructive">
-                        <i class="fas fa-times"></i>
+                        <span class="sr-only">Cerrar</span>
+                        <svg
+                            class="h-5 w-5"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
                     </button>
                 </div>
             `;
@@ -325,8 +339,145 @@ function toggleInstructorSelection(instructorId) {
     renderSelectedInstructorsList();
 }
 
+// ========== FUNCIONES DE VALIDACIÓN MEJORADAS ==========
+
+/**
+ * Validates that code contains at least one letter and one number
+ */
+function isValidCodeFormat(codigo) {
+    const hasLetter = /[a-zA-Z]/g.test(codigo);
+    const hasNumber = /[0-9]/g.test(codigo);
+    return hasLetter && hasNumber;
+}
+
+/**
+ * Checks if a code already exists in the current programs table/grid
+ * excludeIndex: if provided, exclude this program from the check
+ */
+async function codeAlreadyExistsAPI(codigo, excludeId = null) {
+    try {
+        const response = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_por_codigo&codigo=${encodeURIComponent(codigo)}`);
+        const result = await response.json();
+        
+        // Si hay un error (como que no se encontró), devolver falso
+        if (result.error) {
+            return false;
+        }
+        
+        // Si se encontró un programa, verificar si es el mismo que estamos editando
+        if (excludeId && result.id_programa == excludeId) {
+            return false;
+        }
+        
+        return true; // Código existe
+    } catch (error) {
+        console.error("Error checking code existence:", error);
+        return false; // En caso de error, asumir que no existe
+    }
+}
+
+/**
+ * Validates program data before sending to server - for step 1 validation
+ */
+function validateStep1Data(data, isEdit = false, excludeId = null) {
+    // Check required fields
+    if (!data.codigo_programa || !data.nombre_programa || !data.nivel_programa || 
+        !data.descripcion_programa || !data.duracion_horas) {
+        toastError("Todos los campos marcados con * son obligatorios.");
+        return false;
+    }
+
+    // Validate code length (max 10 characters)
+    if (data.codigo_programa.trim().length > 10) {
+        toastError("El código del programa no puede exceder los 10 caracteres.");
+        return false;
+    }
+
+    // Validate code format (at least 3 characters)
+    if (data.codigo_programa.trim().length < 3) {
+        toastError("El código del programa debe tener al menos 3 caracteres.");
+        return false;
+    }
+
+    // Validate code contains at least one letter and one number
+    if (!isValidCodeFormat(data.codigo_programa)) {
+        toastError("El código debe contener al menos una letra y un número.");
+        return false;
+    }
+
+    // Validate name length (max 25 characters)
+    if (data.nombre_programa.trim().length > 25) {
+        toastError("El nombre del programa no puede exceder los 25 caracteres.");
+        return false;
+    }
+
+    // Validate name length (min 5 characters)
+    if (data.nombre_programa.trim().length < 5) {
+        toastError("El nombre del programa debe tener al menos 5 caracteres.");
+        return false;
+    }
+
+    // Validate description length (max 200 characters)
+    if (data.descripcion_programa.trim().length > 200) {
+        toastError("La descripción no puede exceder los 200 caracteres.");
+        return false;
+    }
+
+    // Validate description length (min 10 characters)
+    if (data.descripcion_programa.trim().length < 10) {
+        toastError("La descripción debe tener al menos 10 caracteres.");
+        return false;
+    }
+
+    // Validate duration (must be a positive number)
+    if (isNaN(data.duracion_horas) || data.duracion_horas <= 0) {
+        toastError("La duración debe ser un número positivo de horas.");
+        return false;
+    }
+
+    // Validate level - acepta versiones con y sin acentos
+    const nivelNormalizado = data.nivel_programa.toLowerCase();
+    const esValido = nivelNormalizado.includes('técnico') || 
+                   nivelNormalizado.includes('tecnico') ||
+                   nivelNormalizado.includes('tecnólogo') || 
+                   nivelNormalizado.includes('tecnologo');
+    
+    if (!esValido) {
+        toastError("El nivel debe ser 'Técnico' o 'Tecnólogo'.");
+        return false;
+    }
+
+    return true;
+}
+
+// Función para validar datos del paso 1 (síncrona para uso inmediato)
+async function validateStep1(codigo, nombre, nivel, descripcion, duracionHoras, isEdit = false, excludeId = null) {
+    // Crear objeto de datos para validación
+    const data = {
+        codigo_programa: codigo,
+        nombre_programa: nombre,
+        nivel_programa: nivel,
+        descripcion_programa: descripcion,
+        duracion_horas: duracionHoras
+    };
+    
+    // Validar formato básico
+    if (!validateStep1Data(data, isEdit, excludeId)) {
+        return false;
+    }
+    
+    // Verificar si el código ya existe (llamada a API)
+    const codeExists = await codeAlreadyExistsAPI(codigo, excludeId);
+    if (codeExists) {
+        toastError("Ya hay un programa de formación con el código ingresado");
+        return false;
+    }
+    
+    return true;
+}
+
 // Función para avanzar al siguiente paso
-function nextStep() {
+async function nextStep() {
     const step1 = document.getElementById('createStep1');
     const step2 = document.getElementById('createStep2');
     const btnPrev = document.getElementById('btnPrevStep');
@@ -342,17 +493,29 @@ function nextStep() {
         const codigo = document.getElementById('create_codigo').value.trim();
         const nombre = document.getElementById('create_nombre').value.trim();
         const descripcion = document.getElementById('create_descripcion').value.trim();
-        const duracion = document.getElementById('create_duracion').value.trim();
+        const duracionText = document.getElementById('create_duracion').value.trim();
+        const nivel = document.getElementById('create_nivel').value;
         
-        // Validar que no estén vacíos
-        if (!codigo || !nombre || !descripcion || !duracion) {
-            toastError('Todos los campos del paso 1 son obligatorios');
-            
-            // Resaltar campos vacíos
-            if (!codigo) document.getElementById('create_codigo').classList.add('border-red-500');
-            if (!nombre) document.getElementById('create_nombre').classList.add('border-red-500');
-            if (!descripcion) document.getElementById('create_descripcion').classList.add('border-red-500');
-            if (!duracion) document.getElementById('create_duracion').classList.add('border-red-500');
+        // Convertir duración a número
+        const duracionHoras = parseInt(duracionText.replace(/[^\d]/g, '')) || 0;
+        
+        // Validar datos del paso 1
+        const isValid = await validateStep1(codigo, nombre, nivel, descripcion, duracionHoras, false, null);
+        
+        if (!isValid) {
+            // Resaltar campos con error
+            if (!codigo || codigo.length < 3 || codigo.length > 10) {
+                document.getElementById('create_codigo').classList.add('border-red-500');
+            }
+            if (!nombre || nombre.length < 5 || nombre.length > 25) {
+                document.getElementById('create_nombre').classList.add('border-red-500');
+            }
+            if (!descripcion || descripcion.length < 10 || descripcion.length > 200) {
+                document.getElementById('create_descripcion').classList.add('border-red-500');
+            }
+            if (!duracionText || duracionHoras <= 0) {
+                document.getElementById('create_duracion').classList.add('border-red-500');
+            }
             
             // Remover clase de error después de 2 segundos
             setTimeout(() => {
@@ -362,37 +525,6 @@ function nextStep() {
                 document.getElementById('create_duracion').classList.remove('border-red-500');
             }, 2000);
             
-            return;
-        }
-        
-        // Validar duración numérica
-        const duracionNum = parseInt(duracion.replace(/[^\d]/g, ''));
-        if (isNaN(duracionNum) || duracionNum <= 0) {
-            toastError('La duración debe ser un número positivo');
-            document.getElementById('create_duracion').classList.add('border-red-500');
-            setTimeout(() => {
-                document.getElementById('create_duracion').classList.remove('border-red-500');
-            }, 2000);
-            return;
-        }
-        
-        // Validar código básico (mínimo 3 caracteres)
-        if (codigo.length < 3) {
-            toastError('El código debe tener al menos 3 caracteres');
-            document.getElementById('create_codigo').classList.add('border-red-500');
-            setTimeout(() => {
-                document.getElementById('create_codigo').classList.remove('border-red-500');
-            }, 2000);
-            return;
-        }
-        
-        // Validar nombre básico (mínimo 5 caracteres)
-        if (nombre.length < 5) {
-            toastError('El nombre debe tener al menos 5 caracteres');
-            document.getElementById('create_nombre').classList.add('border-red-500');
-            setTimeout(() => {
-                document.getElementById('create_nombre').classList.remove('border-red-500');
-            }, 2000);
             return;
         }
         
@@ -806,24 +938,36 @@ function toggleEditInstructorSelection(instructorId) {
 }
 
 // Función para avanzar al siguiente paso en edición
-function nextEditStep() {
+async function nextEditStep() {
     if (currentEditStep === 1) {
         // Validar datos del paso 1
         const codigo = document.getElementById('edit_codigo').value.trim();
         const nombre = document.getElementById('edit_nombre').value.trim();
         const descripcion = document.getElementById('edit_descripcion').value.trim();
-        const duracion = document.getElementById('edit_duracion').value.trim();
+        const duracionText = document.getElementById('edit_duracion').value.trim();
         const nivel = document.getElementById('edit_nivel').value;
+        const idPrograma = document.getElementById('edit_id_programa').value;
         
-        // Validar que no estén vacíos
-        if (!codigo || !nombre || !descripcion || !duracion || !nivel) {
-            toastError('Todos los campos del paso 1 son obligatorios');
-            
-            // Resaltar campos vacíos
-            if (!codigo) document.getElementById('edit_codigo').classList.add('border-red-500');
-            if (!nombre) document.getElementById('edit_nombre').classList.add('border-red-500');
-            if (!descripcion) document.getElementById('edit_descripcion').classList.add('border-red-500');
-            if (!duracion) document.getElementById('edit_duracion').classList.add('border-red-500');
+        // Convertir duración a número
+        const duracionHoras = parseInt(duracionText.replace(/[^\d]/g, '')) || 0;
+        
+        // Validar datos del paso 1
+        const isValid = await validateStep1(codigo, nombre, nivel, descripcion, duracionHoras, true, idPrograma);
+        
+        if (!isValid) {
+            // Resaltar campos con error
+            if (!codigo || codigo.length < 3 || codigo.length > 10) {
+                document.getElementById('edit_codigo').classList.add('border-red-500');
+            }
+            if (!nombre || nombre.length < 5 || nombre.length > 25) {
+                document.getElementById('edit_nombre').classList.add('border-red-500');
+            }
+            if (!descripcion || descripcion.length < 10 || descripcion.length > 200) {
+                document.getElementById('edit_descripcion').classList.add('border-red-500');
+            }
+            if (!duracionText || duracionHoras <= 0) {
+                document.getElementById('edit_duracion').classList.add('border-red-500');
+            }
             
             // Remover clase de error después de 2 segundos
             setTimeout(() => {
@@ -833,17 +977,6 @@ function nextEditStep() {
                 document.getElementById('edit_duracion').classList.remove('border-red-500');
             }, 2000);
             
-            return;
-        }
-        
-        // Validar duración numérica
-        const duracionNum = parseInt(duracion.replace(/[^\d]/g, ''));
-        if (isNaN(duracionNum) || duracionNum <= 0) {
-            toastError('La duración debe ser un número positivo');
-            document.getElementById('edit_duracion').classList.add('border-red-500');
-            setTimeout(() => {
-                document.getElementById('edit_duracion').classList.remove('border-red-500');
-            }, 2000);
             return;
         }
         
@@ -897,6 +1030,20 @@ async function saveEditedProgram() {
     const duracionText = document.getElementById('edit_duracion').value.trim();
     const duracionHoras = parseInt(duracionText.replace(/[^\d]/g, '')) || 0;
     
+    // Obtener estado actual del programa desde el dataset
+    const row = document.querySelector(`tr[data-index="${index}"]`) || document.querySelector(`div[data-index="${index}"]`);
+    
+    if (!row) {
+        toastError("No se pudo encontrar el programa para actualizar");
+        return;
+    }
+    
+    // Obtener estado del dataset
+    const estadoAttr = String(row.dataset.estado ?? '').trim();
+    const estado = (estadoAttr === '1' || estadoAttr === '0') 
+        ? Number(estadoAttr) 
+        : (estadoAttr.toLowerCase() === 'activo' ? 1 : 0);
+    
     // Validar que haya al menos un instructor seleccionado
     if (selectedEditInstructors.length === 0) {
         toastError("El programa debe contar con al menos un instructor vinculado");
@@ -910,10 +1057,12 @@ async function saveEditedProgram() {
         nivel_programa: nivel,
         descripcion_programa: descripcion,
         duracion_horas: duracionHoras,
+        estado: estado, // AHORA ESTÁ DEFINIDO
     };
     
+    console.log("Datos a enviar para actualizar:", programData);
+    
     // Obtener datos originales para comparar cambios
-    const row = document.querySelector(`tr[data-index="${index}"]`) || document.querySelector(`div[data-index="${index}"]`);
     const originalData = {
         codigo: row.dataset.codigo,
         nombre: row.dataset.nombre,
@@ -1330,16 +1479,29 @@ function getLevelStyles(nivel) {
     }
 }
 
-// Modify the openViewModal function to use styles according to level
+// Busca la función openViewModal en programas.js y actualízala así:
 function openViewModal(index) {
     const modal = document.getElementById("viewProgramModal");
-    const row =
-        document.querySelector(`tr[data-index="${index}"]`) || document.querySelector(`div[data-index="${index}"]`);
+    const row = document.querySelector(`tr[data-index="${index}"]`) || document.querySelector(`div[data-index="${index}"]`);
 
     if (row) {
         document.getElementById("view_name").textContent = row.dataset.nombre;
         document.getElementById("view_code").textContent = row.dataset.codigo;
-        document.getElementById("view_description").textContent = row.dataset.descripcion;
+        
+        // Descripción con manejo de texto largo
+        const descripcion = row.dataset.descripcion || 'Sin descripción';
+        const descripcionElement = document.getElementById('view_description');
+        descripcionElement.textContent = descripcion;
+        
+        // Ajustar altura automáticamente si el contenido es muy largo
+        if (descripcion.length > 200) {
+            descripcionElement.parentElement.classList.remove('max-h-32');
+            descripcionElement.parentElement.classList.add('max-h-48');
+        } else {
+            descripcionElement.parentElement.classList.remove('max-h-48');
+            descripcionElement.parentElement.classList.add('max-h-32');
+        }
+        
         document.getElementById("view_nivel").textContent = row.dataset.nivel;
         document.getElementById("view_duracion").textContent = row.dataset.duracion;
 
@@ -1347,25 +1509,28 @@ function openViewModal(index) {
         const instructores = row.dataset.instructores;
         const instructoresList = document.getElementById('view_instructores_list');
         const noInstructoresMsg = document.getElementById('view_no_instructores');
+        const instructoresCount = document.getElementById('view_instructores_count');
         const container = document.getElementById('view_instructores_container');
 
         // Clear previous list
         instructoresList.innerHTML = '';
 
-        // Debug (puedes remover esto después)
-        console.log('Datos de instructores:', instructores);
+        // Obtener número de instructores del dataset
+        const numInstructores = row.dataset.numInstructores || '0';
+        instructoresCount.textContent = numInstructores;
 
         // Check if instructors data exists and is valid
         if (!instructores || 
             instructores === 'No hay instructores vinculados' || 
             instructores === '0' || 
             instructores.trim() === '' ||
-            instructores === 'undefined') {
+            instructores === 'undefined' ||
+            numInstructores === '0') {
             
             // No instructors
             noInstructoresMsg.classList.remove('hidden');
             instructoresList.classList.add('hidden');
-            container.classList.remove('border', 'border-gray-200', 'p-2', 'rounded-md');
+            instructoresCount.textContent = '0';
             
         } else {
             // Try different separators since we don't know the exact format
@@ -1392,30 +1557,40 @@ function openViewModal(index) {
                 instructor.toLowerCase() !== 'no hay instructores vinculados'
             );
             
+            // Actualizar contador con el número real
+            instructoresCount.textContent = instructorsArray.length.toString();
+            
             // Verificar si después del filtrado quedan instructores
             if (instructorsArray.length === 0) {
                 noInstructoresMsg.classList.remove('hidden');
                 instructoresList.classList.add('hidden');
-                container.classList.remove('border', 'border-gray-200', 'p-2', 'rounded-md');
             } else {
                 // Hide "no instructors" message
                 noInstructoresMsg.classList.add('hidden');
                 instructoresList.classList.remove('hidden');
                 
-                // Add border and padding if there are instructors
-                container.classList.add('border', 'border-gray-200', 'p-2', 'rounded-md');
+                // Ajustar altura según cantidad de instructores
+                if (instructorsArray.length > 5) {
+                    container.classList.add('max-h-56');
+                } else if (instructorsArray.length > 3) {
+                    container.classList.add('max-h-48');
+                } else {
+                    container.classList.add('max-h-40');
+                }
                 
                 // Create list items for each instructor
                 instructorsArray.forEach(instructor => {
                     if (instructor && instructor.trim() !== '') {
                         const li = document.createElement('li');
-                        li.className = 'flex items-center gap-2 text-foreground py-1 px-1 hover:bg-gray-50 rounded transition-colors';
+                        li.className = 'flex items-center gap-2 text-foreground py-2 px-2 hover:bg-muted/30 rounded transition-colors border-b border-border/30 last:border-b-0';
                         li.innerHTML = `
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0 text-gray-500">
-                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                <circle cx="9" cy="7" r="4"/>
-                            </svg>
-                            <span class="truncate text-sm">${instructor}</span>
+                            <div class="flex-shrink-0 w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                </svg>
+                            </div>
+                            <span class="text-sm break-words flex-1">${instructor}</span>
                         `;
                         instructoresList.appendChild(li);
                     }
@@ -1489,7 +1664,7 @@ function openCreateModal() {
 }
 
 // =========================
-// VALIDATION FUNCTIONS
+// VALIDATION FUNCTIONS (existing ones)
 // =========================
 
 /**
@@ -1684,6 +1859,37 @@ document.addEventListener("DOMContentLoaded", () => {
     if (duracionInput) {
       duracionInput.addEventListener("input", function(e) {
         this.value = this.value.replace(/[^\d]/g, '');
+      });
+    }
+    
+    // Validación en tiempo real para límites de caracteres
+    const codigoInput = document.getElementById("create_codigo");
+    if (codigoInput) {
+      codigoInput.addEventListener("input", function(e) {
+        if (this.value.length > 10) {
+          this.value = this.value.substring(0, 10);
+          toastError("El código no puede exceder los 10 caracteres");
+        }
+      });
+    }
+    
+    const nombreInput = document.getElementById("create_nombre");
+    if (nombreInput) {
+      nombreInput.addEventListener("input", function(e) {
+        if (this.value.length > 25) {
+          this.value = this.value.substring(0, 25);
+          toastError("El nombre no puede exceder los 25 caracteres");
+        }
+      });
+    }
+    
+    const descripcionInput = document.getElementById("create_descripcion");
+    if (descripcionInput) {
+      descripcionInput.addEventListener("input", function(e) {
+        if (this.value.length > 200) {
+          this.value = this.value.substring(0, 200);
+          toastError("La descripción no puede exceder los 200 caracteres");
+        }
       });
     }
   }

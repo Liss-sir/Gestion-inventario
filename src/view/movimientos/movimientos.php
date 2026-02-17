@@ -230,7 +230,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
         <!-- TABLE -->
         <div id="tableView" class="mt-6 rounded-2xl border border-border bg-card overflow-hidden">
-            <div class="overflow-x-auto">
+            <div id="tableWrapper" class="overflow-x-auto">
                 <table class="min-w-[1300px] w-full text-sm">
                     <thead class="bg-gray-100">
                         <tr class="bg-primary/5 text-xs text-muted-foreground border-b border-border">
@@ -253,29 +253,24 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
                     </tbody>
 
-                    <tbody id="sinResultados" class="hidden">
-                        <tr>
-                            <td colspan="13" class="px-4 py-16 text-center">
-                                <div class="flex flex-col items-center gap-3">
-                                    <div class="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                                        <i data-lucide="search-x" class="h-6 w-6 text-gray-400"></i>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-900">No se encontraron movimientos</p>
-                                        <p class="text-xs text-gray-500 mt-1">Intenta ajustar los filtros para ver mís resultados</p>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
                 </table>
+            </div>
+
+            <div id="tableEmptyState" class="hidden px-4 py-16 text-center">
+                <div class="flex flex-col items-center gap-3">
+                    <div class="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
+                        <i data-lucide="inbox" class="h-6 w-6 text-gray-400"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-900">No hay movimientos para mostrar</p>
+                        <p class="text-xs text-gray-500 mt-1">Cuando se registren movimientos, apareceran aqui.</p>
+                    </div>
+                </div>
             </div>
 
             <!-- Pagination -->
             <div class="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-border bg-card">
-                <p id="contadorTabla" class="text-xs text-muted-foreground">
-                    Mostrando 0 - 0 de 0 registros
-                </p>
+                <p id="contadorTabla" class="text-xs text-muted-foreground"></p>
 
                 <div id="paginationMovimientos" class="flex justify-end gap-2"></div>
             </div>
@@ -354,7 +349,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
 
         <!-- REGISTER MOVEMENT MODAL -->
         <div id="movimientoModal" class="fixed inset-0 z-50 hidden">
-            <div class="fixed inset-0 z-0 bg-black/50 backdrop-blur-md" onclick="closeMovimientoModal()"></div>
+            <div class="fixed inset-0 z-0 bg-black/40" onclick="closeMovimientoModal()"></div>
 
             <div class="absolute inset-0 z-10 flex items-center justify-center overflow-y-auto">
             <div class="relative mx-2 sm:mx-4 w-full max-w-4xl rounded-2xl bg-white shadow-xl p-4 sm:p-6 lg:p-8 my-4 sm:my-0">
@@ -481,7 +476,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                     ====================== -->
 
                     <div data-field="devolucion-container"
-                        class="hidden rounded-xl border p-4">
+                        class="hidden rounded-xl border border-border bg-gray-50 p-4">
 
                         <p class="text-xs sm:text-sm font-semibold mb-3">
                             Devolución de Material

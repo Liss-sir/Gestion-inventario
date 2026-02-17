@@ -1,5 +1,4 @@
-﻿[file content begin]
-<?php
+﻿<?php
 // Incluir configuración y modelo
 include_once __DIR__ . '/../../../Config/database.php';
 include_once __DIR__ . '/../../models/programa.php';
@@ -123,55 +122,55 @@ try {
             </div>
         </div>
 
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between my-6">
+            <!-- Search bar (left) -->
+            <div class="relative w-full sm:max-w-xs">
+               <svg
+                    class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                >
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <input 
+                    type="text" 
+                    placeholder="Buscar por nombre..." 
+                    class="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm"
+                >
+            </div>
+
+            <!-- State filter on right (icon matches Usuarios module) -->
+            <div class="flex items-center gap-2">
+                <svg
+                    class="h-4 w-4"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                >
+                    <path
+                        d="M5 5h14a1 1 0 0 1 .8 1.6L15 12v4.5a1 1 0 0 1-.553.894l-3 1.5A1 1 0 0 1 10 18v-6L4.2 6.6A1 1 0 0 1 5 5z"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    />
+                </svg>
+
+                <select id="selectFiltroEstado" class="rounded-md border border-input bg-background px-3 py-2 w-40 text-sm">
+                    <option value="">Todos</option>
+                    <option value="1">Activos</option>
+                    <option value="0">Inactivos</option>
+                </select>
+            </div>
+        </div>
+
         <!-- Main container with borders and shadow -->
         <div class="bg-card rounded-lg shadow-sm">
-
             <!-- Filter row (Row 2: Search left + State filter right) -->
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between my-6">
-                <!-- Search bar (left) -->
-                <div class="relative w-full sm:max-w-xs">
-                   <svg
-                        class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
-                    >
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <path d="m21 21-4.35-4.35"></path>
-                    </svg>
-                    <input 
-                        type="text" 
-                        placeholder="Buscar por nombre..." 
-                        class="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm"
-                    >
-                </div>
-
-                <!-- State filter on right (icon matches Usuarios module) -->
-                <div class="flex items-center gap-2">
-                    <svg
-                        class="h-4 w-4"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                    >
-                        <path
-                            d="M5 5h14a1 1 0 0 1 .8 1.6L15 12v4.5a1 1 0 0 1-.553.894l-3 1.5A1 1 0 0 1 10 18v-6L4.2 6.6A1 1 0 0 1 5 5z"
-                            stroke="currentColor"
-                            stroke-width="1.8"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                        />
-                    </svg>
-
-                    <select id="selectFiltroEstado" class="rounded-md border border-input bg-background px-3 py-2 w-40 text-sm">
-                        <option value="">Todos</option>
-                        <option value="1">Activos</option>
-                        <option value="0">Inactivos</option>
-                    </select>
-                </div>
-            </div>
 
             <!-- Empty State: No programas in system -->
             <div id="emptyStateProgramas" class="hidden overflow-visible rounded-lg border border-border bg-card relative p-6 mb-6">
@@ -200,9 +199,8 @@ try {
             </div>
 
             <!-- TABLE VIEW -->
-            <!-- ✅ CORREGIDO: bordes y esquinas como "Usuarios" + dropdown sin recorte -->
-            <div id="tableView" class="relative rounded-xl border border-border bg-card p-[1px] overflow-visible">
-                <table class="min-w-full border-separate border-spacing-0 text-sm rounded-[11px] bg-card">
+            <div id="tableView" class="relative rounded-xl bg-card m-[1px] ml-0 mr-0 overflow-visible">
+                <table class="min-w-full border-separate border-spacing-0 text-sm rounded-[11px] bg-card border border-border">
                     
                     <!-- Table headers -->
                     <thead>
@@ -472,7 +470,6 @@ try {
             </div>
         </div>
 
-        <!-- Reemplaza el modal de edición existente con este: -->
         <div id="editProgramModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
             <div class="absolute inset-0 bg-black/40" onclick="closeEditModal()"></div>
             <div class="relative max-w-lg w-full bg-card rounded-lg shadow-lg border border-border p-6 max-h-[90vh] overflow-y-auto">
@@ -495,12 +492,28 @@ try {
                     </div>
                 </div>
 
-                <div class="flex items-start justify-between mb-4">
+                <div class="flex items-center justify-between mb-4">
                     <div>
-                        <h3 class="text-2xl font-bold tracking-tight">Editar Programa</h3>
+                        <h3 class="text-xl font-semibold tracking-tight">Editar Programa</h3>
                         <p class="text-xs text-muted-foreground js-descripcion opacity-75">Modifica la información del programa</p>
                     </div>
-                    <button onclick="closeEditModal()" class="text-muted-foreground hover:text-foreground"><i class="fas fa-times"></i></button>
+                    <button onclick="closeEditModal()" class="text-muted-foreground hover:text-foreground"> 
+                        <span class="sr-only">Cerrar</span>
+                        <svg
+                            class="h-5 w-5"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                    </button>
                 </div>
                 
                 <!-- Step 1: Program Information -->
@@ -567,12 +580,12 @@ try {
 
                 <!-- Navigation buttons -->
                 <div class="flex items-center justify-between gap-3 mt-6">
-                    <button type="button" id="editBtnPrevStep" class="px-4 py-2 border border-border rounded-lg hidden" onclick="prevEditStep()">
+                    <button type="button" id="editBtnPrevStep" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted" onclick="prevEditStep()">
                         <i class="fas fa-arrow-left mr-2"></i> Anterior
                     </button>
                     
                     <div class="flex items-center gap-3 ml-auto">
-                        <button type="button" onclick="closeEditModal()" class="px-4 py-2 border border-border rounded-lg">Cancelar</button>
+                        <button type="button" onclick="closeEditModal()" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">Cancelar</button>
                         <button type="button" id="editBtnNextStep" class="px-4 py-2 bg-secondary text-primary-foreground rounded-lg" onclick="nextEditStep()">
                             Siguiente <i class="fas fa-arrow-right ml-2"></i>
                         </button>
@@ -587,55 +600,95 @@ try {
         <!-- View details modal -->
         <div id="viewProgramModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
             <div class="absolute inset-0 bg-black/40" onclick="closeViewModal()"></div>
-            <div class="relative max-w-md w-full bg-card rounded-lg shadow-lg border border-border p-6">
-                <div class="flex items-start justify-between mb-4">
-                    <div>
-                        <h3 class="text-lg font-semibold" id="view_title">Detalles del Programa</h3>
-                        <p class="text-xs text-muted-foreground">Modifica la información del programa</p>
+            <div class="relative max-w-md w-full bg-card rounded-lg shadow-lg border border-border p-6 max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="flex-shrink-0">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <h3 class="text-lg font-semibold" id="view_title">Detalles del Programa</h3>
+                            <p class="text-xs text-muted-foreground">Información completa del programa</p>
+                        </div>
+                        <button onclick="closeViewModal()" class="text-muted-foreground hover:text-foreground">
+                            <span class="sr-only">Cerrar</span>
+                            <svg
+                                class="h-5 w-5"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"
+                                />
+                            </svg>
+                        </button>
                     </div>
-                    <button onclick="closeViewModal()" class="text-muted-foreground hover:text-foreground"><i class="fas fa-times"></i></button>
-                </div>
 
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="w-10 h-10 bg-avatar-secondary-39 rounded-md flex items-center justify-center flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#007832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-graduation-cap-icon lucide-graduation-cap"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
-                    </div>
-                    <div>
-                        <div class="font-semibold text-foreground" id="view_name">Nombre Programa</div>
-                        <div class="text-xs text-muted-foreground" id="view_code">COD-000</div>
-                    </div>
-                </div>
-
-                <p class="text-sm text-muted-foreground mb-4" id="view_description">Descripción del programa</p>
-
-                <div class="space-y-2">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs text-muted-foreground">Nivel:</span>
-                        <span id="view_nivel" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#39A93526] text-primary">Técnico</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs text-muted-foreground">Duración:</span>
-                        <span id="view_duracion" class="text-sm font-medium text-foreground">0 Horas</span>
-                    </div>
-                    <div>
-                        <span class="text-xs text-muted-foreground block mb-2">Instructores vinculados:</span>
-                        <div id="view_instructores_container" class="max-h-32 overflow-y-auto pr-2">
-                            <!-- Mensaje cuando no hay instructores -->
-                            <div id="view_no_instructores" class="text-sm text-muted-foreground italic py-2">
-                                No hay instructores vinculados a este programa
-                            </div>
-                            <!-- Lista de instructores -->
-                            <ul id="view_instructores_list" class="space-y-2 text-sm hidden"></ul>
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-avatar-secondary-39 rounded-md flex items-center justify-center flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#007832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-graduation-cap-icon lucide-graduation-cap"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="font-semibold text-foreground text-sm" id="view_name">Nombre Programa</div>
+                            <div class="text-xs text-muted-foreground truncate" id="view_code">COD-000</div>
                         </div>
                     </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs text-muted-foreground">Estado:</span>
-                        <span id="view_estado" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#22c55e26] text-success">Activo</span>
+                </div>
+
+                <!-- Contenedor con scroll para el contenido -->
+                <div class="flex-1 overflow-y-auto pr-1 space-y-4 mt-2">
+                    <!-- Descripción con scroll si es muy larga -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-muted-foreground">Descripción:</span>
+                        </div>
+                        <div class="border border-border rounded-md p-3 bg-muted/20 max-h-32 overflow-y-auto">
+                            <p class="text-sm text-foreground whitespace-pre-wrap break-words leading-relaxed" id="view_description">Descripción del programa</p>
+                        </div>
                     </div>
+
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-muted-foreground">Nivel:</span>
+                            <span id="view_nivel" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#39A93526] text-primary">Técnico</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-muted-foreground">Estado:</span>
+                            <span id="view_estado" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#22c55e26] text-success">Activo</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-muted-foreground">Duración:</span>
+                            <span id="view_duracion" class="text-sm text-foreground">0 Horas</span>
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs text-muted-foreground">Instructores vinculados:</span>
+                                <span id="view_instructores_count" class="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">0</span>
+                            </div>
+                            <div id="view_instructores_container" class="border border-border rounded-md p-3 bg-muted/20 max-h-40 overflow-y-auto">
+                                <!-- Mensaje cuando no hay instructores -->
+                                <div id="view_no_instructores" class="text-sm text-muted-foreground italic text-center py-2">
+                                    No hay instructores vinculados a este programa
+                                </div>
+                                <!-- Lista de instructores -->
+                                <ul id="view_instructores_list" class="space-y-2 text-sm hidden"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botón de cerrar al final -->
+                <div class="flex-shrink-0 pt-4 mt-4 border-t border-border">
+                    <button onclick="closeViewModal()" class="w-full inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted transition-colors">
+                        Cerrar
+                    </button>
                 </div>
             </div>
         </div>
-        <!-- Create New Program Modal (2 steps) -->
+
+        <!-- Create New Program Modal -->
         <div id="createProgramModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
             <div class="absolute inset-0 bg-black/40" onclick="closeCreateModal()"></div>
             <div class="relative max-w-lg w-full bg-card rounded-lg shadow-lg border border-border p-6">
@@ -645,7 +698,23 @@ try {
                         <h3 class="text-lg font-semibold">Crear Nuevo Programa</h3>
                         <p class="text-xs text-muted-foreground">Complete los datos para registrar un nuevo programa de formación</p>
                     </div>
-                    <button onclick="closeCreateModal()" class="text-muted-foreground hover:text-foreground"><i class="fas fa-times"></i></button>
+                    <button onclick="closeCreateModal()" class="text-muted-foreground hover:text-foreground">
+                        <span class="sr-only">Cerrar</span>
+                        <svg
+                            class="h-5 w-5"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                    </button>
                 </div>
                 
                 <!-- Step indicator -->
@@ -736,7 +805,7 @@ try {
                     </button>
                     
                     <div class="flex items-center gap-3 ml-auto">
-                        <button type="button" onclick="closeCreateModal()" class="px-4 py-2 border border-border rounded-lg">Cancelar</button>
+                        <button type="button" onclick="closeCreateModal()" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">Cancelar</button>
                         <button type="button" id="btnNextStep" class="px-4 py-2 bg-secondary text-primary-foreground rounded-lg">
                             Siguiente <i class="fas fa-arrow-right ml-2"></i>
                         </button>

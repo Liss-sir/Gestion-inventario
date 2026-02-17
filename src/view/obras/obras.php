@@ -9,13 +9,13 @@ if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 
-// ✅ FIX PERMISOS (SIN ROMPER TU BASE)
+// FIX PERMISOS (SIN ROMPER TU BASE)
 require_once __DIR__ . "/../../utils/permisos_helper.php";
 
-// ✅ PROTECCIÓN: Si NO puede listar obras, NO entra
+// PROTECCIÓN: Si NO puede listar obras, NO entra
 requirePermiso("obras.listar");
 
-// ✅ Flags de acciones (Aprendiz NO tendrá estos permisos)
+// Flags de acciones (Aprendiz NO tendrá estos permisos)
 $canCrearObra        = canPermiso("obras.crear") || canPermiso("obras.gestionar");
 $canEditarObra       = canPermiso("obras.editar") || canPermiso("obras.gestionar");
 $canCambiarEstadoObra = canPermiso("obras.activar_desactivar") || canPermiso("obras.gestionar");
@@ -107,8 +107,8 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               <p class="text-3xl font-bold text-foreground" id="totalObras">0</p>
               <p class="text-xs text-muted-foreground mt-1 opacity-75">Registradas en el sistema</p>
             </div>
-            <div class="p-3 rounded-2xl bg-[#007832]/30 inline-flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#007832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-construction-icon lucide-construction"><rect x="2" y="6" width="20" height="8" rx="1"/><path d="M17 14v7"/><path d="M7 14v7"/><path d="M17 3v3"/><path d="M7 3v3"/><path d="M10 14 2.3 6.3"/><path d="m14 6 7.7 7.7"/><path d="m8 6 8 8"/></svg>
+            <div class="p-3 rounded-2xl bg-[#FDC300]/30 inline-flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FDC300" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-construction-icon lucide-construction"><rect x="2" y="6" width="20" height="8" rx="1"/><path d="M17 14v7"/><path d="M7 14v7"/><path d="M17 3v3"/><path d="M7 3v3"/><path d="M10 14 2.3 6.3"/><path d="m14 6 7.7 7.7"/><path d="m8 6 8 8"/></svg>
             </div>
           </div>
         </div>
@@ -135,8 +135,8 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               <p class="text-3xl font-bold text-foreground" id="obrasFinalizadas">0</p>
               <p class="text-xs text-muted-foreground mt-1 opacity-75">Completadas o inactivas</p>
             </div>
-            <div class="p-3 rounded-2xl bg-[#007832]/30 inline-flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#007832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bookmark-check-icon lucide-bookmark-check"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z"/><path d="m9 10 2 2 4-4"/></svg>
+            <div class="p-3 rounded-2xl bg-[#50E5F9]/30 inline-flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#50E5F9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bookmark-check-icon lucide-bookmark-check"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2Z"/><path d="m9 10 2 2 4-4"/></svg>
             </div>
           </div>
         </div>
@@ -155,7 +155,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               <p class="text-sm text-muted-foreground mt-1">Administra las obras y actividades formativas</p>
             </div>
 
-            <!-- ✅ SI ES APRENDIZ: NO VE "NUEVA OBRA" -->
+            <!-- SI ES APRENDIZ: NO VE "NUEVA OBRA" -->
             <?php if ($canCrearObra): ?>
               <button
                 onclick="openCreateModal()"
@@ -170,7 +170,17 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           <!-- Search bar (Users-style) -->
           <div class="mt-4">
             <div class="relative w-full">
-              <i class="fas fa-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"></i>
+              <svg
+                class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+                >
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
               <input
                 type="text"
                 id="searchInput"
@@ -208,8 +218,22 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           <h3 class="text-xl font-semibold text-foreground">Nueva Obra</h3>
           <b class="text-sm text-muted-foreground js-descripcion opacity-75">Registra una nueva obra o actividad formativa</b>
         </div>
-        <button onclick="closeCreateModal()" class="text-muted-foreground hover:opacity-80">
-          <i class="fas fa-times text-xl"></i>
+        <button onclick="closeCreateModal()" class="rounded-full p-1 hover:bg-muted">
+          <span class="sr-only">Cerrar</span>
+          <svg
+            class="h-5 w-5"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
         </button>
       </div>
 
@@ -222,10 +246,15 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </div>
 
         <div>
-          <label class="block text-xs text-muted-foreground mb-1">RAE *</label>
-          <select id="create_rae" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" required>
-            <option value="" disabled selected class="text-gray-500">Cargando RAEs...</option>
-          </select>
+            <label class="block text-xs text-muted-foreground mb-1">RAE *</label>
+            <select 
+                id="create_rae" 
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" 
+                required
+                disabled
+            >
+                <option value="" disabled selected class="text-gray-500">Selecciona primero una ficha</option>
+            </select>
         </div>
 
         <div>
@@ -284,7 +313,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </div>
 
         <div class="flex gap-3 pt-4 justify-end">
-          <button type="button" onclick="closeCreateModal()" class="px-4 py-2 border border-border rounded-lg">
+          <button type="button" onclick="closeCreateModal()" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
             Cancelar
           </button>
 
@@ -315,8 +344,22 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           <h3 class="text-xl font-semibold text-foreground">Editar Obra</h3>
           <p class="text-sm text-muted-foreground js-descripcion opacity-75">Modifica la información de la obra</p>
         </div>
-        <button onclick="closeEditModal()" class="text-muted-foreground hover:opacity-80">
-          <i class="fas fa-times text-xl"></i>
+        <button onclick="closeEditModal()" class="rounded-full p-1 hover:bg-muted">
+          <span class="sr-only">Cerrar</span>
+          <svg
+            class="h-5 w-5"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
         </button>
       </div>
 
@@ -412,7 +455,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </div>
 
         <div class="flex gap-3 pt-4 justify-end">
-          <button type="button" onclick="closeEditModal()" class="px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors">
+          <button type="button" onclick="closeEditModal()" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
             Cancelar
           </button>
           <button type="submit" class="inline-flex items-center justify-center rounded-md bg-secondary px-10 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2 transition-colors">
@@ -431,8 +474,22 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
     <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between p-6 pb-0">
         <h3 class="text-2xl font-bold tracking-tight">Detalles de la Obra</h3>
-        <button onclick="closeDetailsModal()" class="text-muted-foreground hover:opacity-80">
-          <i class="fas fa-times text-xl"></i>
+        <button onclick="closeDetailsModal()" class="rounded-full p-1 hover:bg-muted">
+          <span class="sr-only">Cerrar</span>
+          <svg
+            class="h-5 w-5"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
         </button>
       </div>
 
@@ -495,8 +552,22 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               <h3 class="text-xl font-semibold text-foreground">Asignar Aprendices</h3>
               <p class="text-sm text-muted-foreground js-descripcion opacity-75">Selecciona los aprendices que participarán en esta obra grupal</p>
           </div>
-          <button onclick="closeAsignarModal()" class="text-muted-foreground hover:opacity-80">
-              <i class="fas fa-times text-xl"></i>
+          <button onclick="closeAsignarModal()" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
+              <span class="sr-only">Cerrar</span>
+          <svg
+            class="h-5 w-5"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
           </button>
       </div>
 
@@ -528,7 +599,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </div>
 
           <div class="flex gap-3 pt-4 justify-end">
-              <button type="button" onclick="closeAsignarModal()" class="px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors">
+              <button type="button" onclick="closeAsignarModal()" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
                   Cancelar
               </button>
               <button
@@ -551,42 +622,56 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 <!-- SELECT LEARNER MODAL (INDIVIDUAL)          -->
 <!-- ========================================= -->
 <div id="modalSeleccionarAprendiz" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
-    <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between p-6 pb-0">
-            <div class="flex flex-col items-start justify-between p-0">
-                <h3 class="text-xl font-semibold text-foreground">Seleccionar Aprendiz</h3>
-                <p class="text-sm text-muted-foreground opacity-75">Selecciona el aprendiz que realizará esta obra individual</p>
-            </div>
-            <button onclick="closeSeleccionarModal()" class="text-muted-foreground hover:opacity-80">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-
-        <div class="p-6 space-y-4">
-            <div>
-                <label class="block text-xs text-muted-foreground mb-1">Aprendiz *</label>
-                <select 
-                    id="selectAprendizIndividual"
-                    class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                    <option value="" selected disabled>Cargando aprendices...</option>
-                </select>
-            </div>
-
-            <div class="flex gap-3 pt-4 justify-end">
-                <button type="button" onclick="closeSeleccionarModal()" class="px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors">
-                    Cancelar
-                </button>
-                <button
-                    type="button"
-                    onclick="finalizarCreacionIndividual()"
-                    class="inline-flex items-center justify-center rounded-md bg-secondary px-10 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2 transition-colors"
-                >
-                    Finalizar
-                </button>
-            </div>
-        </div>
+  <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div class="rounded-full p-1 hover:bg-muted">
+      <div class="flex flex-col items-start justify-between p-0">
+        <h3 class="text-xl font-semibold text-foreground">Seleccionar Aprendiz</h3>
+        <p class="text-sm text-muted-foreground opacity-75">Selecciona el aprendiz que realizará esta obra individual</p>
+      </div>
+      <button onclick="closeSeleccionarModal()" class="rounded-full p-1 hover:bg-muted">
+        <span class="sr-only">Cerrar</span>
+        <svg
+          class="h-5 w-5"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+      </button>
     </div>
+
+    <div class="p-6 space-y-4">
+      <div>
+        <label class="block text-xs text-muted-foreground mb-1">Aprendiz *</label>
+        <select 
+            id="selectAprendizIndividual"
+            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        >
+            <option value="" selected disabled>Cargando aprendices...</option>
+        </select>
+      </div>
+
+      <div class="flex gap-3 pt-4 justify-end">
+        <button type="button" onclick="closeSeleccionarModal()" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
+            Cancelar
+        </button>
+        <button
+            type="button"
+            onclick="finalizarCreacionIndividual()"
+            class="inline-flex items-center justify-center rounded-md bg-secondary px-10 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2 transition-colors"
+        >
+            Finalizar
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
   <!-- ========================================= -->
@@ -594,7 +679,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   <!-- ========================================= -->
   <div id="flowbite-alert-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 w-full max-w-md"></div>
 
-  <!-- ✅ PASAMOS PERMISOS Y DATOS DE SESIÓN A JS (IMPORTANTÍSIMO) -->
+  <!-- PASAMOS PERMISOS Y DATOS DE SESIÓN A JS (IMPORTANTÍSIMO) -->
   <script>
     window.OBRAS_PERMS = {
       canCrear: <?= json_encode($canCrearObra) ?>,
@@ -613,8 +698,8 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
     // Información sobre instructor sin ficha
     window.INSTRUCTOR_SIN_FICHA = <?= json_encode($esInstructor && !$tieneFicha) ?>;
     
-    console.log("👤 USUARIO SESIÓN:", window.USUARIO_SESION);
-    console.log("📋 INSTRUCTOR SIN FICHA:", window.INSTRUCTOR_SIN_FICHA);
+    console.log("USUARIO SESIÓN:", window.USUARIO_SESION);
+    console.log("INSTRUCTOR SIN FICHA:", window.INSTRUCTOR_SIN_FICHA);
   </script>
 
   <script src="<?= ASSETS_URL ?>js/obras/obras.js"></script>

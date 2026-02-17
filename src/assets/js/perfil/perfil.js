@@ -1858,7 +1858,7 @@ if (!window.__perfilJSLoaded) {
 
                 <div class="flex items-center justify-between gap-2 text-[10px] pl-9">
                   <span class="text-slate-500 truncate flex-1">
-                    Usuario: ${escapeHTML((notif.usuario_nombre || "Sin nombre").trim())}
+                    Usuario: ${escapeHTML((notif.mensaje || "Sin detalles").trim())}
                   </span>
 
                   ${

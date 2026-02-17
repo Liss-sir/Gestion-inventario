@@ -2,7 +2,7 @@
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 
-// ✅ Permisos
+// Permisos
 require_once __DIR__ . "/../../utils/permisos_helper.php"; // ajusta la ruta si tu view está en otra carpeta
 
 $CAN_CREAR_RAE = function_exists("hasPermiso")
@@ -78,7 +78,7 @@ $CAN_CAMBIAR_ESTADO_RAE = function_exists("hasPermiso")
         <!-- Page title -->
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
             <div>
-                <h1 class="text-3xl font-bold">Resultados de Aprendizaje (RAE)</h1>
+                <h1 class="text-3xl">Resultados de Aprendizaje (RAE)</h1>
                 <p class="text-muted-foreground mt-1">Administra los RAEs asociados a los programas de formación</p>
             </div>
 
@@ -140,24 +140,32 @@ $CAN_CAMBIAR_ESTADO_RAE = function_exists("hasPermiso")
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
                 <!-- Searcher -->
                 <div class="relative w-full sm:max-w-xs">
-                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"></i>
+                    <svg
+                        class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
                     <input id="searchRae" type="text" placeholder="Buscar rae..." class="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm">
                 </div>
                             
                 <!-- Filter by program level (on the right) -->
                 <div class="flex items-center gap-2">
                     <svg
-                        class="h-4 w-4"
+                        class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
                         xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
                         fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
                     >
                         <path
-                            d="M5 5h14a1 1 0 0 1 .8 1.6L15 12v4.5a1 1 0 0 1-.553.894l-3 1.5A1 1 0 0 1 10 18v-6L4.2 6.6A1 1 0 0 1 5 5z"
-                            stroke="currentColor"
-                            stroke-width="1.8"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
+                            d="m21 21-4.35-4.35"
                         />
                     </svg>
                     <select id="selectFiltroNivel" class="rounded-md border border-input bg-background px-3 py-2 w-40 text-sm">
@@ -286,14 +294,14 @@ $CAN_CAMBIAR_ESTADO_RAE = function_exists("hasPermiso")
                 <!-- Description -->
                 <div>
                     <label class="block text-sm font-semibold mb-2">Descripción:</label>
-                    <p id="detailsRaeDescription" class="text-sm font-medium leading-relaxed"></p>
+                    <p id="detailsRaeDescription" class="text-sm leading-relaxed"></p>
                 </div>
 
                 <!-- Program -->
                 <div>
                     <label class="block text-sm font-semibold mb-2">Programa:</label>
-                    <div class="flex items-center gap-2 text-sm font-medium">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-graduation-cap">
+                    <div class="flex items-center gap-2 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-graduation-cap">
                             <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"></path>
                             <path d="M22 10v6"></path>
                             <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"></path>
@@ -359,7 +367,8 @@ $CAN_CAMBIAR_ESTADO_RAE = function_exists("hasPermiso")
                     </label>
                     <textarea 
                         id="editRaeDescription" 
-                        rows="4" 
+                        rows="4"
+                        maxlength="200"
                         class="w-full px-4 py-2 border border-border rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-ring transition-all resize-none"
                         placeholder="Describe el resultado de aprendizaje esperado..."
                     ></textarea>
@@ -368,7 +377,7 @@ $CAN_CAMBIAR_ESTADO_RAE = function_exists("hasPermiso")
 
             <!-- Modal Footer -->
             <div class="border-border p-6 pt-0 flex gap-3 justify-end">
-                <button onclick="closeEditModal()" class="px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors font-medium">
+                <button onclick="closeEditModal()" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted transition-colors">
                     Cancelar
                 </button>
                 <button id="editRaeSubmit" class="inline-flex items-center justify-center rounded-sm bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2">
@@ -423,13 +432,18 @@ $CAN_CAMBIAR_ESTADO_RAE = function_exists("hasPermiso")
                 <!-- Description -->
                 <div>
                     <label for="createRaeDescription" class="block text-sm font-medium text-foreground mb-2">Descripción del RAE *</label>
-                    <textarea id="createRaeDescription" rows="4" class="w-full px-4 py-2 border border-border rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all resize-none" placeholder="Describe el resultado de aprendizaje esperado..."></textarea>
+                    <textarea id="createRaeDescription"
+                        rows="4"
+                        maxlength="200"
+                        class="w-full px-4 py-2 border border-border rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all resize-none"
+                        placeholder="Describe el resultado de aprendizaje esperado...">
+                    </textarea>
                 </div>
             </div>
 
             <!-- Modal Footer (Without Separator Line) -->
             <div class="pl-6 pr-6 pb-6 flex gap-3 justify-end">
-                <button onclick="closeCreateModal()" class="px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors text-foreground font-medium">Cancelar</button>
+                <button onclick="closeCreateModal()" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted transition-colors">Cancelar</button>
                 <button id="createRaeSubmit" class="inline-flex items-center justify-center rounded-sm bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2">Crear RAE</button>
             </div>
         </div>
