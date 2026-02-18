@@ -55,6 +55,9 @@ if ($reason === 'idle_timeout') {
 } elseif ($reason === 'session_revoked') {
     $loginError = "Tu sesión fue cerrada porque iniciaste sesión desde otro dispositivo o navegador.";
     $loginErrorType = "warning";
+} elseif ($reason === 'session_closed') {
+  $loginError = "Tu sesión anterior ya no estaba activa. Inicia sesión nuevamente para continuar.";
+  $loginErrorType = "info";
 } elseif ($reason === 'disabled') {
     $loginError = "Tu cuenta está desactivada. Contacta al administrador.";
     $loginErrorType = "error";
@@ -66,9 +69,9 @@ if ($reason === 'idle_timeout') {
     $loginErrorType = "warning";
 }
 
-// =======================================================
-// ✅ DETECTAR ROL FUNCIONAL DESDE TABLAS RELACIONADAS
-// - usuario_roles_funcionales
+            // =========================================================
+            // ✅ LIMPIAR SESIONES INACTIVAS (ventana reciente)
+            // =========================================================
 // - roles_funcionales
 // SIN asumir columnas como rf.slug (porque no existe)
 // =======================================================
@@ -179,10 +182,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
 
                         // =========================================================
-                        // ✅ LIMPIAR SESIONES INACTIVAS (navegador cerrado o timeout)
+                        // ✅ LIMPIAR SESIONES INACTIVAS (ventana corta)
                         // =========================================================
                         try {
-                            $stmtCleanup = $conn->prepare("\n                                UPDATE sesiones_usuarios\n                                SET activa = 0\n                                WHERE id_usuario = :id\n                                  AND activa = 1\n                                  AND (\n                                    (fecha_inicio IS NOT NULL AND fecha_inicio = fecha_ultima_actividad AND DATE_ADD(fecha_inicio, INTERVAL 15 MINUTE) < NOW())\n                                    OR\n                                    (fecha_ultima_actividad IS NOT NULL AND DATE_ADD(fecha_ultima_actividad, INTERVAL 15 MINUTE) < NOW())\n                                  )\n                            ");
+                          $stmtCleanup = $conn->prepare("\n                                UPDATE sesiones_usuarios\n                                SET activa = 0\n                                WHERE id_usuario = :id\n                                  AND activa = 1\n                                  AND TIMESTAMPDIFF(SECOND, COALESCE(fecha_ultima_actividad, fecha_inicio), NOW()) > 6\n                            ");
                             $stmtCleanup->execute([
                                 ':id' => (int)$user['id_usuario']
                             ]);
@@ -195,7 +198,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // =========================================================
                         $haySesionActiva = false;
                         try {
-                            $stmtSesionActiva = $conn->prepare("\n                                SELECT 1\n                                FROM sesiones_usuarios\n                                WHERE id_usuario = :id\n                                  AND activa = 1\n                                LIMIT 1\n                            ");
+                          $stmtSesionActiva = $conn->prepare("\n                                SELECT 1\n                                FROM sesiones_usuarios\n                                WHERE id_usuario = :id\n                                  AND activa = 1\n                                  AND TIMESTAMPDIFF(SECOND, COALESCE(fecha_ultima_actividad, fecha_inicio), NOW()) <= 6\n                                LIMIT 1\n                            ");
                             $stmtSesionActiva->execute([
                                 ':id' => (int)$user['id_usuario']
                             ]);
@@ -550,14 +553,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       text.textContent = "Iniciando sesión...";
     });
 
-    // Logout automático si cierran el navegador con sesión activa (compatible con todos los navegadores)
-    window.addEventListener("beforeunload", () => {
-      // Usar fetch con keepalive (funciona en Chrome, Edge, Firefox, Safari)
-      fetch("<?= BASE_URL ?>logout.php", {
-        method: 'GET',
-        keepalive: true
-      }).catch(() => {}); // Ignorar errores
-    });
   </script>
 
 </body>
