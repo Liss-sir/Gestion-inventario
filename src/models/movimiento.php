@@ -265,7 +265,7 @@ public function registrarEntrada(array $data): string
     }
 }
 
-     public function registrarSalida(array $data): string
+     public function registrarSalidas(array $data): string
     {
         error_log("=== REGISTRAR SALIDA ===");
         error_log("Datos recibidos: " . json_encode($data));
