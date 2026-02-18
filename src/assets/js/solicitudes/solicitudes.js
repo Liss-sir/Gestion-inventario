@@ -202,6 +202,107 @@ function initLimitesCaracteres() {
 }
 
 // ============================================================
+//  STOCK ERROR PARSER (para entregar)
+// ============================================================
+function esErrorStock(resp) {
+  if (!resp) return false;
+
+  // señales típicas
+  const msg = String(resp.error || resp.message || "").toLowerCase();
+  const code = String(resp.code || resp.tipo || resp.reason || "").toLowerCase();
+
+  return (
+    code.includes("stock") ||
+    code.includes("sin_stock") ||
+    code.includes("agotado") ||
+    msg.includes("stock") ||
+    msg.includes("agotad") ||
+    msg.includes("insuficient") ||
+    msg.includes("no hay existencia") ||
+    msg.includes("no se puede entregar")
+  );
+}
+
+/**
+ * Intenta extraer detalles de faltantes desde múltiples formas de respuesta.
+ * Soporta:
+ * - resp.faltantes: [{material, solicitado, disponible, faltante, unidad, bodega, subbodega}, ...]
+ * - resp.detalle / resp.details / resp.data.faltantes
+ * - resp.materiales_sin_stock
+ */
+function extraerFaltantes(resp) {
+  const cand = [
+    resp?.faltantes,
+    resp?.materiales_sin_stock,
+    resp?.detalle,
+    resp?.details,
+    resp?.data?.faltantes,
+    resp?.data?.materiales_sin_stock,
+  ];
+
+  for (const c of cand) {
+    if (Array.isArray(c) && c.length) return c;
+  }
+
+  // Si viene como objeto {faltantes:[...]}
+  if (resp && typeof resp === "object") {
+    const arr = Object.values(resp).find((v) => Array.isArray(v) && v.length);
+    if (Array.isArray(arr)) return arr;
+  }
+
+  return [];
+}
+
+function formatearAlertaStock(resp) {
+  const base =
+    resp?.error ||
+    resp?.message ||
+    "Stock insuficiente. No se puede marcar como entregada.";
+
+  const faltantes = extraerFaltantes(resp);
+
+  if (!faltantes.length) {
+    // si no hay estructura, al menos devuelve el mensaje del backend
+    return base;
+  }
+
+  // Construir listado
+  const lines = faltantes.map((f) => {
+    const nombre =
+      f.material || f.nombre || f.nombre_material || f.item || "Material";
+
+    const solicitado =
+      f.solicitado ?? f.cantidad_solicitada ?? f.cantidad ?? null;
+
+    const disponible =
+      f.disponible ?? f.stock_actual ?? f.stock ?? null;
+
+    const faltante =
+      f.faltante ?? (solicitado != null && disponible != null ? (Number(solicitado) - Number(disponible)) : null);
+
+    const unidad = f.unidad || f.unidad_medida || "";
+
+    const bodega = f.bodega || f.nombre_bodega || "";
+    const sub = f.subbodega || f.nombre_subbodega || "";
+
+    const ub = [bodega, sub].filter(Boolean).join(" / ");
+
+    const p1 =
+      solicitado != null ? `Solicitado: ${solicitado}${unidad ? " " + unidad : ""}` : "";
+    const p2 =
+      disponible != null ? `Disponible: ${disponible}${unidad ? " " + unidad : ""}` : "";
+    const p3 =
+      faltante != null && !Number.isNaN(Number(faltante)) ? `Faltan: ${faltante}${unidad ? " " + unidad : ""}` : "";
+
+    const parts = [p1, p2, p3].filter(Boolean).join(" • ");
+    return `• ${nombre}${ub ? ` (${ub})` : ""}${parts ? ` — ${parts}` : ""}`;
+  });
+
+  // Mensaje final (corto pero claro)
+  return `${base}\n${lines.join("\n")}`;
+}
+
+// ============================================================
 //  UTILIDADES SEGURAS
 // ============================================================
 function safeLucideCreateIcons() {
@@ -1820,9 +1921,31 @@ async function marcarEntregada(idSolicitud) {
       return;
     }
 
+    if (resp?.success) {
+      utilidades.mostrarExito(resp.message || "Solicitud marcada como entregada");
+      await app.cargarSolicitudes();
+      window.dispatchEvent(new Event("solicitudes:updated"));
+      return;
+    }
+
+    // 👇 NUEVO: si es un error de stock, mostrar razón detallada
+    if (esErrorStock(resp)) {
+      const msg = formatearAlertaStock(resp);
+      toastError(msg); // usa tu alert flowbite
+      throw new Error("STOCK"); // corta el flujo sin duplicar mensaje genérico
+    }
+
+    // error normal
     throw new Error(resp?.error || resp?.message || "No se pudo marcar como entregada.");
-  } catch (e) {
-    utilidades.mostrarError(e.message);
+
+  } 
+
+  catch (e) {
+    // Si ya mostramos el toast de stock arriba, evitamos duplicado
+    if (e.message !== "STOCK") {
+      utilidades.mostrarError(e.message);
+    }
+
     if (btnE) {
       btnE.disabled = false;
       btnE.innerHTML = '<i data-lucide="package-check" class="w-4 h-4"></i> Marcar como entregada';
