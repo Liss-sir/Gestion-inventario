@@ -179,6 +179,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     } else {
 
                         // =========================================================
+                        // ✅ LIMPIAR SESIONES INACTIVAS (navegador cerrado o timeout)
+                        // =========================================================
+                        try {
+                            $stmtCleanup = $conn->prepare("\n                                UPDATE sesiones_usuarios\n                                SET activa = 0\n                                WHERE id_usuario = :id\n                                  AND activa = 1\n                                  AND (\n                                    (fecha_inicio IS NOT NULL AND fecha_inicio = fecha_ultima_actividad AND DATE_ADD(fecha_inicio, INTERVAL 15 MINUTE) < NOW())\n                                    OR\n                                    (fecha_ultima_actividad IS NOT NULL AND DATE_ADD(fecha_ultima_actividad, INTERVAL 15 MINUTE) < NOW())\n                                  )\n                            ");
+                            $stmtCleanup->execute([
+                                ':id' => (int)$user['id_usuario']
+                            ]);
+                        } catch (Throwable $e) {
+                            // Ignorar si falla
+                        }
+
+                        // =========================================================
                         // ✅ BLOQUEAR NUEVO LOGIN SI YA HAY SESIÓN ACTIVA
                         // =========================================================
                         $haySesionActiva = false;
@@ -536,6 +548,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       btn.disabled = true;
       loader.classList.remove("hidden");
       text.textContent = "Iniciando sesión...";
+    });
+
+    // Logout automático si cierran el navegador con sesión activa (compatible con todos los navegadores)
+    window.addEventListener("beforeunload", () => {
+      // Usar fetch con keepalive (funciona en Chrome, Edge, Firefox, Safari)
+      fetch("<?= BASE_URL ?>logout.php", {
+        method: 'GET',
+        keepalive: true
+      }).catch(() => {}); // Ignorar errores
     });
   </script>
 

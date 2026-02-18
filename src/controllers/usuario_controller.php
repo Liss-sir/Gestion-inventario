@@ -146,6 +146,36 @@ function usuarioTieneSesionActiva(PDO $conn, int $idUsuario): bool
 }
 
 /**
+ * Limpia sesiones inactivas de un usuario (más de $minutosInactivos).
+ * Una sesión se considera inactiva si cumple CUALQUIERA de:
+ * 1. Nunca fue actualizada (fecha_inicio == fecha_ultima_actividad) y es vieja (15+ min)
+ * 2. Ha habido inactividad en los últimos $minutosInactivos minutos
+ * Esto cubre el caso donde el usuario cierra navegador sin logout.
+ */
+function limpiarSesionesInactivas(PDO $conn, int $idUsuario, int $minutosInactivos = 15): void
+{
+    try {
+        $stmt = $conn->prepare("
+            UPDATE sesiones_usuarios
+            SET activa = 0
+            WHERE id_usuario = :id
+              AND activa = 1
+              AND (
+                (fecha_inicio IS NOT NULL AND fecha_inicio = fecha_ultima_actividad AND DATE_ADD(fecha_inicio, INTERVAL :minutos MINUTE) < NOW())
+                OR
+                (fecha_ultima_actividad IS NOT NULL AND DATE_ADD(fecha_ultima_actividad, INTERVAL :minutos MINUTE) < NOW())
+              )
+        ");
+        $stmt->execute([
+            ':id' => $idUsuario,
+            ':minutos' => $minutosInactivos
+        ]);
+    } catch (\Exception $e) {
+        // Ignorar si falla, no rompe el flujo
+    }
+}
+
+/**
  * Crea token_sesion nuevo en sesiones_usuarios.
  * Devuelve token o null si falla (no bloquea login).
  */
@@ -1859,6 +1889,9 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 'error' => 'Cuenta inactiva. Contacta al administrador.'
             ], 401);
         }
+
+        // Limpiar sesiones inactivas antes de validar sesión activa
+        limpiarSesionesInactivas($conn, (int) $user['id_usuario']);
 
         if (usuarioTieneSesionActiva($conn, (int) $user['id_usuario'])) {
             enviarJSON([

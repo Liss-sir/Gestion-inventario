@@ -1094,9 +1094,14 @@ $maxConsumo = max(array_column($consumoData, 'consumo')) ?: 0;
       writeLock({ tabId, ts: now() });
     }, PING_MS);
 
-    // 4) Liberar candado al salir
+    // 4) Logout automático al cerrar navegador/pestaña (compatible con todos los navegadores)
     window.addEventListener("beforeunload", () => {
       removeLockIfMine();
+      // Usar fetch con keepalive (funciona en Chrome, Edge, Firefox, Safari)
+      fetch("<?= BASE_URL ?>logout.php", {
+        method: 'GET',
+        keepalive: true
+      }).catch(() => {}); // Ignorar errores
     });
   })();
 </script>
