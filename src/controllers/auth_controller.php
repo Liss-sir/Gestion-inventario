@@ -38,6 +38,8 @@ if (empty($_SESSION['usuario_id']) || empty($_SESSION['token_sesion'])) {
   exit;
 }
 
+$ACTIVE_WINDOW_SECONDS = 6;
+
 $uid = (int)$_SESSION['usuario_id'];
 $token = (string)$_SESSION['token_sesion'];
 
@@ -63,9 +65,39 @@ try {
   $s = $stmt2->fetch(PDO::FETCH_ASSOC);
 
   if (!$s || (int)$s['activa'] !== 1) {
+    $reason = "session_closed";
+
+    try {
+      $stmt3 = $conn->prepare("\n        SELECT 1\n        FROM sesiones_usuarios\n        WHERE id_usuario = :id\n          AND activa = 1\n          AND token_sesion <> :token\n          AND TIMESTAMPDIFF(SECOND, COALESCE(fecha_ultima_actividad, fecha_inicio), NOW()) <= :w\n        LIMIT 1\n      ");
+      $stmt3->bindValue(':id', $uid, PDO::PARAM_INT);
+      $stmt3->bindValue(':token', $token, PDO::PARAM_STR);
+      $stmt3->bindValue(':w', $ACTIVE_WINDOW_SECONDS, PDO::PARAM_INT);
+      $stmt3->execute();
+      if ((bool)$stmt3->fetchColumn()) {
+        $reason = "session_revoked";
+      }
+    } catch (Throwable $e) {
+      // si falla esta verificación extra, dejar reason por defecto
+    }
+
     _destroySession();
-    echo json_encode(["ok" => false, "logout" => true, "reason" => "session_revoked"], JSON_UNESCAPED_UNICODE);
+    echo json_encode(["ok" => false, "logout" => true, "reason" => $reason], JSON_UNESCAPED_UNICODE);
     exit;
+  }
+
+  // Mantener heartbeat de actividad reciente para este token.
+  try {
+    $stmtBeat = $conn->prepare("\n      UPDATE sesiones_usuarios\n      SET fecha_ultima_actividad = NOW()\n      WHERE id_usuario = :id\n        AND token_sesion = :token\n        AND activa = 1\n    ");
+    $stmtBeat->execute([':id' => $uid, ':token' => $token]);
+  } catch (Throwable $e) {
+    // no romper check por falla puntual
+  }
+
+  try {
+    $stmtTouch = $conn->prepare("\n      UPDATE sesiones_usuarios\n      SET fecha_ultima_actividad = NOW()\n      WHERE id_usuario = :id\n        AND token_sesion = :token\n        AND activa = 1\n      LIMIT 1\n    ");
+    $stmtTouch->execute([":id" => $uid, ":token" => $token]);
+  } catch (Throwable $e) {
+    // no interrumpir check por fallo de touch
   }
 
   echo json_encode(["ok" => true], JSON_UNESCAPED_UNICODE);

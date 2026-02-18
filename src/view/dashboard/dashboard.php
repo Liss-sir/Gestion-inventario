@@ -1094,7 +1094,7 @@ $maxConsumo = max(array_column($consumoData, 'consumo')) ?: 0;
       writeLock({ tabId, ts: now() });
     }, PING_MS);
 
-    // 4) Liberar candado al salir
+    // 4) Liberar candado al salir (sin cerrar sesión)
     window.addEventListener("beforeunload", () => {
       removeLockIfMine();
     });

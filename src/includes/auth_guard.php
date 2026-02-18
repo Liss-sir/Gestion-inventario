@@ -120,8 +120,25 @@ try {
 
   // Si no existe o no está activa => cerrar
   if (!$s || (int)$s['activa'] !== 1) {
+    $reason = "session_closed";
+    $ACTIVE_WINDOW_SECONDS = 90;
+
+    try {
+      $stmt3 = $conn->prepare("\n        SELECT 1\n        FROM sesiones_usuarios\n        WHERE id_usuario = :id\n          AND activa = 1\n          AND token_sesion <> :token\n          AND TIMESTAMPDIFF(SECOND, COALESCE(fecha_ultima_actividad, fecha_inicio), NOW()) <= :w\n        LIMIT 1\n      ");
+      $stmt3->bindValue(':id', $uid, PDO::PARAM_INT);
+      $stmt3->bindValue(':token', $token, PDO::PARAM_STR);
+      $stmt3->bindValue(':w', $ACTIVE_WINDOW_SECONDS, PDO::PARAM_INT);
+      $stmt3->execute();
+
+      if ((bool)$stmt3->fetchColumn()) {
+        $reason = "session_revoked";
+      }
+    } catch (Throwable $e) {
+      // si falla verificación extra, conservar reason por defecto
+    }
+
     _destroySession();
-    _redirectLogin("session_revoked");
+    _redirectLogin($reason);
   }
 
   // -----------------------------------------------------------
@@ -198,9 +215,20 @@ try {
   }
 
   // ----------------------------
-  // ✅ actualizar tiempo de actividad
+  // ✅ actualizar tiempo de actividad (PHP + BD)
   // ----------------------------
   $_SESSION['LAST_ACTIVITY'] = time();
+  
+  try {
+    $stmtUpdateActivity = $conn->prepare("
+      UPDATE sesiones_usuarios
+      SET fecha_ultima_actividad = NOW()
+      WHERE token_sesion = :token
+    ");
+    $stmtUpdateActivity->execute([':token' => $token]);
+  } catch (Throwable $e) {
+    // Ignorar si falla, no rompe la sesión activa
+  }
 
 } catch (Throwable $e) {
   // Si falla BD, NO rompas el sistema; pero por seguridad puedes cerrar.

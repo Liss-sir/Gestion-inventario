@@ -22,6 +22,19 @@ if (empty($_SESSION['usuario_id']) || empty($_SESSION['token_sesion'])) {
 // Actualizar actividad
 $_SESSION['LAST_ACTIVITY'] = time();
 
+// Actualizar actividad en BD (heartbeat de token)
+try {
+    require_once __DIR__ . '/../../Config/database.php';
+
+    $stmtBeat = $conn->prepare("\n        UPDATE sesiones_usuarios\n        SET fecha_ultima_actividad = NOW()\n        WHERE id_usuario = :id\n          AND token_sesion = :token\n          AND activa = 1\n    ");
+    $stmtBeat->execute([
+        ':id' => (int)$_SESSION['usuario_id'],
+        ':token' => (string)$_SESSION['token_sesion']
+    ]);
+} catch (Throwable $e) {
+    // No romper ping por fallo de BD
+}
+
 echo json_encode([
     "success" => true,
     "expired" => false,
