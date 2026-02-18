@@ -139,7 +139,6 @@ class MaterialFormacionModel {
                     COALESCE(SUM(sb.stock_actual), 0) AS stock_actual
                 FROM material_formacion m
                 LEFT JOIN stock_bodega sb ON m.id_material = sb.id_material
-                WHERE m.estado IS NULL OR m.estado <> 'Agotado'
                 GROUP BY m.id_material
                 ORDER BY m.nombre ASC";
 
