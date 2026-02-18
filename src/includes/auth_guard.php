@@ -198,9 +198,20 @@ try {
   }
 
   // ----------------------------
-  // ✅ actualizar tiempo de actividad
+  // ✅ actualizar tiempo de actividad (PHP + BD)
   // ----------------------------
   $_SESSION['LAST_ACTIVITY'] = time();
+  
+  try {
+    $stmtUpdateActivity = $conn->prepare("
+      UPDATE sesiones_usuarios
+      SET fecha_ultima_actividad = NOW()
+      WHERE token_sesion = :token
+    ");
+    $stmtUpdateActivity->execute([':token' => $token]);
+  } catch (Throwable $e) {
+    // Ignorar si falla, no rompe la sesión activa
+  }
 
 } catch (Throwable $e) {
   // Si falla BD, NO rompas el sistema; pero por seguridad puedes cerrar.
