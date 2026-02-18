@@ -192,7 +192,8 @@ class SolicitudMaterialModel
 
             require_once __DIR__ . '/movimiento.php';
             $movimientoModel = new MovimientoModel($this->db);
-            $movimientoModel->registrarEntrada($datosMovimiento);
+            $movimientoModel->registrarSalida($datosMovimiento);
+
 
             return true;
 
@@ -253,37 +254,44 @@ class SolicitudMaterialModel
 
     // ================= ENTREGAR (AHORA DESCUENTA STOCK) =================
     public function marcarEntregada($idSolicitud, $idUsuario)
-    {
-        try {
-            $this->db->beginTransaction();
+{
+    try {
+        $this->db->beginTransaction();
 
-            $sql = "UPDATE solicitudes_material
-                    SET estado = 'Entregada',
-                        fecha_respuesta = NOW(),
-                        id_usuario_aprobador = ?
-                    WHERE id_solicitud = ?
-                      AND estado = 'Aprobada'";
-
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([$idUsuario, $idSolicitud]);
-
-            if ($stmt->rowCount() === 0) {
-                $this->db->rollBack();
-                return false;
-            }
-
-            // ✅ AHORA AQUÍ SE CREA LA SALIDA
-            $this->crearMovimientoSalidaDeSolicitud($idSolicitud, $idUsuario);
-
-            $this->db->commit();
-            return true;
-
-        }
-        catch (Exception $e) {
+        // 1) Primero crear la SALIDA (aquí se valida stock por trigger)
+        $okMov = $this->crearMovimientoSalidaDeSolicitud($idSolicitud, $idUsuario);
+        if ($okMov === false) {
             $this->db->rollBack();
             return false;
         }
+
+        // 2) Luego marcar la solicitud como entregada
+        $sql = "UPDATE solicitudes_material
+                SET estado = 'Entregada',
+                    fecha_respuesta = NOW(),
+                    id_usuario_aprobador = ?
+                WHERE id_solicitud = ?
+                  AND estado = 'Aprobada'";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$idUsuario, $idSolicitud]);
+
+        if ($stmt->rowCount() === 0) {
+            $this->db->rollBack();
+            return false;
+        }
+
+        $this->db->commit();
+        return true;
+
+    } catch (Exception $e) {
+        $this->db->rollBack();
+        // deja rastro real del error
+        error_log("❌ marcarEntregada error: " . $e->getMessage());
+        return false;
     }
+}
+
 
     public function getDetalles($idSolicitud)
     {

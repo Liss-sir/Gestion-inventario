@@ -202,107 +202,6 @@ function initLimitesCaracteres() {
 }
 
 // ============================================================
-//  STOCK ERROR PARSER (para entregar)
-// ============================================================
-function esErrorStock(resp) {
-  if (!resp) return false;
-
-  // señales típicas
-  const msg = String(resp.error || resp.message || "").toLowerCase();
-  const code = String(resp.code || resp.tipo || resp.reason || "").toLowerCase();
-
-  return (
-    code.includes("stock") ||
-    code.includes("sin_stock") ||
-    code.includes("agotado") ||
-    msg.includes("stock") ||
-    msg.includes("agotad") ||
-    msg.includes("insuficient") ||
-    msg.includes("no hay existencia") ||
-    msg.includes("no se puede entregar")
-  );
-}
-
-/**
- * Intenta extraer detalles de faltantes desde múltiples formas de respuesta.
- * Soporta:
- * - resp.faltantes: [{material, solicitado, disponible, faltante, unidad, bodega, subbodega}, ...]
- * - resp.detalle / resp.details / resp.data.faltantes
- * - resp.materiales_sin_stock
- */
-function extraerFaltantes(resp) {
-  const cand = [
-    resp?.faltantes,
-    resp?.materiales_sin_stock,
-    resp?.detalle,
-    resp?.details,
-    resp?.data?.faltantes,
-    resp?.data?.materiales_sin_stock,
-  ];
-
-  for (const c of cand) {
-    if (Array.isArray(c) && c.length) return c;
-  }
-
-  // Si viene como objeto {faltantes:[...]}
-  if (resp && typeof resp === "object") {
-    const arr = Object.values(resp).find((v) => Array.isArray(v) && v.length);
-    if (Array.isArray(arr)) return arr;
-  }
-
-  return [];
-}
-
-function formatearAlertaStock(resp) {
-  const base =
-    resp?.error ||
-    resp?.message ||
-    "Stock insuficiente. No se puede marcar como entregada.";
-
-  const faltantes = extraerFaltantes(resp);
-
-  if (!faltantes.length) {
-    // si no hay estructura, al menos devuelve el mensaje del backend
-    return base;
-  }
-
-  // Construir listado
-  const lines = faltantes.map((f) => {
-    const nombre =
-      f.material || f.nombre || f.nombre_material || f.item || "Material";
-
-    const solicitado =
-      f.solicitado ?? f.cantidad_solicitada ?? f.cantidad ?? null;
-
-    const disponible =
-      f.disponible ?? f.stock_actual ?? f.stock ?? null;
-
-    const faltante =
-      f.faltante ?? (solicitado != null && disponible != null ? (Number(solicitado) - Number(disponible)) : null);
-
-    const unidad = f.unidad || f.unidad_medida || "";
-
-    const bodega = f.bodega || f.nombre_bodega || "";
-    const sub = f.subbodega || f.nombre_subbodega || "";
-
-    const ub = [bodega, sub].filter(Boolean).join(" / ");
-
-    const p1 =
-      solicitado != null ? `Solicitado: ${solicitado}${unidad ? " " + unidad : ""}` : "";
-    const p2 =
-      disponible != null ? `Disponible: ${disponible}${unidad ? " " + unidad : ""}` : "";
-    const p3 =
-      faltante != null && !Number.isNaN(Number(faltante)) ? `Faltan: ${faltante}${unidad ? " " + unidad : ""}` : "";
-
-    const parts = [p1, p2, p3].filter(Boolean).join(" • ");
-    return `• ${nombre}${ub ? ` (${ub})` : ""}${parts ? ` — ${parts}` : ""}`;
-  });
-
-  // Mensaje final (corto pero claro)
-  return `${base}\n${lines.join("\n")}`;
-}
-
-// ============================================================
 //  UTILIDADES SEGURAS
 // ============================================================
 function safeLucideCreateIcons() {
@@ -361,6 +260,12 @@ function showFlowbiteAlert(type, message) {
   const container = getOrCreateFlowbiteContainer();
   const wrapper = document.createElement("div");
 
+  // normaliza tipo (por si mandas "warning"/"error")
+  const t = String(type || "").toLowerCase();
+  const isSuccess = t === "success";
+  const isInfo = t === "info";
+  const isWarn = t === "warning" || t === "warn" || t === "error" || !t;
+
   let borderColor = "border-amber-500";
   let textColor = "text-amber-900";
   let titleText = "Advertencia";
@@ -372,7 +277,7 @@ function showFlowbiteAlert(type, message) {
     </svg>
   `;
 
-  if (type === "success") {
+  if (isSuccess) {
     borderColor = "border-emerald-500";
     textColor = "text-emerald-900";
     titleText = "Éxito";
@@ -381,9 +286,7 @@ function showFlowbiteAlert(type, message) {
         <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm-1 15-4-4 1.414-1.414L9 12.172l4.586-4.586L15 9z"/>
       </svg>
     `;
-  }
-
-  if (type === "info") {
+  } else if (isInfo) {
     borderColor = "border-blue-500";
     textColor = "text-blue-900";
     titleText = "Información";
@@ -392,7 +295,7 @@ function showFlowbiteAlert(type, message) {
         <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm1 15H9v-5h2Zm0-7H9V6h2Z"/>
       </svg>
     `;
-  }
+  } // warning/error queda por default
 
   wrapper.className = `
     relative flex items-center w-full pointer-events-auto
@@ -401,14 +304,20 @@ function showFlowbiteAlert(type, message) {
     opacity-0 -translate-y-2 transition-all duration-300 ease-out
   `;
 
+  // ✅ aquí sí existe data-msg
   wrapper.innerHTML = `
     <div class="flex-shrink-0 mr-3 text-current">${iconSVG}</div>
     <div class="flex-1 min-w-0">
       <p class="font-semibold">${titleText}</p>
-      <p class="mt-0.5 text-sm">${message}</p>
+      <p class="mt-0.5 text-sm" data-msg></p>
     </div>
   `;
 
+  // ✅ seguro contra HTML raro
+  const msgEl = wrapper.querySelector("[data-msg]");
+  if (msgEl) msgEl.textContent = String(message ?? "");
+
+  // ✅ FALTABA ESTO: meterlo al DOM
   container.appendChild(wrapper);
 
   requestAnimationFrame(() => {
@@ -1921,31 +1830,9 @@ async function marcarEntregada(idSolicitud) {
       return;
     }
 
-    if (resp?.success) {
-      utilidades.mostrarExito(resp.message || "Solicitud marcada como entregada");
-      await app.cargarSolicitudes();
-      window.dispatchEvent(new Event("solicitudes:updated"));
-      return;
-    }
-
-    // 👇 NUEVO: si es un error de stock, mostrar razón detallada
-    if (esErrorStock(resp)) {
-      const msg = formatearAlertaStock(resp);
-      toastError(msg); // usa tu alert flowbite
-      throw new Error("STOCK"); // corta el flujo sin duplicar mensaje genérico
-    }
-
-    // error normal
     throw new Error(resp?.error || resp?.message || "No se pudo marcar como entregada.");
-
-  } 
-
-  catch (e) {
-    // Si ya mostramos el toast de stock arriba, evitamos duplicado
-    if (e.message !== "STOCK") {
-      utilidades.mostrarError(e.message);
-    }
-
+  } catch (e) {
+    utilidades.mostrarError(e.message);
     if (btnE) {
       btnE.disabled = false;
       btnE.innerHTML = '<i data-lucide="package-check" class="w-4 h-4"></i> Marcar como entregada';
