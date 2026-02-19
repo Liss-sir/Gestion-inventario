@@ -403,12 +403,12 @@ function pedirMotivoRechazo() {
 
         <div class="mt-6 flex justify-end gap-2">
           <button type="button" data-motivo-cancel
-            class="px-4 py-2 rounded-xl border border-border bg-card hover:bg-muted text-foreground">
+            class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
             Cancelar
           </button>
 
           <button type="button" data-motivo-ok
-            class="px-4 py-2 rounded-xl bg-[#dc2626] text-white hover:bg-[#b91c1c]">
+            class="px-4 py-2 rounded-xl bg-[#c24141] text-white">
             Rechazar
           </button>
         </div>
@@ -1509,7 +1509,7 @@ const render = {
             <div class="flex gap-2">
               
               ${mostrarBtnAceptar ? `
-                <button class="sol-btn-aceptar flex-1 py-2 px-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                <button class="sol-btn-aceptar flex-1 py-2 px-3 bg-primary text-white rounded-lg flex items-center justify-center gap-2"
                         data-id="${s.id}">
                   <i data-lucide="check-circle" class="w-4 h-4"></i>
                   Aceptar
@@ -1517,7 +1517,7 @@ const render = {
               ` : ""}
 
               ${mostrarBtnRechazar ? `
-                <button class="sol-btn-rechazar flex-1 py-2 px-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                <button class="sol-btn-rechazar flex-1 py-2 px-3 bg-[#c24141] text-white rounded-lg flex items-center justify-center gap-2"
                         data-id="${s.id}">
                   <i data-lucide="x-circle" class="w-4 h-4"></i>
                   Rechazar
@@ -1531,7 +1531,7 @@ const render = {
 
         ${mostrarAccionEntregar ? `
         <div class="sol-card-footer mt-4 pt-4 border-t border-gray-200">
-          <button class="sol-btn-entregar w-full py-2 px-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+          <button class="sol-btn-entregar w-full py-2 px-3 bg-[#00304D] text-white rounded-lg flex items-center justify-center gap-2"
                   data-id="${s.id}">
             <i data-lucide="package-check" class="w-4 h-4"></i>
             Marcar como entregada

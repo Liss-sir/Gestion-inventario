@@ -490,7 +490,7 @@
   border: 1px solid var(--input);
   background-color: var(--background);
 
-  color: var(--foreground);      /* Tailwind usa el color del theme */
+  color: var(--foreground);
   white-space: nowrap;
 
   cursor: pointer;
@@ -606,7 +606,6 @@
 }
 
 .sol-btn-entregar:hover {
-    opacity: 0.9;
     transform: translateY(-1px);
 }
 
@@ -623,4 +622,33 @@
     color: #00304D;          
 }
 
+/* ===========================
+   TOGGLE SWITCH PARA BODEGAS (TARJETAS)
+   =========================== */
+.estado-switch-track {
+  width: 2.5rem;        /* w-10 */
+  height: 1.25rem;       /* h-5 */
+  background-color: #d1d5db; /* bg-gray-300 */
+  border-radius: 9999px;
+  transition: background-color 0.2s;
+  position: relative;
+}
 
+.estado-switch:checked + .estado-switch-track {
+  background-color: color-mix(in srgb, var(--primary) 30%, transparent); /* #39A900 con opacidad */
+}
+
+.estado-switch-ball {
+  width: 1rem;           /* w-4 */
+  height: 1rem;          /* h-4 */
+  background-color: white;
+  border-radius: 9999px;
+  position: absolute;
+  top: 0.125rem;         /* top-0.5 */
+  left: 0.125rem;        /* left-0.5 */
+  transition: transform 0.2s;
+}
+
+.estado-switch:checked + .estado-switch-track .estado-switch-ball {
+  transform: translateX(1.25rem); /* translate-x-5 */
+}

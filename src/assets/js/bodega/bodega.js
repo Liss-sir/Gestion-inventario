@@ -1731,19 +1731,19 @@ async function verMaterialesBodega(idBodega) {
         `;
       } else {
         lista.innerHTML = materiales.map(m => `
-          <div class="flex justify-between items-center border rounded-lg p-4 bg-green-50 border-green-200 hover:shadow-sm transition">
+          <div class="flex justify-between items-center border rounded-lg p-4 bg-[#39A900]/10 border-[#39A900] hover:shadow-sm transition">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+              <div class="w-10 h-10 rounded-xl bg-[#39A900]/20 text-[#39A900] flex items-center justify-center">
                 <i data-lucide="package" class="w-5 h-5 text-green-600"></i>
               </div>
               <div>
-                <p class="font-semibold text-green-900">${escapeHtml(m.nombre_material)}</p>
-                <p class="text-xs text-green-700">Unidad: ${escapeHtml(m.unidad_medida)}</p>
+                <p class="font-semibold text-secondary">${escapeHtml(m.nombre_material)}</p>
+                <p class="text-xs text-primary">Unidad: ${escapeHtml(m.unidad_medida)}</p>
               </div>
             </div>
             <div class="text-right">
-              <p class="text-2xl font-bold text-green-600">${m.cantidad_total}</p>
-              <p class="text-xs text-green-700">${escapeHtml(m.unidad_medida)}</p>
+              <p class="text-2xl font-bold text-secondary">${m.cantidad_total}</p>
+              <p class="text-xs text-primary">${escapeHtml(m.unidad_medida)}</p>
             </div>
           </div>
         `).join('');
