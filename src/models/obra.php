@@ -146,20 +146,20 @@ class ObraModel {
 
     /* OBTENER POR ID */
     public function obtener($id) {
-        $sql = "SELECT 
-                    af.*,
-                    f.numero_ficha,
-                    r.descripcion_rae,
-                    u.nombre_completo as nombre_instructor
-                FROM {$this->table} af
-                LEFT JOIN fichas f ON af.id_ficha = f.id_ficha
-                LEFT JOIN raes r ON af.id_rae = r.id_rae
-                LEFT JOIN usuarios u ON af.id_instructor = u.id_usuario
-                WHERE af.id_actividad = ?";
-        
+    $sql = "SELECT 
+        af.*,
+        f.numero_ficha,
+        r.descripcion_rae,
+        u.nombre_completo as nombre_instructor,
+        (SELECT aa.id_usuario FROM actividades_aprendices aa WHERE aa.id_actividad = af.id_actividad LIMIT 1) as id_aprendiz_actual
+        FROM {$this->table} af
+        LEFT JOIN fichas f ON af.id_ficha = f.id_ficha
+        LEFT JOIN raes r ON af.id_rae = r.id_rae
+        LEFT JOIN usuarios u ON af.id_instructor = u.id_usuario
+        WHERE af.id_actividad = ?";
+    
         $stmt = $this->conn->prepare($sql);
         $stmt->execute([$id]);
-
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
@@ -298,5 +298,33 @@ class ObraModel {
         
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return $result['count'] > 0;
+    }
+    
+    // Llamar Instructores por ficha (tabla de fichas_instructores)
+    public function obtenerInstructoresPorFicha($idFicha) {
+        $sql = "SELECT DISTINCT u.id_usuario, u.nombre_completo
+                FROM usuarios u
+                INNER JOIN fichas_instructores fi ON u.id_usuario = fi.id_usuario
+                WHERE fi.id_ficha = :id_ficha
+                AND u.cargo = 'instructor'
+                AND u.estado = 'activo'
+                AND fi.estado = 'Activo'
+                ORDER BY u.nombre_completo";
+        
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(':id_ficha', $idFicha, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Llamar aprendices por actividad (tabla de actividades_aprendices)
+    public function obtenerAprendicesPorActividad($idActividad) {
+        $sql = "SELECT u.id_usuario, u.nombre_completo, u.numero_documento as documento
+                FROM actividades_aprendices aa
+                INNER JOIN usuarios u ON aa.id_usuario = u.id_usuario
+                WHERE aa.id_actividad = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([$idActividad]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

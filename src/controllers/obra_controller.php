@@ -172,6 +172,41 @@ class ObraController {
             ]);
         }
     }
+
+    // Llamar Instructores por ficha (tabla de fichas_instructores)
+    public function obtenerInstructoresPorFicha() {
+        $idFicha = $_GET['id_ficha'] ?? ($_POST['id_ficha'] ?? $input['id_ficha'] ?? null);
+        if (!$idFicha || !is_numeric($idFicha)) {
+            echo json_encode(["error" => "ID de ficha inválido"]);
+            return;
+        }
+        
+        // Verificar acceso si es instructor
+        session_start();
+        $usuarioId = $_SESSION['usuario_id'] ?? null;
+        $esInstructor = ($_SESSION['cargo'] ?? '') === 'Instructor';
+        if ($esInstructor && $usuarioId) {
+            $tieneAcceso = $this->model->verificarAccesoInstructorFicha($usuarioId, (int)$idFicha);
+            if (!$tieneAcceso) {
+                echo json_encode(["error" => "No tiene acceso a esta ficha"]);
+                return;
+            }
+        }
+        
+        $instructores = $this->model->obtenerInstructoresPorFicha((int)$idFicha);
+        echo json_encode($instructores);
+    }
+
+    // Llamar aprendices por actividad (tabla de actividades_aprendices)
+    public function obtenerAprendicesActividad() {
+        $idActividad = $_GET['id_actividad'] ?? ($_POST['id_actividad'] ?? $input['id_actividad'] ?? null);
+        if (!$idActividad || !is_numeric($idActividad)) {
+            echo json_encode(["error" => "ID de actividad inválido"]);
+            return;
+        }
+        $aprendices = $this->model->obtenerAprendicesPorActividad((int)$idActividad);
+        echo json_encode($aprendices);
+    }
 }
 
 /* INSTANCIA CONTROLLER */
@@ -245,6 +280,14 @@ switch ($accion) {
 
     case "asignar_aprendices":
         $controller->asignarAprendices();
+        break;
+
+    case "obtener_instructores_por_ficha":
+        $controller->obtenerInstructoresPorFicha();
+        break;
+
+    case "obtener_aprendices_actividad":
+        $controller->obtenerAprendicesActividad();
         break;
 
     default:
