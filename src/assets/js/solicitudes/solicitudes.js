@@ -774,6 +774,47 @@ async function cargarMaterialesEnCard(card, idSolicitud) {
   }
 }
 
+// ============================================================
+//  HELPER: valida si la respuesta de materiales viene realmente filtrada
+//  (evita que el backend "caiga" a un listado global cuando se pide subbodega)
+// ============================================================
+function respuestaEsStockFiltrado(mats, { bodegaId = null, subId = null } = {}) {
+  if (!Array.isArray(mats)) return false;
+  if (!mats.length) return true; // vacío = filtrado válido
+
+  // 1) Si NO vienen campos típicos del inventario, sospecha de fallback
+  // (ajusta nombres si tu backend usa otros)
+  const traeCamposInventario = mats.some(m =>
+    m && (
+      m.stock_actual != null ||
+      m.stock != null ||
+      m.id_bodega != null ||
+      m.id_subbodega != null
+    )
+  );
+  if (!traeCamposInventario) return false;
+
+  // 2) Si pedimos subbodega y el backend NO trae id_subbodega, no podemos confiar
+  if (subId && !mats.some(m => m && (m.id_subbodega != null))) {
+    return false;
+  }
+
+  // 3) Si pedimos subbodega y trae id_subbodega, validar que al menos uno coincida
+  if (subId && mats.some(m => m && m.id_subbodega != null)) {
+    const ok = mats.some(m => String(m.id_subbodega) === String(subId));
+    if (!ok) return false;
+  }
+
+  // 4) Si pedimos bodega y trae id_bodega, validar que coincida
+  if (bodegaId && mats.some(m => m && m.id_bodega != null)) {
+    const ok = mats.some(m => String(m.id_bodega) === String(bodegaId));
+    if (!ok) return false;
+  }
+
+  return true;
+}
+
+
 const api = {
   async listarSolicitudes() {
     try {
@@ -1070,7 +1111,7 @@ const api = {
       }
 
       if (parseInt(subId, 10) > 0) {
-        const filtradoReal = respuestaEsStockFiltrado(mats);
+        const filtradoReal = respuestaEsStockFiltrado(mats, { bodegaId, subId });
 
         if (!filtradoReal) {
           selectores.selectMaterial.innerHTML =
