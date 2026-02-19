@@ -240,14 +240,25 @@ if ($canVerPendientesBtn) {
 
 
 // Movimientos recientes (entrada/salida/devolución) máx 4
+// ✅ FIX: instructors see devoluciones + their solicitudes (as activity)
 if ($esInstructor) {
   $sqlRecentMov = "
-    SELECT d.fecha_hora, 'devolucion' AS tipo, mf.nombre AS material_nombre, d.cantidad_devuelta AS cantidad,
-         DATE_FORMAT(d.fecha_hora, '%H:%i') AS hora
-    FROM devoluciones_material d
-    LEFT JOIN material_formacion mf ON mf.id_material = d.id_material
-    WHERE d.id_usuario = :id
-    ORDER BY d.fecha_hora DESC
+    SELECT * FROM (
+      SELECT d.fecha_hora, 'devolucion' AS tipo, mf.nombre AS material_nombre, d.cantidad_devuelta AS cantidad,
+           DATE_FORMAT(d.fecha_hora, '%H:%i') AS hora
+      FROM devoluciones_material d
+      LEFT JOIN material_formacion mf ON mf.id_material = d.id_material
+      WHERE d.id_usuario = :id
+      
+      UNION ALL
+      
+      SELECT sm.fecha_solicitud AS fecha_hora, 'solicitud' AS tipo, mf.nombre AS material_nombre, sm.cantidad AS cantidad,
+           DATE_FORMAT(sm.fecha_solicitud, '%H:%i') AS hora
+      FROM solicitudes_material sm
+      LEFT JOIN material_formacion mf ON mf.id_material = sm.id_material
+      WHERE sm.id_usuario_solicitante = :id
+    ) x
+    ORDER BY fecha_hora DESC
     LIMIT 4
   ";
   $stmtMov = $conn->prepare($sqlRecentMov);
@@ -570,42 +581,41 @@ $maxConsumo = max(array_column($consumoData, 'consumo')) ?: 0;
                 <p class="text-sm text-muted-foreground">Actividades por nombre de obra</p>
             </div>
         </div>
-    <div class="px-6 pb-6">
-      <?php $totalCategoriaValues = array_sum(array_column($categoriaData ?? [], 'value')) ?: 0; ?>
-      <?php if ($totalCategoriaValues <= 0): ?>
-      <div class="border-t border-border pt-4">
-        <div class="flex flex-col items-center justify-center py-8 w-full">
-          <div class="h-40 w-40 rounded-full bg-slate-100 flex items-center justify-center">
-            <div class="h-24 w-24 rounded-full bg-white"></div>
-          </div>
-          <p class="mt-4 text-sm font-medium text-slate-700">Sin datos</p>
-          <p class="text-xs text-slate-500">Cuando haya actividades, se mostrará la distribución por obra.</p>
-        </div>
-      </div>
-      <?php else: ?>
-      <div class="border-t border-border pt-4">
-        <div class="flex items-center justify-center gap-6">
+    <div class="px-6 pb-6" style="overflow: visible;">
+      <div class="border-t border-border pt-4" style="overflow: visible;">
+        <!-- ✅ FIX: ALWAYS render canvas and legend, Chart.js handles empty data -->
+        <div class="flex items-center justify-center gap-6 max-w-full" style="overflow: visible;">
           <!-- Gráfica de pastel -->
-          <div class="h-40 w-40">
-            <canvas id="categoriaChart" class="w-full h-full"></canvas>
+          <div style="position: relative; width: 160px; height: 160px; flex-shrink: 0; overflow: visible;">
+            <canvas id="categoriaChart" width="160" height="160" style="display: block; overflow: visible;"></canvas>
           </div>
 
-          <!-- Leyenda a la derecha -->
-          <div class="space-y-2 text-sm">
-            <?php foreach ($categoriaData as $item): ?>
-              <div class="flex items-center gap-2">
-                <span class="h-3 w-3 rounded-full"
-                  style="background-color: <?php echo $item['color']; ?>;"></span>
-                <span><?php echo htmlspecialchars($item['name']); ?>:</span>
-                <span class="font-medium text-muted-foreground">
-                  <?php echo $item['value']; ?>
-                </span>
-              </div>
-            <?php endforeach; ?>
+          <!-- Leyenda a la derecha con scroll si es necesario -->
+          <div class="space-y-2 text-sm flex-1 overflow-y-auto max-h-40">
+            <?php if (empty($categoriaData)): ?>
+              <p class="text-slate-500">Sin datos de actividades</p>
+            <?php else: ?>
+              <?php foreach ($categoriaData as $item): ?>
+                <div class="flex items-start gap-2 pr-2">
+                  <span class="h-3 w-3 rounded-full flex-shrink-0 mt-1"
+                    style="background-color: <?php echo $item['color']; ?>;"></span>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-baseline gap-1">
+                      <span class="font-semibold text-slate-900 truncate" title="<?php echo htmlspecialchars($item['name']); ?>">
+                        <?php echo htmlspecialchars($item['name']); ?>
+                      </span>
+                      <span class="text-muted-foreground flex-shrink-0">:</span>
+                    </div>
+                    <span class="font-medium text-slate-700">
+                      <?php echo $item['value']; ?>
+                    </span>
+                  </div>
+                </div>
+              <?php endforeach; ?>
+            <?php endif; ?>
           </div>
         </div>
       </div>
-      <?php endif; ?>
     </div>
     </div>
 </div>
@@ -754,18 +764,30 @@ $maxConsumo = max(array_column($consumoData, 'consumo')) ?: 0;
 
         <?php foreach (array_slice($recentMovimientos, 0, 4) as $mov):
         $tipoMov = strtolower($mov["tipo"] ?? '');
+        
+        // ✅ Determine icon and color based on type
+        $icon = "arrow-down-up";
         if ($tipoMov === "entrada") {
           $movClasses = "bg-[#39A9001A] text-[#39A900]";
+          $icon = "arrow-down";
         } elseif ($tipoMov === "salida") {
           $movClasses = "bg-[#39A9001A] text-[#39A900]";
+          $icon = "arrow-up";
+        } elseif ($tipoMov === "devolucion") {
+          $movClasses = "bg-[#FDC3001A] text-[#FDC300]";
+          $icon = "undo";
+        } elseif ($tipoMov === "solicitud") {
+          $movClasses = "bg-[#50E5F91A] text-[#50E5F9]";
+          $icon = "send";
         } else {
           $movClasses = "bg-[#FDC3001A] text-[#FDC300]";
+          $icon = "arrow-down-up";
         }
         ?>
         <div class="flex items-start gap-3 pb-3 border-b border-border last:border-0 last:pb-0">
             <!-- ✅ Ícono estilo foto: círculo perfecto + centrado -->
             <div class="mt-0.5 h-8 w-8 rounded-full flex items-center justify-center <?php echo $movClasses; ?>">
-            <i data-lucide="arrow-down-up" class="h-4 w-4"></i>
+            <i data-lucide="<?php echo $icon; ?>" class="h-4 w-4"></i>
             </div>
             <div class="flex-1 min-w-0">
           <p class="text-sm font-medium capitalize"><?php echo htmlspecialchars($tipoMov); ?></p>
@@ -1156,6 +1178,9 @@ document.addEventListener("DOMContentLoaded", async function () {
 </script>
 
 <script>
+  // ✅ ESPERAR A QUE EL DOM ESTÉ LISTO ANTES DE INICIALIZAR CHARTS
+  document.addEventListener("DOMContentLoaded", function() {
+    
   // ========= CONSUMO MENSUAL (BARRAS) =========
   const labelsConsumo = <?php echo json_encode(array_column($consumoData, 'name')); ?>;
   const valoresConsumo = <?php echo json_encode(array_map('intval', array_column($consumoData, 'consumo'))); ?>;
@@ -1163,49 +1188,50 @@ document.addEventListener("DOMContentLoaded", async function () {
   const totalMateriales = valoresConsumo.reduce((acc, val) => acc + val, 0);
   const maxY = totalMateriales > 0 ? totalMateriales : 10;
 
-  const consumoCtx = document.getElementById('consumoChart').getContext('2d');
-
-  const consumoChart = new Chart(consumoCtx, {
-      type: 'bar',
-      data: {
-      labels: labelsConsumo,
-      datasets: [{
-          label: 'Consumo de materiales',
-          data: valoresConsumo,
-          backgroundColor: 'rgba(148, 163, 184, 0.75)',
-          borderRadius: 8,
-          borderSkipped: false
-      }]
-      },
-      options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-          legend: { display: false },
-          tooltip: {
-          enabled: true,
-          callbacks: {
-              label: function(context) {
-              const valor = context.parsed.y || 0;
-              return valor + ' materiales';
-              }
-          }
-          }
-      },
-      scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-          y: {
-          beginAtZero: true,
-          suggestedMax: maxY,
-          ticks: {
-              stepSize: Math.max(1, Math.round(maxY / 5)),
-              font: { size: 10 }
-          },
-          grid: { color: 'rgba(229, 231, 235, 0.8)' }
-          }
-      }
-      }
-  });
+  const consumoCtx = document.getElementById('consumoChart');
+  if (consumoCtx) {
+    const consumoChart = new Chart(consumoCtx.getContext('2d'), {
+        type: 'bar',
+        data: {
+        labels: labelsConsumo,
+        datasets: [{
+            label: 'Consumo de materiales',
+            data: valoresConsumo,
+            backgroundColor: 'rgba(148, 163, 184, 0.75)',
+            borderRadius: 8,
+            borderSkipped: false
+        }]
+        },
+        options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+            enabled: true,
+            callbacks: {
+                label: function(context) {
+                const valor = context.parsed.y || 0;
+                return valor + ' materiales';
+                }
+            }
+            }
+        },
+        scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+            y: {
+            beginAtZero: true,
+            suggestedMax: maxY,
+            ticks: {
+                stepSize: Math.max(1, Math.round(maxY / 5)),
+                font: { size: 10 }
+            },
+            grid: { color: 'rgba(229, 231, 235, 0.8)' }
+            }
+        }
+        }
+    });
+  }
 
   // ========= DISTRIBUCIÓN POR CATEGORÍA (DOUGHNUT) =========
   const categoriaLabels = <?php echo json_encode(array_column($categoriaData, 'name')); ?>;
@@ -1224,37 +1250,53 @@ document.addEventListener("DOMContentLoaded", async function () {
       categoriaColoresFinal = ['rgba(148, 163, 184, 0.4)'];
   }
 
-  const categoriaCtx = document.getElementById('categoriaChart').getContext('2d');
+  const categoriaDom = document.getElementById('categoriaChart');
+  if (categoriaDom) {
+    const categoriaCtx = categoriaDom.getContext('2d');
 
-  const categoriaChart = new Chart(categoriaCtx, {
-      type: 'doughnut',
-      data: {
-      labels: categoriaLabelsFinal,
-      datasets: [{
-          data: categoriaValoresFinal,
-          backgroundColor: categoriaColoresFinal,
-          borderWidth: 0
-      }]
-      },
-      options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '65%',
-      plugins: {
-          legend: { display: false },
-          tooltip: {
-          callbacks: {
-              label: function(context) {
-              if (totalCategoriasValor === 0) return 'Sin datos';
-              const value = context.parsed;
-              const percent = ((value / totalCategoriasValor) * 100).toFixed(1);
-              return `${context.label}: ${value}% (${percent}%)`;
-              }
-          }
-          }
-      }
-      }
-  });
+    const categoriaChart = new Chart(categoriaCtx, {
+        type: 'doughnut',
+        data: {
+        labels: categoriaLabelsFinal,
+        datasets: [{
+            data: categoriaValoresFinal,
+            backgroundColor: categoriaColoresFinal,
+            borderWidth: 0
+        }]
+        },
+        options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+            enabled: true,
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            padding: 14,
+            titleFont: { size: 14, weight: 'bold', color: '#fff' },
+            bodyFont: { size: 13, color: '#fff' },
+            displayColors: false,
+            cornerRadius: 8,
+            caretPadding: 12,
+            callbacks: {
+                title: function(context) {
+                return context[0].label;
+                },
+                label: function(context) {
+                if (totalCategoriasValor === 0) return 'Sin datos';
+                const value = context.parsed;
+                const percent = ((value / totalCategoriasValor) * 100).toFixed(1);
+                return `Actividades: ${value} (${percent}%)`;
+                }
+            }
+            }
+        }
+        }
+    });
+  }
+
+  }); // ✅ CIERRE del DOMContentLoaded
 </script>
 
 <script>

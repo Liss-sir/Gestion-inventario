@@ -11,6 +11,27 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', $protocol . $host . $script_dir);
 }
 
+// ✅ FIX: Check if user is instructor (for entrada tab visibility)
+require_once __DIR__ . '/../../utils/permisos_helper.php';
+$cargoActual = permisos_resolver_alias(permisos_getCargo());
+$rolesFuncionales = [];
+if (!empty($_SESSION['roles_funcionales']) && is_array($_SESSION['roles_funcionales'])) {
+  $rolesFuncionales = $_SESSION['roles_funcionales'];
+}
+if (empty($rolesFuncionales) && !empty($_SESSION['rol_funcional'])) {
+  $rolesFuncionales = [$_SESSION['rol_funcional']];
+}
+$rolesFuncionales = array_map(function($r){ return strtolower(trim((string)$r)); }, $rolesFuncionales);
+$rolesFuncPoderosos = ["encargado_inventario", "encargado_bodega", "encargado_subbodega"];
+$tieneRolFuncPoderoso = false;
+foreach ($rolesFuncionales as $rf) {
+  if (in_array($rf, $rolesFuncPoderosos, true)) {
+    $tieneRolFuncPoderoso = true;
+    break;
+  }
+}
+$esInstructor = ($cargoActual === "instructor" && !$tieneRolFuncPoderoso);
+
 // Obtener ID del usuario de la sesi├│n
 $idUsuario = $_SESSION['id_usuario'] ?? 1; // Por defecto 1 si no hay sesi├│n
 $movimientos = [];
@@ -201,7 +222,9 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                         <select id="filtroTipo" name="filtro_tipo"
                             class="appearance-none rounded-lg border border-border bg-background py-2 pl-3 pr-8 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
                             <option value="">Todos</option>
+                            <?php if (!$esInstructor): ?>
                             <option value="entrada">Entradas</option>
+                            <?php endif; ?>
                             <option value="salida">Salidas</option>
                             <option value="devolucion">Devoluciones</option>
                         </select>
@@ -381,10 +404,13 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                     <div id="tabsMovimiento"
                         class="flex w-full max-w-md min-w-fit items-center rounded-full bg-gray-100 p-1 text-xs sm:text-sm font-medium shadow-inner">
 
+                        <!-- ✅ Hide Entrada tab for instructors -->
+                        <?php if (!$esInstructor): ?>
                         <button type="button" data-tipo="entrada"
                             class="tab-mov flex-1 rounded-full py-2 text-center text-gray-600 hover:text-gray-900 transition-all">
                             Entrada
                         </button>
+                        <?php endif; ?>
 
                         <button type="button" data-tipo="devolucion"
                             class="tab-mov flex-1 rounded-full py-2 text-center text-gray-600 hover:text-gray-900 transition-all">
