@@ -692,10 +692,19 @@ function setMaterialOptions(materialesArray, modo = "normal") {
 //  Detectar si respuesta viene realmente filtrada por STOCK
 // (si el backend cae al fallback global, normalmente no trae stock_actual)
 // ============================================================
-function respuestaEsStockFiltrado(arr) {
-  if (!Array.isArray(arr) || !arr.length) return false;
-  return arr.some((m) => m && Object.prototype.hasOwnProperty.call(m, "stock_actual"));
+const filtradoReal = respuestaEsStockFiltrado(mats);
+
+if (!filtradoReal) {
+  selectores.selectMaterial.innerHTML =
+    '<option value="">No se pudo cargar stock (respuesta sin stock_actual)</option>';
+  selectores.selectMaterial.disabled = true;
+  selectores.btnAgregarMaterial.disabled = true;
+  selectores.inputCantidad.disabled = true;
+  return;
 }
+
+setMaterialOptions(mats);
+
 
 // ============================================================
 //  CACHE + RENDER DE MATERIALES EN CARD (sin tocar backend)

@@ -107,4 +107,32 @@ class SubBodegaModel {
             return false;
         }
     }
+
+    public function obtenerInventarioPorSubbodega(int $idSubbodega): array {
+        try {
+            $sql = "
+                SELECT 
+                    m.id_material,
+                    m.nombre AS nombre_material,
+                    m.unidad_medida,
+                    ss.stock_actual AS cantidad_total
+                FROM stock_subbodega ss
+                INNER JOIN material_formacion m 
+                    ON m.id_material = ss.id_material
+                WHERE ss.id_subbodega = ?
+                AND ss.stock_actual > 0
+                ORDER BY m.nombre ASC
+            ";
+
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([$idSubbodega]);
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        } catch (PDOException $e) {
+            error_log("Error inventario subbodega: " . $e->getMessage());
+            return [];
+        }
+    }
 }
+

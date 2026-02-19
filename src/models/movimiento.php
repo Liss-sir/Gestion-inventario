@@ -108,7 +108,8 @@ class MovimientoModel {
         }
 
         // ✅ Calcular el delta (positivo para entrada, negativo para salida)
-        $tipo = $data['tipo_movimiento'] ?? 'entrada';
+        $tipo = strtolower($data['tipo_movimiento'] ?? 'entrada');
+
         $delta = (strtolower($tipo) === 'entrada') ? 1 : -1;
 
         foreach ($materiales as $m) {
@@ -265,114 +266,115 @@ public function registrarEntrada(array $data): string
     }
 }
 
-     public function registrarSalidas(array $data): string
-    {
-        error_log("=== REGISTRAR SALIDA ===");
-        error_log("Datos recibidos: " . json_encode($data));
+     public function registrarSalida(array $data): string
+{
+    error_log("=== REGISTRAR SALIDA ===");
+    error_log("Datos recibidos: " . json_encode($data));
 
-        $transaccionNuestra = false;
-        if (!$this->conn->inTransaction()) {
-            $this->conn->beginTransaction();
-            $transaccionNuestra = true;
+    $transaccionNuestra = false;
+    if (!$this->conn->inTransaction()) {
+        $this->conn->beginTransaction();
+        $transaccionNuestra = true;
+    }
+
+    try {
+        if (empty($data['materiales'])) {
+            throw new Exception("Debe agregar al menos un material");
         }
 
-        try {
-            if (empty($data['materiales'])) {
-                throw new Exception("Debe agregar al menos un material");
+        // ✅ Validar stock suficiente (bodega/subbodega si aplica)
+        $idBodega = (int)($data['id_bodega'] ?? 0);
+        $idSub    = (int)($data['id_subbodega'] ?? 0);
+
+        foreach ($data['materiales'] as $m) {
+            $idMaterial = (int)($m['id_material'] ?? 0);
+            $cantidad   = (int)($m['cantidad'] ?? 0);
+
+            if ($idMaterial <= 0 || $cantidad <= 0) continue;
+
+            if ($idSub > 0) {
+                $st = $this->conn->prepare("
+                    SELECT COALESCE(stock_actual,0)
+                    FROM stock_subbodega
+                    WHERE id_subbodega = ? AND id_material = ?
+                    LIMIT 1
+                ");
+                $st->execute([$idSub, $idMaterial]);
+            } else {
+                $st = $this->conn->prepare("
+                    SELECT COALESCE(stock_actual,0)
+                    FROM stock_bodega
+                    WHERE id_bodega = ? AND id_material = ?
+                    LIMIT 1
+                ");
+                $st->execute([$idBodega, $idMaterial]);
             }
 
-            //  Validar stock suficiente (bodega/subbodega si aplica)
-            $idBodega = (int)($data['id_bodega'] ?? 0);
-            $idSub    = (int)($data['id_subbodega'] ?? 0);
+            $stockActual = (int)($st->fetchColumn() ?? 0);
 
-            foreach ($data['materiales'] as $m) {
-                $idMaterial = (int)($m['id_material'] ?? 0);
-                $cantidad   = (int)($m['cantidad'] ?? 0);
-
-                if ($idMaterial <= 0 || $cantidad <= 0) continue;
-
-                if ($idSub > 0) {
-                    $st = $this->conn->prepare("
-                        SELECT COALESCE(stock_actual,0)
-                        FROM stock_subbodega
-                        WHERE id_subbodega = ? AND id_material = ?
-                        LIMIT 1
-                    ");
-                    $st->execute([$idSub, $idMaterial]);
-                } else {
-                    $st = $this->conn->prepare("
-                        SELECT COALESCE(stock_actual,0)
-                        FROM stock_bodega
-                        WHERE id_bodega = ? AND id_material = ?
-                        LIMIT 1
-                    ");
-                    $st->execute([$idBodega, $idMaterial]);
-                }
-
-                $stockActual = (int)($st->fetchColumn() ?? 0);
-
-                if ($stockActual < $cantidad) {
-                    throw new Exception("Stock insuficiente para material $idMaterial. Disponible: $stockActual, solicitado: $cantidad.");
-                }
+            if ($stockActual < $cantidad) {
+                throw new Exception("Stock insuficiente para material $idMaterial. Disponible: $stockActual, solicitado: $cantidad.");
             }
+        }
 
-            // Insert en movimientos_material con primer material (igual que entrada)
-            $primerMaterial = $data['materiales'][0];
+        // Insert en movimientos_material con primer material (igual que entrada)
+        $primerMaterial = $data['materiales'][0];
 
-            $stmtMov = $this->conn->prepare("
-                INSERT INTO movimientos_material (
-                    tipo_movimiento, id_usuario,
-                    id_bodega, id_subbodega,
-                    id_programa, id_ficha, id_rae,
-                    observaciones, id_solicitud, fecha_hora,
-                    id_material, cantidad
-                ) VALUES (
-                    'Salida', ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?
-                )
+        $stmtMov = $this->conn->prepare("
+            INSERT INTO movimientos_material (
+                tipo_movimiento, id_usuario,
+                id_bodega, id_subbodega,
+                id_programa, id_ficha, id_rae,
+                observaciones, id_solicitud, fecha_hora,
+                id_material, cantidad
+            ) VALUES (
+                'Salida', ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?
+            )
+        ");
+
+        $stmtMov->execute([
+            $data['id_usuario'],
+            $data['id_bodega'],
+            $data['id_subbodega'] ?? null,
+            $data['id_programa'] ?? null,
+            $data['id_ficha'] ?? null,
+            $data['id_rae'] ?? null,
+            $data['observaciones'] ?? null,
+            $data['id_solicitud'] ?? null,
+            $primerMaterial['id_material'],
+            $primerMaterial['cantidad']
+        ]);
+
+        $idMovimiento = $this->conn->lastInsertId();
+
+        // Detalles adicionales
+        if (count($data['materiales']) > 1) {
+            $stmtMat = $this->conn->prepare("
+                INSERT INTO movimientos_detalle
+                (id_movimiento, id_material, cantidad)
+                VALUES (?, ?, ?)
             ");
 
-            $stmtMov->execute([
-                $data['id_usuario'],
-                $data['id_bodega'],
-                $data['id_subbodega'] ?? null,
-                $data['id_programa'] ?? null,
-                $data['id_ficha'] ?? null,
-                $data['id_rae'] ?? null,
-                $data['observaciones'] ?? null,
-                $data['id_solicitud'] ?? null,
-                $primerMaterial['id_material'],
-                $primerMaterial['cantidad']
-            ]);
-
-            $idMovimiento = $this->conn->lastInsertId();
-
-            // Detalles adicionales
-            if (count($data['materiales']) > 1) {
-                $stmtMat = $this->conn->prepare("
-                    INSERT INTO movimientos_detalle
-                    (id_movimiento, id_material, cantidad)
-                    VALUES (?, ?, ?)
-                ");
-
-                for ($i = 1; $i < count($data['materiales']); $i++) {
-                    $mat = $data['materiales'][$i];
-                    $stmtMat->execute([$idMovimiento, $mat['id_material'], $mat['cantidad']]);
-                }
+            for ($i = 1; $i < count($data['materiales']); $i++) {
+                $mat = $data['materiales'][$i];
+                $stmtMat->execute([$idMovimiento, $mat['id_material'], $mat['cantidad']]);
             }
-
-            //  Esto ya resta porque tipo_movimiento = 'Salida'
-            $data['tipo_movimiento'] = 'Salida';
-            $this->actualizarStockEntrada($data, $data['materiales']);
-
-            if ($transaccionNuestra) $this->conn->commit();
-
-            return 'MOV-' . date('Y') . '-' . str_pad($idMovimiento, 5, '0', STR_PAD_LEFT);
-
-        } catch (Exception $e) {
-            if ($transaccionNuestra) $this->conn->rollBack();
-            throw new Exception("Error al registrar salida: " . $e->getMessage());
         }
+
+        // ✅ Esto ya resta porque tipo_movimiento = 'Salida'
+        $data['tipo_movimiento'] = 'Salida';
+        $this->actualizarStockEntrada($data, $data['materiales']);
+
+        if ($transaccionNuestra) $this->conn->commit();
+
+        return 'MOV-' . date('Y') . '-' . str_pad($idMovimiento, 5, '0', STR_PAD_LEFT);
+
+    } catch (Exception $e) {
+        if ($transaccionNuestra) $this->conn->rollBack();
+        throw new Exception("Error al registrar salida: " . $e->getMessage());
     }
+}
+
 
 
 

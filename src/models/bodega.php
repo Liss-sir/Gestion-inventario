@@ -174,60 +174,30 @@ class BodegaModel {
         try {
             $sql = "
                 SELECT 
-                    id_material,
-                    nombre_material,
-                    unidad_medida,
-                    SUM(cantidad_total) AS cantidad_total
-                FROM (
-                    -- Materiales principales registrados en movimientos_material
-                    SELECT 
-                        mm.id_material,
-                        mf.nombre AS nombre_material,
-                        mf.unidad_medida,
-                        SUM(CASE 
-                            WHEN mm.tipo_movimiento = 'entrada' THEN mm.cantidad
-                            WHEN mm.tipo_movimiento = 'salida' THEN -mm.cantidad
-                            WHEN mm.tipo_movimiento = 'devolucion' THEN mm.cantidad
-                            ELSE 0
-                        END) AS cantidad_total
-                    FROM movimientos_material mm
-                    INNER JOIN material_formacion mf ON mf.id_material = mm.id_material
-                    WHERE mm.id_bodega = :id_bodega AND (mm.id_subbodega IS NULL OR mm.id_subbodega = 0)
-                    GROUP BY mm.id_material, mf.nombre, mf.unidad_medida
-                    
-                    UNION ALL
-                    
-                    -- Materiales adicionales registrados en movimientos_detalle
-                    SELECT 
-                        md.id_material,
-                        mf.nombre AS nombre_material,
-                        mf.unidad_medida,
-                        SUM(CASE 
-                            WHEN mm.tipo_movimiento = 'entrada' THEN md.cantidad
-                            WHEN mm.tipo_movimiento = 'salida' THEN -md.cantidad
-                            WHEN mm.tipo_movimiento = 'devolucion' THEN md.cantidad
-                            ELSE 0
-                        END) AS cantidad_total
-                    FROM movimientos_detalle md
-                    INNER JOIN movimientos_material mm ON mm.id_movimiento = md.id_movimiento
-                    INNER JOIN material_formacion mf ON mf.id_material = md.id_material
-                    WHERE mm.id_bodega = :id_bodega AND (mm.id_subbodega IS NULL OR mm.id_subbodega = 0)
-                    GROUP BY md.id_material, mf.nombre, mf.unidad_medida
-                ) AS materiales_combinados
-                GROUP BY id_material, nombre_material, unidad_medida
-                HAVING cantidad_total > 0
-                ORDER BY nombre_material ASC
+                    m.id_material,
+                    m.nombre AS nombre_material,
+                    m.unidad_medida,
+                    sb.stock_actual AS cantidad_total
+                FROM stock_bodega sb
+                INNER JOIN material_formacion m 
+                    ON m.id_material = sb.id_material
+                WHERE sb.id_bodega = ?
+                AND sb.stock_actual > 0
+                ORDER BY m.nombre ASC
             ";
 
             $stmt = $this->conn->prepare($sql);
-            $stmt->bindParam(':id_bodega', $idBodega, PDO::PARAM_INT);
-            $stmt->execute();
+            $stmt->execute([$idBodega]);
+
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
         } catch (PDOException $e) {
-            error_log("Error en obtenerInventarioPorBodega: " . $e->getMessage());
+            error_log("Error inventario bodega: " . $e->getMessage());
             return [];
         }
     }
+
+
 
     /* ==============================
        OBTENER INVENTARIO POR SUBBODEGA
