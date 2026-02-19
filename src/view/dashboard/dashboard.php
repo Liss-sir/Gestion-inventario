@@ -252,11 +252,11 @@ if ($esInstructor) {
       
       UNION ALL
       
-      SELECT sm.fecha_solicitud AS fecha_hora, 'solicitud' AS tipo, mf.nombre AS material_nombre, sm.cantidad AS cantidad,
+      SELECT sm.fecha_solicitud AS fecha_hora, 'solicitud' AS tipo, CONCAT(COUNT(*), ' materiales solicitados') AS material_nombre, COUNT(*) AS cantidad,
            DATE_FORMAT(sm.fecha_solicitud, '%H:%i') AS hora
       FROM solicitudes_material sm
-      LEFT JOIN material_formacion mf ON mf.id_material = sm.id_material
       WHERE sm.id_usuario_solicitante = :id
+      GROUP BY sm.id_solicitud
     ) x
     ORDER BY fecha_hora DESC
     LIMIT 4
