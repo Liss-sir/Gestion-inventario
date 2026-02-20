@@ -294,6 +294,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               <input
                 id="nombre_completo"
                 type="text"
+                minlength="6"
                 maxlength="70"
                 class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
                 placeholder="Ej: Juan Pablo Hernández Castro"
@@ -332,6 +333,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               <input
                 id="numero_documento"
                 type="text"
+                minlength="6"
                 maxlength="15"
                 inputmode="numeric"
                 class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
@@ -352,6 +354,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               <input
                 id="telefono"
                 type="text"
+                minlength="10"
                 maxlength="10"
                 inputmode="numeric"
                 class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
@@ -409,6 +412,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               <input
                 id="correo"
                 type="email"
+                minlength="10"
                 maxlength="120"
                 class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
                 placeholder="usuario@sena.edu.co"
@@ -426,6 +430,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               <input
                 id="password"
                 type="password"
+                minlength="8"
                 readonly
                 class="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm input-siga"
                 placeholder="Ingrese una contraseña segura"
@@ -476,6 +481,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               <input
                 id="direccion"
                 type="text"
+                minlength="10"
                 maxlength="60"
                 class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
                 placeholder="Calle 45 #23-10, Bogotá"
@@ -771,13 +777,14 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       //    - Solo muestra mensaje debajo cuando llega al max
       // ------------------------------
       function initCharCounters() {
-        const fields = document.querySelectorAll("input[maxlength], textarea[maxlength]");
+        const fields = document.querySelectorAll("input[maxlength], textarea[maxlength], input[minlength], textarea[minlength]");
 
         fields.forEach((el) => {
           if (!el || el.dataset.noCounter === "1") return;
 
           const max = parseInt(el.getAttribute("maxlength"), 10);
-          if (!max || max <= 0) return;
+          const min = parseInt(el.getAttribute("minlength"), 10) || 0;
+          if ((!max || max <= 0) && min <= 0) return;
 
           // Wrapper preferido: data-char-wrap (si no, usa el padre)
           const wrapper = el.closest("[data-char-wrap]") || el.parentElement;
@@ -804,9 +811,19 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           const update = () => {
             const len = (el.value || "").length;
 
+            if (min > 0 && len > 0 && len < min) {
+              msg.textContent = `Mínimo ${min} caracteres requeridos`;
+              msg.classList.remove("hidden");
+              return;
+            }
+
             // Mostrar SOLO al alcanzar el máximo
-            if (len >= max) msg.classList.remove("hidden");
-            else msg.classList.add("hidden");
+            if (max > 0 && len >= max) {
+              msg.textContent = "Limite de caracteres alcanzados";
+              msg.classList.remove("hidden");
+            } else {
+              msg.classList.add("hidden");
+            }
           };
 
           el.addEventListener("input", update);

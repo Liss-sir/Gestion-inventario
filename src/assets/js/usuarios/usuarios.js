@@ -541,6 +541,35 @@ function renderRolFuncionalBadgeHTML(user) {
     // =========================
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const numeroRegex = /^\d+$/;
+    const passwordPolicyRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+    const USER_MIN_LENGTHS = {
+      nombre_completo: 6,
+      numero_documento: 6,
+      telefono: 10,
+      correo: 10,
+      password: 8,
+      direccion: 10,
+    };
+
+    function showInlineFieldMessage(inputEl, message) {
+      if (!inputEl) return;
+      const wrapper = inputEl.closest("[data-char-wrap]") || inputEl.parentElement;
+      if (!wrapper) return;
+
+      const key = inputEl.id || inputEl.name || "field";
+      let msg = wrapper.querySelector(`[data-char-limit-msg-for="${key}"]`);
+
+      if (!msg) {
+        msg = document.createElement("p");
+        msg.setAttribute("data-char-limit-msg-for", key);
+        msg.className = "mt-1 text-[11px] text-muted-foreground select-none";
+        msg.setAttribute("aria-live", "polite");
+        wrapper.appendChild(msg);
+      }
+
+      msg.textContent = String(message || "");
+      msg.classList.remove("hidden");
+    }
 
     // =========================
     // PAYLOAD VALIDATION HELPER
@@ -3093,6 +3122,14 @@ function renderRolFuncionalBadgeHTML(user) {
         return;
       }
 
+      if (payload.nombre_completo.length < USER_MIN_LENGTHS.nombre_completo) {
+        if (inputNombreCompleto) {
+          inputNombreCompleto.dispatchEvent(new Event("input", { bubbles: true }));
+          inputNombreCompleto.focus();
+        }
+        return;
+      }
+
       if (!payload.tipo_documento) {
         toastError("Debe seleccionar un tipo de documento.");
         if (inputTipoDocumento) inputTipoDocumento.focus();
@@ -3102,6 +3139,14 @@ function renderRolFuncionalBadgeHTML(user) {
       if (!payload.numero_documento) {
         toastError("El número de documento es obligatorio.");
         if (inputNumeroDocumento) inputNumeroDocumento.focus();
+        return;
+      }
+
+      if (payload.numero_documento.length < USER_MIN_LENGTHS.numero_documento) {
+        if (inputNumeroDocumento) {
+          inputNumeroDocumento.dispatchEvent(new Event("input", { bubbles: true }));
+          inputNumeroDocumento.focus();
+        }
         return;
       }
 
@@ -3117,6 +3162,15 @@ function renderRolFuncionalBadgeHTML(user) {
         return;
       }
 
+      if (payload.telefono.length !== USER_MIN_LENGTHS.telefono) {
+        if (inputTelefono) {
+          inputTelefono.dispatchEvent(new Event("input", { bubbles: true }));
+          showInlineFieldMessage(inputTelefono, `El teléfono debe tener exactamente ${USER_MIN_LENGTHS.telefono} dígitos.`);
+          inputTelefono.focus();
+        }
+        return;
+      }
+
       if (!numeroRegex.test(payload.telefono)) {
         toastError("El teléfono solo puede contener números.");
         if (inputTelefono) inputTelefono.focus();
@@ -3126,6 +3180,14 @@ function renderRolFuncionalBadgeHTML(user) {
       if (!payload.correo) {
         toastError("El correo electrónico es obligatorio.");
         if (inputCorreo) inputCorreo.focus();
+        return;
+      }
+
+      if (payload.correo.length < USER_MIN_LENGTHS.correo) {
+        if (inputCorreo) {
+          inputCorreo.dispatchEvent(new Event("input", { bubbles: true }));
+          inputCorreo.focus();
+        }
         return;
       }
 
@@ -3147,9 +3209,36 @@ function renderRolFuncionalBadgeHTML(user) {
         return;
       }
 
+      if (payload.direccion.length < USER_MIN_LENGTHS.direccion) {
+        if (inputDireccion) {
+          inputDireccion.dispatchEvent(new Event("input", { bubbles: true }));
+          inputDireccion.focus();
+        }
+        return;
+      }
+
       if (!isEdit && !payload.password) {
         toastError("La contraseña es obligatoria para crear un usuario nuevo.");
         if (inputPassword) inputPassword.focus();
+        return;
+      }
+
+      if (!isEdit && payload.password.length < USER_MIN_LENGTHS.password) {
+        if (inputPassword) {
+          inputPassword.dispatchEvent(new Event("input", { bubbles: true }));
+          inputPassword.focus();
+        }
+        return;
+      }
+
+      if ((!isEdit || payload.password) && !passwordPolicyRegex.test(payload.password)) {
+        if (inputPassword) {
+          showInlineFieldMessage(
+            inputPassword,
+            "La contraseña debe tener mínimo 8 caracteres, 1 mayúscula y 1 número."
+          );
+          inputPassword.focus();
+        }
         return;
       }
 
