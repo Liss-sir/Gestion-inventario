@@ -260,6 +260,12 @@ function showFlowbiteAlert(type, message) {
   const container = getOrCreateFlowbiteContainer();
   const wrapper = document.createElement("div");
 
+  // normaliza tipo (por si mandas "warning"/"error")
+  const t = String(type || "").toLowerCase();
+  const isSuccess = t === "success";
+  const isInfo = t === "info";
+  const isWarn = t === "warning" || t === "warn" || t === "error" || !t;
+
   let borderColor = "border-amber-500";
   let textColor = "text-amber-900";
   let titleText = "Advertencia";
@@ -271,7 +277,7 @@ function showFlowbiteAlert(type, message) {
     </svg>
   `;
 
-  if (type === "success") {
+  if (isSuccess) {
     borderColor = "border-emerald-500";
     textColor = "text-emerald-900";
     titleText = "Éxito";
@@ -280,9 +286,7 @@ function showFlowbiteAlert(type, message) {
         <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm-1 15-4-4 1.414-1.414L9 12.172l4.586-4.586L15 9z"/>
       </svg>
     `;
-  }
-
-  if (type === "info") {
+  } else if (isInfo) {
     borderColor = "border-blue-500";
     textColor = "text-blue-900";
     titleText = "Información";
@@ -291,7 +295,7 @@ function showFlowbiteAlert(type, message) {
         <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm1 15H9v-5h2Zm0-7H9V6h2Z"/>
       </svg>
     `;
-  }
+  } // warning/error queda por default
 
   wrapper.className = `
     relative flex items-center w-full pointer-events-auto
@@ -300,14 +304,20 @@ function showFlowbiteAlert(type, message) {
     opacity-0 -translate-y-2 transition-all duration-300 ease-out
   `;
 
+  // ✅ aquí sí existe data-msg
   wrapper.innerHTML = `
     <div class="flex-shrink-0 mr-3 text-current">${iconSVG}</div>
     <div class="flex-1 min-w-0">
       <p class="font-semibold">${titleText}</p>
-      <p class="mt-0.5 text-sm">${message}</p>
+      <p class="mt-0.5 text-sm" data-msg></p>
     </div>
   `;
 
+  // ✅ seguro contra HTML raro
+  const msgEl = wrapper.querySelector("[data-msg]");
+  if (msgEl) msgEl.textContent = String(message ?? "");
+
+  // ✅ FALTABA ESTO: meterlo al DOM
   container.appendChild(wrapper);
 
   requestAnimationFrame(() => {
@@ -393,12 +403,12 @@ function pedirMotivoRechazo() {
 
         <div class="mt-6 flex justify-end gap-2">
           <button type="button" data-motivo-cancel
-            class="px-4 py-2 rounded-xl border border-border bg-card hover:bg-muted text-foreground">
+            class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
             Cancelar
           </button>
 
           <button type="button" data-motivo-ok
-            class="px-4 py-2 rounded-xl bg-[#dc2626] text-white hover:bg-[#b91c1c]">
+            class="px-4 py-2 rounded-xl bg-[#c24141] text-white">
             Rechazar
           </button>
         </div>
@@ -679,15 +689,6 @@ function setMaterialOptions(materialesArray, modo = "normal") {
 }
 
 // ============================================================
-//  Detectar si respuesta viene realmente filtrada por STOCK
-// (si el backend cae al fallback global, normalmente no trae stock_actual)
-// ============================================================
-function respuestaEsStockFiltrado(arr) {
-  if (!Array.isArray(arr) || !arr.length) return false;
-  return arr.some((m) => m && Object.prototype.hasOwnProperty.call(m, "stock_actual"));
-}
-
-// ============================================================
 //  CACHE + RENDER DE MATERIALES EN CARD (sin tocar backend)
 // ============================================================
 estadoApp.materialesPorSolicitud = {}; // cache por id
@@ -772,6 +773,47 @@ async function cargarMaterialesEnCard(card, idSolicitud) {
     `;
   }
 }
+
+// ============================================================
+//  HELPER: valida si la respuesta de materiales viene realmente filtrada
+//  (evita que el backend "caiga" a un listado global cuando se pide subbodega)
+// ============================================================
+function respuestaEsStockFiltrado(mats, { bodegaId = null, subId = null } = {}) {
+  if (!Array.isArray(mats)) return false;
+  if (!mats.length) return true; // vacío = filtrado válido
+
+  // 1) Si NO vienen campos típicos del inventario, sospecha de fallback
+  // (ajusta nombres si tu backend usa otros)
+  const traeCamposInventario = mats.some(m =>
+    m && (
+      m.stock_actual != null ||
+      m.stock != null ||
+      m.id_bodega != null ||
+      m.id_subbodega != null
+    )
+  );
+  if (!traeCamposInventario) return false;
+
+  // 2) Si pedimos subbodega y el backend NO trae id_subbodega, no podemos confiar
+  if (subId && !mats.some(m => m && (m.id_subbodega != null))) {
+    return false;
+  }
+
+  // 3) Si pedimos subbodega y trae id_subbodega, validar que al menos uno coincida
+  if (subId && mats.some(m => m && m.id_subbodega != null)) {
+    const ok = mats.some(m => String(m.id_subbodega) === String(subId));
+    if (!ok) return false;
+  }
+
+  // 4) Si pedimos bodega y trae id_bodega, validar que coincida
+  if (bodegaId && mats.some(m => m && m.id_bodega != null)) {
+    const ok = mats.some(m => String(m.id_bodega) === String(bodegaId));
+    if (!ok) return false;
+  }
+
+  return true;
+}
+
 
 const api = {
   async listarSolicitudes() {
@@ -1069,7 +1111,7 @@ const api = {
       }
 
       if (parseInt(subId, 10) > 0) {
-        const filtradoReal = respuestaEsStockFiltrado(mats);
+        const filtradoReal = respuestaEsStockFiltrado(mats, { bodegaId, subId });
 
         if (!filtradoReal) {
           selectores.selectMaterial.innerHTML =
@@ -1402,10 +1444,12 @@ const render = {
 
     if (!estadoApp.solicitudes.length) {
       cont.innerHTML = `
-        <div class="col-span-full py-12 text-center">
-          <i data-lucide="file-text" class="w-12 h-12 text-gray-300 mx-auto mb-4"></i>
-          <h3 class="text-lg font-medium text-gray-700 mb-2">No hay solicitudes registradas</h3>
-          <p class="text-gray-500">Cree una nueva solicitud para comenzar</p>
+        <div class="col-span-full mt-0 mb-6 flex flex-col items-center justify-center text-center border border-border rounded-2xl p-10 w-full">
+          <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
+            <i data-lucide="file-text" class="h-7 w-7 text-muted-foreground"></i>
+          </div>
+          <h3 class="text-lg font-semibold mt-4">No hay solicitudes registradas</h3>
+          <p class="text-sm text-muted-foreground mt-1 max-w-md">Cree una nueva solicitud para comenzar</p>
         </div>`;
       safeLucideCreateIcons();
       return;
@@ -1418,10 +1462,15 @@ const render = {
 
     if (!filtradas.length) {
       cont.innerHTML = `
-        <div class="col-span-full py-12 text-center">
-          <i data-lucide="filter" class="w-12 h-12 text-gray-300 mx-auto mb-4"></i>
-          <h3 class="text-lg font-medium text-gray-700 mb-2">No hay solicitudes ${CONFIG.LABELS[estadoApp.filtroActivo]}s</h3>
-          <p class="text-gray-500">Intente con otro filtro</p>
+        <div class="col-span-full mt-0 mb-6 flex flex-col items-center justify-center text-center border border-border rounded-2xl p-10 w-full">
+          <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
+            <svg class="h-7 w-7 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <circle cx="11" cy="11" r="6" stroke-linecap="round" stroke-linejoin="round"></circle>
+              <line x1="16" y1="16" x2="20" y2="20" stroke-linecap="round" stroke-linejoin="round"></line>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold mt-4">No se encontraron resultados</h3>
+          <p class="text-sm text-muted-foreground mt-1 max-w-md">No hay solicitudes ${CONFIG.LABELS[estadoApp.filtroActivo]}s que coincidan con el filtro actual.</p>
         </div>`;
       safeLucideCreateIcons();
       return;
@@ -1508,7 +1557,7 @@ const render = {
             <div class="flex gap-2">
               
               ${mostrarBtnAceptar ? `
-                <button class="sol-btn-aceptar flex-1 py-2 px-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                <button class="sol-btn-aceptar flex-1 py-2 px-3 bg-primary text-white rounded-lg flex items-center justify-center gap-2"
                         data-id="${s.id}">
                   <i data-lucide="check-circle" class="w-4 h-4"></i>
                   Aceptar
@@ -1516,7 +1565,7 @@ const render = {
               ` : ""}
 
               ${mostrarBtnRechazar ? `
-                <button class="sol-btn-rechazar flex-1 py-2 px-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                <button class="sol-btn-rechazar flex-1 py-2 px-3 bg-[#c24141] text-white rounded-lg flex items-center justify-center gap-2"
                         data-id="${s.id}">
                   <i data-lucide="x-circle" class="w-4 h-4"></i>
                   Rechazar
@@ -1530,7 +1579,7 @@ const render = {
 
         ${mostrarAccionEntregar ? `
         <div class="sol-card-footer mt-4 pt-4 border-t border-gray-200">
-          <button class="sol-btn-entregar w-full py-2 px-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+          <button class="sol-btn-entregar w-full py-2 px-3 bg-[#00304D] text-white rounded-lg flex items-center justify-center gap-2"
                   data-id="${s.id}">
             <i data-lucide="package-check" class="w-4 h-4"></i>
             Marcar como entregada

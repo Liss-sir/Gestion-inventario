@@ -10,17 +10,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const API_URL = new URL("src/controllers/bodega_controller.php", document.baseURI).toString();
   const API_SUBBODEGAS = new URL("src/controllers/sub_bodega_controller.php", document.baseURI).toString();
 
-  document.addEventListener("click", (e) => {
+  document.addEventListener("click", async (e) => {
     const btn = e.target.closest(".btn-toggle-subbodegas");
     if (!btn) return;
 
     e.preventDefault();
+    e.stopPropagation();
 
     const idBodega = btn.dataset.id;
     const tr = btn.closest("tr");
     if (!tr) return;
 
-    // toggle
+    // toggle (si ya existe la fila, la quitamos)
     const next = tr.nextElementSibling;
     if (next && next.classList.contains("subbodegas-row")) {
       next.remove();
@@ -28,43 +29,62 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    // Asegura data cargada
+    await ensureAllSubBodegasLoaded();
+
     btn.textContent = "Ocultar sub-bodegas";
 
-    const subs = allSubBodegas.filter(
-      sb => String(sb.id_bodega) === String(idBodega)
+    const subs = (allSubBodegas || []).filter(
+      (sb) => String(sb.id_bodega) === String(idBodega)
     );
 
     const html = subs.length === 0
       ? `<p class="text-sm text-gray-500">No tiene sub-bodegas</p>`
       : subs.map(sb => `
-  <div class="flex items-center justify-between p-2 rounded-lg border bg-gray-50">
-    <div>
-      <p class="text-sm font-medium">${sb.nombre_subbodega}</p>
-      <p class="text-xs text-gray-500">
-        ${sb.codigo_subbodega} · ${sb.clasificacion_subbodegas}
-      </p>
-    </div>
+          <div class="sub-item no-hover flex items-center justify-between p-2 rounded-lg border bg-gray-50">
+            <div class="min-w-0">
+              <p class="text-sm font-medium truncate">${sb.nombre_subbodega}</p>
+              <p class="text-xs text-gray-500">
+                ${sb.codigo_subbodega} · ${sb.clasificacion_subbodegas}
+              </p>
+            </div>
 
-    <span class="text-xs px-2 py-1 rounded-full inline-flex w-fit ${estadoBadgeClass(sb.estado)}">
-      ${estadoLabel(sb.estado)}
-    </span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs px-2 py-1 rounded-full inline-flex w-fit ${estadoBadgeClass(sb.estado)}">
+                ${estadoLabel(sb.estado)}
+              </span>
 
-      <button
-        type="button"
-        class="w-8 h-8 rounded-full inline-flex items-center justify-center subbodegas-btn-dots hover:bg-gray-200"
-        data-id="${sb.id_subbodega}"
-        data-nombre="${sb.nombre_subbodega}"
-        data-codigo="${sb.codigo_subbodega}"
-        data-estado="${sb.estado}"
-      >
-        <i data-lucide="more-horizontal" class="w-4 h-4"></i>
-      </button>
-    </div>
-  </div>
-`).join("")
+              <button
+                type="button"
+                class="bodegas-btn-dots subbodega-actions-btn"
+                data-id="${sb.id_subbodega}"
+                data-idbodega="${sb.id_bodega}"
+                data-codigo="${sb.codigo_subbodega}"
+                data-nombre="${sb.nombre_subbodega}"
+                data-clasificacion="${sb.clasificacion_subbodegas}"
+                data-descripcion="${sb.descripcion ?? ""}"
+                data-estado="${sb.estado}">
+                <i data-lucide="more-horizontal" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+        `).join("");
 
+    const subRow = document.createElement("tr");
+    subRow.className = "subbodegas-row";
+
+    const COLS = tr.children.length || 1;
+
+    subRow.innerHTML = `
+      <td colspan="${COLS}" class="px-4 py-3">
+        <div class="grid gap-2">
+          ${html}
+        </div>
+      </td>
+    `;
 
     tr.after(subRow);
+    safeIcons();
   });
 
   let allSubBodegas = [];
@@ -251,7 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 
-    // ============================
+  // ============================
   // ✅ LIMITES DE CARACTERES (BODEGAS)
   // ============================
   const LIMITES = {
@@ -645,7 +665,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       container.innerHTML = subBodegas.map(sb => `
-  <div class="flex items-center justify-between p-3 rounded-lg border border-border bg-gray-50">
+  <div class="sub-item no-hover flex items-center justify-between p-3 rounded-lg border border-border bg-gray-50">
     <div class="min-w-0">
       <p class="font-medium text-gray-900 truncate">
         ${sb.nombre_subbodega}
@@ -663,7 +683,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <!-- Botón menú (igual idea que bodegas) -->
       <button
         type="button"
-        class="w-8 h-8 rounded-full inline-flex items-center justify-center subbodega-actions-btn hover:bg-gray-200"
+        class="bodegas-btn-dots subbodega-actions-btn"
         data-id="${sb.id_subbodega}"
         data-idbodega="${sb.id_bodega}"
         data-codigo="${sb.codigo_subbodega}"
@@ -806,7 +826,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!btn) return;
 
     e.preventDefault();
-    e.stopPropagation();
+    e.stopImmediatePropagation();
 
     // Si está abierto para el MISMO botón => toggle cerrar
     const openFor = subMenu?.dataset?.openFor || "";
@@ -851,15 +871,8 @@ document.addEventListener("DOMContentLoaded", () => {
     closeSubMenu();
 
     if (action === "ver") {
-
-      document.getElementById("detalleSubNombre").textContent = selectedSubBodega.nombre;
-      document.getElementById("detalleSubCodigo").textContent = selectedSubBodega.codigo;
-      document.getElementById("detalleSubClasificacion").textContent = selectedSubBodega.clasificacion;
-      document.getElementById("detalleSubDescripcion").textContent = selectedSubBodega.descripcion || "-";
-      document.getElementById("detalleSubEstado").textContent = selectedSubBodega.estado;
-
-      loadMaterialesSubBodega(selectedSubBodega.id); // 👈 CLAVE
-
+      fillDetalleSub(selectedSubBodega);           // ← Asigna textos y clase del badge
+      loadMaterialesSubBodega(selectedSubBodega.id);
       openModal(document.getElementById("modalDetalleSubBodega"));
       return;
     }
@@ -946,7 +959,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   document.addEventListener("click", (e) => {
-    const btnDots = e.target.closest(".bodegas-btn-dots");
+    const btnDots = e.target.closest(".bodegas-btn-dots:not(.subbodega-actions-btn)");
     if (btnDots) {
       e.preventDefault();
       e.stopPropagation();
@@ -985,9 +998,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const estadoEl = $("detalleEstado");
     if (estadoEl) {
-      estadoEl.textContent = data.estado || "";
+      const estadoRaw = data.estado || "";
+      const estadoTexto = estadoLabel(estadoRaw);
+      estadoEl.textContent = estadoTexto;
       estadoEl.classList.remove("badge-estado-activo", "badge-estado-inactivo");
-      estadoEl.classList.add(data.estado === "Activo" ? "badge-estado-activo" : "badge-estado-inactivo");
+      const nuevaClase = estadoBadgeClass(estadoRaw);
+      estadoEl.classList.add(nuevaClase);
+
+      // Fallback: forzar estilos inline si la clase no funciona
+      if (nuevaClase === "badge-estado-activo") {
+        estadoEl.style.backgroundColor = "#39A900";  // verde sólido
+        estadoEl.style.color = "#ffffff";
+      } else {
+        estadoEl.style.backgroundColor = "#6c757d";  // gris
+        estadoEl.style.color = "#ffffff";
+      }
     }
   };
 
@@ -1027,40 +1052,34 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const fillDetalleSub = (data) => {
+    // Asigna textos a los campos simples
     const setText = (id, value) => {
-      const el = $(id);
-      if (!el) return;
-      el.textContent = value ?? "";
-
-      const estadoEl = $("detalleSubEstado");
-      if (estadoEl) {
-        const estado = data.estado || "";
-        estadoEl.textContent = estadoLabel(estado);
-        estadoEl.classList.remove("badge-estado-activo", "badge-estado-inactivo");
-        estadoEl.classList.add(estadoBadgeClass(estado), "inline-flex", "w-fit");
-      }
+      const el = document.getElementById(id);
+      if (el) el.textContent = value ?? "";
     };
 
-    // OJO: estos IDs deben existir en tu HTML del modal sub-bodega
     setText("detalleSubNombre", data.nombre_subbodega ?? data.nombre);
     setText("detalleSubCodigo", data.codigo_subbodega ?? data.codigo);
     setText("detalleSubClasificacion", data.clasificacion_subbodegas ?? data.clasificacion);
     setText("detalleSubDescripcion", data.descripcion ?? "");
 
-    const estadoEl = $("detalleSubEstado");
+    // Manejo específico del badge de estado
+    const estadoEl = document.getElementById("detalleSubEstado");
     if (estadoEl) {
-      const estado = data.estado || "";
-      estadoEl.textContent = estado;
+      const estadoRaw = data.estado || "";
+      // Normaliza el estado para mostrarlo como "Activo"/"Inactivo"
+      const estadoTexto = estadoLabel(estadoRaw);
+      estadoEl.textContent = estadoTexto;
 
-      // Mismo patrón que bodega
+      // Remueve clases anteriores y agrega la correcta
       estadoEl.classList.remove("badge-estado-activo", "badge-estado-inactivo");
-      estadoEl.classList.add(estado === "Activo" ? "badge-estado-activo" : "badge-estado-inactivo");
-
-      // 🔒 Importante para que NO se estire como barra (Tailwind)
+      estadoEl.classList.add(estadoBadgeClass(estadoRaw)); // ya incluye inline-flex y w-fit si es necesario
+      // Asegura las clases de layout (por si acaso)
       estadoEl.classList.add("inline-flex", "w-fit");
     }
 
-    const totalEl = $("detalleSubTotalMateriales");
+    // Total de materiales (si existe el elemento)
+    const totalEl = document.getElementById("detalleSubTotalMateriales");
     if (totalEl) {
       totalEl.textContent = String(data.total_materiales ?? 0);
     }
@@ -1731,19 +1750,19 @@ async function verMaterialesBodega(idBodega) {
         `;
       } else {
         lista.innerHTML = materiales.map(m => `
-          <div class="flex justify-between items-center border rounded-lg p-4 bg-green-50 border-green-200 hover:shadow-sm transition">
+          <div class="flex justify-between items-center border rounded-lg p-4 bg-[#39A900]/10 border-[#39A900] hover:shadow-sm transition">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+              <div class="w-10 h-10 rounded-xl bg-[#39A900]/20 text-[#39A900] flex items-center justify-center">
                 <i data-lucide="package" class="w-5 h-5 text-green-600"></i>
               </div>
               <div>
-                <p class="font-semibold text-green-900">${escapeHtml(m.nombre_material)}</p>
-                <p class="text-xs text-green-700">Unidad: ${escapeHtml(m.unidad_medida)}</p>
+                <p class="font-semibold text-secondary">${escapeHtml(m.nombre_material)}</p>
+                <p class="text-xs text-primary">Unidad: ${escapeHtml(m.unidad_medida)}</p>
               </div>
             </div>
             <div class="text-right">
-              <p class="text-2xl font-bold text-green-600">${m.cantidad_total}</p>
-              <p class="text-xs text-green-700">${escapeHtml(m.unidad_medida)}</p>
+              <p class="text-2xl font-bold text-secondary">${m.cantidad_total}</p>
+              <p class="text-xs text-primary">${escapeHtml(m.unidad_medida)}</p>
             </div>
           </div>
         `).join('');

@@ -286,3 +286,15 @@ table td {
 #context-menu li.border-t {
   margin: 0.25rem 0;
 }
+
+.no-hover:hover {
+  background-color: inherit !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.sub-item:hover {
+  background-color: inherit !important;
+  box-shadow: none !important;
+  transform: none !important;
+}

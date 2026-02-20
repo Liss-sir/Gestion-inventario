@@ -154,7 +154,7 @@ if (empty($_SESSION['usuario']) || empty($_SESSION['usuario']['id_usuario'])) {
                         </p>
                     </div>
 
-                    <button type="button" id="sol-modal-cerrar" class="p-2 hover:bg-gray-100 rounded-xl">
+                    <button type="button" id="sol-modal-cerrar" class="p-2 rounded-xl">
                         <i data-lucide="x" class="w-5 h-5"></i>
                     </button>
                 </div>

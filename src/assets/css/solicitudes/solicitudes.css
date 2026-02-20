@@ -477,11 +477,34 @@
 }
 
 .sol-btn-secondary {
-  border: 1px solid #D1D5DB;
-  padding: 10px 16px;
-  border-radius: 10px;
-  font-size: 14px;
-  background: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0.5rem 1rem;          /* py-2 px-4 */
+  font-size: 0.875rem;           /* text-sm */
+  font-weight: 500;
+  line-height: 1.25rem;          /* equivalente a text-sm */
+
+  border-radius: 0.375rem;       /* rounded-md */
+  border: 1px solid var(--input);
+  background-color: var(--background);
+
+  color: var(--foreground);
+  white-space: nowrap;
+
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.sol-btn-secondary:hover {
+  background-color: var(--muted);
+}
+
+/* Focus accesible estilo Tailwind */
+.sol-btn-secondary:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }
 
 .sol-btn-add {
@@ -583,7 +606,6 @@
 }
 
 .sol-btn-entregar:hover {
-    opacity: 0.9;
     transform: translateY(-1px);
 }
 
@@ -600,4 +622,33 @@
     color: #00304D;          
 }
 
+/* ===========================
+   TOGGLE SWITCH PARA BODEGAS (TARJETAS)
+   =========================== */
+.estado-switch-track {
+  width: 2.5rem;        /* w-10 */
+  height: 1.25rem;       /* h-5 */
+  background-color: #d1d5db; /* bg-gray-300 */
+  border-radius: 9999px;
+  transition: background-color 0.2s;
+  position: relative;
+}
 
+.estado-switch:checked + .estado-switch-track {
+  background-color: color-mix(in srgb, var(--primary) 30%, transparent); /* #39A900 con opacidad */
+}
+
+.estado-switch-ball {
+  width: 1rem;           /* w-4 */
+  height: 1rem;          /* h-4 */
+  background-color: white;
+  border-radius: 9999px;
+  position: absolute;
+  top: 0.125rem;         /* top-0.5 */
+  left: 0.125rem;        /* left-0.5 */
+  transition: transform 0.2s;
+}
+
+.estado-switch:checked + .estado-switch-track .estado-switch-ball {
+  transform: translateX(1.25rem); /* translate-x-5 */
+}
