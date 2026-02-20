@@ -379,9 +379,47 @@ public function registrarEntrada(array $data): string
 
 
 
-    public function listarMovimientos()
+    public function listarMovimientos($idUsuario = null, $esInstructor = false)
     {
-        // Combinar movimientos regulares con devoluciones usando UNION
+        // Si es instructor, filtra SOLO devoluciones del usuario actual
+        if ($esInstructor && $idUsuario) {
+            $sql = "
+                SELECT 
+                    CONCAT('DEV-', d.id_devolucion) as id_movimiento,
+                    'devolucion' as tipo_movimiento,
+                    d.fecha_hora,
+                    CONCAT('Devolución - ', d.estado_material, 
+                           CASE WHEN d.observaciones != '' THEN CONCAT(' - ', d.observaciones) ELSE '' END) as observaciones,
+                    d.id_bodega,
+                    b.nombre AS bodega,
+                    d.id_subbodega,
+                    sb.nombre_subbodega AS subbodega,
+                    d.id_programa,
+                    COALESCE(pr.nombre_programa, 'N/A') AS nombre_programa,
+                    d.id_ficha,
+                    COALESCE(f.numero_ficha, 'N/A') AS numero_ficha,
+                    d.id_rae,
+                    COALESCE(r.codigo_rae, 'N/A') AS codigo_rae,
+                    d.id_usuario,
+                    d.id_solicitud,
+                    d.id_material
+                FROM devoluciones_material d
+                LEFT JOIN bodegas b ON b.id_bodega = d.id_bodega
+                LEFT JOIN subbodegas sb ON sb.id_subbodega = d.id_subbodega
+                LEFT JOIN programas_formacion pr ON pr.id_programa = d.id_programa
+                LEFT JOIN fichas f ON f.id_ficha = d.id_ficha
+                LEFT JOIN raes r ON r.id_rae = d.id_rae
+                WHERE d.id_usuario = ?
+                ORDER BY d.fecha_hora DESC
+            ";
+            
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([$idUsuario]);
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        }
+        
+        // ✅ ORIGINAL: Para admin, combinar movimientos regulares con devoluciones usando UNION
         $sql = "
             SELECT 
                 m.id_movimiento,

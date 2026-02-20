@@ -35,9 +35,18 @@ class MovimientoController
 
     public function listar()
     {
+        // ✅ FIX: Obtener parámetros para filtrar por instructor si es necesario
+        $idUsuario = $_GET['id_usuario'] ?? null;
+        $esInstructor = $_GET['es_instructor'] ?? false;
+        
+        // Convertir string 'true'/'false' a boolean
+        if (is_string($esInstructor)) {
+            $esInstructor = $esInstructor === 'true' || $esInstructor === '1';
+        }
+        
         echo json_encode([
             "success" => true,
-            "data" => $this->model->listarMovimientos()
+            "data" => $this->model->listarMovimientos($idUsuario, $esInstructor)
         ]);
     }
 
