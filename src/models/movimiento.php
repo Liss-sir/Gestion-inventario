@@ -92,11 +92,12 @@ class MovimientoModel {
         }
     }
 
-    /* ============================================================
-       ✅ NUEVO: ACTUALIZAR STOCK DE ENTRADA (BODEGA / SUBBODEGA)
-       - Siempre actualiza stock_bodega (TOTAL)
-       - Si existe subbodega: también actualiza stock_subbodega
-    ============================================================ */
+     /* ============================================================
+         ✅ ACTUALIZAR STOCK SEGÚN UBICACIÓN DESTINO
+         - Si viene subbodega: actualiza solo stock_subbodega
+         - Si no viene subbodega: actualiza stock_bodega
+         - Evita duplicar cantidades entre bodega y subbodega
+     ============================================================ */
     private function actualizarStockEntrada(array $data, array $materiales): void
     {
         $idBodega = (int)($data['id_bodega'] ?? 0);
@@ -123,13 +124,14 @@ class MovimientoModel {
             // ✅ Multiplicar por delta: entrada suma, salida resta
             $cantidadAjustada = $cantidad * $delta;
 
-            // ✅ Actualizar stock total de bodega
-            $this->upsertStockBodega($idBodega, $idMaterial, $cantidadAjustada);
-
-            // ✅ Si hay subbodega, también actualizar stock en subbodega
+            // ✅ Si hay subbodega, se actualiza SOLO la subbodega
             if ($idSub > 0) {
                 $this->upsertStockSubBodega($idSub, $idMaterial, $cantidadAjustada);
+                continue;
             }
+
+            // ✅ Si no hay subbodega, actualizar bodega directamente
+            $this->upsertStockBodega($idBodega, $idMaterial, $cantidadAjustada);
         }
     }
 
@@ -180,13 +182,21 @@ public function registrarEntrada(array $data): string
                 throw new Exception("El material no existe.");
             }
 
-            // Stock actual total (todas las bodegas)
+            // Stock actual total real (bodegas + subbodegas)
             $stmtStock = $this->conn->prepare(
-                "SELECT COALESCE(SUM(stock_actual), 0)
-                 FROM stock_bodega
-                 WHERE id_material = ?"
+                "SELECT
+                    (SELECT COALESCE(SUM(stock_actual), 0)
+                     FROM stock_bodega
+                     WHERE id_material = :id_material)
+                    +
+                    (SELECT COALESCE(SUM(stock_actual), 0)
+                     FROM stock_subbodega
+                     WHERE id_material = :id_material2) AS stock_total"
             );
-            $stmtStock->execute([$idMaterial]);
+            $stmtStock->execute([
+                ':id_material' => $idMaterial,
+                ':id_material2' => $idMaterial
+            ]);
             $stockActual = (int)($stmtStock->fetchColumn() ?? 0);
 
             if (($stockActual + $cantidad) > (int)$stockMaximo) {
