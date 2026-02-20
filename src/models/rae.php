@@ -33,7 +33,6 @@ class RaeModel {
        VERIFICAR CÓDIGO ÚNICO
     ========================== */
     public function existeCodigo(string $codigo_rae, ?int $ignorar_id = null): bool {
-
         $sql = "SELECT id_rae FROM raes WHERE codigo_rae = ?";
         $params = [$codigo_rae];
 
@@ -49,6 +48,23 @@ class RaeModel {
     }
 
     /* ==========================
+       VERIFICAR SI TIENE ACTIVIDADES ACTIVAS
+    ========================== */
+    /**
+     * Verifica si el RAE tiene actividades formativas activas asociadas.
+     * @param int $idRae
+     * @return bool
+     */
+    public function tieneActividadesActivas(int $idRae): bool {
+        $sql = "SELECT COUNT(*) as total FROM actividades_formacion 
+                WHERE id_rae = :id_rae AND estado = 'Activa'";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute(['id_rae' => $idRae]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result['total'] > 0;
+    }
+
+    /* ==========================
        CREAR
     ========================== */
     public function crear(
@@ -57,7 +73,6 @@ class RaeModel {
         int $id_programa,
         string $estado
     ): bool {
-
         $sql = "INSERT INTO raes
                 (codigo_rae, descripcion_rae, id_programa, estado)
                 VALUES (?, ?, ?, ?)";
@@ -81,7 +96,6 @@ class RaeModel {
         ?string $descripcion_rae,
         ?string $estado
     ): bool {
-
         $campos = [];
         $params = [];
 
@@ -121,7 +135,6 @@ class RaeModel {
        CAMBIAR ESTADO
     ========================== */
     public function cambiarEstado(int $id, string $estado): bool {
-
         $sql = "UPDATE raes SET estado = ? WHERE id_rae = ?";
         $stmt = $this->conn->prepare($sql);
 
