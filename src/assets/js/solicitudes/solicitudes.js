@@ -1444,10 +1444,12 @@ const render = {
 
     if (!estadoApp.solicitudes.length) {
       cont.innerHTML = `
-        <div class="col-span-full py-12 text-center">
-          <i data-lucide="file-text" class="w-12 h-12 text-gray-300 mx-auto mb-4"></i>
-          <h3 class="text-lg font-medium text-gray-700 mb-2">No hay solicitudes registradas</h3>
-          <p class="text-gray-500">Cree una nueva solicitud para comenzar</p>
+        <div class="col-span-full mt-0 mb-6 flex flex-col items-center justify-center text-center border border-border rounded-2xl p-10 w-full">
+          <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
+            <i data-lucide="file-text" class="h-7 w-7 text-muted-foreground"></i>
+          </div>
+          <h3 class="text-lg font-semibold mt-4">No hay solicitudes registradas</h3>
+          <p class="text-sm text-muted-foreground mt-1 max-w-md">Cree una nueva solicitud para comenzar</p>
         </div>`;
       safeLucideCreateIcons();
       return;
@@ -1460,10 +1462,15 @@ const render = {
 
     if (!filtradas.length) {
       cont.innerHTML = `
-        <div class="col-span-full py-12 text-center">
-          <i data-lucide="filter" class="w-12 h-12 text-gray-300 mx-auto mb-4"></i>
-          <h3 class="text-lg font-medium text-gray-700 mb-2">No hay solicitudes ${CONFIG.LABELS[estadoApp.filtroActivo]}s</h3>
-          <p class="text-gray-500">Intente con otro filtro</p>
+        <div class="col-span-full mt-0 mb-6 flex flex-col items-center justify-center text-center border border-border rounded-2xl p-10 w-full">
+          <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
+            <svg class="h-7 w-7 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+              <circle cx="11" cy="11" r="6" stroke-linecap="round" stroke-linejoin="round"></circle>
+              <line x1="16" y1="16" x2="20" y2="20" stroke-linecap="round" stroke-linejoin="round"></line>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold mt-4">No se encontraron resultados</h3>
+          <p class="text-sm text-muted-foreground mt-1 max-w-md">No hay solicitudes ${CONFIG.LABELS[estadoApp.filtroActivo]}s que coincidan con el filtro actual.</p>
         </div>`;
       safeLucideCreateIcons();
       return;

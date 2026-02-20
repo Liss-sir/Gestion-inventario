@@ -388,18 +388,19 @@ $bodegas = $model->listar();
                 <span class="estado-text text-sm font-medium <?= $estadoActivo ? 'text-emerald-700' : 'text-red-700' ?>"></span>
 
                 <label class="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    class="sr-only peer estado-switch"
-                    data-id="<?= $b['id_bodega'] ?>"
-                    data-codigo="<?= htmlspecialchars($b['codigo_bodega']) ?>"
-                    data-estado="<?= $estadoActivo ? 'Activo' : 'Inactivo' ?>"
-                    <?= $estadoActivo ? "checked" : "" ?>
-                  >
-                  <div class="w-10 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:bg-[#39A900]/30 transition">
-                    <div class="w-4 h-4 bg-white rounded-full absolute top-0.5 left-0.5 peer-checked:translate-x-5 transition"></div>
-                  </div>
-                </label>
+                <input
+                  type="checkbox"
+                  class="sr-only peer estado-switch"
+                  data-id="<?= $b['id_bodega'] ?>"
+                  data-codigo="<?= htmlspecialchars($b['codigo_bodega']) ?>"
+                  data-estado="<?= $estadoActivo ? 'Activo' : 'Inactivo' ?>"
+                  <?= $estadoActivo ? "checked" : "" ?>
+                >
+                <!-- Fondo del riel (hermano del input) -->
+                <div class="w-10 h-5 bg-gray-300 rounded-full peer-checked:bg-[#39A900]/30 transition"></div>
+                <!-- Círculo (hermano del input) -->
+                <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition transform translate-x-5 peer-checked:translate-x-0"></div>
+              </label>
               </div>
             </div>
           </div>
@@ -813,7 +814,7 @@ $bodegas = $model->listar();
 
             <div class="grid grid-cols-[120px_auto] gap-3 items-center">
               <span class="text-gray-600">Estado:</span>
-              <span id="detalleSubEstado" class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium w-fit">-</span>
+              <span id="detalleSubEstado" class="text-xs px-2 py-1 rounded-full inline-flex w-fit">-</span>
             </div>
           </div>
 

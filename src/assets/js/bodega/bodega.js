@@ -851,15 +851,8 @@ document.addEventListener("DOMContentLoaded", () => {
     closeSubMenu();
 
     if (action === "ver") {
-
-      document.getElementById("detalleSubNombre").textContent = selectedSubBodega.nombre;
-      document.getElementById("detalleSubCodigo").textContent = selectedSubBodega.codigo;
-      document.getElementById("detalleSubClasificacion").textContent = selectedSubBodega.clasificacion;
-      document.getElementById("detalleSubDescripcion").textContent = selectedSubBodega.descripcion || "-";
-      document.getElementById("detalleSubEstado").textContent = selectedSubBodega.estado;
-
-      loadMaterialesSubBodega(selectedSubBodega.id); // 👈 CLAVE
-
+      fillDetalleSub(selectedSubBodega);           // ← Asigna textos y clase del badge
+      loadMaterialesSubBodega(selectedSubBodega.id);
       openModal(document.getElementById("modalDetalleSubBodega"));
       return;
     }
@@ -985,9 +978,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const estadoEl = $("detalleEstado");
     if (estadoEl) {
-      estadoEl.textContent = data.estado || "";
+      const estadoRaw = data.estado || "";
+      const estadoTexto = estadoLabel(estadoRaw);
+      estadoEl.textContent = estadoTexto;
       estadoEl.classList.remove("badge-estado-activo", "badge-estado-inactivo");
-      estadoEl.classList.add(data.estado === "Activo" ? "badge-estado-activo" : "badge-estado-inactivo");
+      const nuevaClase = estadoBadgeClass(estadoRaw);
+      estadoEl.classList.add(nuevaClase);
+      
+      // Fallback: forzar estilos inline si la clase no funciona
+      if (nuevaClase === "badge-estado-activo") {
+          estadoEl.style.backgroundColor = "#39A900";  // verde sólido
+          estadoEl.style.color = "#ffffff";
+      } else {
+          estadoEl.style.backgroundColor = "#6c757d";  // gris
+          estadoEl.style.color = "#ffffff";
+      }
     }
   };
 
@@ -1027,42 +1032,36 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const fillDetalleSub = (data) => {
+    // Asigna textos a los campos simples
     const setText = (id, value) => {
-      const el = $(id);
-      if (!el) return;
-      el.textContent = value ?? "";
-
-      const estadoEl = $("detalleSubEstado");
-      if (estadoEl) {
-        const estado = data.estado || "";
-        estadoEl.textContent = estadoLabel(estado);
-        estadoEl.classList.remove("badge-estado-activo", "badge-estado-inactivo");
-        estadoEl.classList.add(estadoBadgeClass(estado), "inline-flex", "w-fit");
-      }
+        const el = document.getElementById(id);
+        if (el) el.textContent = value ?? "";
     };
 
-    // OJO: estos IDs deben existir en tu HTML del modal sub-bodega
     setText("detalleSubNombre", data.nombre_subbodega ?? data.nombre);
     setText("detalleSubCodigo", data.codigo_subbodega ?? data.codigo);
     setText("detalleSubClasificacion", data.clasificacion_subbodegas ?? data.clasificacion);
     setText("detalleSubDescripcion", data.descripcion ?? "");
 
-    const estadoEl = $("detalleSubEstado");
+    // Manejo específico del badge de estado
+    const estadoEl = document.getElementById("detalleSubEstado");
     if (estadoEl) {
-      const estado = data.estado || "";
-      estadoEl.textContent = estado;
+        const estadoRaw = data.estado || "";
+        // Normaliza el estado para mostrarlo como "Activo"/"Inactivo"
+        const estadoTexto = estadoLabel(estadoRaw);
+        estadoEl.textContent = estadoTexto;
 
-      // Mismo patrón que bodega
-      estadoEl.classList.remove("badge-estado-activo", "badge-estado-inactivo");
-      estadoEl.classList.add(estado === "Activo" ? "badge-estado-activo" : "badge-estado-inactivo");
-
-      // 🔒 Importante para que NO se estire como barra (Tailwind)
-      estadoEl.classList.add("inline-flex", "w-fit");
+        // Remueve clases anteriores y agrega la correcta
+        estadoEl.classList.remove("badge-estado-activo", "badge-estado-inactivo");
+        estadoEl.classList.add(estadoBadgeClass(estadoRaw)); // ya incluye inline-flex y w-fit si es necesario
+        // Asegura las clases de layout (por si acaso)
+        estadoEl.classList.add("inline-flex", "w-fit");
     }
 
-    const totalEl = $("detalleSubTotalMateriales");
+    // Total de materiales (si existe el elemento)
+    const totalEl = document.getElementById("detalleSubTotalMateriales");
     if (totalEl) {
-      totalEl.textContent = String(data.total_materiales ?? 0);
+        totalEl.textContent = String(data.total_materiales ?? 0);
     }
   };
 
