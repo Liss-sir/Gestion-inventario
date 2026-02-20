@@ -4,6 +4,7 @@
    Variables globales
    ========================= */
 let evidencesData = []
+let selectedEvidenceFile = null
 
 /* =========================
    Inicialización
@@ -643,6 +644,7 @@ function closeCreateModal() {
   document.getElementById("salidaSelect").value = ""
   document.getElementById("descripcion").value = ""
   document.getElementById("photoInput").value = ""
+  selectedEvidenceFile = null
   document.getElementById("imagePreview").classList.add("hidden")
   document.getElementById("uploadArea").style.display = "flex"
 }
@@ -707,6 +709,8 @@ function setupUploadArea() {
       showFlowbiteAlert("info", "La imagen no debe superar los 5MB")
       return
     }
+
+    selectedEvidenceFile = file
 
     const reader = new FileReader()
     reader.onload = (e) => {
@@ -783,6 +787,7 @@ async function createEvidence() {
   const salidaSelect = document.getElementById("salidaSelect")
   const descripcion = document.getElementById("descripcion").value
   const photoInput = document.getElementById("photoInput")
+  const file = (photoInput && photoInput.files && photoInput.files[0]) || selectedEvidenceFile
 
   // Validaciones
   if (!salidaSelect.value) {
@@ -794,7 +799,7 @@ async function createEvidence() {
     return
   }
   
-  if (!descripcion || !photoInput.files.length) {
+  if (!descripcion || !file) {
     showFlowbiteAlert("info", "Por favor complete todos los campos obligatorios")
     return
   }
@@ -808,7 +813,7 @@ async function createEvidence() {
     const formData = new FormData()
     formData.append("id_usuario", 1) // Cambiar por el ID del usuario logueado
     formData.append("id_movimiento_salida", salidaSelect.value)
-    formData.append("foto", photoInput.files[0])
+    formData.append("foto", file)
     formData.append("descripcion_obra", descripcion)
 
     const res = await fetch(resolveEndpoint(EVIDENCIAS_API_URL), {
