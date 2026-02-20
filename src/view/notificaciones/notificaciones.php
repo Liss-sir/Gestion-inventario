@@ -58,6 +58,7 @@ $alerts = array_map(function ($n) {
     'CAMBIO_DATOS' => 'change',
     'STOCK_BAJO'   => 'warning',
     'SOLICITUD_RECHAZADA' => 'critical',
+    'ASIGNACION'   => 'assignment',
 
     'CAMBIO_DATOS_APROBADO' => 'success',
     'SOLICITUD_APROBADA'    => 'success',
@@ -119,7 +120,7 @@ $alerts = array_map(function ($n) {
       ['icon' => 'bell', 'label' => 'Total Notificaciones', 'value' => $stats['total'], 'color' => 'var(--success)', 'soft' => 'bg-[color-mix(in_srgb,var(--success)_18%,white)]'],
       ['icon' => 'alert-triangle', 'label' => 'Sin Leer', 'value' => $stats['unread'], 'color' => 'var(--warning-foreground)', 'soft' => 'bg-[color-mix(in_srgb,var(--warning)_22%,white)]'],
       ['icon' => 'alert-octagon', 'label' => 'Críticas', 'value' => $stats['critical'], 'color' => 'var(--error)', 'soft' => 'bg-[color-mix(in_srgb,var(--error)_14%,white)]'],
-      ['icon' => 'box', 'label' => 'Stock Bajo', 'value' => $stats['low'], 'color' => 'var(--foreground)', 'soft' => 'bg-[color-mix(in_srgb,var(--foreground)_10%,white)]'],
+      ['icon' => 'box', 'label' => 'Stock Bajo', 'value' => $stats['low'], 'color' => 'var(--chart-5)', 'soft' => 'bg-[color-mix(in_srgb,var(--chart-5)_18%,white)]'],
       ['icon' => 'user-cog', 'label' => 'Cambios Datos', 'value' => $stats['cambios'], 'color' => 'var(--info-foreground)', 'soft' => 'bg-[color-mix(in_srgb,var(--info)_22%,white)]'],  
     ];
     foreach ($cards as $c): 
@@ -153,6 +154,7 @@ $alerts = array_map(function ($n) {
           'warning'  => 'alert-triangle',
           'critical' => 'alert-octagon',
           'change'   => 'user-cog',
+          'assignment' => 'user-check',
           'success'  => 'check-circle',
           default    => 'bell'
         };
@@ -161,6 +163,7 @@ $alerts = array_map(function ($n) {
           'warning'  => 'Stock Bajo',
           'critical' => 'Crítica',
           'change'   => 'Cambio Datos',
+          'assignment' => 'Asignación',
           'success'  => 'Aprobada',
           default    => 'General'
         };
@@ -168,41 +171,46 @@ $alerts = array_map(function ($n) {
         $isUnread = (int)($a['leido'] ?? 1) === 0;
 
         $accentDot = match($a['type']) {
-          'warning'  => 'bg-[var(--warning)]',
+          'warning'  => 'bg-[var(--chart-5)]',
           'critical' => 'bg-[var(--error)]',
           'change'   => 'bg-[var(--info)]',
+          'assignment' => 'bg-[var(--info)]',
           'success'  => 'bg-[var(--success)]',
           default    => 'bg-[var(--secondary)]'
         };
 
         $badgeClass = match($a['type']) {
-          'warning'  => 'bg-[color-mix(in_srgb,var(--warning)_22%,white)] text-foreground border border-border',
+          'warning'  => 'bg-[color-mix(in_srgb,var(--chart-5)_20%,white)] text-[var(--chart-5)] border border-border',
           'critical' => 'bg-[color-mix(in_srgb,var(--error)_14%,white)] text-[var(--error)] border border-border',
           'change'   => 'bg-[color-mix(in_srgb,var(--info)_22%,white)] text-foreground border border-border',
+          'assignment' => 'bg-[color-mix(in_srgb,var(--info)_22%,white)] text-foreground border border-border',
           'success'  => 'bg-[color-mix(in_srgb,var(--success)_18%,white)] text-foreground border border-border',
           default    => 'bg-[color-mix(in_srgb,var(--secondary)_14%,white)] text-secondary border border-border'
         };
 
         $iconWrap = match($a['type']) {
-          'warning'  => 'bg-[color-mix(in_srgb,var(--warning)_22%,white)] text-foreground',
+          'warning'  => 'bg-[color-mix(in_srgb,var(--chart-5)_18%,white)] text-[var(--chart-5)]',
           'critical' => 'bg-[color-mix(in_srgb,var(--error)_14%,white)] text-[var(--error)]',
           'change'   => 'bg-[color-mix(in_srgb,var(--info)_22%,white)] text-foreground',
+          'assignment' => 'bg-[color-mix(in_srgb,var(--info)_22%,white)] text-foreground',
           'success'  => 'bg-[color-mix(in_srgb,var(--success)_18%,white)] text-foreground',
           default    => 'bg-[color-mix(in_srgb,var(--secondary)_14%,white)] text-secondary'
         };
 
         $baseSoftBg = match($a['type']) {
-          'warning'  => 'bg-[color-mix(in_srgb,var(--warning)_10%,white)]',
+          'warning'  => 'bg-[color-mix(in_srgb,var(--chart-5)_8%,white)]',
           'critical' => 'bg-[color-mix(in_srgb,var(--error)_8%,white)]',
           'change'   => 'bg-[color-mix(in_srgb,var(--info)_10%,white)]',
+          'assignment' => 'bg-[color-mix(in_srgb,var(--info)_10%,white)]',
           'success'  => 'bg-[color-mix(in_srgb,var(--success)_10%,white)]',
           default    => 'bg-card'
         };
 
         $ringUnread = match($a['type']) {
-          'warning'  => 'ring-2 ring-[color-mix(in_srgb,var(--warning)_28%,transparent)]',
+          'warning'  => 'ring-2 ring-[color-mix(in_srgb,var(--chart-5)_26%,transparent)]',
           'critical' => 'ring-2 ring-[color-mix(in_srgb,var(--error)_24%,transparent)]',
           'change'   => 'ring-2 ring-[color-mix(in_srgb,var(--info)_26%,transparent)]',
+          'assignment' => 'ring-2 ring-[color-mix(in_srgb,var(--info)_26%,transparent)]',
           'success'  => 'ring-2 ring-[color-mix(in_srgb,var(--success)_26%,transparent)]',
           default    => 'ring-2 ring-[color-mix(in_srgb,var(--primary)_25%,transparent)]'
         };
@@ -339,11 +347,26 @@ $alerts = array_map(function ($n) {
           </div>
         </div>
 
-        <button id="cerrarModal"
-          class="p-1 text-muted-foreground hover:text-foreground transition"
-          title="Cerrar"
+        <button
+          type="button"
+          id="cerrarModal"
+          class="rounded-full p-1 hover:bg-muted"
         >
-          <i data-lucide="x" class="w-3 h-3"></i>
+          <span class="sr-only">Cerrar</span>
+          <svg
+            class="h-5 w-5"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
         </button>
       </div>
 
@@ -733,10 +756,33 @@ async function eliminarNotificacion(notificacionId) {
 
     if (result.success) {
       const card = getNotifCard(notificacionId);
+      mostrarMensaje('success', result.message);
       if (card) {
-        card.remove();
+        card.classList.add("opacity-60");
+        card.style.pointerEvents = "none";
+        setTimeout(() => {
+          card.remove();
+          actualizarContadores();
+
+          const restantes = document.querySelectorAll(".notif-card").length;
+          if (restantes === 0) {
+            const list = document.getElementById("lista-notificaciones-db");
+            if (list) {
+              list.innerHTML = `
+                <div class="rounded-xl border border-border bg-card p-10 text-center">
+                  <div class="w-12 h-12 mx-auto rounded-xl border border-border bg-[color-mix(in_srgb,var(--primary)_12%,white)] flex items-center justify-center">
+                    <i data-lucide="bell-off" class="w-6 h-6 text-primary"></i>
+                  </div>
+                  <p class="mt-3 text-sm font-semibold text-foreground">No hay notificaciones</p>
+                  <p class="text-xs text-muted-foreground mt-1">Cuando el sistema genere alertas aparecerán aquí.</p>
+                </div>
+              `;
+              if (window.lucide) lucide.createIcons();
+            }
+          }
+        }, 3000);
+      } else {
         actualizarContadores();
-        mostrarMensaje('success', result.message);
       }
     } else {
       mostrarMensaje('error', result.message);
@@ -972,6 +1018,7 @@ function iniciarNotificacionesLive() {
     if (t === "CAMBIO_DATOS") return "change";
     if (t === "STOCK_BAJO") return "warning";
     if (t === "SOLICITUD_RECHAZADA") return "critical";
+    if (t === "ASIGNACION") return "assignment";
     if (t === "CAMBIO_DATOS_RECHAZADO") return "critical";
     if (t === "CAMBIO_RECHAZADO") return "critical";
     if (t === "CAMBIO_DATOS_APROBADO") return "success";
@@ -982,9 +1029,10 @@ function iniciarNotificacionesLive() {
 
   const buildUI = (type, isUnread) => {
     const accentDot = {
-      warning:  'bg-[var(--warning)]',
+      warning:  'bg-[var(--chart-5)]',
       critical: 'bg-[var(--error)]',
       change:   'bg-[var(--info)]',
+      assignment: 'bg-[var(--info)]',
       success:  'bg-[var(--success)]',
       low:      'bg-[var(--secondary)]'
     }[type] || 'bg-[var(--secondary)]';
@@ -993,6 +1041,7 @@ function iniciarNotificacionesLive() {
       warning:  'alert-triangle',
       critical: 'alert-octagon',
       change:   'user-cog',
+      assignment: 'user-check',
       success:  'check-circle',
       low:      'bell'
     }[type] || 'bell';
@@ -1001,38 +1050,43 @@ function iniciarNotificacionesLive() {
       warning:  'Stock Bajo',
       critical: 'Crítica',
       change:   'Cambio Datos',
+      assignment: 'Asignación',
       success:  'Aprobada',
       low:      'General'
     }[type] || 'General';
 
     const badgeClass = {
-      warning:  'bg-[color-mix(in_srgb,var(--warning)_22%,white)] text-foreground border border-border',
+      warning:  'bg-[color-mix(in_srgb,var(--chart-5)_20%,white)] text-[var(--chart-5)] border border-border',
       critical: 'bg-[color-mix(in_srgb,var(--error)_14%,white)] text-[var(--error)] border border-border',
       change:   'bg-[color-mix(in_srgb,var(--info)_22%,white)] text-foreground border border-border',
+      assignment: 'bg-[color-mix(in_srgb,var(--info)_22%,white)] text-foreground border border-border',
       success:  'bg-[color-mix(in_srgb,var(--success)_18%,white)] text-foreground border border-border',
       low:      'bg-[color-mix(in_srgb,var(--secondary)_14%,white)] text-secondary border border-border'
     }[type] || 'bg-[color-mix(in_srgb,var(--secondary)_14%,white)] text-secondary border border-border';
 
     const iconWrap = {
-      warning:  'bg-[color-mix(in_srgb,var(--warning)_22%,white)] text-foreground',
+      warning:  'bg-[color-mix(in_srgb,var(--chart-5)_18%,white)] text-[var(--chart-5)]',
       critical: 'bg-[color-mix(in_srgb,var(--error)_14%,white)] text-[var(--error)]',
       change:   'bg-[color-mix(in_srgb,var(--info)_22%,white)] text-foreground',
+      assignment: 'bg-[color-mix(in_srgb,var(--info)_22%,white)] text-foreground',
       success:  'bg-[color-mix(in_srgb,var(--success)_18%,white)] text-foreground',
       low:      'bg-[color-mix(in_srgb,var(--secondary)_14%,white)] text-secondary'
     }[type] || 'bg-[color-mix(in_srgb,var(--secondary)_14%,white)] text-secondary';
 
     const baseSoftBg = {
-      warning:  'bg-[color-mix(in_srgb,var(--warning)_10%,white)]',
+      warning:  'bg-[color-mix(in_srgb,var(--chart-5)_8%,white)]',
       critical: 'bg-[color-mix(in_srgb,var(--error)_8%,white)]',
       change:   'bg-[color-mix(in_srgb,var(--info)_10%,white)]',
+      assignment: 'bg-[color-mix(in_srgb,var(--info)_10%,white)]',
       success:  'bg-[color-mix(in_srgb,var(--success)_10%,white)]',
       low:      'bg-card'
     }[type] || 'bg-card';
 
     const ringUnread = {
-      warning:  'ring-2 ring-[color-mix(in_srgb,var(--warning)_28%,transparent)]',
+      warning:  'ring-2 ring-[color-mix(in_srgb,var(--chart-5)_26%,transparent)]',
       critical: 'ring-2 ring-[color-mix(in_srgb,var(--error)_24%,transparent)]',
       change:   'ring-2 ring-[color-mix(in_srgb,var(--info)_26%,transparent)]',
+      assignment: 'ring-2 ring-[color-mix(in_srgb,var(--info)_26%,transparent)]',
       success:  'ring-2 ring-[color-mix(in_srgb,var(--success)_26%,transparent)]',
       low:      'ring-2 ring-[color-mix(in_srgb,var(--primary)_25%,transparent)]'
     }[type] || 'ring-2 ring-[color-mix(in_srgb,var(--primary)_25%,transparent)]';

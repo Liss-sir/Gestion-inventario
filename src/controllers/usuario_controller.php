@@ -1721,17 +1721,17 @@ Recomendación: cambia tu contraseña después de iniciar sesión.
                 $titulo = "Cargo asignado";
                 $mensaje = "Has sido asignado como Subcoordinador por coordinación.";
 
-                // ✅ USAR 'ASIGNACION' que SÍ existe en tu ENUM
+                // USAR 'ASIGNACION' que SÍ existe en tu ENUM
                 $okNotif = insertarNotificacionSegura($conn, $id_usuario, 'ASIGNACION', $titulo, $mensaje);
 
                 if (!$okNotif) {
-                    error_log("⚠️ Error al insertar notificación de cargo Subcoordinador para usuario $id_usuario");
+                    error_log("Error al insertar notificación de cargo Subcoordinador para usuario $id_usuario");
                 } else {
-                    error_log("✅ Notificación de Subcoordinador insertada correctamente");
+                    error_log("Notificación de Subcoordinador insertada correctamente");
                 }
                 
             } catch (\Exception $e) {
-                error_log("❌ Error en notificación de cargo Subcoordinador: " . $e->getMessage());
+                error_log("Error en notificación de cargo Subcoordinador: " . $e->getMessage());
             }
         }
 
