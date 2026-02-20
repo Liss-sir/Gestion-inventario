@@ -81,9 +81,6 @@ const FICHA_INSTRUCTOR = (() => {
   return Number.isNaN(n) ? null : n;
 })();
 
-console.log("[SOLICITUDES] Instructor?", ES_INSTRUCTOR, "Ficha:", FICHA_INSTRUCTOR);
-
-
 // ============================================================
 // PERMISOS (inyectados desde PHP)
 // ============================================================
@@ -210,7 +207,7 @@ function safeLucideCreateIcons() {
       lucide.createIcons();
     }
   } catch (e) {
-    console.warn("[SOLICITUDES] lucide error:", e);
+
   }
 }
 
@@ -520,21 +517,6 @@ const utilidades = {
       id_usuario_solicitante: s.id_usuario_solicitante ?? null,
       id_usuario: s.id_usuario ?? s.id_solicitante ?? s.usuario_id ?? s.usuarioId ?? null,
     };
-  },
-
-  mostrarError(msg) {
-    console.error("❌", msg);
-    toastError(msg);
-  },
-
-  mostrarExito(msg) {
-    console.log("✅", msg);
-    toastSuccess(msg);
-  },
-
-  mostrarInfo(msg) {
-    console.log("ℹ️", msg);
-    toastInfo(msg);
   },
 };
 
@@ -906,7 +888,6 @@ const api = {
       });
     } catch (e) {
       selectores.selectActividad.innerHTML = '<option value="">Error cargando actividades</option>';
-      console.error('[SOLICITUDES] error cargarActividades:', e);
       toastError("No se pudieron cargar las actividades. Revise el endpoint en el controller.");
     }
   },
@@ -960,7 +941,6 @@ const api = {
         selectores.selectRae.appendChild(opt);
       });
     } catch (e) {
-      console.error("[SOLICITUDES] error cargarRAEs:", e);
       selectores.selectRae.innerHTML = '<option value="">Error cargando RAEs</option>';
     }
   },
@@ -1012,7 +992,6 @@ const api = {
       selectores.selectFichas.appendChild(opt);
     });
     } catch (e) {
-      console.error("[SOLICITUDES] error cargarFichas:", e);
       selectores.selectFichas.innerHTML = '<option value="">Error cargando fichas</option>';
     }
   },
@@ -1149,7 +1128,6 @@ const api = {
 
         // Si es instructor pero el id viene malo (0 / null), NO lo bloquees:
         if (esInstructor && !idUsuarioValido) {
-          console.warn("[SOLICITUDES] Instructor sin id válido en sesión:", USUARIO);
           toastError("No se pudo identificar tu usuario en sesión (ID inválido).");
         }
 
@@ -1162,7 +1140,6 @@ const api = {
 
         for (const url of urls) {
           try {
-            console.log("[SOLICITUDES] Cargando programas desde:", url);
             const res = await fetch(url);
             const raw = await res.text();
 
@@ -1175,7 +1152,6 @@ const api = {
 
             if (!res.ok || (data && data.error)) {
               lastError = data?.error || `HTTP ${res.status}`;
-              console.warn("[SOLICITUDES] programas error:", lastError, "url:", url);
               continue;
             }
 
@@ -1187,7 +1163,6 @@ const api = {
             break;
           } catch (e) {
             lastError = e.message;
-            console.warn("[SOLICITUDES] fallo leyendo programas:", e.message);
           }
         }
 
@@ -1301,7 +1276,6 @@ const api = {
               selectores.selectBodega.innerHTML = '<option value="">No hay bodegas disponibles</option>';
             }
           } else {
-            console.warn('[SOLICITUDES] fallo fetch bodegas:', resB.status, resB.statusText);
             selectores.selectBodega.innerHTML = '<option value="">Error cargando bodegas</option>';
           }
 
@@ -1897,7 +1871,6 @@ const modal = {
     try {
       await api.cargarSelectores();
     } catch (e) {
-      console.warn('[SOLICITUDES] error refrescando selectores al abrir modal:', e);
     }
 
     setTimeout(() => selectores.selectPrograma?.focus(), 50);
@@ -2089,7 +2062,6 @@ const eventos = {
 const app = {
   async inicializar() {
     if (!selectores.contenedorCards) {
-      console.warn("[SOLICITUDES] No existe el contenedor #sol-cards en el DOM.");
       return;
     }
 
@@ -2120,7 +2092,6 @@ const app = {
 
 document.addEventListener("DOMContentLoaded", () => {
   safeLucideCreateIcons();
-  console.log("[SOLICITUDES] API =", API);
   initLimitesCaracteres();
   app.inicializar();
 
