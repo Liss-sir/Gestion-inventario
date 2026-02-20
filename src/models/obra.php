@@ -63,6 +63,48 @@ class ObraModel {
         }
     }
 
+    /* OBTENER RAES POR FICHA */
+    public function obtenerRaesPorFicha($idFicha) {
+        try {
+            $sqlFicha = "SELECT id_programa FROM fichas WHERE id_ficha = :id_ficha AND estado = 'Activa'";
+            $stmtFicha = $this->conn->prepare($sqlFicha);
+            $stmtFicha->bindParam(":id_ficha", $idFicha, PDO::PARAM_INT);
+            $stmtFicha->execute();
+            $ficha = $stmtFicha->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$ficha || empty($ficha['id_programa'])) {
+                return [];
+            }
+            
+            // Luego obtenemos los RAEs del programa
+            return $this->obtenerRaesPorPrograma($ficha['id_programa']);
+            
+        } catch (PDOException $e) {
+            error_log("Error en obtenerRaesPorFicha: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function obtenerRaesPorPrograma($idPrograma) {
+        try {
+            $sql = "SELECT r.* 
+                    FROM raes r
+                    INNER JOIN programas_formacion p ON r.id_programa = p.id_programa
+                    WHERE p.id_programa = :id_programa 
+                    AND r.estado = 'Activo'
+                    ORDER BY r.codigo_rae";
+            
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(":id_programa", $idPrograma, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error en obtenerRaesPorPrograma: " . $e->getMessage());
+            return [];
+        }
+    }
+
     /* OBTENER INSTRUCTORES ACTIVOS */
     public function obtenerInstructoresActivos() {
         $sql = "SELECT id_usuario, nombre_completo
@@ -104,20 +146,20 @@ class ObraModel {
 
     /* OBTENER POR ID */
     public function obtener($id) {
-        $sql = "SELECT 
-                    af.*,
-                    f.numero_ficha,
-                    r.descripcion_rae,
-                    u.nombre_completo as nombre_instructor
-                FROM {$this->table} af
-                LEFT JOIN fichas f ON af.id_ficha = f.id_ficha
-                LEFT JOIN raes r ON af.id_rae = r.id_rae
-                LEFT JOIN usuarios u ON af.id_instructor = u.id_usuario
-                WHERE af.id_actividad = ?";
-        
+    $sql = "SELECT 
+        af.*,
+        f.numero_ficha,
+        r.descripcion_rae,
+        u.nombre_completo as nombre_instructor,
+        (SELECT aa.id_usuario FROM actividades_aprendices aa WHERE aa.id_actividad = af.id_actividad LIMIT 1) as id_aprendiz_actual
+        FROM {$this->table} af
+        LEFT JOIN fichas f ON af.id_ficha = f.id_ficha
+        LEFT JOIN raes r ON af.id_rae = r.id_rae
+        LEFT JOIN usuarios u ON af.id_instructor = u.id_usuario
+        WHERE af.id_actividad = ?";
+    
         $stmt = $this->conn->prepare($sql);
         $stmt->execute([$id]);
-
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
@@ -222,5 +264,67 @@ class ObraModel {
             error_log("Error asignando aprendices: " . $e->getMessage());
             return false;
         }
+    }
+
+    // Agrega estas funciones al modelo:
+
+    public function obtenerFichasPorInstructor($idInstructor) {
+        $sql = "SELECT f.* 
+                FROM fichas f
+                INNER JOIN fichas_instructores fi ON f.id_ficha = fi.id_ficha
+                WHERE fi.id_usuario = :id_instructor 
+                AND f.estado = 'Activa'
+                AND fi.estado = 'Activo'
+                ORDER BY f.numero_ficha";
+        
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(':id_instructor', $idInstructor, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function verificarAccesoInstructorFicha($idInstructor, $idFicha) {
+        $sql = "SELECT COUNT(*) as count 
+                FROM fichas_instructores 
+                WHERE id_usuario = :id_instructor 
+                AND id_ficha = :id_ficha
+                AND estado = 'Activo'";
+        
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(':id_instructor', $idInstructor, PDO::PARAM_INT);
+        $stmt->bindParam(':id_ficha', $idFicha, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result['count'] > 0;
+    }
+    
+    // Llamar Instructores por ficha (tabla de fichas_instructores)
+    public function obtenerInstructoresPorFicha($idFicha) {
+        $sql = "SELECT DISTINCT u.id_usuario, u.nombre_completo
+                FROM usuarios u
+                INNER JOIN fichas_instructores fi ON u.id_usuario = fi.id_usuario
+                WHERE fi.id_ficha = :id_ficha
+                AND u.cargo = 'instructor'
+                AND u.estado = 'activo'
+                AND fi.estado = 'Activo'
+                ORDER BY u.nombre_completo";
+        
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bindParam(':id_ficha', $idFicha, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Llamar aprendices por actividad (tabla de actividades_aprendices)
+    public function obtenerAprendicesPorActividad($idActividad) {
+        $sql = "SELECT u.id_usuario, u.nombre_completo, u.numero_documento as documento
+                FROM actividades_aprendices aa
+                INNER JOIN usuarios u ON aa.id_usuario = u.id_usuario
+                WHERE aa.id_actividad = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute([$idActividad]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

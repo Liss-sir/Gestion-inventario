@@ -405,9 +405,9 @@ function validateStep1Data(data, isEdit = false, excludeId = null) {
         return false;
     }
 
-    // Validate name length (max 25 characters)
-    if (data.nombre_programa.trim().length > 25) {
-        toastError("El nombre del programa no puede exceder los 25 caracteres.");
+    // Validate name length (max 50 characters)
+    if (data.nombre_programa.trim().length > 50) {
+        toastError("El nombre del programa no puede exceder los 50 caracteres.");
         return false;
     }
 
@@ -1876,9 +1876,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const nombreInput = document.getElementById("create_nombre");
     if (nombreInput) {
       nombreInput.addEventListener("input", function(e) {
-        if (this.value.length > 25) {
-          this.value = this.value.substring(0, 25);
-          toastError("El nombre no puede exceder los 25 caracteres");
+        if (this.value.length > 50) {
+          this.value = this.value.substring(0, 50);
+          toastError("El nombre no puede exceder los 50 caracteres");
         }
       });
     }

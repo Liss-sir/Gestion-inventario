@@ -1,5 +1,5 @@
-﻿﻿﻿﻿/* ============================================================
-   GUARD GLOBAL (evita doble carga del script)
+﻿﻿/* ============================================================
+   GUARD GLOBAL
 ============================================================ */
 if (!window.__obrasJSLoaded) {
   window.__obrasJSLoaded = true;
@@ -19,30 +19,27 @@ if (!window.__obrasJSLoaded) {
   let fichaSeleccionadaId = null;
   let aprendicesSeleccionados = [];
 
-  // FIX: variables que tu código usa (para NO crear globals implícitas)
   let obraOriginal = null;
   let originalEditData = null;
+  let editIdActividad = null;
+  let editAprendicesSeleccionados = [];
 
-  // Flag para evitar creación múltiple
   let isCreatingObra = false;
 
-  // Detectar si el usuario es instructor
   const usuarioActual = window.USUARIO_SESION || {};
   const esInstructor = usuarioActual.cargo === "Instructor";
   const fichaInstructor = (usuarioActual.fichas && usuarioActual.fichas.length > 0) 
     ? usuarioActual.fichas[0].id_ficha 
     : null;
   
-  // Verificar si es instructor sin ficha
   const instructorSinFicha = window.INSTRUCTOR_SIN_FICHA || false;
   console.log("VERIFICACIÓN INSTRUCTOR:", { esInstructor, fichaInstructor, instructorSinFicha, usuarioActual });
 
   // ==============================
-  // PERMISOS FRONT (desde PHP)
+  // PERMISOS FRONT
   // ==============================
   const OBRAS_PERMS = (function () {
     const p = window.OBRAS_PERMS || {};
-    // IMPORTANTE: si no viene nada desde PHP, no bloqueamos por defecto
     const hasAny =
       Object.prototype.hasOwnProperty.call(p, "canCrear") ||
       Object.prototype.hasOwnProperty.call(p, "canEditar") ||
@@ -61,11 +58,20 @@ if (!window.__obrasJSLoaded) {
 
   console.log("PERMISOS OBRAS:", OBRAS_PERMS);
 
-  // ==============================
-  // CONFIGURACIÓN DE API - URL FIJA
-  // ==============================
   const API_URL = "src/controllers/obra_controller.php";
   console.log("API URL configurada:", API_URL);
+
+  // ==============================
+  // FUNCIONES AUXILIARES
+  // ==============================
+  function actualizarContadorDescripcion(textareaId, counterId) {
+    const textarea = document.getElementById(textareaId);
+    const counter = document.getElementById(counterId);
+    if (textarea && counter) {
+      const len = textarea.value.length;
+      counter.textContent = `${len}/250`;
+    }
+  }
 
   // ==============================
   // DETECCIÓN DEL SIDEBAR
@@ -96,7 +102,6 @@ if (!window.__obrasJSLoaded) {
   // APLICAR PERMISOS A LA UI
   // ==============================
   function aplicarPermisosUI() {
-    // Ocultar botón "Nueva Obra" si no puede crear
     if (!OBRAS_PERMS.canCrear) {
       const btnNueva = document.querySelector('button[onclick="openCreateModal()"]');
       if (btnNueva) btnNueva.style.display = "none";
@@ -105,7 +110,6 @@ if (!window.__obrasJSLoaded) {
       if (modalCreate) modalCreate.classList.add("hidden");
     }
 
-    // Si no puede editar, por seguridad ocultamos modal edit
     if (!OBRAS_PERMS.canEditar) {
       const modalEdit = document.getElementById("modalEdit");
       if (modalEdit) modalEdit.classList.add("hidden");
@@ -152,13 +156,16 @@ if (!window.__obrasJSLoaded) {
   // ==============================
   async function cargarObras() {
     try {
-      // Ocultar el mensaje de no resultados al cargar
       const emptySearchElement = document.getElementById("emptySearchObras");
-      if (emptySearchElement) emptySearchElement.classList.add("hidden");
+      const emptyStateElement = document.getElementById("emptyStateObras");
       
-      // Si es instructor sin ficha, mostrar mensaje especial
+      if (emptySearchElement) emptySearchElement.classList.add("hidden");
+      if (emptyStateElement) emptyStateElement.classList.add("hidden");
+
+      const container = document.getElementById("obrasContainer");
+      if (container) container.classList.remove("hidden");
+      
       if (instructorSinFicha) {
-        const container = document.getElementById("obrasContainer");
         if (container) {
           container.innerHTML = `
             <div class="text-center py-12 text-amber-600">
@@ -170,7 +177,6 @@ if (!window.__obrasJSLoaded) {
           `;
         }
         
-        // Ocultar estadísticas y otros elementos
         const statsContainer = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-3.gap-6');
         const worksListContainer = document.querySelector('.rounded-xl.border.border-border.bg-card.shadow-sm.overflow-hidden');
         
@@ -197,7 +203,6 @@ if (!window.__obrasJSLoaded) {
 
       let obrasData = Array.isArray(data) ? data : [];
       
-      // Si es instructor, filtrar solo las obras de su ficha
       if (esInstructor && fichaInstructor) {
         obrasData = obrasData.filter(obra => obra.id_ficha === fichaInstructor);
         console.log(`Obras filtradas para instructor (ficha ${fichaInstructor}): ${obrasData.length}`);
@@ -219,7 +224,6 @@ if (!window.__obrasJSLoaded) {
       errorMsg += `Error: ${error.message}`;
 
       mostrarError(errorMsg);
-      // Asegurarnos de ocultar el loading si ocurre un error
       const loadingElement = document.getElementById("loading");
       if (loadingElement) loadingElement.style.display = "none";
     }
@@ -275,16 +279,12 @@ if (!window.__obrasJSLoaded) {
         select.appendChild(option);
     });
 
-    // IMPORTANTE: Nunca deshabilitar para instructores
     select.disabled = false;
     
     if (esInstructor) {
         console.log("Fichas disponibles para instructor:", fichas.length);
-        
-        // Si solo tiene una ficha, preseleccionarla automáticamente
         if (fichas.length === 1) {
             select.value = fichas[0].id_ficha;
-            // Disparar el evento change para cargar RAEs y aprendices
             setTimeout(() => {
                 select.dispatchEvent(new Event('change'));
             }, 100);
@@ -293,12 +293,11 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // CARGAR RAES POR FICHA (NUEVO)
+  // CARGAR RAES POR FICHA
   // ==============================
   async function cargarRaesPorFicha(idFicha) {
     try {
       if (!idFicha) {
-        // Si no hay ficha, cargar todos los RAEs activos
         await cargarTodosRaes();
         return;
       }
@@ -311,16 +310,14 @@ if (!window.__obrasJSLoaded) {
       });
       
       if (data && !data.error) {
-        // Actualizar el select de RAEs con los datos filtrados
+        raes = Array.isArray(data) ? data : [];
         llenarSelectRaesPorFicha(data);
       } else {
         console.error("Error al cargar RAEs por ficha:", data?.error);
-        // Fallback: cargar todos los RAEs
         await cargarTodosRaes();
       }
     } catch (error) {
       console.error("Error en cargarRaesPorFicha:", error);
-      // Fallback: cargar todos los RAEs
       await cargarTodosRaes();
     }
   }
@@ -334,6 +331,47 @@ if (!window.__obrasJSLoaded) {
       }
     } catch (error) {
       console.error("Error cargando todos los RAEs:", error);
+    }
+  }
+
+  // ==============================
+  // CARGAR INSTRUCTORES POR FICHA
+  // ==============================
+  async function cargarInstructoresPorFicha(idFicha) {
+    try {
+      if (!idFicha) {
+        await cargarTodosInstructores();
+        return;
+      }
+      
+      console.log("Cargando instructores para ficha ID:", idFicha);
+      
+      const data = await fetchAPI({
+        accion: "obtener_instructores_por_ficha",
+        id_ficha: idFicha
+      });
+      
+      if (data && !data.error) {
+        llenarSelectInstructoresPorFicha(data);
+      } else {
+        console.error("Error al cargar instructores por ficha:", data?.error);
+        await cargarTodosInstructores();
+      }
+    } catch (error) {
+      console.error("Error en cargarInstructoresPorFicha:", error);
+      await cargarTodosInstructores();
+    }
+  }
+
+  async function cargarTodosInstructores() {
+    try {
+      const data = await fetchAPI({ accion: "obtener_instructores" });
+      if (data && !data.error) {
+        instructores = Array.isArray(data) ? data : [];
+        llenarSelectInstructores();
+      }
+    } catch (error) {
+      console.error("Error cargando todos los instructores:", error);
     }
   }
 
@@ -352,26 +390,24 @@ if (!window.__obrasJSLoaded) {
       return;
     }
     
-    // Para modal crear
     if (selectCreate) {
       selectCreate.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona un RAE</option>';
       raesData.forEach((rae) => {
         const option = document.createElement("option");
         option.value = rae.id_rae;
-        option.textContent = `${rae.codigo_rae} - ${rae.descripcion_rae}`;
+        option.textContent = `${rae.codigo_rae} ${rae.descripcion_rae}`;
         option.setAttribute("data-codigo", rae.codigo_rae);
         option.setAttribute("data-descripcion", rae.descripcion_rae);
         selectCreate.appendChild(option);
       });
     }
     
-    // Para modal editar
     if (selectEdit) {
       selectEdit.innerHTML = '<option value="" disabled class="text-gray-500">Selecciona un RAE</option>';
       raesData.forEach((rae) => {
         const option = document.createElement("option");
         option.value = rae.id_rae;
-        option.textContent = `${rae.codigo_rae} - ${rae.descripcion_rae}`;
+        option.textContent = `${rae.codigo_rae} ${rae.descripcion_rae}`;
         option.setAttribute("data-codigo", rae.codigo_rae);
         option.setAttribute("data-descripcion", rae.descripcion_rae);
         selectEdit.appendChild(option);
@@ -394,13 +430,12 @@ if (!window.__obrasJSLoaded) {
       return;
     }
     
-    // Para modal crear
     if (selectCreate) {
       selectCreate.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona un RAE</option>';
       raes.forEach((rae) => {
         const option = document.createElement("option");
         option.value = rae.id_rae;
-        option.textContent = `${rae.codigo_rae} - ${rae.descripcion_rae}`;
+        option.textContent = `${rae.codigo_rae} ${rae.descripcion_rae}`;
         option.setAttribute("data-codigo", rae.codigo_rae);
         option.setAttribute("data-descripcion", rae.descripcion_rae);
         if (selectedId && rae.id_rae == selectedId) option.selected = true;
@@ -408,13 +443,12 @@ if (!window.__obrasJSLoaded) {
       });
     }
     
-    // Para modal editar
     if (selectEdit) {
       selectEdit.innerHTML = '<option value="" disabled class="text-gray-500">Selecciona un RAE</option>';
       raes.forEach((rae) => {
         const option = document.createElement("option");
         option.value = rae.id_rae;
-        option.textContent = `${rae.codigo_rae} - ${rae.descripcion_rae}`;
+        option.textContent = `${rae.codigo_rae} ${rae.descripcion_rae}`;
         option.setAttribute("data-codigo", rae.codigo_rae);
         option.setAttribute("data-descripcion", rae.descripcion_rae);
         if (selectedId && rae.id_rae == selectedId) option.selected = true;
@@ -443,7 +477,33 @@ if (!window.__obrasJSLoaded) {
       select.appendChild(option);
     });
 
-    // Si es instructor, preseleccionar y deshabilitar como instructor
+    if (esInstructor && usuarioActual.usuarioId) {
+      select.value = usuarioActual.usuarioId;
+      select.disabled = true;
+      console.log("✅ Instructor preseleccionado:", usuarioActual.usuarioId);
+    }
+  }
+
+  function llenarSelectInstructoresPorFicha(instructoresData) {
+    const select = document.getElementById("create_instructor");
+    if (!select) return;
+
+    if (!instructoresData || instructoresData.length === 0) {
+      select.innerHTML =
+        '<option value="" disabled selected class="text-red-500">No hay instructores disponibles para esta ficha</option>';
+      return;
+    }
+
+    select.innerHTML =
+      '<option value="" disabled selected class="text-gray-500">Selecciona un instructor</option>';
+
+    instructoresData.forEach((instructor) => {
+      const option = document.createElement("option");
+      option.value = instructor.id_usuario;
+      option.textContent = instructor.nombre_completo;
+      select.appendChild(option);
+    });
+
     if (esInstructor && usuarioActual.usuarioId) {
       select.value = usuarioActual.usuarioId;
       select.disabled = true;
@@ -481,185 +541,200 @@ if (!window.__obrasJSLoaded) {
 
   function renderObras(obrasData) {
     const container = document.getElementById("obrasContainer");
+    const emptySearchElement = document.getElementById("emptySearchObras");
+    const emptyStateElement = document.getElementById("emptyStateObras");
+    
     if (!container) return;
 
-    // Ocultar el mensaje de no resultados si está visible
-    const emptySearchElement = document.getElementById("emptySearchObras");
-    if (emptySearchElement) emptySearchElement.classList.add("hidden");
-
-    // Mostrar el contenedor de obras
-    container.classList.remove("hidden");
-    
-    const worksListContent = container.closest('.rounded-xl.border.border-border.bg-card.shadow-sm.overflow-hidden')?.querySelector('.p-6:last-child');
-    if (worksListContent) worksListContent.classList.remove("hidden");
+    const loadingElement = document.getElementById("loading");
+    if (loadingElement) loadingElement.style.display = "none";
 
     if (!Array.isArray(obrasData) || obrasData.length === 0) {
-      container.innerHTML = `
-        <div class="text-center py-12 text-gray-500">
-          <i class="fas fa-folder-open text-4xl mb-3"></i>
-          <p>No se encontraron obras</p>
-        </div>
-      `;
+      container.classList.add("hidden");
+      container.innerHTML = '';
+      
+      const searchInput = document.getElementById("searchInput");
+      const searchTerm = (searchInput?.value || "").toLowerCase().trim();
+      
+      if (searchTerm !== "") {
+        if (emptySearchElement) {
+          emptySearchElement.classList.remove("hidden");
+        }
+        if (emptyStateElement) {
+          emptyStateElement.classList.add("hidden");
+        }
+      } else {
+        if (emptyStateElement) {
+          emptyStateElement.classList.remove("hidden");
+        }
+        if (emptySearchElement) {
+          emptySearchElement.classList.add("hidden");
+        }
+      }
       return;
     }
 
-    container.innerHTML = obrasData
-      .map((obra, index) => {
-        // ESTADO BADGE (SIEMPRE VISIBLE)
+    container.classList.remove("hidden");
+    if (emptySearchElement) {
+      emptySearchElement.classList.add("hidden");
+    }
+    if (emptyStateElement) {
+      emptyStateElement.classList.add("hidden");
+    }
+
+    container.innerHTML = obrasData.map((obra, index) => {
         const estadoBadge = `
-          <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-            obra.estado === "Activa" ? "bg-[#39A900]/50 text-[#007832]" : "bg-[#000000]/40 text-[#000000] opacity-70"
-          }">
-            ${obra.estado === "Activa" ? "Activa" : "Finalizada"}
-          </span>
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                obra.estado === "Activa" ? "bg-[#39A900]/50 text-[#007832]" : "bg-[#000000]/40 text-[#000000] opacity-70"
+            }">
+                ${obra.estado === "Activa" ? "Activa" : "Finalizada"}
+            </span>
         `;
 
-        // MENÚ DE ACCIONES CON 3 PUNTOS
         const actionMenu = `
-          <div class="relative">
-            <button 
-              onclick="toggleActionMenu(${index})"
-              class="text-muted-foreground hover:text-foreground p-2 hover:bg-muted rounded-lg transition-colors"
-              title="Más acciones"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="12" cy="5" r="2"/>
-                <circle cx="12" cy="12" r="2"/>
-                <circle cx="12" cy="19" r="2"/>
-              </svg>
-            </button>
-
-            <div id="actionMenu${index}" class="hidden absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg z-50 min-w-[180px]">
-              <button 
-                onclick="openDetailsModal(${obra.id_actividad}); closeAllMenus();"
-                class="w-full text-left px-4 py-2 text-sm text-foreground flex items-center gap-2 rounded-t-lg transition-colors duration-150 cursor-pointer hover:bg-gray-100"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye">
-                  <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-                Visualizar
-              </button>
-
-              ${OBRAS_PERMS.canEditar ? `
+            <div class="relative">
                 <button 
-                  onclick="openEditModal(${obra.id_actividad}); closeAllMenus();"
-                  class="w-full text-left px-4 py-2 text-sm text-foreground flex items-center gap-2 transition-colors duration-150 cursor-pointer hover:bg-gray-100"
+                    onclick="toggleActionMenu(${index})"
+                    class="text-muted-foreground hover:text-foreground p-2 hover:bg-muted rounded-lg transition-colors"
+                    title="Más acciones"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-pen">
-                    <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>
-                  </svg>
-                  Editar
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="12" cy="5" r="2"/>
+                        <circle cx="12" cy="12" r="2"/>
+                        <circle cx="12" cy="19" r="2"/>
+                    </svg>
                 </button>
-              ` : ''}
 
-              ${OBRAS_PERMS.canCambiarEstado ? `
-                <button 
-                  onclick="toggleEstado(${obra.id_actividad}, ${obra.estado === 'Activa' ? 'false' : 'true'}); closeAllMenus();"
-                  class="w-full text-left px-4 py-2 text-sm text-foreground flex items-center gap-2 rounded-b-lg transition-colors duration-150 cursor-pointer hover:bg-gray-100 border-t border-border"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-power">
-                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
-                    <line x1="12" y1="2" x2="12" y2="12"/>
-                  </svg>
-                  ${obra.estado === "Activa" ? "Finalizar" : "Activar"}
-                </button>
-              ` : ''}
+                <div id="actionMenu${index}" class="hidden absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg z-50 min-w-[180px]">
+                    <button 
+                        onclick="openDetailsModal(${obra.id_actividad}); closeAllMenus();"
+                        class="w-full text-left px-4 py-2 text-sm text-foreground flex items-center gap-2 rounded-t-lg transition-colors duration-150 cursor-pointer hover:bg-gray-100"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye">
+                            <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        Visualizar
+                    </button>
+
+                    ${OBRAS_PERMS.canEditar ? `
+                        <button 
+                            onclick="openEditModal(${obra.id_actividad}); closeAllMenus();"
+                            class="w-full text-left px-4 py-2 text-sm text-foreground flex items-center gap-2 transition-colors duration-150 cursor-pointer hover:bg-gray-100"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square-pen">
+                                <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/>
+                            </svg>
+                            Editar
+                        </button>
+                    ` : ''}
+
+                    ${OBRAS_PERMS.canCambiarEstado ? `
+                        <button 
+                            onclick="toggleEstado(${obra.id_actividad}, ${obra.estado === 'Activa' ? 'false' : 'true'}); closeAllMenus();"
+                            class="w-full text-left px-4 py-2 text-sm text-foreground flex items-center gap-2 rounded-b-lg transition-colors duration-150 cursor-pointer hover:bg-gray-100 border-t border-border"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-power">
+                                <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                                <line x1="12" y1="2" x2="12" y2="12"/>
+                            </svg>
+                            ${obra.estado === "Activa" ? "Finalizar" : "Activar"}
+                        </button>
+                    ` : ''}
+                </div>
             </div>
-          </div>
         `;
 
         return `
-          <div class="border border-l-4 ${
-            obra.estado === "Activa" ? "border-l-[#007832]" : "border-l-[#64748b]"
-          } rounded-lg p-5 mb-4 hover:shadow-md transition-shadow bg-white">
-            <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-              <div class="flex-1">
-                <div class="flex items-start justify-between gap-2 mb-2">
-                  <h3 class="text-lg font-semibold text-gray-900">${obra.nombre_actividad}</h3>
+            <div class="border border-l-4 ${
+                obra.estado === "Activa" ? "border-l-[#007832]" : "border-l-[#64748b]"
+            } rounded-lg p-5 mb-4 hover:shadow-md transition-shadow bg-white">
+                <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                    <div class="flex-1">
+                        <div class="flex items-start justify-between gap-2 mb-2">
+                            <h3 class="text-lg font-semibold text-gray-900">${obra.nombre_actividad}</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-4 line-clamp-2">${obra.descripcion || "Sin descripción"}</p>
+
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-3">
+                            <div>
+                                <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round"
+                                        class="lucide lucide-folder-kanban h-5 w-5 shrink-0">
+                                        <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path>
+                                        <path d="M8 10v4"></path><path d="M12 10v2"></path><path d="M16 10v6"></path>
+                                    </svg> Ficha
+                                </p>
+                                <p class="text-sm font-medium text-gray-900">${obra.numero_ficha || "N/A"}</p>
+                            </div>
+
+                            <div>
+                                <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                        viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round"
+                                        class="lucide lucide-users">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                        <path d="M16 3.128a4 4 0 0 1 0 7.744"/>
+                                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                    </svg> Tipo
+                                </p>
+                                <span class="inline-block px-2 py-1 ${
+                                    obra.tipo_trabajo === "Grupal" ? "bg-[#00304d]/30 text-[#00304d]" : "bg-[#007832]/65"
+                                } text-white text-xs font-semibold rounded-full">${obra.tipo_trabajo}</span>
+                            </div>
+
+                            <div>
+                                <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                        viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round"
+                                        class="lucide lucide-calendar">
+                                        <path d="M8 2v4"/><path d="M16 2v4"/>
+                                        <rect width="18" height="18" x="3" y="4" rx="2"/>
+                                        <path d="M3 10h18"/>
+                                    </svg> Inicio
+                                </p>
+                                <p class="text-sm font-medium text-gray-900">${formatDate(obra.fecha_inicio)}</p>
+                            </div>
+
+                            <div>
+                                <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                        viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"
+                                        stroke-linecap="round" stroke-linejoin="round"
+                                        class="lucide lucide-calendar">
+                                        <path d="M8 2v4"/><path d="M16 2v4"/>
+                                        <rect width="18" height="18" x="3" y="4" rx="2"/>
+                                        <path d="M3 10h18"/>
+                                    </svg> Fin
+                                </p>
+                                <p class="text-sm font-medium text-gray-900">${formatDate(obra.fecha_fin)}</p>
+                            </div>
+                        </div>
+
+                        <div class="text-sm text-gray-600">
+                            <span class="font-medium">Instructor:</span> ${
+                                esInstructor ? "Tu obra" : (obra.nombre_instructor || "No asignado")
+                            }
+                        </div>
+                        <div class="text-sm text-gray-600 mt-1">
+                            <span class="font-medium">RAE:</span> ${obra.descripcion_rae || "No asignado"}
+                        </div>
+                    </div>
+
+                    <div class="flex flex-row items-center gap-3">
+                        ${actionMenu}
+                        ${estadoBadge}
+                    </div>
                 </div>
-                <p class="text-sm text-gray-600 mb-4 line-clamp-2">${obra.descripcion || "Sin descripción"}</p>
-
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-3">
-                  <div>
-                    <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round"
-                        class="lucide lucide-folder-kanban h-5 w-5 shrink-0">
-                        <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path>
-                        <path d="M8 10v4"></path><path d="M12 10v2"></path><path d="M16 10v6"></path>
-                      </svg> Ficha
-                    </p>
-                    <p class="text-sm font-medium text-gray-900">${obra.numero_ficha || "N/A"}</p>
-                  </div>
-
-                  <div>
-                    <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                        viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round"
-                        class="lucide lucide-users">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                        <path d="M16 3.128a4 4 0 0 1 0 7.744"/>
-                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                        <circle cx="9" cy="7" r="4"/>
-                      </svg> Tipo
-                    </p>
-                    <span class="inline-block px-2 py-1 ${
-                      obra.tipo_trabajo === "Grupal" ? "bg-[#00304d]/30 text-[#00304d]" : "bg-[#007832]/65"
-                    } text-white text-xs font-semibold rounded-full">${obra.tipo_trabajo}</span>
-                  </div>
-
-                  <div>
-                    <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                        viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round"
-                        class="lucide lucide-calendar">
-                        <path d="M8 2v4"/><path d="M16 2v4"/>
-                        <rect width="18" height="18" x="3" y="4" rx="2"/>
-                        <path d="M3 10h18"/>
-                      </svg> Inicio
-                    </p>
-                    <p class="text-sm font-medium text-gray-900">${formatDate(obra.fecha_inicio)}</p>
-                  </div>
-
-                  <div>
-                    <p class="flex text-sm font-medium js-name gap-2 items-center pb-1">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                        viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round"
-                        class="lucide lucide-calendar">
-                        <path d="M8 2v4"/><path d="M16 2v4"/>
-                        <rect width="18" height="18" x="3" y="4" rx="2"/>
-                        <path d="M3 10h18"/>
-                      </svg> Fin
-                    </p>
-                    <p class="text-sm font-medium text-gray-900">${formatDate(obra.fecha_fin)}</p>
-                  </div>
-                </div>
-
-                <div class="text-sm text-gray-600">
-                  <span class="font-medium">Instructor:</span> ${
-                    esInstructor ? "Tu obra" : (obra.nombre_instructor || "No asignado")
-                  }
-                </div>
-                <div class="text-sm text-gray-600 mt-1">
-                  <span class="font-medium">RAE:</span> ${obra.descripcion_rae || "No asignado"}
-                </div>
-              </div>
-
-              <div class="flex flex-row items-center gap-3">
-                ${actionMenu}
-                ${estadoBadge}
-              </div>
             </div>
-          </div>
         `;
-      })
-      .join("");
+    }).join("");
   }
 
   function formatDate(dateString) {
@@ -676,18 +751,8 @@ if (!window.__obrasJSLoaded) {
     const date = new Date(dateString + "T00:00:00");
 
     const months = [
-      "enero",
-      "febrero",
-      "marzo",
-      "abril",
-      "mayo",
-      "junio",
-      "julio",
-      "agosto",
-      "septiembre",
-      "octubre",
-      "noviembre",
-      "diciembre",
+      "enero", "febrero", "marzo", "abril", "mayo", "junio",
+      "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
     ];
 
     return `${date.getDate()} de ${months[date.getMonth()]} de ${date.getFullYear()}`;
@@ -697,13 +762,17 @@ if (!window.__obrasJSLoaded) {
   // BUSCAR
   // ==============================
   function searchObras() {
-    // Si es instructor sin ficha, no hacer búsqueda
     if (instructorSinFicha) return;
     
     const searchInput = document.getElementById("searchInput");
-    const searchTerm = (searchInput?.value || "").toLowerCase();
+    const searchTerm = (searchInput?.value || "").toLowerCase().trim();
 
-    if (searchTerm.trim() === "") {
+    const emptyStateElement = document.getElementById("emptyStateObras");
+    if (emptyStateElement) {
+      emptyStateElement.classList.add("hidden");
+    }
+
+    if (searchTerm === "") {
       renderObras(obras);
       return;
     }
@@ -717,33 +786,13 @@ if (!window.__obrasJSLoaded) {
         (obra.descripcion_rae && obra.descripcion_rae.toLowerCase().includes(searchTerm))
       );
     });
-
-    // ✅ ACTUALIZADO: Usar emptySearchObras cuando no hay resultados
-    const emptySearchElement = document.getElementById("emptySearchObras");
-    const obrasContainer = document.getElementById("obrasContainer");
-    const worksListContainer = document.querySelector('.rounded-xl.border.border-border.bg-card.shadow-sm.overflow-hidden .p-6:last-child');
-    
-    if (results.length === 0 && emptySearchElement) {
-      // Ocultar el contenedor de obras y mostrar el mensaje de no resultados
-      if (obrasContainer) obrasContainer.classList.add("hidden");
-      if (worksListContainer) worksListContainer.classList.add("hidden");
-      
-      emptySearchElement.classList.remove("hidden");
-    } else {
-      // Ocultar el mensaje de no resultados y mostrar las obras normalmente
-      if (emptySearchElement) emptySearchElement.classList.add("hidden");
-      if (obrasContainer) obrasContainer.classList.remove("hidden");
-      if (worksListContainer) worksListContainer.classList.remove("hidden");
-      
-      renderObras(results);
-    }
+    renderObras(results);
   }
 
   // ==============================
   // CAMBIAR ESTADO
   // ==============================
   async function toggleEstado(id, estado) {
-    // Verificar si es instructor sin ficha
     if (instructorSinFicha) {
       toastError("No puede cambiar el estado porque no tiene una ficha vinculada.");
       revertirSwitchEstado(id, estado);
@@ -787,16 +836,13 @@ if (!window.__obrasJSLoaded) {
   // FUNCIONES PARA MENÚ DE ACCIONES
   // ==============================
   function toggleActionMenu(index) {
-    // Si es instructor sin ficha, no mostrar menú
     if (instructorSinFicha) return;
     
     const menu = document.getElementById("actionMenu" + index);
     const isHidden = menu.classList.contains("hidden");
 
-    // Cerrar todos los otros menús
     closeAllMenus();
 
-    // Toggle menú actual
     if (isHidden) {
       menu.classList.remove("hidden");
       menu.classList.add("block");
@@ -812,7 +858,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // CONFIRMACIÓN PERSONALIZADA (se conserva completa)
+  // CONFIRMACIÓN PERSONALIZADA
   // ==============================
   function showConfirmationDialog(title, message) {
     return new Promise((resolve) => {
@@ -887,12 +933,13 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // MANEJAR CAMBIO DE FICHA (NUEVO)
+  // MANEJAR CAMBIO DE FICHA
   // ==============================
   async function handleFichaChange() {
     const fichaId = this.value;
     const raeSelect = document.getElementById("create_rae");
     const raeEditSelect = document.getElementById("edit_rae");
+    const instructorSelect = document.getElementById("create_instructor");
     
     if (!fichaId) {
       if (raeSelect) {
@@ -902,6 +949,10 @@ if (!window.__obrasJSLoaded) {
       if (raeEditSelect) {
         raeEditSelect.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona primero una ficha</option>';
         raeEditSelect.disabled = true;
+      }
+      if (instructorSelect) {
+        instructorSelect.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona primero una ficha</option>';
+        instructorSelect.disabled = true;
       }
       return;
     }
@@ -916,14 +967,19 @@ if (!window.__obrasJSLoaded) {
       raeEditSelect.disabled = false;
     }
     
+    if (instructorSelect) {
+      instructorSelect.innerHTML = '<option value="" disabled selected>Cargando instructores...</option>';
+      instructorSelect.disabled = false;
+    }
+    
     await cargarRaesPorFicha(fichaId);
+    await cargarInstructoresPorFicha(fichaId);
   }
 
   // ==============================
   // MODAL CREAR
   // ==============================
   async function openCreateModal() {
-    // Verificar si es instructor sin ficha vinculada
     if (instructorSinFicha) {
       toastError("No puede crear obras porque no tiene una ficha vinculada. Contacte al administrador.");
       return;
@@ -947,36 +1003,27 @@ if (!window.__obrasJSLoaded) {
     const tipo = document.getElementById("create_tipo");
     if (tipo) tipo.value = "Individual";
 
-    // Resetear selects
     llenarSelectFichas();
     llenarSelectRaes();
     llenarSelectInstructores();
 
-    // Configurar para instructores
     if (esInstructor) {
         const create_ficha = document.getElementById("create_ficha");
         const create_instructor = document.getElementById("create_instructor");
         
-        // SOLO el instructor debe estar bloqueado, NO la ficha
         if (create_instructor && usuarioActual.usuarioId) {
             create_instructor.value = usuarioActual.usuarioId;
-            create_instructor.disabled = true; // El instructor no puede cambiarse
+            create_instructor.disabled = true;
         }
         
-        // IMPORTANTE: NO deshabilitar el select de fichas
-        // El select ya está habilitado en llenarSelectFichas()
-        
-        // Cargar RAEs si ya tiene una ficha seleccionada automáticamente
         if (create_ficha && create_ficha.value) {
             await cargarRaesPorFicha(create_ficha.value);
-            // También cargar aprendices si es individual
             if (tipo && tipo.value === "Individual") {
                 cargarAprendicesParaSelect(create_ficha.value);
             }
         }
     }
 
-    // Mostrar/ocultar container de aprendiz individual según tipo
     const container = document.getElementById("containerAprendizIndividual");
     if (container) {
         const tipoValue = document.getElementById("create_tipo")?.value;
@@ -987,16 +1034,12 @@ if (!window.__obrasJSLoaded) {
         }
     }
 
-    // Configurar event listener para cambio de ficha
     const fichaSelect = document.getElementById("create_ficha");
     if (fichaSelect) {
-        // Remover event listeners anteriores si existen
         fichaSelect.removeEventListener("change", handleFichaChange);
-        // Agregar nuevo
         fichaSelect.addEventListener("change", handleFichaChange);
     }
 
-    // Reset flujo creación
     resetearCreacion();
   }
 
@@ -1004,7 +1047,6 @@ if (!window.__obrasJSLoaded) {
     const modal = document.getElementById("modalCreate");
     if (modal) modal.classList.add("hidden");
     
-    // Resetear form
     const form = document.getElementById("formCreate");
     if (form) form.reset();
     
@@ -1012,12 +1054,11 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // CREAR OBRA (con asignación individual / grupal)
+  // CREAR OBRA
   // ==============================
   async function handleCreateObra(e) {
     e.preventDefault();
 
-    // Verificar si es instructor sin ficha
     if (instructorSinFicha) {
       toastError("No puede crear obras porque no tiene una ficha vinculada.");
       return;
@@ -1045,11 +1086,9 @@ if (!window.__obrasJSLoaded) {
       estado: "Activa",
     };
 
-    // Guardar tipo y ficha para flujo posterior
     tipoTrabajoActual = obraData.tipo_trabajo || "";
     fichaSeleccionadaId = obraData.id_ficha || null;
 
-    // Si es Individual, obtener aprendiz del select
     if (obraData.tipo_trabajo === "Individual") {
       const aprendizId = document.getElementById("create_aprendiz_individual")?.value;
       if (!aprendizId) {
@@ -1059,7 +1098,6 @@ if (!window.__obrasJSLoaded) {
       obraData.aprendiz_seleccionado = aprendizId;
     }
 
-    // Validaciones
     if (!validateObraData(obraData, false)) return;
 
     const btnCreate = document.getElementById("btnCreate");
@@ -1070,7 +1108,7 @@ if (!window.__obrasJSLoaded) {
     btnCreateText?.classList.add("hidden");
     btnCreateLoading?.classList.remove("hidden");
 
-    isCreatingObra = true; // Marcar como creando
+    isCreatingObra = true;
 
     try {
       const response = await fetch(API_URL, {
@@ -1082,7 +1120,6 @@ if (!window.__obrasJSLoaded) {
       const result = await response.json();
 
       if (result && result.success) {
-        // Guardar obra creada
         obraCreadaId = result.id_actividad || result.id || result.insertId || null;
         obraCreadaData = { ...obraData };
 
@@ -1119,7 +1156,7 @@ if (!window.__obrasJSLoaded) {
       if (btnCreate) btnCreate.disabled = false;
       btnCreateText?.classList.remove("hidden");
       btnCreateLoading?.classList.add("hidden");
-      isCreatingObra = false; // Resetear flag
+      isCreatingObra = false;
     }
   }
 
@@ -1127,7 +1164,6 @@ if (!window.__obrasJSLoaded) {
   // MODAL EDITAR
   // ==============================
   async function openEditModal(id) {
-    // Verificar si es instructor sin ficha vinculada
     if (instructorSinFicha) {
       toastError("No puede editar obras porque no tiene una ficha vinculada.");
       return;
@@ -1156,7 +1192,8 @@ if (!window.__obrasJSLoaded) {
 
       console.log("Datos de obra para editar:", obra);
 
-      // Guardar originales para detectar cambios
+      editIdActividad = id;
+
       originalEditData = {
         id_ficha: obra.id_ficha,
         id_rae: obra.id_rae,
@@ -1170,16 +1207,13 @@ if (!window.__obrasJSLoaded) {
 
       obraOriginal = obra;
 
-      // Llenar selects con las fichas del instructor
       llenarSelectFichasEdit(obra.id_ficha);
       llenarSelectRaesEdit(obra.id_rae);
       llenarSelectInstructoresEdit(obra.id_instructor);
 
-      // Después de cargar la obra, cargar RAEs específicos de la ficha
       if (obra && obra.id_ficha) {
         await cargarRaesPorFicha(obra.id_ficha);
         
-        // Establecer el RAE seleccionado después de cargar
         setTimeout(() => {
           const raeSelect = document.getElementById("edit_rae");
           if (raeSelect && obra.id_rae) {
@@ -1195,41 +1229,51 @@ if (!window.__obrasJSLoaded) {
       document.getElementById("edit_fecha_inicio").value = obra.fecha_inicio;
       document.getElementById("edit_fecha_fin").value = obra.fecha_fin;
 
-      // CONFIGURACIÓN PARA INSTRUCTOR
-      if (esInstructor) {
-        const fichaSelect = document.getElementById("edit_ficha");
-        const instructorSelect = document.getElementById("edit_instructor");
-        const raeSelect = document.getElementById("edit_rae");
+      // Actualizar contador de descripción
+      actualizarContadorDescripcion('edit_descripcion', 'edit_descripcion_counter');
+
+      // Mostrar sección de aprendices según tipo
+      if (obra.tipo_trabajo === 'Grupal') {
+        document.getElementById('editAprendicesSection').classList.remove('hidden');
+        document.getElementById('editAprendizIndividualSection').classList.add('hidden');
         
-        // VERIFICAR: El instructor debe tener acceso a esta ficha
+        const aprendicesActuales = await fetchAPI({ accion: "obtener_aprendices_actividad", id_actividad: id });
+        mostrarResumenAprendicesEdit(aprendicesActuales);
+        
+        await cargarAprendicesFicha(obra.id_ficha);
+      } else {
+        document.getElementById('editAprendicesSection').classList.add('hidden');
+        document.getElementById('editAprendizIndividualSection').classList.remove('hidden');
+        
+        await cargarAprendicesParaSelectEdit(obra.id_ficha, obra.id_aprendiz_actual);
+      }
+
+      // Aplicar restricciones según rol
+      const fichaSelect = document.getElementById("edit_ficha");
+      if (fichaSelect) {
+        fichaSelect.disabled = true; // NADIE puede cambiar ficha en edición
+      }
+
+      if (esInstructor) {
+        const instructorSelect = document.getElementById("edit_instructor");
+        if (instructorSelect) {
+          instructorSelect.disabled = true; // Instructor no puede cambiarse a sí mismo
+        }
+      } else {
+        // Coordinador puede cambiar instructor
+        const instructorSelect = document.getElementById("edit_instructor");
+        if (instructorSelect) {
+          instructorSelect.disabled = false;
+        }
+      }
+
+      // Verificar acceso si es instructor
+      if (esInstructor) {
         const obraFichaId = obra.id_ficha;
         const tieneAcceso = fichas.some(f => f.id_ficha == obraFichaId);
-        
         if (!tieneAcceso) {
           toastError("No tienes acceso a editar esta obra. La ficha no está entre tus asignaciones.");
           return;
-        }
-        
-        // IMPORTANTE: Permitir cambiar entre fichas del instructor
-        if (fichaSelect) {
-          fichaSelect.disabled = false; // ← DESBLOQUEADO
-        }
-        
-        // Instructor bloqueado (es él mismo)
-        if (instructorSelect) {
-          instructorSelect.disabled = true;
-        }
-        
-        // Cargar RAEs específicos de la ficha actual
-        if (obra.id_ficha) {
-          await cargarRaesPorFicha(obra.id_ficha);
-          
-          // Asegurar que el RAE seleccionado sea visible
-          setTimeout(() => {
-            if (raeSelect && obra.id_rae) {
-              raeSelect.value = obra.id_rae;
-            }
-          }, 150);
         }
       }
 
@@ -1244,7 +1288,6 @@ if (!window.__obrasJSLoaded) {
     const modal = document.getElementById("modalEdit");
     if (modal) modal.classList.add("hidden");
     
-    // REACTIVAR CAMPOS AL CERRAR PARA PRÓXIMAS EDICIONES
     const editFicha = document.getElementById("edit_ficha");
     const editRae = document.getElementById("edit_rae");
     const editInstructor = document.getElementById("edit_instructor");
@@ -1261,6 +1304,7 @@ if (!window.__obrasJSLoaded) {
     
     originalEditData = null;
     obraOriginal = null;
+    editIdActividad = null;
   }
 
   async function handleEditObra(e) {
@@ -1280,7 +1324,6 @@ if (!window.__obrasJSLoaded) {
     const fichaId = parseInt(document.getElementById("edit_ficha").value, 10);
 
     if (esInstructor) {
-      // Verificar que la ficha seleccionada esté entre las fichas del instructor
       const fichaSeleccionada = fichas.some(f => f.id_ficha == fichaId);
       if (!fichaSeleccionada) {
         toastError("No tiene acceso a esta ficha. Seleccione una ficha a la que esté asignado.");
@@ -1335,6 +1378,157 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
+  // FUNCIONES PARA EDICIÓN DE APRENDICES (GRUPAL)
+  // ==============================
+  function mostrarResumenAprendicesEdit(aprendices) {
+    const container = document.getElementById('editListaAprendices');
+    if (!container) return;
+    if (!aprendices || aprendices.length === 0) {
+      container.innerHTML = '<p class="text-sm text-muted-foreground text-center py-2">No hay aprendices asignados</p>';
+      return;
+    }
+    container.innerHTML = aprendices.map(a => `
+      <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+        <span class="text-sm">${a.nombre_completo}</span>
+      </div>
+    `).join('');
+  }
+
+  async function cargarAprendicesParaSelectEdit(idFicha, idAprendizActual) {
+    const select = document.getElementById('edit_aprendiz_individual');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="" disabled selected>Cargando...</option>';
+    const aprendices = await fetchAPI({ accion: "obtener_aprendices_ficha", id_ficha: idFicha });
+    
+    if (aprendices && !aprendices.error) {
+      select.innerHTML = '<option value="" disabled>Selecciona un aprendiz</option>';
+      aprendices.forEach(a => {
+        const option = document.createElement('option');
+        option.value = a.id_usuario;
+        option.textContent = `${a.nombre_completo} (${a.documento || ''})`;
+        if (a.id_usuario == idAprendizActual) option.selected = true;
+        select.appendChild(option);
+      });
+    } else {
+      select.innerHTML = '<option value="" disabled>Error al cargar</option>';
+    }
+  }
+
+  async function openEditAprendicesModal() {
+    if (!editIdActividad) return;
+
+    const response = await fetchAPI({ accion: "obtener_aprendices_actividad", id_actividad: editIdActividad });
+    if (response && !response.error) {
+      editAprendicesSeleccionados = response;
+    } else {
+      editAprendicesSeleccionados = [];
+    }
+
+    const select = document.getElementById('editSelectAprendiz');
+    if (aprendicesFicha.length === 0) {
+      select.innerHTML = '<option value="" disabled>No hay aprendices disponibles</option>';
+    } else {
+      select.innerHTML = '<option value="" selected disabled>Selecciona un aprendiz</option>';
+      aprendicesFicha.forEach(a => {
+        const option = document.createElement('option');
+        option.value = a.id_usuario;
+        option.textContent = `${a.nombre_completo} (${a.documento || ''})`;
+        option.setAttribute('data-nombre', a.nombre_completo);
+        option.setAttribute('data-documento', a.documento || '');
+        select.appendChild(option);
+      });
+    }
+
+    actualizarListaEditAprendices();
+    document.getElementById('modalEditAprendices').classList.remove('hidden');
+  }
+
+  function closeEditAprendicesModal() {
+    document.getElementById('modalEditAprendices').classList.add('hidden');
+  }
+
+  function agregarAprendizEdit() {
+    const select = document.getElementById('editSelectAprendiz');
+    const idAprendiz = select.value;
+    if (!idAprendiz) return;
+
+    if (editAprendicesSeleccionados.some(a => a.id_usuario == idAprendiz)) {
+      toastInfo('Este aprendiz ya está seleccionado');
+      select.value = '';
+      return;
+    }
+
+    const option = select.options[select.selectedIndex];
+    const aprendiz = {
+      id_usuario: idAprendiz,
+      nombre_completo: option.getAttribute('data-nombre'),
+      documento: option.getAttribute('data-documento')
+    };
+    editAprendicesSeleccionados.push(aprendiz);
+    select.value = '';
+    actualizarListaEditAprendices();
+  }
+
+  function removerAprendizEdit(index) {
+    editAprendicesSeleccionados.splice(index, 1);
+    actualizarListaEditAprendices();
+  }
+
+  function actualizarListaEditAprendices() {
+    const container = document.getElementById('editListaAprendicesSeleccionados');
+    if (editAprendicesSeleccionados.length === 0) {
+      container.innerHTML = '<p class="text-sm text-muted-foreground text-center py-4">No hay aprendices seleccionados</p>';
+      return;
+    }
+    container.innerHTML = editAprendicesSeleccionados.map((a, index) => `
+      <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+        <div>
+          <p class="text-sm font-medium text-gray-900">${a.nombre_completo}</p>
+          ${a.documento ? `<p class="text-xs text-gray-500">Documento: ${a.documento}</p>` : ''}
+        </div>
+        <button type="button" onclick="removerAprendizEdit(${index})" class="text-red-600 hover:text-red-800 p-1">
+          <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    `).join('');
+  }
+
+  async function guardarEditAprendices() {
+    if (editAprendicesSeleccionados.length === 0) {
+      toastError('Debe seleccionar al menos un aprendiz');
+      return;
+    }
+
+    const ids = editAprendicesSeleccionados.map(a => a.id_usuario);
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accion: 'asignar_aprendices',
+          id_actividad: editIdActividad,
+          aprendices: ids
+        })
+      });
+      const result = await response.json();
+      if (result.success) {
+        toastSuccess('Aprendices actualizados correctamente');
+        closeEditAprendicesModal();
+        const aprendicesActuales = await fetchAPI({ accion: "obtener_aprendices_actividad", id_actividad: editIdActividad });
+        mostrarResumenAprendicesEdit(aprendicesActuales);
+      } else {
+        toastError(result.error || 'Error al actualizar aprendices');
+      }
+    } catch (error) {
+      console.error(error);
+      toastError('Error de conexión');
+    }
+  }
+
+  // ==============================
   // MODAL DETALLES
   // ==============================
   async function openDetailsModal(id) {
@@ -1368,7 +1562,6 @@ if (!window.__obrasJSLoaded) {
           ? "inline-block px-2 py-1 bg-[#00304D]/30 text-[#00304D] text-xs font-semibold rounded-full"
           : "inline-block px-2 py-1 bg-[#007832]/65 text-white text-xs font-semibold rounded-full";
 
-      // Si es instructor, no mostrar nombre del instructor (mostrar "Tu obra" o no mostrar)
       if (esInstructor) {
         document.getElementById("details_instructor").textContent = "Tu obra";
       } else {
@@ -1433,11 +1626,7 @@ if (!window.__obrasJSLoaded) {
         select.appendChild(option);
     });
 
-    // IMPORTANTE: Para instructores, permitir cambiar entre sus fichas
-    if (esInstructor) {
-        select.disabled = false; // Permitir cambiar entre fichas
-        console.log("Editando: Fichas disponibles para instructor:", fichas.length);
-    }
+    // Se deshabilitará en openEditModal
   }
 
   function llenarSelectRaesEdit(selectedId = null) {
@@ -1455,7 +1644,7 @@ if (!window.__obrasJSLoaded) {
     raes.forEach((rae) => {
       const option = document.createElement("option");
       option.value = rae.id_rae;
-      option.textContent = `${rae.codigo_rae} - ${rae.descripcion_rae}`;
+      option.textContent = `${rae.codigo_rae} ${rae.descripcion_rae}`;
       option.setAttribute("data-codigo", rae.codigo_rae);
       option.setAttribute("data-descripcion", rae.descripcion_rae);
       if (selectedId && rae.id_rae == selectedId) option.selected = true;
@@ -1475,7 +1664,6 @@ if (!window.__obrasJSLoaded) {
 
     select.innerHTML = '<option value="" disabled class="text-gray-500">Selecciona un instructor</option>';
 
-    // Si es instructor, solo mostrar el instructor actual
     if (esInstructor && usuarioActual.usuarioId) {
       const instructorActual = instructores.find(i => i.id_usuario === usuarioActual.usuarioId);
       if (instructorActual) {
@@ -1634,14 +1822,23 @@ if (!window.__obrasJSLoaded) {
       return false;
     }
 
+    if (data.nombre_actividad.length > 50) {
+      toastError("El nombre de la actividad no puede tener más de 50 caracteres.");
+      return false;
+    }
+
     if (!validarDescripcion(data.descripcion)) {
       toastError("La descripción debe tener al menos 10 caracteres.");
+      return false;
+    }
+
+    if (data.descripcion.length > 250) {
+      toastError("La descripción no puede tener más de 250 caracteres.");
       return false;
     }
     
     if (!validarFechas(data.fecha_inicio, data.fecha_fin)) return false;
 
-    // Validación extra: individual requiere aprendiz
     if (!isEdit && data.tipo_trabajo === "Individual") {
       if (!data.aprendiz_seleccionado) {
         toastError("Debes seleccionar un aprendiz para la obra individual");
@@ -1732,7 +1929,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // APRENDICES (FLUJO GRUPAL / CARGA FICHA)
+  // APRENDICES (FLUJO GRUPAL)
   // ==============================
   async function cargarAprendicesFicha(idFicha) {
     try {
@@ -1810,41 +2007,16 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // MODALES EXTRA (selección / asignación)
+  // MODAL ASIGNAR (GRUPAL - CREACIÓN)
   // ==============================
-  function openSeleccionarModal() {
-    const select = document.getElementById("selectAprendizIndividual");
-    if (!select) return;
-
-    if (aprendicesFicha.length === 0) {
-      select.innerHTML = '<option value="" disabled selected>No hay aprendices en esta ficha</option>';
-    } else {
-      select.innerHTML = '<option value="" disabled selected>Selecciona un aprendiz</option>';
-      aprendicesFicha.forEach((aprendiz) => {
-        const option = document.createElement("option");
-        option.value = aprendiz.id_usuario;
-        option.textContent = `${aprendiz.nombre_completo} (${aprendiz.documento || "Sin documento"})`;
-        select.appendChild(option);
-      });
-    }
-
-    document.getElementById("modalSeleccionarAprendiz")?.classList.remove("hidden");
-  }
-
-  function closeSeleccionarModal() {
-    const modal = document.getElementById("modalSeleccionarAprendiz");
-    if (modal) modal.classList.add("hidden");
-    resetearCreacion();
-  }
-
   function openAsignarModal() {
     const infoObra = document.getElementById("infoObraCreada");
     if (infoObra && obraCreadaData) {
-        let codigoFicha = fichaSeleccionadaId; // Por defecto mostrar ID
+        let codigoFicha = fichaSeleccionadaId;
         if (fichas && Array.isArray(fichas)) {
             const fichaEncontrada = fichas.find(f => f.id_ficha == fichaSeleccionadaId);
             if (fichaEncontrada) {
-                codigoFicha = fichaEncontrada.numero_ficha || fichaEncontrada.codigo_ficha || fichaEncontradaId;
+                codigoFicha = fichaEncontrada.numero_ficha || fichaEncontrada.codigo_ficha || fichaSeleccionadaId;
             }
         }
         
@@ -1993,43 +2165,6 @@ if (!window.__obrasJSLoaded) {
     filtrarAprendices();
   }
 
-  async function finalizarCreacionIndividual() {
-    const select = document.getElementById("selectAprendizIndividual");
-    const idAprendiz = select?.value;
-
-    if (!idAprendiz) {
-      toastError("Debes seleccionar un aprendiz");
-      return;
-    }
-
-    try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accion: "asignar_aprendices",
-          id_actividad: obraCreadaId,
-          aprendices: [idAprendiz],
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result && result.success) {
-        toastSuccess("Obra individual creada y aprendiz asignado exitosamente");
-        closeSeleccionarModal();
-        closeCreateModal();
-        resetearCreacion();
-        await cargarObras();
-      } else {
-        toastError("Error al asignar aprendiz: " + (result?.error || "Desconocido"));
-      }
-    } catch (error) {
-      console.error("Error asignando aprendiz:", error);
-      toastError("Error al asignar aprendiz");
-    }
-  }
-
   async function finalizarCreacionGrupal() {
     if (aprendicesSeleccionados.length === 0) {
       toastError("Debes seleccionar al menos un aprendiz");
@@ -2095,21 +2230,17 @@ if (!window.__obrasJSLoaded) {
   document.addEventListener("DOMContentLoaded", () => {
     console.log("Inicializando módulo de obras...");
 
-    // ==============================
-    // EMPTY SEARCH CONTAINER FOR OBRAS (FUERA DEL CONTAINER)
-    // ==============================
     let emptySearchObrasContainer = document.getElementById("emptySearchObras");
 
     if (!emptySearchObrasContainer) {
       const obrasContainer = document.getElementById("obrasContainer");
-      const worksListContainer = document.querySelector('.rounded-xl.border.border-border.bg-card.shadow-sm.overflow-hidden');
       
-      if (obrasContainer && worksListContainer) {
+      if (obrasContainer) {
         emptySearchObrasContainer = document.createElement("div");
         emptySearchObrasContainer.id = "emptySearchObras";
         
         emptySearchObrasContainer.className =
-          "hidden mt-10 mb-6 flex flex-col items-center justify-center text-center border border-border rounded-2xl p-10 w-full";
+          "hidden flex flex-col items-center justify-center text-center rounded-2xl p-10 w-full";
         
         emptySearchObrasContainer.innerHTML = `
           <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
@@ -2129,15 +2260,42 @@ if (!window.__obrasJSLoaded) {
           </p>
         `;
         
-        // Insertar antes del contenedor de obras
-        worksListContainer.parentNode.insertBefore(emptySearchObrasContainer, worksListContainer);
+        obrasContainer.parentNode.insertBefore(emptySearchObrasContainer, obrasContainer);
+      }
+    }
+
+    let emptyStateObras = document.getElementById("emptyStateObras");
+
+    if (!emptyStateObras) {
+      const obrasContainer = document.getElementById("obrasContainer");
+      
+      if (obrasContainer) {
+        emptyStateObras = document.createElement("div");
+        emptyStateObras.id = "emptyStateObras";
+        
+        emptyStateObras.className = "hidden overflow-visible rounded-lg bg-card relative p-6 mb-6";
+        
+        emptyStateObras.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-8 px-4">
+            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-foreground mb-2">No hay obras registradas</h3>
+            <p class="text-sm text-muted-foreground text-center max-w-md">
+              ${OBRAS_PERMS.canCrear ? 'Comienza creando una nueva obra usando el botón "Nueva Obra".' : 'Actualmente no hay obras registradas en el sistema.'}
+            </p>
+          </div>
+        `;
+        
+        obrasContainer.parentNode.insertBefore(emptyStateObras, obrasContainer);
       }
     }
 
     setupSidebarDetection();
     aplicarPermisosUI();
 
-    // Bind submit para CREATE (formEdit ya tiene onsubmit en HTML)
     const formCreate = document.getElementById("formCreate");
     if (formCreate) {
       formCreate.addEventListener("submit", handleCreateObra);
@@ -2145,7 +2303,22 @@ if (!window.__obrasJSLoaded) {
 
     cargarObras();
 
-    // Listeners del modal create (tipo y ficha)
+    // Inicializar contadores de descripción
+    const descripciones = ['create_descripcion', 'edit_descripcion'];
+    descripciones.forEach(id => {
+      const textarea = document.getElementById(id);
+      if (textarea) {
+        textarea.addEventListener('input', function() {
+          const counterId = id + '_counter';
+          actualizarContadorDescripcion(id, counterId);
+        });
+        // Disparar evento para mostrar valor inicial
+        setTimeout(() => {
+          textarea.dispatchEvent(new Event('input'));
+        }, 100);
+      }
+    });
+
     const createTipo = document.getElementById("create_tipo");
     if (createTipo) {
       createTipo.addEventListener("change", function () {
@@ -2155,7 +2328,6 @@ if (!window.__obrasJSLoaded) {
         if (this.value === "Individual") {
           container.classList.remove("hidden");
           
-          // IMPORTANTE: Verificar que el select de fichas NO esté deshabilitado
           const fichaSelect = document.getElementById("create_ficha");
           if (fichaSelect && !fichaSelect.disabled && fichaSelect.value) {
             cargarAprendicesParaSelect(fichaSelect.value);
@@ -2174,7 +2346,6 @@ if (!window.__obrasJSLoaded) {
     const createFicha = document.getElementById("create_ficha");
     if (createFicha) {
       createFicha.addEventListener("change", function () {
-        // IMPORTANTE: Verificar que NO esté deshabilitado
         if (this.disabled) {
           console.warn("Select de ficha está deshabilitado, no se puede cambiar");
           return;
@@ -2185,26 +2356,34 @@ if (!window.__obrasJSLoaded) {
           cargarAprendicesParaSelect(this.value);
         }
         
-        // También cargar RAEs específicos de esta ficha
         if (this.value) {
           handleFichaChange.call(this);
         }
       });
     }
 
-    // Si tienes buscador por input
+    const editFicha = document.getElementById("edit_ficha");
+    if (editFicha) {
+      editFicha.addEventListener("change", function () {
+        if (this.disabled) {
+          console.warn("Select de ficha (edit) está deshabilitado, no se puede cambiar");
+          return;
+        }
+
+        handleFichaChange.call(this);
+      });
+    }
+
     const searchInput = document.getElementById("searchInput");
     if (searchInput) {
       searchInput.addEventListener("input", searchObras);
     }
 
-    // Si tienes input filtro en modal grupal
     const searchAprendiz = document.getElementById("searchAprendiz");
     if (searchAprendiz) {
       searchAprendiz.addEventListener("input", filtrarAprendices);
     }
 
-    // CERRAR MENÚS CUANDO SE HACE CLICK AFUERA (DENTRO DE DOMCONTENTLOADED)
     document.addEventListener("click", (event) => {
       const isMenuButton = event.target.closest('button[onclick^="toggleActionMenu"]');
       const isMenuContent = event.target.closest('[id^="actionMenu"]');
@@ -2223,8 +2402,8 @@ if (!window.__obrasJSLoaded) {
       closeCreateModal();
       closeEditModal();
       closeDetailsModal();
-      closeSeleccionarModal();
       closeAsignarModal();
+      closeEditAprendicesModal();
 
       const confirmModal = document.querySelector(".fixed.inset-0.bg-black.bg-opacity-50");
       if (confirmModal && confirmModal.parentNode && !confirmModal.id) {
@@ -2234,7 +2413,7 @@ if (!window.__obrasJSLoaded) {
   });
 
   // ==============================
-  // EXPONER FUNCIONES A WINDOW (para onclick en HTML)
+  // EXPONER FUNCIONES A WINDOW
   // ==============================
   window.fetchAPI = fetchAPI;
   window.cargarObras = cargarObras;
@@ -2258,9 +2437,6 @@ if (!window.__obrasJSLoaded) {
 
   window.showConfirmationDialog = showConfirmationDialog;
 
-  window.openSeleccionarModal = openSeleccionarModal;
-  window.closeSeleccionarModal = closeSeleccionarModal;
-
   window.openAsignarModal = openAsignarModal;
   window.closeAsignarModal = closeAsignarModal;
 
@@ -2269,7 +2445,6 @@ if (!window.__obrasJSLoaded) {
   window.actualizarListaAprendicesSeleccionados = actualizarListaAprendicesSeleccionados;
   window.removerAprendiz = removerAprendiz;
 
-  window.finalizarCreacionIndividual = finalizarCreacionIndividual;
   window.finalizarCreacionGrupal = finalizarCreacionGrupal;
 
   window.toastError = toastError;
@@ -2279,16 +2454,20 @@ if (!window.__obrasJSLoaded) {
   window.toggleActionMenu = toggleActionMenu;
   window.closeAllMenus = closeAllMenus;
 
-  // AÑADIR estas funciones que también se usan:
   window.asignarAprendizIndividual = asignarAprendizIndividual;
   window.resetearCreacion = resetearCreacion;
   window.cargarRaesPorFicha = cargarRaesPorFicha;
   window.handleFichaChange = handleFichaChange;
   window.verificarEstadoSelects = verificarEstadoSelects;
 
-  // Función para debug
+  window.openEditAprendicesModal = openEditAprendicesModal;
+  window.closeEditAprendicesModal = closeEditAprendicesModal;
+  window.agregarAprendizEdit = agregarAprendizEdit;
+  window.removerAprendizEdit = removerAprendizEdit;
+  window.guardarEditAprendices = guardarEditAprendices;
+
   function verificarEstadoSelects() {
-    console.log("🔍 Estado de selects:");
+    console.log("Estado de selects:");
     
     const create_ficha = document.getElementById("create_ficha");
     const edit_ficha = document.getElementById("edit_ficha");

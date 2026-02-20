@@ -4,23 +4,18 @@
 // (Adapted to "Users" layout: collapsible sidebar + main with margin-left)
 // =====================================
 
-// REQUIRED: to be able to use $_SESSION without warnings
 if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 
-// FIX PERMISOS (SIN ROMPER TU BASE)
 require_once __DIR__ . "/../../utils/permisos_helper.php";
 
-// PROTECCIÓN: Si NO puede listar obras, NO entra
 requirePermiso("obras.listar");
 
-// Flags de acciones (Aprendiz NO tendrá estos permisos)
 $canCrearObra        = canPermiso("obras.crear") || canPermiso("obras.gestionar");
 $canEditarObra       = canPermiso("obras.editar") || canPermiso("obras.gestionar");
 $canCambiarEstadoObra = canPermiso("obras.activar_desactivar") || canPermiso("obras.gestionar");
 
-// Verificar si es instructor sin ficha vinculada
 $esInstructor = ($_SESSION['cargo'] ?? '') === "Instructor";
 $tieneFicha = !empty($_SESSION['usuario_fichas']);
 
@@ -35,19 +30,10 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
   <title>Obras y Actividades</title>
 
-  <!-- Globals (tokens: bg-background, text-muted-foreground, border-border, bg-card, etc.) -->
   <link rel="stylesheet" href="<?= ASSETS_URL ?>css/globals.css">
-
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Flowbite (optional, but in Users you include it and your toasts are "flowbite-like") -->
   <script src="https://unpkg.com/flowbite@2.5.1/dist/flowbite.min.js"></script>
-
-  <!-- Module styles -->
   <link rel="stylesheet" href="src/assets/css/obras/obras.css" />
-
-  <!-- Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
@@ -144,18 +130,15 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       </div>
 
       <!-- ================================== -->
-      <!-- WORKS LIST                         -->
+      <!-- *********** WORKS LIST *********** -->
       <!-- ================================== -->
       <div class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-
         <div class="p-6 border-b border-border">
           <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 class="text-xl font-semibold text-foreground">Lista de Obras</h2>
               <p class="text-sm text-muted-foreground mt-1">Administra las obras y actividades formativas</p>
             </div>
-
-            <!-- SI ES APRENDIZ: NO VE "NUEVA OBRA" -->
             <?php if ($canCrearObra): ?>
               <button
                 onclick="openCreateModal()"
@@ -167,7 +150,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             <?php endif; ?>
           </div>
 
-          <!-- Search bar (Users-style) -->
+          <!-- Search bar -->
           <div class="mt-4">
             <div class="relative w-full">
               <svg
@@ -192,12 +175,51 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </div>
         </div>
 
-        <!-- Works container -->
-        <div id="obrasContainer" class="p-6">
-          <!-- Loading -->
-          <div class="text-center py-12" id="loading">
-            <i class="fas fa-spinner fa-spin text-3xl text-muted-foreground mb-3"></i>
-            <p class="text-muted-foreground">Cargando obras...</p>
+        <!-- Works container with its sibling empty-search message -->
+        <div class="relative">
+          <div id="emptySearchObras" 
+               class="hidden flex flex-col items-center justify-center text-center rounded-2xl p-10 w-full">
+            <div class="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-transparent">
+              <svg class="h-7 w-7 text-muted-foreground"
+                   xmlns="http://www.w3.org/2000/svg"
+                   fill="none"
+                   viewBox="0 0 24 24"
+                   stroke="currentColor"
+                   stroke-width="1.8">
+                <circle cx="11" cy="11" r="6" stroke-linecap="round" stroke-linejoin="round"></circle>
+                <line x1="16" y1="16" x2="20" y2="20" stroke-linecap="round" stroke-linejoin="round"></line>
+              </svg>
+            </div>
+            <h3 class="text-lg font-semibold mt-4">No se encontraron resultados</h3>
+            <p class="text-sm text-muted-foreground mt-1 max-w-md">
+              No se encontraron obras que coincidan con los criterios de búsqueda actuales.
+            </p>
+          </div>
+
+          <div id="emptyStateObras" class="hidden overflow-visible rounded-lg bg-card relative p-6 mb-6">
+            <div class="flex flex-col items-center justify-center py-8 px-4">
+              <div class="w-16 h-16 bg-white border border-border rounded-full flex items-center justify-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+                </svg>
+              </div>
+              <h3 class="text-lg font-semibold text-foreground mb-2">No hay obras registradas</h3>
+              <p class="text-sm text-muted-foreground text-center max-w-md">
+                <?php if ($canCrearObra): ?>
+                  Comienza creando una nueva obra usando el botón "Nueva Obra".
+                <?php else: ?>
+                  Actualmente no hay obras registradas en el sistema.
+                <?php endif; ?>
+              </p>
+            </div>
+          </div>
+
+          <!-- Obras container -->
+          <div id="obrasContainer" class="p-6">
+            <div class="text-center py-12" id="loading">
+              <i class="fas fa-spinner fa-spin text-3xl text-muted-foreground mb-3"></i>
+              <p class="text-muted-foreground">Cargando obras...</p>
+            </div>
           </div>
         </div>
 
@@ -208,7 +230,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   </main>
 
   <!-- ========================================= -->
-  <!-- NEW WORK MODAL (OCULTO SI INSTRUCTOR SIN FICHA) -->
+  <!-- NEW WORK MODAL -->
   <!-- ========================================= -->
   <?php if ($canCrearObra && !($esInstructor && !$tieneFicha)): ?>
   <div id="modalCreate" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -220,19 +242,8 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </div>
         <button onclick="closeCreateModal()" class="rounded-full p-1 hover:bg-muted">
           <span class="sr-only">Cerrar</span>
-          <svg
-            class="h-5 w-5"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M6 18L18 6M6 6l12 12"
-            />
+          <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
@@ -247,12 +258,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
         <div>
             <label class="block text-xs text-muted-foreground mb-1">RAE *</label>
-            <select 
-                id="create_rae" 
-                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" 
-                required
-                disabled
-            >
+            <select id="create_rae" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" required disabled>
                 <option value="" disabled selected class="text-gray-500">Selecciona primero una ficha</option>
             </select>
         </div>
@@ -266,32 +272,23 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
 
         <div>
           <label class="block text-xs text-muted-foreground mb-1">Nombre de la Actividad *</label>
-          <input
-            type="text"
-            id="create_nombre"
-            placeholder="Ej: Construcción de muros de contención"
-            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
-            required
-          />
+          <input type="text" id="create_nombre" placeholder="Ej: Construcción de muros de contención" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" required maxlength="50" />
         </div>
 
         <div>
-          <label class="block text-xs text-muted-foreground mb-1">Descripción *</label>
-          <textarea
-            id="create_descripcion"
-            rows="3"
-            placeholder="Describe los objetivos y alcance de la obra..."
-            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga"
-            required
-          ></textarea>
-        </div>
+         <label class="block text-xs text-muted-foreground mb-1">Descripción *</label>
+          <textarea id="create_descripcion" rows="3" placeholder="Describe los objetivos y alcance de la obra..." class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" required maxlength="250" oninput="actualizarContadorDescripcion('create_descripcion', 'create_descripcion_counter')"></textarea>
+          <div class="text-right text-xs text-muted-foreground mt-1">
+            <span id="create_descripcion_counter">0/250</span>
+          </div>
 
-        <div>
-          <label class="block text-xs text-muted-foreground mb-1">Tipo de Trabajo *</label>
-          <select id="create_tipo" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" required>
-            <option value="Individual">Individual</option>
-            <option value="Grupal">Grupal</option>
-          </select>
+          <div>
+            <label class="block text-xs text-muted-foreground mb-1">Tipo de Trabajo *</label>
+            <select id="create_tipo" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" required>
+              <option value="Individual">Individual</option>
+              <option value="Grupal">Grupal</option>
+            </select>
+          </div>
         </div>
 
         <div id="containerAprendizIndividual" class="hidden">
@@ -317,11 +314,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
             Cancelar
           </button>
 
-          <button
-            type="submit"
-            class="inline-flex items-center justify-center rounded-md bg-secondary px-10 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2"
-            id="btnCreate"
-          >
+          <button type="submit" class="inline-flex items-center justify-center rounded-md bg-secondary px-10 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2" id="btnCreate">
             <span id="btnCreateText">Crear Obra</span>
             <span id="btnCreateLoading" class="hidden">
               <i class="fas fa-spinner fa-spin"></i>
@@ -334,7 +327,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   <?php endif; ?>
 
   <!-- ========================================= -->
-  <!-- EDIT WORK MODAL (OCULTO SI INSTRUCTOR SIN FICHA) -->
+  <!-- EDIT WORK MODAL -->
   <!-- ========================================= -->
   <?php if ($canEditarObra && !($esInstructor && !$tieneFicha)): ?>
   <div id="modalEdit" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -346,111 +339,85 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </div>
         <button onclick="closeEditModal()" class="rounded-full p-1 hover:bg-muted">
           <span class="sr-only">Cerrar</span>
-          <svg
-            class="h-5 w-5"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M6 18L18 6M6 6l12 12"
-            />
+          <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
       <form id="formEdit" class="p-6 pt-0 space-y-4" onsubmit="handleEditObra(event)">
         <input type="hidden" id="edit_id" />
-
         <div>
           <label class="block text-xs text-muted-foreground mb-1">Ficha *</label>
-          <select
-            id="edit_ficha"
-            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            required
-          >
+          <select id="edit_ficha" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" required>
             <option value="" disabled selected class="text-gray-500">Cargando fichas...</option>
           </select>
         </div>
 
         <div>
           <label class="block text-xs text-muted-foreground mb-1">RAE *</label>
-          <select
-            id="edit_rae"
-            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            required
-          >
+          <select id="edit_rae" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" required>
             <option value="" disabled selected class="text-gray-500">Cargando RAEs...</option>
           </select>
         </div>
 
         <div>
           <label class="block text-xs text-muted-foreground mb-1">Instructor *</label>
-          <select
-            id="edit_instructor"
-            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            required
-          >
+          <select id="edit_instructor" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" required>
             <option value="" disabled selected class="text-gray-500">Cargando instructores...</option>
           </select>
         </div>
 
         <div>
           <label class="block text-xs text-muted-foreground mb-1">Nombre de la Actividad *</label>
-          <input
-            type="text"
-            id="edit_nombre"
-            placeholder="Ej: Construcción de muros de contención"
-            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            required
-          />
+          <input type="text" id="edit_nombre" placeholder="Ej: Construcción de muros de contención" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" required maxlength="50" />
         </div>
 
         <div>
           <label class="block text-xs text-muted-foreground mb-1">Descripción *</label>
-          <textarea
-            id="edit_descripcion"
-            rows="3"
-            placeholder="Describe los objetivos y alcance de la obra..."
-            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
-            required
-          ></textarea>
+          <textarea id="edit_descripcion" rows="3" placeholder="Describe los objetivos y alcance de la obra..." class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none" required maxlength="250" oninput="actualizarContadorDescripcion('edit_descripcion', 'edit_descripcion_counter')"></textarea>
+          <div class="text-right text-xs text-muted-foreground mt-1">
+            <span id="edit_descripcion_counter">0/250</span>
+          </div>
         </div>
 
         <div>
           <label class="block text-xs text-muted-foreground mb-1">Tipo de Trabajo *</label>
-          <select
-            id="edit_tipo"
-            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            required
-          >
+          <select id="edit_tipo" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" required disabled>
             <option value="Individual">Individual</option>
             <option value="Grupal">Grupal</option>
+          </select>
+        </div>
+
+        <!-- Sección para obras grupales -->
+        <div id="editAprendicesSection" class="border-t border-border pt-4 mt-4 hidden">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-medium text-foreground">Aprendices asignados</h4>
+            <button type="button" onclick="openEditAprendicesModal()" class="text-sm text-secondary hover:underline">
+              <i class="fas fa-edit mr-1"></i>Gestionar aprendices
+            </button>
+          </div>
+          <div id="editListaAprendices" class="mt-2 space-y-2 max-h-40 overflow-y-auto p-2 border border-border rounded-md">
+            <p class="text-sm text-muted-foreground">Cargando aprendices...</p>
+          </div>
+        </div>
+
+        <!-- Sección para obras individuales -->
+        <div id="editAprendizIndividualSection" class="border-t border-border pt-4 mt-4 hidden">
+          <label class="block text-xs text-muted-foreground mb-1">Aprendiz asignado *</label>
+          <select id="edit_aprendiz_individual" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+            <option value="" disabled selected>Cargando aprendices...</option>
           </select>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs text-muted-foreground mb-1">Fecha de Inicio *</label>
-            <input
-              type="date"
-              id="edit_fecha_inicio"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              required
-            />
+            <input type="date" id="edit_fecha_inicio" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" required />
           </div>
           <div>
             <label class="block text-xs text-muted-foreground mb-1">Fecha de Fin *</label>
-            <input
-              type="date"
-              id="edit_fecha_fin"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              required
-            />
+            <input type="date" id="edit_fecha_fin" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" required />
           </div>
         </div>
 
@@ -468,7 +435,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   <?php endif; ?>
 
   <!-- ========================================= -->
-  <!-- DETAILS MODAL (SIEMPRE DISPONIBLE)        -->
+  <!-- DETAILS MODAL -->
   <!-- ========================================= -->
   <div id="modalDetails" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
@@ -476,19 +443,8 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         <h3 class="text-2xl font-bold tracking-tight">Detalles de la Obra</h3>
         <button onclick="closeDetailsModal()" class="rounded-full p-1 hover:bg-muted">
           <span class="sr-only">Cerrar</span>
-          <svg
-            class="h-5 w-5"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M6 18L18 6M6 6l12 12"
-            />
+          <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
@@ -545,6 +501,9 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
     </div>
   </div>
 
+  <!-- ========================================= -->
+  <!-- ASSIGN LEARNERS MODAL (GRUPAL - CREACIÓN) -->
+  <!-- ========================================= -->
   <div id="modalAsignarAprendices" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
     <div class="bg-card rounded-xl border border-border shadow-xl w-[68vh] max-w-3xl max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between p-6 pb-0">
@@ -554,43 +513,25 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
           </div>
           <button onclick="closeAsignarModal()" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
               <span class="sr-only">Cerrar</span>
-          <svg
-            class="h-5 w-5"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M6 18L18 6M6 6l12 12"
-            />
+          <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
           </button>
       </div>
 
       <div class="p-6 space-y-4">
-          <!-- Information about the created work -->
           <div class="bg-[#002f4d34] border border-[#00304D] rounded-lg p-4 mb-4">
               <h4 class="font-semibold text-[#00304D] mb-2">Obra Creada:</h4>
               <p id="infoObraCreada" class="text-sm text-[#00304D]"></p>
           </div>
 
-          <!-- Learner select -->
           <div>
               <label class="block text-xs text-muted-foreground mb-1">Seleccionar Aprendiz *</label>
-              <select 
-                  id="selectAprendiz"
-                  class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  onchange="agregarAprendizSeleccionado()"
-              >
+              <select id="selectAprendiz" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" onchange="agregarAprendizSeleccionado()">
                   <option value="" selected disabled>Cargando aprendices...</option>
               </select>
           </div>
 
-          <!-- List of selected learners -->
           <div class="mt-6">
               <h4 class="text-sm font-medium text-foreground mb-3">Aprendices Seleccionados</h4>
               <div id="listaAprendicesSeleccionados" class="space-y-2 min-h-[100px] border border-border rounded-lg p-4">
@@ -602,12 +543,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
               <button type="button" onclick="closeAsignarModal()" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
                   Cancelar
               </button>
-              <button
-                  type="button"
-                  onclick="finalizarCreacionGrupal()"
-                  class="inline-flex items-center justify-center rounded-md bg-secondary px-10 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2 transition-colors"
-                  id="btnFinalizarGrupal"
-              >
+              <button type="button" onclick="finalizarCreacionGrupal()" class="inline-flex items-center justify-center rounded-md bg-secondary px-10 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2 transition-colors" id="btnFinalizarGrupal">
                   <span id="btnFinalizarText">Finalizar</span>
                   <span id="btnFinalizarLoading" class="hidden">
                       <i class="fas fa-spinner fa-spin"></i>
@@ -618,68 +554,50 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
     </div>
   </div>
 
-<!-- ========================================= -->
-<!-- SELECT LEARNER MODAL (INDIVIDUAL)          -->
-<!-- ========================================= -->
-<div id="modalSeleccionarAprendiz" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
-  <div class="bg-card rounded-xl border border-border shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-    <div class="rounded-full p-1 hover:bg-muted">
-      <div class="flex flex-col items-start justify-between p-0">
-        <h3 class="text-xl font-semibold text-foreground">Seleccionar Aprendiz</h3>
-        <p class="text-sm text-muted-foreground opacity-75">Selecciona el aprendiz que realizará esta obra individual</p>
+  <!-- ========================================= -->
+  <!-- EDIT LEARNERS MODAL (GRUPAL - EDICIÓN)   -->
+  <!-- ========================================= -->
+  <div id="modalEditAprendices" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
+    <div class="bg-card rounded-xl border border-border shadow-xl w-[68vh] max-w-3xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between p-6 pb-0">
+        <div class="flex flex-col items-start">
+          <h3 class="text-xl font-semibold text-foreground">Editar aprendices</h3>
+          <p class="text-sm text-muted-foreground">Modifica los aprendices de esta obra grupal</p>
+        </div>
+        <button onclick="closeEditAprendicesModal()" class="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium hover:bg-muted">
+          <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
-      <button onclick="closeSeleccionarModal()" class="rounded-full p-1 hover:bg-muted">
-        <span class="sr-only">Cerrar</span>
-        <svg
-          class="h-5 w-5"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M6 18L18 6M6 6l12 12"
-          />
-        </svg>
-      </button>
-    </div>
-
-    <div class="p-6 space-y-4">
-      <div>
-        <label class="block text-xs text-muted-foreground mb-1">Aprendiz *</label>
-        <select 
-            id="selectAprendizIndividual"
-            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-        >
+      <div class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs text-muted-foreground mb-1">Seleccionar Aprendiz</label>
+          <select id="editSelectAprendiz" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" onchange="agregarAprendizEdit()">
             <option value="" selected disabled>Cargando aprendices...</option>
-        </select>
-      </div>
-
-      <div class="flex gap-3 pt-4 justify-end">
-        <button type="button" onclick="closeSeleccionarModal()" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">
-            Cancelar
-        </button>
-        <button
-            type="button"
-            onclick="finalizarCreacionIndividual()"
-            class="inline-flex items-center justify-center rounded-md bg-secondary px-10 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2 transition-colors"
-        >
-            Finalizar
-        </button>
+          </select>
+        </div>
+        <div class="mt-6">
+          <h4 class="text-sm font-medium text-foreground mb-3">Aprendices seleccionados</h4>
+          <div id="editListaAprendicesSeleccionados" class="space-y-2 min-h-[100px] border border-border rounded-lg p-4">
+            <p class="text-sm text-muted-foreground text-center py-4">No hay aprendices seleccionados</p>
+          </div>
+        </div>
+        <div class="flex gap-3 pt-4 justify-end">
+          <button type="button" onclick="closeEditAprendicesModal()" class="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-muted">Cancelar</button>
+          <button type="button" onclick="guardarEditAprendices()" class="inline-flex items-center justify-center rounded-md bg-secondary px-10 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2">
+            Guardar cambios
+          </button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
   <!-- ========================================= -->
-  <!-- ALERT CONTAINER (FLOWBITE-LIKE TOASTS)    -->
+  <!-- ALERT CONTAINER -->
   <!-- ========================================= -->
   <div id="flowbite-alert-container" class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 w-full max-w-md"></div>
 
-  <!-- PASAMOS PERMISOS Y DATOS DE SESIÓN A JS (IMPORTANTÍSIMO) -->
   <script>
     window.OBRAS_PERMS = {
       canCrear: <?= json_encode($canCrearObra) ?>,
@@ -687,7 +605,6 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       canCambiarEstado: <?= json_encode($canCambiarEstadoObra) ?>,
     };
     
-    // Datos de sesión del usuario
     window.USUARIO_SESION = {
       usuarioId: <?= json_encode($_SESSION['usuario_id'] ?? null) ?>,
       cargo: <?= json_encode($_SESSION['cargo'] ?? null) ?>,
@@ -695,7 +612,6 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       fichas: <?= json_encode($_SESSION['usuario_fichas'] ?? []) ?>,
     };
     
-    // Información sobre instructor sin ficha
     window.INSTRUCTOR_SIN_FICHA = <?= json_encode($esInstructor && !$tieneFicha) ?>;
     
     console.log("USUARIO SESIÓN:", window.USUARIO_SESION);

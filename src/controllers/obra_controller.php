@@ -28,7 +28,20 @@ class ObraController {
     }
 
     public function obtenerFichas() {
-        echo json_encode($this->model->obtenerFichasActivas());
+        // Obtener el ID del usuario actual desde la sesión
+        session_start();
+        $usuarioId = $_SESSION['usuario_id'] ?? null;
+        $esInstructor = ($_SESSION['cargo'] ?? '') === 'Instructor';
+        
+        if ($esInstructor && $usuarioId) {
+            // Si es instructor, obtener solo las fichas a las que está asignado
+            $fichas = $this->model->obtenerFichasPorInstructor($usuarioId);
+        } else {
+            // Si no es instructor o es administrador, obtener todas las fichas
+            $fichas = $this->model->obtenerFichasActivas();
+        }
+        
+        echo json_encode($fichas);
     }
 
     public function obtenerRaes() {
@@ -47,6 +60,31 @@ class ObraController {
             error_log("Error en obtenerInstructores: " . $e->getMessage());
             echo json_encode(["error" => "Error interno del servidor"]);
         }
+    }
+
+    public function obtenerRaesPorFicha() {
+        $idFicha = $_GET['id_ficha'] ?? ($_POST['id_ficha'] ?? $input['id_ficha'] ?? null);
+        
+        if (!$idFicha || !is_numeric($idFicha)) {
+            echo json_encode(["error" => "ID de ficha inválido o no proporcionado"]);
+            return;
+        }
+        
+        // Verificar que el instructor tenga acceso a esta ficha
+        session_start();
+        $usuarioId = $_SESSION['usuario_id'] ?? null;
+        $esInstructor = ($_SESSION['cargo'] ?? '') === 'Instructor';
+        
+        if ($esInstructor && $usuarioId) {
+            $tieneAcceso = $this->model->verificarAccesoInstructorFicha($usuarioId, (int)$idFicha);
+            if (!$tieneAcceso) {
+                echo json_encode(["error" => "No tiene acceso a esta ficha"]);
+                return;
+            }
+        }
+        
+        $raes = $this->model->obtenerRaesPorFicha((int)$idFicha);
+        echo json_encode($raes);
     }
 
     public function obtenerAprendicesFicha($idFicha) {
@@ -134,6 +172,41 @@ class ObraController {
             ]);
         }
     }
+
+    // Llamar Instructores por ficha (tabla de fichas_instructores)
+    public function obtenerInstructoresPorFicha() {
+        $idFicha = $_GET['id_ficha'] ?? ($_POST['id_ficha'] ?? $input['id_ficha'] ?? null);
+        if (!$idFicha || !is_numeric($idFicha)) {
+            echo json_encode(["error" => "ID de ficha inválido"]);
+            return;
+        }
+        
+        // Verificar acceso si es instructor
+        session_start();
+        $usuarioId = $_SESSION['usuario_id'] ?? null;
+        $esInstructor = ($_SESSION['cargo'] ?? '') === 'Instructor';
+        if ($esInstructor && $usuarioId) {
+            $tieneAcceso = $this->model->verificarAccesoInstructorFicha($usuarioId, (int)$idFicha);
+            if (!$tieneAcceso) {
+                echo json_encode(["error" => "No tiene acceso a esta ficha"]);
+                return;
+            }
+        }
+        
+        $instructores = $this->model->obtenerInstructoresPorFicha((int)$idFicha);
+        echo json_encode($instructores);
+    }
+
+    // Llamar aprendices por actividad (tabla de actividades_aprendices)
+    public function obtenerAprendicesActividad() {
+        $idActividad = $_GET['id_actividad'] ?? ($_POST['id_actividad'] ?? $input['id_actividad'] ?? null);
+        if (!$idActividad || !is_numeric($idActividad)) {
+            echo json_encode(["error" => "ID de actividad inválido"]);
+            return;
+        }
+        $aprendices = $this->model->obtenerAprendicesPorActividad((int)$idActividad);
+        echo json_encode($aprendices);
+    }
 }
 
 /* INSTANCIA CONTROLLER */
@@ -174,6 +247,17 @@ switch ($accion) {
         $controller->obtenerAprendicesFicha((int)$idFicha);
         break;
 
+    case "obtener_raes_por_ficha":
+        $idFicha = $_GET['id_ficha'] ?? ($_POST['id_ficha'] ?? $input['id_ficha'] ?? null);
+        
+        if (!$idFicha || !is_numeric($idFicha)) {
+            echo json_encode(["error" => "ID de ficha inválido o no proporcionado"]);
+            break;
+        }
+        
+        $controller->obtenerRaesPorFicha((int)$idFicha);
+        break;
+
     case "obtener":
         $controller->obtener($id);
         break;
@@ -196,6 +280,14 @@ switch ($accion) {
 
     case "asignar_aprendices":
         $controller->asignarAprendices();
+        break;
+
+    case "obtener_instructores_por_ficha":
+        $controller->obtenerInstructoresPorFicha();
+        break;
+
+    case "obtener_aprendices_actividad":
+        $controller->obtenerAprendicesActividad();
         break;
 
     default:
