@@ -155,7 +155,7 @@ class Usuario {
 
     // Retrieve a user by document number
     public function obtenerPorDocumento($documento) {
-        $sql = "SELECT * FROM " . $this->table . " WHERE numero_documento = :documento";
+        $sql = "SELECT * FROM " . $this->table . " WHERE numero_documento = :documento AND es_sistema = 0";
         $stmt = $this->conn->prepare($sql);
         $stmt->bindParam(':documento', $documento);
         $stmt->execute();
