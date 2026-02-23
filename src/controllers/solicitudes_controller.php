@@ -383,12 +383,17 @@ class SolicitudMaterialController {
     public function bodegas() {
         $db = $this->model->db;
         try {
-            $sql = "SELECT id_bodega, codigo_bodega, nombre FROM bodegas ORDER BY nombre ASC";
+            $sql = "SELECT id_bodega, codigo_bodega, nombre
+                    FROM bodegas
+                    WHERE estado = 'Activo'
+                    ORDER BY nombre ASC";
+
             $stmt = $db->prepare($sql);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
         } catch (Exception $e) {
-            error_log("❌ Error obtenerBodegas(): " . $e->getMessage());
+            error_log(" Error obtenerBodegas(): " . $e->getMessage());
             return [];
         }
     }
@@ -399,13 +404,15 @@ class SolicitudMaterialController {
             $sql = "SELECT id_subbodega, codigo_subbodega, nombre_subbodega
                     FROM subbodegas
                     WHERE id_bodega = ?
+                    AND estado = 'Activo'
                     ORDER BY nombre_subbodega ASC";
-            
+
             $stmt = $db->prepare($sql);
             $stmt->execute([$idBodega]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
         } catch (Exception $e) {
-            error_log("❌ Error obtenerSubBodegas(): " . $e->getMessage());
+            error_log(" Error obtenerSubBodegas(): " . $e->getMessage());
             return [];
         }
     }
@@ -426,13 +433,16 @@ class SolicitudMaterialController {
                             mf.unidad_medida,
                             mf.clasificacion,
                             mf.estado,
+                            ss.id_subbodega,
+                            sb.id_bodega,
                             COALESCE(SUM(ss.stock_actual), 0) AS stock_actual
-                        FROM material_formacion mf
-                        INNER JOIN stock_subbodega ss ON ss.id_material = mf.id_material
-                        WHERE mf.estado = 'Disponible'
+                            FROM material_formacion mf
+                            INNER JOIN stock_subbodega ss ON ss.id_material = mf.id_material
+                            INNER JOIN subbodegas sb ON sb.id_subbodega = ss.id_subbodega
+                            WHERE mf.estado = 'Disponible'
                             AND ss.id_subbodega = ?
-                        GROUP BY mf.id_material
-                        ORDER BY mf.nombre ASC";
+                            GROUP BY mf.id_material, ss.id_subbodega, sb.id_bodega
+                            ORDER BY mf.nombre ASC";
 
                     $stmt = $db->prepare($sql);
                     $stmt->execute([$idSubBodega]);
@@ -451,13 +461,14 @@ class SolicitudMaterialController {
                         mf.unidad_medida,
                         mf.clasificacion,
                         mf.estado,
+                        sb.id_bodega,
                         COALESCE(SUM(sb.stock_actual), 0) AS stock_actual
-                    FROM material_formacion mf
-                    INNER JOIN stock_bodega sb ON sb.id_material = mf.id_material
-                    WHERE mf.estado = 'Disponible'
+                        FROM material_formacion mf
+                        INNER JOIN stock_bodega sb ON sb.id_material = mf.id_material
+                        WHERE mf.estado = 'Disponible'
                         AND sb.id_bodega = ?
-                    GROUP BY mf.id_material
-                    ORDER BY mf.nombre ASC";
+                        GROUP BY mf.id_material, sb.id_bodega
+                        ORDER BY mf.nombre ASC";
 
                 $stmt = $db->prepare($sql);
                 $stmt->execute([$idBodega]);
