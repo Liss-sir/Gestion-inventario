@@ -996,8 +996,11 @@ if (!window.__obrasJSLoaded) {
 
     const modal = document.getElementById("modalCreate");
     const form = document.getElementById("formCreate");
-
     if (form) form.reset();
+
+    llenarSelectFichas();
+    resetearSelectsCreate();
+
     if (modal) modal.classList.remove("hidden");
 
     const tipo = document.getElementById("create_tipo");
@@ -1044,13 +1047,14 @@ if (!window.__obrasJSLoaded) {
   }
 
   function closeCreateModal() {
-    const modal = document.getElementById("modalCreate");
-    if (modal) modal.classList.add("hidden");
-    
-    const form = document.getElementById("formCreate");
-    if (form) form.reset();
-    
-    resetearCreacion();
+      const modal = document.getElementById("modalCreate");
+      if (modal) modal.classList.add("hidden");
+      
+      const form = document.getElementById("formCreate");
+      if (form) form.reset();
+      
+      resetearSelectsCreate();
+      resetearCreacion();
   }
 
   // ==============================
@@ -2222,6 +2226,25 @@ if (!window.__obrasJSLoaded) {
     fichaSeleccionadaId = null;
     aprendicesSeleccionados = [];
     aprendicesFicha = [];
+  }
+
+  function resetearSelectsCreate() {
+    const raeSelect = document.getElementById("create_rae");
+    const instructorSelect = document.getElementById("create_instructor");
+    const aprendizSelect = document.getElementById("create_aprendiz_individual");
+
+    if (raeSelect) {
+      raeSelect.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona primero una ficha</option>';
+      raeSelect.disabled = true;
+    }
+    if (instructorSelect) {
+      instructorSelect.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona primero una ficha</option>';
+      instructorSelect.disabled = true;
+    }
+    if (aprendizSelect) {
+      aprendizSelect.innerHTML = '<option value="" disabled selected>Selecciona primero una ficha</option>';
+      aprendizSelect.disabled = true;
+    }
   }
 
   // ==============================
