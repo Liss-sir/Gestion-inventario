@@ -1,5 +1,5 @@
 // ============================================================
-//  MÓDULO SOLICITUDES
+//  APPLICATIONS MODULE
 // ============================================================
 
 const API = new URL("src/controllers/solicitudes_controller.php", document.baseURI).toString();
@@ -36,7 +36,7 @@ let estadoApp = {
 };
 
 // ============================================================
-// USUARIO EN SESIÓN (inyectado desde PHP) - similar a OBRAS
+// USER IN SESSION
 // ============================================================
 const USUARIO = (() => {
   const u = window.USUARIO_SESION || window.SIGA_USUARIO || window.SIGA_USER || {};
@@ -57,7 +57,7 @@ const USUARIO = (() => {
 const CARGOS_FILTRAN_PROPIAS = new Set(["Instructor", "Pasante"]);
 
 // ============================================================
-// INSTRUCTOR: ficha asociada en sesión (patrón OBRAS)
+// INSTRUCTOR: associated card in session
 // ============================================================
 function normalizarCargo(c) {
   return String(c || "")
@@ -82,7 +82,7 @@ const FICHA_INSTRUCTOR = (() => {
 })();
 
 // ============================================================
-// PERMISOS (inyectados desde PHP)
+// PERMISSIONS
 // ============================================================
 const PERMS = (() => {
   const p = window.SIGA_SOL_PERMS || {};
@@ -119,7 +119,6 @@ const selectores = {
 
   selectActividad: document.getElementById("actividad"),
 
-  // NUEVO: Bodega/Subbodega
   selectBodega: document.getElementById("bodega-select"),
   selectSubBodega: document.getElementById("subbodega-select"),
 
@@ -135,20 +134,19 @@ const selectores = {
 };
 
 // ============================================================
-// LÍMITES DE CARACTERES (front-end only)
+// CHARACTER LIMITS
 // ============================================================
 const LIMITES = {
-  // Ajusta a tu gusto / lo que soporte tu BD
-  observaciones: 500,      // textarea principal
-  motivoRechazo: 300,      // textarea del modal rechazo
-  cantidad: 6,             // input cantidad (ej: hasta 999999)
+  observaciones: 500,
+  motivoRechazo: 300,
+  cantidad: 6,
 };
 
-// Aplica maxlength + recorta en input/paste (por seguridad)
+// Applies maxlength + cuts on input/paste (for security)
 function aplicarLimiteCaracteres(el, max, { onLimitMessage } = {}) {
   if (!el || !max) return;
 
-  // maxlength nativo
+  // native maxlength
   el.setAttribute("maxlength", String(max));
 
   const cortar = () => {
@@ -159,12 +157,12 @@ function aplicarLimiteCaracteres(el, max, { onLimitMessage } = {}) {
     }
   };
 
-  // recorta al escribir/pegar
+  // cuts on input/paste
   el.addEventListener("input", cortar);
   el.addEventListener("paste", () => setTimeout(cortar, 0));
 }
 
-// Solo números y máximo dígitos (para cantidad)
+// Only numbers and maximum digits (for quantity)
 function aplicarLimiteNumerico(el, maxDigits = 6) {
   if (!el) return;
 
@@ -172,7 +170,7 @@ function aplicarLimiteNumerico(el, maxDigits = 6) {
   el.setAttribute("maxlength", String(maxDigits));
 
   el.addEventListener("input", () => {
-    // deja solo dígitos
+    // leave only digits
     let v = String(el.value ?? "").replace(/\D+/g, "");
     if (v.length > maxDigits) v = v.slice(0, maxDigits);
     el.value = v;
@@ -187,19 +185,19 @@ function aplicarLimiteNumerico(el, maxDigits = 6) {
   });
 }
 
-// Inicializa límites para los campos existentes del formulario
+// Initialize limits for existing form fields
 function initLimitesCaracteres() {
-  // Observaciones (form principal)
+  // Observations (main form)
   aplicarLimiteCaracteres(selectores.textareaObservaciones, LIMITES.observaciones, {
-    onLimitMessage: (max) => toastInfo(`Máximo ${max} caracteres en Observaciones.`),
+    onLimitMessage: (max) => toastInfo(`Maximum ${max} characters in Observations.`),
   });
 
-  // Cantidad (solo dígitos, máximo N dígitos)
+  // Quantity (only digits, maximum N digits)
   aplicarLimiteNumerico(selectores.inputCantidad, LIMITES.cantidad);
 }
 
 // ============================================================
-//  UTILIDADES SEGURAS
+//  SAFE UTILITIES
 // ============================================================
 function safeLucideCreateIcons() {
   try {
@@ -214,14 +212,12 @@ function safeLucideCreateIcons() {
 function filtrarSolicitudesPorUsuario(listado) {
   if (!Array.isArray(listado)) return [];
 
-  // Solo aplicar para Instructor y Pasante (como pediste)
+  // Only apply for Instructor and Intern (as you requested)
   if (!CARGOS_FILTRAN_PROPIAS.has(USUARIO.cargo)) return listado;
 
-  // Si no hay ID, por seguridad no mostramos nada (evita fuga de info)
+  // If there is no ID, for security we do not show anything (avoids information leakage)
   if (USUARIO.id === null || Number.isNaN(USUARIO.id)) return [];
 
-  // Importante: tu backend debe traer el id del creador en el listado
-  // Probables nombres: id_usuario, id_solicitante, usuario_id, etc.
   return listado.filter((s) => {
     const creador =
       s.id_usuario_solicitante ??
@@ -237,7 +233,7 @@ function filtrarSolicitudesPorUsuario(listado) {
 
 
 // ============================================================
-//  FLOWBITE-STYLE TOASTS (igual al módulo Usuarios)
+//  FLOWBITE-STYLE TOASTS
 // ============================================================
 function getOrCreateFlowbiteContainer() {
   let container = document.getElementById("flowbite-alert-container");
@@ -257,7 +253,6 @@ function showFlowbiteAlert(type, message) {
   const container = getOrCreateFlowbiteContainer();
   const wrapper = document.createElement("div");
 
-  // normaliza tipo (por si mandas "warning"/"error")
   const t = String(type || "").toLowerCase();
   const isSuccess = t === "success";
   const isInfo = t === "info";
@@ -292,7 +287,7 @@ function showFlowbiteAlert(type, message) {
         <path d="M10 0a10 10 0 1 0 10 10A10.011 10.011 0 0 0 10 0Zm1 15H9v-5h2Zm0-7H9V6h2Z"/>
       </svg>
     `;
-  } // warning/error queda por default
+  }
 
   wrapper.className = `
     relative flex items-center w-full pointer-events-auto
@@ -301,7 +296,6 @@ function showFlowbiteAlert(type, message) {
     opacity-0 -translate-y-2 transition-all duration-300 ease-out
   `;
 
-  // ✅ aquí sí existe data-msg
   wrapper.innerHTML = `
     <div class="flex-shrink-0 mr-3 text-current">${iconSVG}</div>
     <div class="flex-1 min-w-0">
@@ -310,11 +304,9 @@ function showFlowbiteAlert(type, message) {
     </div>
   `;
 
-  // ✅ seguro contra HTML raro
   const msgEl = wrapper.querySelector("[data-msg]");
   if (msgEl) msgEl.textContent = String(message ?? "");
 
-  // ✅ FALTABA ESTO: meterlo al DOM
   container.appendChild(wrapper);
 
   requestAnimationFrame(() => {
@@ -339,7 +331,6 @@ function toastInfo(message) {
   showFlowbiteAlert("info", message);
 }
 
-// Helper para truncar texto largo en opciones de select
 function truncateText(text, maxLength = 27) {
   if (!text) return '';
   const str = String(text);
@@ -347,7 +338,7 @@ function truncateText(text, maxLength = 27) {
 }
 
 // ============================================================
-//  MODAL MOTIVO RECHAZO (SIGA) - sin prompt, sin confirm
+//  MODAL REASON FOR REJECTION
 // ============================================================
 function ensureMotivoModalRoot() {
   let root = document.getElementById("sol-motivo-modal-root");
@@ -360,10 +351,7 @@ function ensureMotivoModalRoot() {
   return root;
 }
 
-/**
- * Modal para capturar motivo (obligatorio).
- * Retorna: string motivo, o null si cancelan/cierra.
- */
+
 function pedirMotivoRechazo() {
   return new Promise((resolve) => {
     const root = ensureMotivoModalRoot();
@@ -412,7 +400,7 @@ function pedirMotivoRechazo() {
       </div>
     `;
 
-    // mostrar
+    // show
     root.classList.remove("hidden");
     root.classList.add("flex");
 
@@ -435,15 +423,15 @@ function pedirMotivoRechazo() {
       resolve(val);
     };
 
-    // cancelar por botones
+    // cancel by buttons
     root.querySelectorAll("[data-motivo-cancel]").forEach((b) => {
       b.addEventListener("click", () => close(null));
     });
 
-    // click fuera
+    // click outside
     backdrop?.addEventListener("click", () => close(null));
 
-    // confirmar
+    // confirm
     root.querySelector("[data-motivo-ok]")?.addEventListener("click", () => {
       const motivo = String(input?.value || "").trim();
       if (!motivo) {
@@ -521,7 +509,7 @@ const utilidades = {
 };
 
 // ============================================================
-// HELPER: obtener contexto de bodega/subbodega desde filtros
+// HELPER: get inventory context from filters
 // ============================================================
 function getContextoInventario() {
   const { bodega, subbodega } = estadoApp.filtrosInventario || {};
@@ -535,12 +523,12 @@ function getContextoInventario() {
 }
 
 // ============================================================
-// HELPER: aplicar bloqueo de materiales según contexto de inventario
+// HELPER: apply material blocking according to inventory context
 // ============================================================
 function aplicarBloqueoMaterialesPorInventario() {
   const ctx = getContextoInventario();
 
-  // Solo si NO hay contexto: bloquear y mostrar mensaje
+  // Only if there is no context: block and show message
   if (!ctx.ok) {
     if (selectores.selectMaterial) {
       selectores.selectMaterial.innerHTML =
@@ -552,7 +540,7 @@ function aplicarBloqueoMaterialesPorInventario() {
     return false;
   }
 
-  // Si SÍ hay contexto: SOLO habilitar (NO borrar opciones)
+  // If there is context: ONLY enable (DO NOT clear options)
   if (selectores.selectMaterial) selectores.selectMaterial.disabled = false;
   if (selectores.btnAgregarMaterial) selectores.btnAgregarMaterial.disabled = false;
   if (selectores.inputCantidad) selectores.inputCantidad.disabled = false;
@@ -562,13 +550,13 @@ function aplicarBloqueoMaterialesPorInventario() {
 
 
 // ============================================================
-// HELPER: cargar opciones de materiales de forma segura
+// HELPER: load material options safely
 // ============================================================
 
 function idsProgramasAsignadosDesdeSesion(uRaw) {
   if (!uRaw || typeof uRaw !== "object") return [];
 
-  // soporta varias formas típicas
+  // supports several typical forms
   const candidatos = [
     uRaw.programas_asignados,
     uRaw.programas,
@@ -578,10 +566,8 @@ function idsProgramasAsignadosDesdeSesion(uRaw) {
     uRaw.ids_programas,
   ];
 
-  // 1) Si ya viene un array (de ids o de objetos)
   for (const c of candidatos) {
     if (Array.isArray(c)) {
-      // puede ser [1,2] o [{id_programa:1}, ...]
       return c
         .map((x) => (typeof x === "object" ? (x.id_programa ?? x.id ?? x) : x))
         .map((v) => parseInt(v, 10))
@@ -589,7 +575,6 @@ function idsProgramasAsignadosDesdeSesion(uRaw) {
     }
   }
 
-  // 2) Si viene string tipo "1,2,3"
   for (const c of candidatos) {
     if (typeof c === "string" && c.trim()) {
       return c
@@ -605,13 +590,12 @@ function idsProgramasAsignadosDesdeSesion(uRaw) {
 function filtrarProgramasPorUsuario(programas) {
   if (!Array.isArray(programas)) return [];
 
-  // Solo filtrar si es instructor
+  // Only filter if instructor
   if (!ES_INSTRUCTOR) return programas;
 
-  // Seguridad: si no hay ficha ni asignaciones, no mostrar nada
+  // Security: if there is no file or assignments, show nothing
   const idsAsignados = idsProgramasAsignadosDesdeSesion(USUARIO.raw);
 
-  // Caso A: el API de programas ya trae relación con ficha (ideal)
   const traeFichaEnPrograma = programas.some((p) =>
     p && (p.id_ficha != null || Array.isArray(p.fichas) || p.ficha_id != null)
   );
@@ -621,7 +605,6 @@ function filtrarProgramasPorUsuario(programas) {
       const idFichaDirecta = parseInt(p.id_ficha ?? p.ficha_id ?? null, 10);
       if (!Number.isNaN(idFichaDirecta)) return idFichaDirecta === FICHA_INSTRUCTOR;
 
-      // Si viene array de fichas
       if (Array.isArray(p.fichas)) {
         return p.fichas.some((f) => {
           const idf = parseInt(f?.id_ficha ?? f?.id ?? null, 10);
@@ -633,8 +616,7 @@ function filtrarProgramasPorUsuario(programas) {
     });
   }
 
-  // Caso B: usar asignaciones en sesión (fallback seguro)
-  if (!idsAsignados.length) return []; // NO mostrar todos
+  if (!idsAsignados.length) return [];
 
   return programas.filter((p) => {
     const id = parseInt(p.id_programa ?? p.id ?? null, 10);
@@ -661,7 +643,6 @@ function setMaterialOptions(materialesArray, modo = "normal") {
     const codigo = m.codigo_inventario || "Sin código";
     opt.textContent = `${m.nombre} (${codigo})`;
 
-    // dataset para validaciones
     opt.dataset.stock = Number(m.stock_actual ?? 0);
     opt.dataset.unidad = m.unidad_medida || "UND";
     opt.dataset.nombre = m.nombre || "";
@@ -671,14 +652,13 @@ function setMaterialOptions(materialesArray, modo = "normal") {
 }
 
 // ============================================================
-//  CACHE + RENDER DE MATERIALES EN CARD (sin tocar backend)
+//  CACHE + RENDER OF MATERIALS ON CARD
 // ============================================================
-estadoApp.materialesPorSolicitud = {}; // cache por id
+estadoApp.materialesPorSolicitud = {};
 
 function normalizarMaterialesParaCard(materiales) {
   if (!Array.isArray(materiales)) return [];
   return materiales.map((m) => ({
-    // El modelo retorna: material, cantidad, unidad_medida
     nombre: m.material ?? m.nombre_material ?? m.nombre ?? "Material",
     cantidad: m.cantidad ?? m.cantidad_solicitada ?? 0,
     unidad: m.unidad_medida ?? m.unidad ?? "",
@@ -718,14 +698,12 @@ async function cargarMaterialesEnCard(card, idSolicitud) {
   const box = card.querySelector(`.sol-card-materiales[data-mats-for="${idSolicitud}"]`);
   if (!box) return;
 
-  // 1) Si ya existe cache => pintar de una vez (NO spinner infinito)
   if (estadoApp.materialesPorSolicitud[idSolicitud]) {
     box.innerHTML = htmlMaterialesCard(estadoApp.materialesPorSolicitud[idSolicitud]);
     safeLucideCreateIcons();
     return;
   }
 
-  // 2) Si no hay cache => spinner + fetch
   box.innerHTML = `
     <div class="mt-3 border-t pt-3 text-sm text-muted-foreground">
       <i data-lucide="loader" class="w-4 h-4 inline-block align-text-bottom animate-spin mr-1"></i>
@@ -737,7 +715,6 @@ async function cargarMaterialesEnCard(card, idSolicitud) {
   try {
     const full = await api.obtenerCompleta(idSolicitud);
 
-    // soporta varias formas típicas de respuesta
     const mats =
       full?.materiales ||
       full?.data?.materiales ||
@@ -757,15 +734,12 @@ async function cargarMaterialesEnCard(card, idSolicitud) {
 }
 
 // ============================================================
-//  HELPER: valida si la respuesta de materiales viene realmente filtrada
-//  (evita que el backend "caiga" a un listado global cuando se pide subbodega)
+//  HELPER: validates if the materials response is actually filtered
 // ============================================================
 function respuestaEsStockFiltrado(mats, { bodegaId = null, subId = null } = {}) {
   if (!Array.isArray(mats)) return false;
-  if (!mats.length) return true; // vacío = filtrado válido
+  if (!mats.length) return true;
 
-  // 1) Si NO vienen campos típicos del inventario, sospecha de fallback
-  // (ajusta nombres si tu backend usa otros)
   const traeCamposInventario = mats.some(m =>
     m && (
       m.stock_actual != null ||
@@ -776,18 +750,14 @@ function respuestaEsStockFiltrado(mats, { bodegaId = null, subId = null } = {}) 
   );
   if (!traeCamposInventario) return false;
 
-  // 2) Si pedimos subbodega y el backend NO trae id_subbodega, no podemos confiar
   if (subId && !mats.some(m => m && (m.id_subbodega != null))) {
     return false;
   }
-
-  // 3) Si pedimos subbodega y trae id_subbodega, validar que al menos uno coincida
   if (subId && mats.some(m => m && m.id_subbodega != null)) {
     const ok = mats.some(m => String(m.id_subbodega) === String(subId));
     if (!ok) return false;
   }
 
-  // 4) Si pedimos bodega y trae id_bodega, validar que coincida
   if (bodegaId && mats.some(m => m && m.id_bodega != null)) {
     const ok = mats.some(m => String(m.id_bodega) === String(bodegaId));
     if (!ok) return false;
@@ -836,14 +806,12 @@ const api = {
 
     selectores.selectActividad.innerHTML = '<option value="">Cargando actividades...</option>';
 
-    // Si no hay ficha/rae aún, no cargamos
     if (!fichaId || !raeId) {
       selectores.selectActividad.innerHTML = '<option value="">Seleccione ficha y RAE</option>';
       return;
     }
 
     try {
-      // Intento 1: endpoint actividades (si tu controller ya lo tiene)
       const url1 = `${API}?accion=actividades&ficha=${encodeURIComponent(fichaId)}&rae=${encodeURIComponent(raeId)}`;
       const url2 = `${API}?accion=actividad&ficha=${encodeURIComponent(fichaId)}&rae=${encodeURIComponent(raeId)}`;
 
@@ -858,7 +826,6 @@ const api = {
 
       const data = await res.json();
 
-      // Normalizar posibles formas de respuesta
       let items = [];
       if (Array.isArray(data)) items = data;
       else if (Array.isArray(data.data)) items = data.data;
@@ -866,7 +833,7 @@ const api = {
       else if (Array.isArray(data.actividades_formacion)) items = data.actividades_formacion;
       else if (data && data.success === false) items = [];
       else if (data && typeof data === 'object') {
-        // Intentar extraer primer array dentro del objeto
+
         const vals = Object.values(data).find((v) => Array.isArray(v));
         if (Array.isArray(vals)) items = vals;
       }
@@ -903,7 +870,6 @@ const api = {
     }
 
     try {
-      // intenta varios nombres típicos por si tu controller los maneja distinto
       const url1 = `${API}?accion=raes&programa=${encodeURIComponent(programaId)}`;
       const url2 = `${API}?accion=rae&programa=${encodeURIComponent(programaId)}`;
       const url3 = `${API}?accion=raesPorPrograma&id_programa=${encodeURIComponent(programaId)}`;
@@ -1112,21 +1078,18 @@ const api = {
 
   async cargarSelectores() {
     try {
-      // PROGRAMAS
+      // PROGRAMS
       if (selectores.selectPrograma) {
         const cargoNorm = normalizarCargo(USUARIO.cargo);
 
         const esInstructor =
           cargoNorm === "instructor" || cargoNorm.startsWith("instructor");
 
-        // SOLO Instructor filtra, PERO solo si el id es válido (>0)
         const idUsuarioValido =
           USUARIO.id !== null && !Number.isNaN(USUARIO.id) && Number(USUARIO.id) > 0;
 
         const usarFiltroInstructor = esInstructor && idUsuarioValido;
 
-
-        // Si es instructor pero el id viene malo (0 / null), NO lo bloquees:
         if (esInstructor && !idUsuarioValido) {
           toastError("No se pudo identificar tu usuario en sesión (ID inválido).");
         }
@@ -1170,7 +1133,6 @@ const api = {
           programas = filtrarProgramasPorUsuario(programas);
         }
 
-        // Pintar select
         selectores.selectPrograma.innerHTML = '<option value="">Seleccionar programa</option>';
         selectores.selectPrograma.disabled = false;
 
@@ -1194,12 +1156,9 @@ const api = {
           selectores.selectPrograma.disabled = true;
         }
 
-        // Listener PROGRAMA (UNA sola vez)
         if (selectores.selectPrograma && !selectores.selectPrograma.dataset.boundProg) {
           selectores.selectPrograma.addEventListener("change", async () => {
             const programaId = selectores.selectPrograma.value || "";
-
-            // reset dependientes
             if (selectores.selectRae) {
               selectores.selectRae.innerHTML = '<option value="">Seleccione programa</option>';
               selectores.selectRae.value = "";
@@ -1213,17 +1172,14 @@ const api = {
               selectores.selectActividad.value = "";
             }
 
-            // cargar dependientes
             await api.cargarRAEs(programaId);
             await api.cargarFichas(programaId);
 
-            // si eres instructor y tienes FICHA_INSTRUCTOR, autoselecciona (opcional)
             if (ES_INSTRUCTOR && FICHA_INSTRUCTOR && selectores.selectFichas) {
               const opt = Array.from(selectores.selectFichas.options)
                 .find(o => String(o.value) === String(FICHA_INSTRUCTOR));
               if (opt) {
                 selectores.selectFichas.value = String(FICHA_INSTRUCTOR);
-                // si ya hay RAE seleccionado después, actividades se cargarán por los listeners existentes
               }
             }
           });
@@ -1233,7 +1189,7 @@ const api = {
 
 
 
-        // Listener Ficha (UNA sola vez)
+        // Listener Ficha   
         if (selectores.selectFichas && !selectores.selectFichas.dataset.boundAct) {
           selectores.selectFichas.addEventListener("change", () => {
             const fichaId = selectores.selectFichas?.value || "";
@@ -1243,7 +1199,7 @@ const api = {
           selectores.selectFichas.dataset.boundAct = "1";
         }
 
-        // Listener RAE (UNA sola vez)
+        // Listener RAE
         if (selectores.selectRae && !selectores.selectRae.dataset.boundAct) {
           selectores.selectRae.addEventListener("change", () => {
             const fichaId = selectores.selectFichas?.value || "";
@@ -1255,7 +1211,7 @@ const api = {
       }
 
 
-      // NUEVO: BODEGAS
+      // warehouses
       if (selectores.selectBodega) {
         selectores.selectBodega.innerHTML = '<option value="">Seleccione una bodega</option>';
 
@@ -1272,16 +1228,15 @@ const api = {
                 selectores.selectBodega.appendChild(opt);
               });
             } else {
-              // No hay bodegas
+
               selectores.selectBodega.innerHTML = '<option value="">No hay bodegas disponibles</option>';
             }
           } else {
             selectores.selectBodega.innerHTML = '<option value="">Error cargando bodegas</option>';
           }
 
-        // Evitar duplicar listener
         if (!selectores.selectBodega.dataset.boundChange) {
-          // Subbodegas al cambiar bodega
+
           selectores.selectBodega.addEventListener("change", async function () {
             const bodegaId = this.value || "";
 
@@ -1290,20 +1245,15 @@ const api = {
             aplicarBloqueoMaterialesPorInventario();
 
 
-            // reset subbodega
             if (selectores.selectSubBodega) {
               selectores.selectSubBodega.innerHTML = '<option value="">Seleccione una subbodega</option>';
               selectores.selectSubBodega.disabled = !bodegaId;
             }
 
-            // reset materiales
             if (selectores.selectMaterial) {
               selectores.selectMaterial.innerHTML = '<option value="">Cargando materiales...</option>';
             }
-
-            // Si NO hay bodega => NO permitir seleccionar materiales
             if (!bodegaId) {
-              // importantísimo: deja filtros limpios y bloquea UI
               estadoApp.filtrosInventario.bodega = "";
               estadoApp.filtrosInventario.subbodega = "";
 
@@ -1311,10 +1261,8 @@ const api = {
               return;
             }
 
-            // FIX: al elegir SOLO bodega, cargar materiales de esa bodega
             await api.cargarMaterialesFiltrados(bodegaId, 0);
 
-            // Cargar subbodegas
             try {
               const resSub = await fetch(`${API}?accion=subbodegas&bodega=${encodeURIComponent(bodegaId)}`);
                 if (selectores.selectSubBodega && resSub.ok) {
@@ -1348,7 +1296,7 @@ const api = {
         }
       }
 
-      // Al cambiar subbodega, filtrar materiales
+      // When changing sub-warehouse, filter materials
       if (selectores.selectSubBodega && !selectores.selectSubBodega.dataset.boundChange) {
         selectores.selectSubBodega.addEventListener("change", async function () {
           const subId = this.value || "";
@@ -1361,20 +1309,17 @@ const api = {
             return;
           }
 
-          // sin subbodega => vuelve a bodega
           if (!subId) {
             await api.cargarMaterialesFiltrados(bodegaId, 0);
             return;
           }
 
-          // con subbodega => filtrar por subbodega
           await api.cargarMaterialesFiltrados(bodegaId, subId);
         });
 
         selectores.selectSubBodega.dataset.boundChange = "1";
       }
 
-      // Al cargar selectores, bloquea materiales hasta elegir bodega/subbodega
       aplicarBloqueoMaterialesPorInventario();
 
     } catch (e) {
@@ -1562,8 +1507,6 @@ const render = {
       `;
 
       cont.appendChild(card);
-
-      // Cargar materiales reales (sin tocar backend)
       cargarMaterialesEnCard(card, s.id);
     });
 
@@ -1738,8 +1681,8 @@ const paginacion = {
 };
 
 // ============================================================
-//  BOTONES: Aceptar / Rechazar / Entregar
-//  CORRECCIÓN: evitar duplicar eventos con data-bound
+// BUTTONS: Accept / Reject / Deliver
+// CORRECTION: Avoid duplicating events with data-bound
 // ============================================================
 function agregarEventosBotonesAccion() {
   if (PERMS.aceptar) {
@@ -1867,7 +1810,7 @@ const modal = {
 
     if (selectores.btnGuardar) selectores.btnGuardar.style.display = "none";
     this.limpiarFormulario();
-    // Refrescar selectores al abrir modal para asegurar que bodegas/subbodegas/materiales están cargados
+
     try {
       await api.cargarSelectores();
     } catch (e) {
@@ -1889,7 +1832,6 @@ const modal = {
     estadoApp.datosFormulario = { programa: "", rae: "", ficha: "", observaciones: "" };
     estadoApp.materialesSeleccionados = [];
 
-    // reiniciar filtros inventario
     estadoApp.filtrosInventario = { bodega: "", subbodega: "" };
 
     if (selectores.formNueva) selectores.formNueva.reset();
@@ -1899,7 +1841,6 @@ const modal = {
       selectores.selectActividad.value = "";
     }
 
-    // reset selects bodega/subbodega visualmente
     if (selectores.selectBodega) selectores.selectBodega.value = "";
     if (selectores.selectSubBodega) {
       selectores.selectSubBodega.value = "";
@@ -2095,7 +2036,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initLimitesCaracteres();
   app.inicializar();
 
-  // Si no tiene permiso para crear, ocultamos el botón
   if (selectores.btnNueva && !PERMS.crear) {
     selectores.btnNueva.style.display = "none";
   }

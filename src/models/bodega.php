@@ -8,7 +8,7 @@ class BodegaModel {
     }
 
     /* ==============================
-       LISTAR BODEGAS
+       LIST WINERIES
        ============================== */
     public function listar(): array {
         try {
@@ -31,7 +31,7 @@ class BodegaModel {
     }
 
     /* ==============================
-       OBTENER BODEGA POR CODIGO
+       GET WINERY BY CODE
        ============================== */
     public function obtenerPorCodigo(string $codigo): ?array {
         try {
@@ -61,7 +61,7 @@ class BodegaModel {
     }
 
     /* ==============================
-       CREAR BODEGA
+       CREATE WINERY
        ============================== */
     public function crear(
         string $codigo,
@@ -99,8 +99,7 @@ class BodegaModel {
     }
 
     /* ==============================
-       ACTUALIZAR BODEGA
-       POR ID_BODEGA (CORRECTO)
+       UPDATE WINERY BY ID_BODEGA
        ============================== */
     public function actualizar(
         int $id_bodega,
@@ -142,8 +141,7 @@ class BodegaModel {
     }
 
     /* ==============================
-       CAMBIAR ESTADO
-       POR CODIGO_BODEGA
+       CHANGE STATE BY CODE_BODEGA
        ============================== */
     public function cambiarEstado(string $codigo_bodega, string $estado): bool {
         try {
@@ -167,8 +165,7 @@ class BodegaModel {
     }
 
     /* ==============================
-       OBTENER INVENTARIO POR BODEGA
-       Consulta materiales tanto de movimientos_material como de movimientos_detalle
+       GET INVENTORY BY WINERY
        ============================== */
     public function obtenerInventarioPorBodega(int $idBodega): array {
         try {
@@ -200,8 +197,7 @@ class BodegaModel {
 
 
     /* ==============================
-       OBTENER INVENTARIO POR SUBBODEGA
-       Similar a obtenerInventarioPorBodega pero filtra por subbodega
+       GET INVENTORY BY SUBWAREHOUSE
        ============================== */
     public function obtenerInventarioPorSubbodega(int $idSubbodega): array {
         try {

@@ -1,6 +1,6 @@
 <?php
 // =====================================================
-// BODEGAS CONTROLLER (JSON) + PERMISOS POR ACCIÓN ✅
+// WINERIES CONTROLLER (JSON) + PERMITS PER ACTION
 // =====================================================
 
 ob_start();
@@ -12,7 +12,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . "/../../Config/database.php";
 require_once __DIR__ . "/../models/bodega.php";
 
-// ✅ Permisos helper (funciones)
+// Permission helper (functions)
 require_once __DIR__ . "/../utils/permisos_helper.php";
 
 if (!headers_sent()) {
@@ -22,7 +22,7 @@ if (!headers_sent()) {
 }
 
 /* ===============================
-   VALIDAR CONEXIÓN PDO
+   VALIDATE PDO CONNECTION
 ================================ */
 if (!isset($conn) || !($conn instanceof PDO)) {
     http_response_code(500);
@@ -46,7 +46,7 @@ class BodegaController
     }
 
     /* ===============================
-       RESPUESTA JSON
+       JSON RESPONSE
     =============================== */
     private function response($data, int $code = 200): void
     {
@@ -56,8 +56,7 @@ class BodegaController
     }
 
     /* ===============================
-       LISTAR
-       Permiso: bodegas.listar
+       LIST Permission
     =============================== */
     public function listar(): void
     {
@@ -70,8 +69,7 @@ class BodegaController
     }
 
     /* ===============================
-       OBTENER POR CÓDIGO
-       Permiso: bodegas.listar
+       GET BY CODE Permission
     =============================== */
     public function obtener(): void
     {
@@ -102,8 +100,7 @@ class BodegaController
     }
 
     /* ===============================
-       CREAR
-       Permiso: bodegas.crear
+       CREATE Permission
     =============================== */
     public function crear(): void
     {
@@ -151,8 +148,7 @@ class BodegaController
     }
 
     /* ===============================
-       ACTUALIZAR
-       Permiso: bodegas.actualizar
+       UPDATE Permission
     =============================== */
     public function actualizar(): void
     {
@@ -194,8 +190,7 @@ class BodegaController
     }
 
     /* ===============================
-       CAMBIAR ESTADO
-       Permiso: bodegas.cambiar_estado
+       CHANGE STATE Permission
     =============================== */
     public function cambiar_estado(): void
     {
@@ -231,9 +226,7 @@ class BodegaController
     }
 
     /* ===============================
-       INVENTARIO DE BODEGA
-       GET ?accion=inventario_bodega&id_bodega=X
-       Permiso: bodegas.listar
+       INVENTORY OF WINERY
     =============================== */
     public function inventario_bodega(): void
     {
@@ -258,9 +251,7 @@ class BodegaController
     }
 
     /* ===============================
-       INVENTARIO DE SUBBODEGA
-       GET ?accion=inventario_subbodega&id_subbodega=X
-       Permiso: bodegas.listar
+       INVENTORY OF SUBWINERY
     =============================== */
     public function inventario_subbodega(): void
     {

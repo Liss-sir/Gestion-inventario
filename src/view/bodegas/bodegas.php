@@ -28,7 +28,7 @@ $bodegas = $model->listar();
   <!-- CSS bodegas -->
   <link rel="stylesheet" href="src/assets/css/bodegas/bodegas.css" />
 
-  <!-- ✅ JS bodegas (tu ruta original) -->
+  <!--  JS warehouse -->
   <script src="src/assets/js/bodega/bodega.js" defer></script>
 </head>
 
@@ -51,7 +51,7 @@ $bodegas = $model->listar();
       </div>
 
       <div class="flex items-center gap-3">
-        <!-- Switch lista / grid -->
+        <!-- Switch list / grid -->
         <div class="inline-flex rounded-lg border border-border bg-card shadow-sm overflow-hidden">
           <button
             type="button"
@@ -80,7 +80,7 @@ $bodegas = $model->listar();
           </button>
         </div>
 
-        <!-- BOTÓN ÚNICO + MENÚ DESPLEGABLE -->
+        <!-- SINGLE BUTTON + DROPDOWN MENU -->
         <div class="relative">
           <button
             id="btnCrearBodegaMenu"
@@ -135,7 +135,7 @@ $bodegas = $model->listar();
     </div>
 
     <!-- ================================== -->
-    <!-- TOP FILTERS (SEARCH + ESTADO FILTER) -->
+    <!-- TOP FILTERS (SEARCH + STATE FILTER) -->
     <!-- ================================== -->
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between my-6">
 
@@ -161,7 +161,7 @@ $bodegas = $model->listar();
         />
       </div>
 
-      <!-- ESTADO FILTER -->
+      <!-- STATE FILTER -->
       <div class="flex items-center gap-2">
         <svg
           class="h-4 w-4"
@@ -206,7 +206,7 @@ $bodegas = $model->listar();
               min-h-[220px] sm:min-h-[240px]"
       >
         <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-border">
-          <!-- ✅ WRAPPERS (IDs no se pierden con lucide.createIcons) -->
+          <!--  WRAPPERS -->
           <span id="emptyIconNoDataListWrap" class="<?= empty($bodegas) ? '' : 'hidden' ?>">
             <i data-lucide="file-text" class="h-6 w-6 text-foreground"></i>
           </span>
@@ -224,7 +224,7 @@ $bodegas = $model->listar();
         </p>
       </div>
 
-      <!-- TABLA -->
+      <!-- TABLE -->
       <div id="tableWrapperList" class="<?= empty($bodegas) ? 'hidden' : '' ?>">
         <table class="min-w-full divide-y divide-border text-sm">
           <thead class="bg-gray-100">
@@ -318,7 +318,7 @@ $bodegas = $model->listar();
                 overflow-hidden rounded-xl border border-border bg-card"
         >
           <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-border bg-background">
-            <!-- ✅ WRAPPERS (IDs no se pierden con lucide.createIcons) -->
+            <!--  WRAPPERS -->
             <span id="emptyIconNoDataGridWrap" class="<?= empty($bodegas) ? '' : 'hidden' ?>">
               <i data-lucide="file-text" class="h-6 w-6 text-foreground"></i>
             </span>
@@ -396,9 +396,9 @@ $bodegas = $model->listar();
                   data-estado="<?= $estadoActivo ? 'Activo' : 'Inactivo' ?>"
                   <?= $estadoActivo ? "checked" : "" ?>
                 >
-                <!-- Fondo del riel (hermano del input) -->
+                <!-- Background of the track -->
                 <div class="w-10 h-5 bg-gray-300 rounded-full peer-checked:bg-[#39A900]/30 transition"></div>
-                <!-- Círculo (hermano del input) -->
+                <!-- Circle -->
                 <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition transform translate-x-5 peer-checked:translate-x-0"></div>
               </label>
               </div>
@@ -411,7 +411,7 @@ $bodegas = $model->listar();
 
   </div>
 
-  <!-- ========= MENÚ CONTEXTUAL ========= -->
+  <!-- ========= CONTEXTUAL MENU ========= -->
   <div
     id="context-menu"
     class="hidden absolute z-50 w-56 rounded-lg bg-card border border-border shadow-md"
@@ -442,7 +442,7 @@ $bodegas = $model->listar();
     </ul>
   </div>
 
-  <!-- ========= MENÚ CONTEXTUAL SUB-BODEGA ========= -->
+  <!-- ========= SUB-WAREHOUSE CONTEXTUAL MENU ========= -->
 <div
   id="context-menu-subbodega"
   class="hidden fixed z-[9999] w-56 rounded-lg bg-card border border-border shadow-md"
@@ -474,7 +474,7 @@ $bodegas = $model->listar();
 </div>
 
 
-  <!-- ========= MODAL CREAR ========= -->
+  <!-- ========= CREATE MODAL ========= -->
   <div id="modalCrear" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
     <div class="absolute inset-0" id="backdropCrear"></div>
 
@@ -538,7 +538,7 @@ $bodegas = $model->listar();
     </div>
   </div>
 
-  <!-- ========= MODAL CREAR SUB-BODEGA ========= -->
+  <!-- ========= CREATE SUB-WAREHOUSE MODAL ========= -->
   <div id="modalCrearSubBodega" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
     <div class="absolute inset-0" id="backdropCrearSub"></div>
 
@@ -620,7 +620,7 @@ $bodegas = $model->listar();
     </div>
   </div>
 
-  <!-- ✅ ========= MODAL EDITAR ========= -->
+  <!-- ========= EDIT MODAL ========= -->
   <div id="modalEditar" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
     <div class="absolute inset-0" id="backdropEditar"></div>
 
@@ -687,7 +687,7 @@ $bodegas = $model->listar();
     </div>
   </div>
 
-  <!-- ✅ ========= MODAL DETALLE (BODEGA) ========= -->
+  <!-- ========= DETAIL MODAL (WAREHOUSE) ========= -->
 <div id="modalDetalle" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
   <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
 
@@ -756,7 +756,7 @@ $bodegas = $model->listar();
           Total: <strong id="totalMateriales">0</strong> material(es)
         </p>
 
-        <!-- LISTA -->
+        <!-- LIST -->
         <div
           id="detalleBodegaMateriales"
           class="space-y-2"
@@ -776,7 +776,7 @@ $bodegas = $model->listar();
   </div>
 </div>
 
-<!-- ✅ ========= MODAL DETALLE (SUB-BODEGA) ========= -->
+<!-- ========= DETAIL MODAL (SUB-WAREHOUSE) ========= -->
 <div id="modalDetalleSubBodega" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
   <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
 
@@ -805,7 +805,7 @@ $bodegas = $model->listar();
 
 <div class="grid gap-4 text-sm">
 
-          <!-- Fila 1: Clasificación + Estado -->
+          <!-- Row 1: Classification + State -->
           <div class="grid grid-cols-2 gap-6 items-center">
             <div class="grid grid-cols-[120px_auto] gap-3 items-center">
               <span class="text-gray-600">Clasificación:</span>
@@ -818,7 +818,7 @@ $bodegas = $model->listar();
             </div>
           </div>
 
-          <!-- Fila 2: Descripción (full) -->
+          <!-- Row 2: Description (full) -->
           <div class="grid grid-cols-[120px_auto] gap-3 items-start">
             <span class="text-gray-600">Descripción:</span>
             <span id="detalleSubDescripcion" class="text-gray-800">-</span>
@@ -827,7 +827,6 @@ $bodegas = $model->listar();
         </div>
 
 
-      <!-- ✅ AQUÍ VA LA PARTE QUE TE FALTABA -->
       <div class="pt-5 border-t border-gray-200">
         <div class="flex items-center gap-2 mb-2">
           <i data-lucide="boxes" class="w-4 h-4 text-gray-600"></i>
@@ -840,7 +839,7 @@ $bodegas = $model->listar();
           Total: <strong id="totalSubMateriales">0</strong> material(es)
         </p>
 
-        <!-- LISTA -->
+        <!-- LIST -->
         <div
           id="detalleSubBodegaMateriales"
           class="space-y-2"
@@ -860,7 +859,7 @@ $bodegas = $model->listar();
   </div>
 </div>
 
-  <!-- Modal Ver Materiales de Bodega -->
+  <!-- Modal View Warehouse Materials -->
   <div id="modalMaterialesBodega" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
     <div class="absolute inset-0" onclick="cerrarModalMateriales()"></div>
 
@@ -892,7 +891,7 @@ $bodegas = $model->listar();
     </div>
   </div>
 
-  <!-- Modal Editar sub-bodega -->
+  <!-- Modal Edit Sub-warehouse -->
 
     <div id="modalEditarSubBodega" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 backdrop-blur-sm">
     <div class="absolute inset-0" id="backdropEditarSub"></div>

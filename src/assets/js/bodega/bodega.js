@@ -1,6 +1,5 @@
 
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("[BODEGAS.JS] cargado v2025-12-18_flowbite-alerts+toggle-no-reload+empty-icons-fixed");
 
   const API_MATERIALES = new URL(
     "src/controllers/material_formacion_controller.php",
@@ -21,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const tr = btn.closest("tr");
     if (!tr) return;
 
-    // toggle (si ya existe la fila, la quitamos)
+    // toggle
     const next = tr.nextElementSibling;
     if (next && next.classList.contains("subbodegas-row")) {
       next.remove();
@@ -29,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Asegura data cargada
+    // Secure uploaded data
     await ensureAllSubBodegasLoaded();
 
     btn.textContent = "Ocultar sub-bodegas";
@@ -96,7 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const $ = (id) => document.getElementById(id);
 
-  // Carga allSubBodegas si aún no está cargado (para validaciones)
+  // Load allSubBodegas if it is not already loaded (for validations)
   const ensureAllSubBodegasLoaded = async () => {
     if (Array.isArray(allSubBodegas) && allSubBodegas.length > 0) return;
 
@@ -162,7 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   // ============================
-  // ✅ FLOWBITE-STYLE ALERTS (MISMO ESTILO QUE USUARIOS)
+  // FLOWBITE-STYLE ALERTS
   // ============================
   function getOrCreateFlowbiteContainer() {
     let container = document.getElementById("flowbite-alert-container");
@@ -272,7 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   // ============================
-  // ✅ LIMITES DE CARACTERES (BODEGAS)
+  // CHARACTER LIMITS (WINERIES)
   // ============================
   const LIMITES = {
     crearCodigo: 20,
@@ -310,7 +309,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   const initLimitesBodegas = () => {
-    // Crear bodega
+    // Create winery
     aplicarLimiteCaracteres($("crearCodigo"), LIMITES.crearCodigo, {
       onLimitMessage: (max) => toastInfo(`Máximo ${max} caracteres en Código.`),
     });
@@ -321,17 +320,17 @@ document.addEventListener("DOMContentLoaded", () => {
       onLimitMessage: (max) => toastInfo(`Máximo ${max} caracteres en Ubicación.`),
     });
 
-    // Crear sub-bodega
+    // Create sub-winery
     aplicarLimiteCaracteres($("subCodigo"), LIMITES.subCodigo);
     aplicarLimiteCaracteres($("subNombre"), LIMITES.subNombre);
     aplicarLimiteCaracteres($("subDescripcion"), LIMITES.subDescripcion);
 
-    // Editar bodega
+    // Edit winery
     aplicarLimiteCaracteres($("editCodigoBodega"), LIMITES.editCodigoBodega);
     aplicarLimiteCaracteres($("editNombre"), LIMITES.editNombre);
     aplicarLimiteCaracteres($("editUbicacion"), LIMITES.editUbicacion);
 
-    // Editar sub-bodega
+    // Edit sub-winery
     aplicarLimiteCaracteres($("editSubCodigo"), LIMITES.editSubCodigo);
     aplicarLimiteCaracteres($("editSubNombre"), LIMITES.editSubNombre);
     aplicarLimiteCaracteres($("editSubDescripcion"), LIMITES.editSubDescripcion);
@@ -342,7 +341,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initLimitesBodegas();
 
   // ============================
-  // LISTA / GRID
+  // LIST / GRID
   // ============================
   const btnVistaTabla = $("btnVistaTabla");
   const btnVistaTarjetas = $("btnVistaTarjetas");
@@ -375,7 +374,7 @@ document.addEventListener("DOMContentLoaded", () => {
   showList();
 
   // ============================
-  // DROPDOWN CREAR BODEGA
+  // CREATE WINERY DROPDOWN
   // ============================
   const btnCrearBodegaMenu = $("btnCrearBodegaMenu");
   const menuCrearBodega = $("menuCrearBodega");
@@ -406,7 +405,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ============================
-  // MODAL CREAR BODEGA
+  // CREATE WINERY MODAL
   // ============================
   const btnNuevaBodega = $("btnNuevaBodega");
   const modalCrear = $("modalCrear");
@@ -442,7 +441,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ============================
-    // VALIDACIÓN FRONT: NO repetir nombre (bodega-bodega)
+    // FRONT VALIDATION: Do not repeat name (winery-winery)
     // ============================
     const nombresBodegas = Array.from(document.querySelectorAll(".bodegas-btn-dots"))
       .map(btn => cleanText(btn.dataset.nombre));
@@ -453,7 +452,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ============================
-    // VALIDACIÓN FRONT: NO chocar con SUB-BODEGAS (bodega vs sub-bodega)
+    // FRONT VALIDATION: Do not clash with SUB-WINERIES (winery vs sub-winery)
     // ============================
     await ensureAllSubBodegasLoaded();
 
@@ -466,7 +465,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ============================
-    // VALIDACIÓN FRONT: NOMBRE DUPLICADO
+    // FRONT VALIDATION: DUPLICATE NAME
     // ============================
     const nombresExistentes = Array.from(
       document.querySelectorAll(".bodegas-btn-dots")
@@ -504,7 +503,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       closeModal(modalCrear);
       toastSuccess(parsed?.data?.mensaje || "Bodega creada correctamente.");
-      // aquí sí recargamos porque tú estás renderizando desde PHP (server-side)
       setTimeout(() => location.reload(), 650);
     } catch (err) {
       console.error(err);
@@ -521,7 +519,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ============================
-  // MODAL CREAR SUB-BODEGA (FIX)
+  // CREATE SUB-WINERY MODAL
   // ============================
   const btnNuevaSubBodega = $("btnNuevaSubBodega");
   const modalCrearSubBodega = $("modalCrearSubBodega");
@@ -558,9 +556,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ============================
-    // VALIDACIÓN FRONT: NO duplicar SUB-BODEGA (sub vs sub)
-    // - mismo padre + mismo nombre  (regla fuerte)
-    // - o mismo código global       (regla fuerte)
+    // FRONT VALIDATION: Do not duplicate SUB-WINERY (sub vs sub)
+    // - same parent + same name  (strong rule)
+    // - or same global code       (strong rule)
     // ============================
     await ensureAllSubBodegasLoaded();
 
@@ -584,9 +582,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ============================
-    // VALIDACIÓN FRONT: NO chocar con BODEGAS (sub-bodega vs bodega)
-    // - nombre sub igual a nombre bodega
-    // - o código sub igual a código bodega
+    // FRONT VALIDATION: Do not clash with WINERIES (sub-winery vs winery)
+    // - sub name equal to winery name
+    // - or sub code equal to winery code
     // ============================
     const bodegasBtns = Array.from(document.querySelectorAll(".bodegas-btn-dots"));
     const nombresBodegas2 = bodegasBtns.map(btn => cleanText(btn.dataset.nombre));
@@ -633,7 +631,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ============================
-  // LISTAR SUB-BODEGAS (FRONTEND ONLY)
+  // LIST SUB-WINERIES (FRONTEND ONLY)
   // ============================
   const loadSubBodegas = async (idBodega) => {
     const container = document.getElementById("subBodegasContainer");
@@ -651,7 +649,7 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error("Respuesta inválida");
       }
 
-      // FILTRO POR BODEGA PADRE
+      // FILTER BY PARENT WINERY
       const subBodegas = parsed.data.filter(
         sb => String(sb.id_bodega) === String(idBodega)
       );
@@ -710,7 +708,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // ============================
-  // CONTADOR DE SUB-BODEGAS (CACHE)
+  // SUB-WINERY COUNT (CACHE)
   // ============================
 
   const loadSubBodegasCount = () => {
@@ -793,7 +791,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initSubBodegas();
 
   // ============================
-  // MENÚ CONTEXTUAL SUB-BODEGAS (TOGGLE BLINDADO)
+  // SUB-WINERY CONTEXT MENU (BLINDED TOGGLE)
   // ============================
   let selectedSubBodega = null;
 
@@ -804,23 +802,23 @@ document.addEventListener("DOMContentLoaded", () => {
   const closeSubMenu = () => {
     if (!subMenu) return;
     subMenu.classList.add("hidden");
-    delete subMenu.dataset.openFor; // 👈 clave para el toggle
+    delete subMenu.dataset.openFor;
   };
 
   const openSubMenu = (btn) => {
     if (!subMenu || !btn) return;
 
-    // Posición (fixed/absolute depende tu HTML, pero esto funciona con tu cálculo)
+    // Position
     const r = btn.getBoundingClientRect();
     subMenu.style.left = `${r.right + window.scrollX - 220}px`;
     subMenu.style.top = `${r.bottom + window.scrollY + 8}px`;
 
     subMenu.classList.remove("hidden");
-    subMenu.dataset.openFor = btn.dataset.id || ""; // 👈 guardamos para saber si es el mismo botón
+    subMenu.dataset.openFor = btn.dataset.id || "";
     safeIcons();
   };
 
-  // ABRIR/CERRAR desde el botón ...
+  // OPEN/CLOSE from the button
   document.addEventListener("click", (e) => {
     const btn = e.target.closest(".subbodega-actions-btn");
     if (!btn) return;
@@ -828,7 +826,6 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     e.stopImmediatePropagation();
 
-    // Si está abierto para el MISMO botón => toggle cerrar
     const openFor = subMenu?.dataset?.openFor || "";
     const thisId = btn.dataset.id || "";
 
@@ -837,7 +834,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Siempre cerramos antes (evita estados raros)
     closeSubMenu();
 
     selectedSubBodega = {
@@ -858,7 +854,7 @@ document.addEventListener("DOMContentLoaded", () => {
     openSubMenu(btn);
   });
 
-  // Click en opciones del menú
+  // Click on menu options
   subMenu?.addEventListener("click", async (e) => {
     const btn = e.target.closest(".ctx-sub-btn");
     if (!btn || !selectedSubBodega) return;
@@ -871,7 +867,7 @@ document.addEventListener("DOMContentLoaded", () => {
     closeSubMenu();
 
     if (action === "ver") {
-      fillDetalleSub(selectedSubBodega);           // ← Asigna textos y clase del badge
+      fillDetalleSub(selectedSubBodega);
       loadMaterialesSubBodega(selectedSubBodega.id);
       openModal(document.getElementById("modalDetalleSubBodega"));
       return;
@@ -910,21 +906,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Cerrar al hacer click afuera
+  // Close when clicking outside
   document.addEventListener("click", (e) => {
     if (!subMenu) return;
     if (e.target.closest(".subbodega-actions-btn")) return;
     if (!subMenu.contains(e.target)) closeSubMenu();
   });
 
-  // Cerrar con ESC
+  // Close with ESC
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeSubMenu();
   });
 
 
   // ============================
-  // MENÚ CONTEXTUAL
+  // CONTEXT MENU
   // ============================
   const contextMenu = $("context-menu");
   let selectedData = null;
@@ -974,7 +970,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ============================
-  // MODAL DETALLE
+  // DETAIL MODAL
   // ============================
   const modalDetalle = $("modalDetalle");
   const cerrarDetalle = $("cerrarDetalle");
@@ -1005,19 +1001,18 @@ document.addEventListener("DOMContentLoaded", () => {
       const nuevaClase = estadoBadgeClass(estadoRaw);
       estadoEl.classList.add(nuevaClase);
 
-      // Fallback: forzar estilos inline si la clase no funciona
       if (nuevaClase === "badge-estado-activo") {
-        estadoEl.style.backgroundColor = "#39A900";  // verde sólido
+        estadoEl.style.backgroundColor = "#39A900";
         estadoEl.style.color = "#ffffff";
       } else {
-        estadoEl.style.backgroundColor = "#6c757d";  // gris
+        estadoEl.style.backgroundColor = "#6c757d";
         estadoEl.style.color = "#ffffff";
       }
     }
   };
 
   // ============================
-  // MODAL EDITAR
+  // EDIT MODAL
   // ============================
   const modalEditar = $("modalEditar");
   const backdropEditar = $("backdropEditar");
@@ -1041,7 +1036,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // ============================
-  // MODAL DETALLE SUB-BODEGA
+  // SUB-BODEGA DETAIL MODAL
   // ============================
   const modalDetalleSub = $("modalDetalleSubBodega");
   const cerrarDetalleSub = $("cerrarDetalleSub");
@@ -1052,7 +1047,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const fillDetalleSub = (data) => {
-    // Asigna textos a los campos simples
     const setText = (id, value) => {
       const el = document.getElementById(id);
       if (el) el.textContent = value ?? "";
@@ -1063,22 +1057,16 @@ document.addEventListener("DOMContentLoaded", () => {
     setText("detalleSubClasificacion", data.clasificacion_subbodegas ?? data.clasificacion);
     setText("detalleSubDescripcion", data.descripcion ?? "");
 
-    // Manejo específico del badge de estado
     const estadoEl = document.getElementById("detalleSubEstado");
     if (estadoEl) {
       const estadoRaw = data.estado || "";
-      // Normaliza el estado para mostrarlo como "Activo"/"Inactivo"
       const estadoTexto = estadoLabel(estadoRaw);
       estadoEl.textContent = estadoTexto;
 
-      // Remueve clases anteriores y agrega la correcta
       estadoEl.classList.remove("badge-estado-activo", "badge-estado-inactivo");
-      estadoEl.classList.add(estadoBadgeClass(estadoRaw)); // ya incluye inline-flex y w-fit si es necesario
-      // Asegura las clases de layout (por si acaso)
+      estadoEl.classList.add(estadoBadgeClass(estadoRaw));
       estadoEl.classList.add("inline-flex", "w-fit");
     }
-
-    // Total de materiales (si existe el elemento)
     const totalEl = document.getElementById("detalleSubTotalMateriales");
     if (totalEl) {
       totalEl.textContent = String(data.total_materiales ?? 0);
@@ -1103,7 +1091,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const parsed = await safeJson(res);
         last = { accion, parsed };
 
-        // si backend devuelve error aunque sea 200 => NO es ok
         if (parsed?.data?.error) continue;
 
         const okByBody =
@@ -1154,15 +1141,13 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // ============================
-  // ✅ UI UPDATE (SIN RELOAD)
+  // UI UPDATE (SIN RELOAD)
   // ============================
   const updateEstadoBadgesAndDatasets = (codigo, nextEstado) => {
-    // 1) Actualiza todos los dots (tabla + cards) que tengan ese codigo
     document.querySelectorAll(`.bodegas-btn-dots[data-codigo="${CSS.escape(codigo)}"]`).forEach((btn) => {
       btn.dataset.estado = nextEstado;
     });
 
-    // 2) Tabla: badge estado en la fila
     document.querySelectorAll("#tbodyBodegas tr").forEach((tr) => {
       const dots = tr.querySelector(".bodegas-btn-dots");
       if (!dots) return;
@@ -1177,7 +1162,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    // 3) Cards: switch + dataset estado
     document.querySelectorAll(".estado-switch").forEach((sw) => {
       const cod = String(sw.dataset.codigo || "");
       if (cod !== String(codigo)) return;
@@ -1186,7 +1170,6 @@ document.addEventListener("DOMContentLoaded", () => {
       sw.checked = nextEstado === "Activo";
     });
 
-    // 4) Si modal detalle está abierto con esa bodega, actualiza badge ahí también
     if ($("detalleId") && $("detalleId").textContent && String($("detalleId").textContent) === String(codigo)) {
       const estadoEl = $("detalleEstado");
       if (estadoEl) {
@@ -1196,14 +1179,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // 5) Si selectedData es esa bodega, también se actualiza para que el menú diga Activar/Desactivar bien
     if (selectedData && String(selectedData.codigo) === String(codigo)) {
       selectedData.estado = nextEstado;
     }
   };
 
   // ============================
-  // CLICK acciones menú contextual
+  // CLICK actions context menu
   // ============================
   contextMenu?.addEventListener("click", async (e) => {
     const btn = e.target.closest(".bodegas-ctx-btn");
@@ -1244,7 +1226,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (ok) {
         updateEstadoBadgesAndDatasets(selectedData.codigo, next);
-        // Reaplicar filtros por si el usuario está filtrando por Activo/Inactivo
         applyFilters();
       }
       return;
@@ -1252,7 +1233,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ============================
-  // GUARDAR EDITAR
+  // SAVE EDIT
   // ============================
   guardarEditar?.addEventListener("click", async () => {
     const id = ($("editIdBodega")?.value || "").trim();
@@ -1294,7 +1275,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ============================
-  // SWITCH estado (cards) - SIN RELOAD
+  // SWITCH state (cards) - WITHOUT RELOAD
   // ============================
   document.addEventListener("change", async (e) => {
     const sw = e.target.closest(".estado-switch");
@@ -1310,13 +1291,12 @@ document.addEventListener("DOMContentLoaded", () => {
       updateEstadoBadgesAndDatasets(codigo, next);
       applyFilters();
     } else {
-      // revierte si falló
       sw.checked = !sw.checked;
     }
   });
 
   // ============================
-  // BUSQUEDA + FILTRO (EMPTY states reales)
+  // SEARCH + FILTER (EMPTY states)
   // ============================
   const inputBuscar = $("inputBuscarBodega");
   const selectEstado = $("bodegasFilter");
@@ -1325,7 +1305,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const emptyGrid = $("emptyGrid");
   const tableWrapperList = $("tableWrapperList");
 
-  // ✅ ahora los IDs son WRAPPERS
   const iconNoDataListWrap = $("emptyIconNoDataListWrap");
   const iconNoResultsListWrap = $("emptyIconNoResultsListWrap");
 
@@ -1387,14 +1366,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const rows = getRows();
     const cards = getCards();
 
-    // Si no hay data real, respeta el empty original (no-data)
     if (rows.length === 0 && cards.length === 0) {
       setEmptyModeList("nodata");
       setEmptyModeGrid("nodata");
       return;
     }
 
-    // -------- TABLE
+    // TABLE
     let visibleRows = 0;
     rows.forEach((tr) => {
       const dots = tr.querySelector(".bodegas-btn-dots");
@@ -1422,7 +1400,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!filtering && rows.length === 0) setEmptyModeList("nodata");
     }
 
-    // -------- GRID
+    // GRID
     let visibleCards = 0;
     cards.forEach((card) => {
       const dots = card.querySelector(".bodegas-btn-dots");
@@ -1455,7 +1433,7 @@ document.addEventListener("DOMContentLoaded", () => {
   applyFilters();
 
   // ============================
-  // CIERRE ROBUSTO: MODAL EDITAR SUB-BODEGA
+  // CLOSE ROBUST: EDIT SUB-BODEGA MODAL
   // ============================
   const modalEditarSub = document.getElementById("modalEditarSubBodega");
 
@@ -1474,7 +1452,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ============================
-  // GUARDAR EDITAR SUB-BODEGA (FIX)
+  // SAVE EDIT SUB-BODEGA
   // ============================
   const btnGuardarEditarSub = document.getElementById("guardarEditarSubBodega");
 
@@ -1563,46 +1541,34 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ============================
-// FUNCIONES GLOBALES (fuera de DOMContentLoaded)
+// GLOBAL FUNCTIONS (outside DOMContentLoaded)
 // ============================
 
 const loadMaterialesBodega = async (idBodega) => {
   try {
-    console.log("� [loadMaterialesBodega] Buscando materiales para bodega ID:", idBodega);
 
     const API_URL = new URL("src/controllers/bodega_controller.php", document.baseURI).toString();
     const url = `${API_URL}?accion=inventario_bodega&id_bodega=${encodeURIComponent(idBodega)}`;
-    console.log("🔗 [loadMaterialesBodega] URL:", url);
-
+    
     const res = await fetch(url);
     const json = await res.json();
-
-    console.log("📥 [loadMaterialesBodega] Respuesta:", json);
 
     const cont = document.getElementById("detalleBodegaMateriales");
     const empty = document.getElementById("detalleBodegaMaterialesVacio");
     const total = document.getElementById("totalMateriales");
 
-    console.log("🎯 [loadMaterialesBodega] Contenedores encontrados:", {
-      cont: !!cont,
-      empty: !!empty,
-      total: !!total
-    });
-
     if (!cont) {
-      console.error("❌ [loadMaterialesBodega] Contenedor no encontrado");
+      console.error(" [loadMaterialesBodega] Contenedor no encontrado");
       return;
     }
 
     if (!json.success || !Array.isArray(json.data)) {
-      console.error("❌ [loadMaterialesBodega] Respuesta inválida:", json);
+      console.error(" [loadMaterialesBodega] Respuesta inválida:", json);
       cont.innerHTML = "";
       empty?.classList.remove("hidden");
       if (total) total.textContent = "0";
       return;
     }
-
-    console.log("✅ [loadMaterialesBodega] Materiales encontrados:", json.data.length);
 
     if (json.data.length === 0) {
       cont.innerHTML = "";
@@ -1628,10 +1594,8 @@ const loadMaterialesBodega = async (idBodega) => {
       </div>
     `).join("");
 
-    console.log("✅ [loadMaterialesBodega] Renderizado completo");
-
   } catch (err) {
-    console.error("❌ [loadMaterialesBodega] Error:", err);
+    console.error(" [loadMaterialesBodega] Error:", err);
     const cont = document.getElementById("detalleBodegaMateriales");
     const empty = document.getElementById("detalleBodegaMaterialesVacio");
     if (cont) cont.innerHTML = "";
@@ -1641,41 +1605,31 @@ const loadMaterialesBodega = async (idBodega) => {
 
 const loadMaterialesSubBodega = async (idSubBodega) => {
   try {
-    console.log("🔍 [loadMaterialesSubBodega] Buscando materiales para subbodega ID:", idSubBodega);
 
     const API_URL = new URL("src/controllers/bodega_controller.php", document.baseURI).toString();
     const url = `${API_URL}?accion=inventario_subbodega&id_subbodega=${encodeURIComponent(idSubBodega)}`;
-    console.log("🔗 [loadMaterialesSubBodega] URL:", url);
+
 
     const res = await fetch(url);
     const json = await res.json();
-
-    console.log("📥 [loadMaterialesSubBodega] Respuesta:", json);
 
     const cont = document.getElementById("detalleSubBodegaMateriales");
     const empty = document.getElementById("detalleSubBodegaMaterialesVacio");
     const total = document.getElementById("totalSubMateriales");
 
-    console.log("🎯 [loadMaterialesSubBodega] Contenedores encontrados:", {
-      cont: !!cont,
-      empty: !!empty,
-      total: !!total
-    });
 
     if (!cont) {
-      console.error("❌ [loadMaterialesSubBodega] Contenedor no encontrado");
+      console.error(" [loadMaterialesSubBodega] Contenedor no encontrado");
       return;
     }
 
     if (!json.success || !Array.isArray(json.data)) {
-      console.error("❌ [loadMaterialesSubBodega] Respuesta inválida:", json);
+      console.error(" [loadMaterialesSubBodega] Respuesta inválida:", json);
       cont.innerHTML = "";
       empty?.classList.remove("hidden");
       if (total) total.textContent = "0";
       return;
     }
-
-    console.log("✅ [loadMaterialesSubBodega] Materiales encontrados:", json.data.length);
 
     if (json.data.length === 0) {
       cont.innerHTML = "";
@@ -1701,10 +1655,9 @@ const loadMaterialesSubBodega = async (idSubBodega) => {
       </div>
     `).join("");
 
-    console.log("✅ [loadMaterialesSubBodega] Renderizado completo");
 
   } catch (err) {
-    console.error("❌ [loadMaterialesSubBodega] Error:", err);
+    console.error(" [loadMaterialesSubBodega] Error:", err);
     const cont = document.getElementById("detalleSubBodegaMateriales");
     const empty = document.getElementById("detalleSubBodegaMaterialesVacio");
     if (cont) cont.innerHTML = "";
@@ -1712,7 +1665,7 @@ const loadMaterialesSubBodega = async (idSubBodega) => {
   }
 };
 
-// Función para ver materiales de una bodega
+// Function to view materials from a warehouse
 async function verMaterialesBodega(idBodega) {
   const modal = document.getElementById("modalMaterialesBodega");
   const lista = document.getElementById("listaMaterialesBodega");
@@ -1720,11 +1673,11 @@ async function verMaterialesBodega(idBodega) {
 
   if (!modal || !lista) return;
 
-  // Mostrar modal
+  // Show modal
   modal.classList.remove("hidden");
   modal.classList.add("flex");
 
-  // Mostrar loading
+  // Show loading
   lista.innerHTML = `
     <div class="text-center py-8 text-gray-500">
       <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-2"></div>
@@ -1768,7 +1721,6 @@ async function verMaterialesBodega(idBodega) {
         `).join('');
       }
 
-      // Reiniciar iconos de Lucide
       if (window.lucide) window.lucide.createIcons();
     } else {
       throw new Error(json.message || "Error al cargar materiales");

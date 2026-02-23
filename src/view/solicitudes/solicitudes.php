@@ -1,6 +1,6 @@
 <?php
 // ====================
-//  MÓDULO SOLICITUDES 
+//  MODULE REQUESTS 
 // ====================
 
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
@@ -10,7 +10,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// (Opcional pero recomendado) si no hay usuario en sesión, redirigir
 if (empty($_SESSION['usuario']) || empty($_SESSION['usuario']['id_usuario'])) {
     // header("Location: login.php"); exit;
 }
@@ -36,7 +35,7 @@ if (empty($_SESSION['usuario']) || empty($_SESSION['usuario']['id_usuario'])) {
     <!-- Global Styles -->
     <link rel="stylesheet" href="src/assets/css/globals.css">
 
-    <!-- Estilos del módulo -->
+    <!-- Styles of the module -->
     <link rel="stylesheet" href="src/assets/css/solicitudes/solicitudes.css">
 </head>
 
@@ -45,7 +44,7 @@ if (empty($_SESSION['usuario']) || empty($_SESSION['usuario']['id_usuario'])) {
     <main class="transition-all duration-300 px-6 lg:px-10 py-6" style="margin-left: <?= $sidebarWidth ?>;">
 
         <!-- ===============================
-         TÍTULO + BOTÓN NUEVA SOLICITUD
+         TITLE + NEW REQUEST BUTTON
     ==================================== -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
@@ -64,7 +63,7 @@ if (empty($_SESSION['usuario']) || empty($_SESSION['usuario']['id_usuario'])) {
         </div>
 
         <!-- ============================================
-         TARJETAS DE RESUMEN
+         SUMMARY CARDS
     ============================================= -->
         <div class="sol-resumen-grid">
             <div class="sol-resumen-card">
@@ -109,7 +108,7 @@ if (empty($_SESSION['usuario']) || empty($_SESSION['usuario']['id_usuario'])) {
         </div>
 
         <!-- ============================================
-         FILTROS
+         FILTERS
     ============================================= -->
         <div class="sol-filtros-wrapper">
             <button class="sol-filtro-btn sol-filtro-btn-activo" data-filtro="todas">
@@ -129,18 +128,16 @@ if (empty($_SESSION['usuario']) || empty($_SESSION['usuario']['id_usuario'])) {
             </button>
         </div>
 
-        <!-- GRID DE SOLICITUDES -->
-        <div id="sol-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4">
-            <!-- Las solicitudes se cargarán aquí dinámicamente -->
-        </div>
+        <!-- REQUEST GRID -->
+        <div id="sol-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mt-4"></div>
 
-        <!-- PAGINACIÓN -->
+        <!-- PAGINATION -->
         <div id="sol-pagination" class="flex justify-center items-center gap-2 mt-6"></div>
 
     </main>
 
     <!-- ============================================================
-     MODAL – CREAR SOLICITUD
+     MODAL – CREATE REQUEST
 ============================================================ -->
     <div id="sol-modal" class="sol-modal-overlay">
         <div class="sol-modal-box">
@@ -159,7 +156,7 @@ if (empty($_SESSION['usuario']) || empty($_SESSION['usuario']['id_usuario'])) {
                     </button>
                 </div>
 
-                <!-- PASO 1 -->
+                <!-- STEP 1 -->
                 <div id="sol-paso-1" class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -207,10 +204,10 @@ if (empty($_SESSION['usuario']) || empty($_SESSION['usuario']['id_usuario'])) {
                     </div>
                 </div>
 
-                <!-- PASO 2 -->
+                <!-- STEP 2 -->
                 <div id="sol-paso-2" class="hidden space-y-4">
 
-                    <!-- ✅ NUEVO: FILTRO BODEGA + SUBBODEGA -->
+                    <!-- WAREHOUSE + SUBWAREHOUSE FILTER -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label for="bodega-select" class="text-sm font-medium block mb-1">Bodega *</label>
@@ -279,7 +276,6 @@ if (empty($_SESSION['usuario']) || empty($_SESSION['usuario']['id_usuario'])) {
             cargo: "<?= addslashes($_SESSION['usuario']['cargo'] ?? '') ?>"
         };
 
-        // PUNTO 3: alias compatible con tu JS (para que siempre lo lea)
         window.USUARIO_SESION = window.SIGA_USER;
     </script>
 

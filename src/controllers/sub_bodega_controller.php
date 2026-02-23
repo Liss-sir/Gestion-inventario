@@ -87,16 +87,16 @@ class SubBodegaController {
             $this->response(["error" => "Datos inválidos"], 400);
         }
 
-        // 1) Traer el registro actual (para no exigir campos que no editas)
+        // 1) Get the current record
         $actual = $this->model->obtenerPorId($id);
         if (!$actual) {
             $this->response(["error" => "Subbodega no encontrada"], 404);
         }
 
-        // 2) Merge: lo que llega del front sobrescribe lo existente
+        // 2) Merge: what comes from the front overwrites what exists
         $payload = array_merge($actual, $input);
 
-        // 3) Validación mínima de los campos editables
+        // 3) Minimal validation of editable fields
         if (
             empty($payload["codigo_subbodega"]) ||
             empty($payload["nombre_subbodega"]) ||
@@ -123,7 +123,7 @@ class SubBodegaController {
             $this->response(["error" => "ID requerido"], 400);
         }
 
-        // Recibir estado desde el BODY (POR POST)
+        // Receive state from the BODY (BY POST)
         $input = json_decode(file_get_contents("php://input"), true);
 
         if (!$input || !isset($input["estado"])) {

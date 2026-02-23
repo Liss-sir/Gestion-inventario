@@ -1,5 +1,5 @@
 <?php
-// ================= CONFIGURACIÓN INICIAL =================
+// ================= INITIAL CONFIGURATION =================
 ob_start();
 error_reporting(0);
 ini_set('display_errors', 0);
@@ -10,7 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
 header('Content-Type: application/json; charset=utf-8');
 
-// ================= DEPENDENCIAS =================
+// ================= DEPENDENCIES =================
 require_once __DIR__ . "/../../Config/database.php";
 require_once __DIR__ . "/../models/solicitudes.php";
 
@@ -23,7 +23,7 @@ class SolicitudMaterialController {
         $this->model = new SolicitudMaterialModel($conn);
     }
 
-    // ================= NOTIFICACIONES =================
+    // ================= NOTIFICATIONS =================
     private function enviarNotificacion($id_usuario, $titulo, $mensaje, $tipo, $referencia_id) {
         try {
             $sql = "INSERT INTO notificaciones
@@ -45,7 +45,7 @@ class SolicitudMaterialController {
         }
     }
 
-    // ================= CREAR SOLICITUD =================
+    // ================= CREATE REQUEST =================
     public function crear($data) {
         if (empty($data['materiales']) || !is_array($data['materiales'])) {
             return [
@@ -54,7 +54,7 @@ class SolicitudMaterialController {
             ];
         }
 
-        // Validación de datos requeridos
+        // Validation of required data
         if (empty($data['id_ficha']) || empty($data['id_rae']) || empty($data['id_programa']) || empty($data['id_usuario'])) {
             return [
                 "success" => false,
@@ -63,7 +63,7 @@ class SolicitudMaterialController {
         }
 
         try {
-            // 🔥 Obtener o crear actividad automáticamente si no viene
+            // Get or create activity automatically if not coming
             if (empty($data['id_actividad']) || $data['id_actividad'] <= 0) {
                 $data['id_actividad'] = $this->obtenerOCrearActividad(
                     $data['id_ficha'],
@@ -80,7 +80,7 @@ class SolicitudMaterialController {
 
             $this->model->commit();
 
-            // 🔔 Notificar coordinador y encargado de bodega
+            // Notify coordinator and warehouse manager
             $nombre = $_SESSION['usuario_nombre'] ?? 'Instructor';
             $this->enviarNotificacionMultiple(
                 ['coordinador', 'encargado_bodega'],
@@ -108,11 +108,11 @@ class SolicitudMaterialController {
         }
     }
 
-    // ================= RESPONDER SOLICITUD =================
+    // ================= RESPOND REQUEST =================
     public function responder($data) {
         error_log("📝 responder() invocado: " . json_encode($data));
         
-        // Obtener la solicitud antes de cambiar el estado
+        // Get the request before changing the state
         $solicitud = $this->model->getById($data['id_solicitud']);
         if (!$solicitud) {
             return [
@@ -121,7 +121,7 @@ class SolicitudMaterialController {
             ];
         }
 
-        // Cambiar el estado
+        // Change the state
         $ok = $this->model->responderSolicitud(
             $data['id_solicitud'],
             $data['estado'],
@@ -136,7 +136,7 @@ class SolicitudMaterialController {
             ];
         }
 
-        // Enviar notificación al solicitante
+        // Send notification to the applicant
         $estado = strtolower($data['estado']);
         $titulo = "Solicitud " . ucfirst($estado);
         $mensaje = "Tu solicitud #{$data['id_solicitud']} fue " . $estado;
@@ -156,9 +156,9 @@ class SolicitudMaterialController {
         ];
     }
 
-    // ================= ENTREGAR SOLICITUD =================
+    // ================= DELIVER REQUEST =================
     public function entregar($data) {
-        // 1️⃣ Traemos la solicitud antes de cambiar el estado
+        // Get the request before changing the state
         $solicitud = $this->model->getById($data['id_solicitud']);
 
         if (!$solicitud) {
@@ -168,7 +168,7 @@ class SolicitudMaterialController {
             ];
         }
 
-        // 2️⃣ Marcamos como entregada
+        // Mark as delivered
         $ok = $this->model->marcarEntregada(
             $data['id_solicitud'],
             $data['id_usuario']
@@ -181,7 +181,7 @@ class SolicitudMaterialController {
             ];
         }
 
-        // 3️⃣ Enviamos notificación al solicitante
+        // Send notification to the applicant
         $nombre = $_SESSION['usuario_nombre'] ?? 'Bodega';
 
         $this->enviarNotificacion(
@@ -198,7 +198,7 @@ class SolicitudMaterialController {
         ];
     }
 
-    // ================= HELPER: Notificar múltiples usuarios =================
+    // ================= HELPER: Notify multiple users =================
     private function enviarNotificacionMultiple($cargos, $titulo, $mensaje, $tipo, $referencia_id) {
         try {
             $placeholders = implode(',', array_fill(0, count($cargos), '?'));
@@ -222,17 +222,17 @@ class SolicitudMaterialController {
         }
     }
 
-    // ================= HELPER: Obtener o crear actividad =================
+    // ================= HELPER: Get or create activity =================
     private function obtenerOCrearActividad($id_ficha, $id_rae, $id_instructor = 1) {
         $db = $this->model->db;
 
         try {
-            // 1. Primero verificar si la tabla tiene algún registro
+            // 1. First check if the table has any record
             $check = $db->query("SELECT COUNT(*) as total FROM actividades_formacion");
             $result = $check->fetch(PDO::FETCH_ASSOC);
 
             if ($result['total'] == 0) {
-                // Tabla vacía, crear primera actividad
+                // Empty table, create first activity
                 $sql = "INSERT INTO actividades_formacion 
                         (id_ficha, id_rae, id_instructor, nombre_actividad, 
                          descripcion, tipo_trabajo, fecha_inicio, fecha_fin, estado)
@@ -247,7 +247,7 @@ class SolicitudMaterialController {
                 return $db->lastInsertId();
             }
 
-            // 2. Buscar actividad existente para esta ficha y rae
+            // 2. Search for existing activity for this training and RAE
             $sql = "SELECT id_actividad FROM actividades_formacion 
                     WHERE id_ficha = ? AND id_rae = ? 
                     LIMIT 1";
@@ -260,7 +260,7 @@ class SolicitudMaterialController {
                 return $actividad['id_actividad'];
             }
 
-            // 3. Si no existe, crear una nueva
+            // 3. If not exists, create a new one
             $sql = "INSERT INTO actividades_formacion 
                     (id_ficha, id_rae, id_instructor, nombre_actividad, 
                      descripcion, tipo_trabajo, fecha_inicio, fecha_fin, estado)
@@ -277,7 +277,7 @@ class SolicitudMaterialController {
         } catch (Exception $e) {
             error_log("❌ Error en obtenerOCrearActividad: " . $e->getMessage());
 
-            // Último recurso: buscar cualquier actividad
+            // Last resort: search for any activity
             $sql = "SELECT id_actividad FROM actividades_formacion LIMIT 1";
             $stmt = $db->prepare($sql);
             $stmt->execute();
@@ -287,11 +287,11 @@ class SolicitudMaterialController {
                 return $actividad['id_actividad'];
             }
 
-            return 1; // Valor por defecto
+            return 1; // Default value
         }
     }
 
-    // ================= OBTENER ACTIVIDADES =================
+    // ================= GET ACTIVITIES =================
     public function obtenerActividades($id_ficha, $id_rae) {
         try {
             $id_ficha = (int)$id_ficha;
@@ -321,7 +321,7 @@ class SolicitudMaterialController {
         }
     }
 
-    // ================= LISTADOS =================
+    // ================= LISTS =================
     public function listar() {
         return $this->model->getAll();
     }
@@ -379,7 +379,7 @@ class SolicitudMaterialController {
         return $this->model->getMateriales();
     }
 
-    // ================= BODEGAS Y SUBBODEGAS =================
+    // ================= WAREHOUSES AND SUBWAREHOUSES =================
     public function bodegas() {
         $db = $this->model->db;
         try {
@@ -417,12 +417,12 @@ class SolicitudMaterialController {
         }
     }
 
-    // ================= MATERIALES FILTRADOS (MEJORADO) =================
+    // ================= FILTERED MATERIALS =================
     public function obtenerMaterialesFiltrados($idBodega, $idSubBodega = 0) {
         $db = $this->model->db;
 
         try {
-            // ✅ Si hay subbodega seleccionada => CONSULTAR SOLO stock_subbodega
+            // If subbodega is selected => CONSULT ONLY stock_subbodega
             if ((int)$idSubBodega > 0) {
                 if ($this->tableExists("stock_subbodega") && $this->tableExists("material_formacion")) {
                     $sql = "SELECT 
@@ -451,7 +451,7 @@ class SolicitudMaterialController {
                 return [];
             }
 
-            // ✅ Caso solo bodega => stock_bodega
+            // Case only warehouse
             if ((int)$idBodega > 0 && $this->tableExists("stock_bodega") && $this->tableExists("material_formacion")) {
                 $sql = "SELECT 
                         mf.id_material,
@@ -475,7 +475,7 @@ class SolicitudMaterialController {
                 return $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
 
-            // ✅ fallback sin romper el front
+            // fallback without breaking the front
             return $this->materiales(0, 0);
 
         } catch (Exception $e) {
@@ -484,7 +484,7 @@ class SolicitudMaterialController {
         }
     }
 
-    // ================= HELPER: Verificar si tabla existe =================
+    // ================= HELPER: Verify if table exists =================
     private function tableExists($tableName) {
         $db = $this->model->db;
         try {

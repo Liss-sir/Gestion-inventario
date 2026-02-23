@@ -106,7 +106,7 @@ class SolicitudMaterialModel
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // ================= RESPONDER (YA NO DESCUENTA STOCK) =================
+    // ================= RESPONSE =================
     public function responderSolicitud($idSolicitud, $estado, $idAprobador, $observaciones = null)
     {
 
@@ -137,8 +137,6 @@ class SolicitudMaterialModel
 
             $rows = $stmt->rowCount();
 
-            // ❌ YA NO CREA MOVIMIENTO AQUÍ
-
             $this->db->commit();
             return $rows > 0;
 
@@ -150,8 +148,7 @@ class SolicitudMaterialModel
     }
 
     /* ===============================
-     CREAR MOVIMIENTO DE SALIDA
-     AHORA SOLO SE USA AL ENTREGAR
+     CREATE MOVEMENT OF EXIT
      =============================== */
     private function crearMovimientoSalidaDeSolicitud($idSolicitud, $idUsuario)
     {
@@ -252,20 +249,20 @@ class SolicitudMaterialModel
         return null;
     }
 
-    // ================= ENTREGAR (AHORA DESCUENTA STOCK) =================
+    // ================= DELIVER =================
     public function marcarEntregada($idSolicitud, $idUsuario)
 {
     try {
         $this->db->beginTransaction();
 
-        // 1) Primero crear la SALIDA (aquí se valida stock por trigger)
+        // 1) First create the EXIT
         $okMov = $this->crearMovimientoSalidaDeSolicitud($idSolicitud, $idUsuario);
         if ($okMov === false) {
             $this->db->rollBack();
             return false;
         }
 
-        // 2) Luego marcar la solicitud como entregada
+        // 2) Then mark the request as delivered
         $sql = "UPDATE solicitudes_material
                 SET estado = 'Entregada',
                     fecha_respuesta = NOW(),
@@ -286,7 +283,6 @@ class SolicitudMaterialModel
 
     } catch (Exception $e) {
         $this->db->rollBack();
-        // deja rastro real del error
         error_log("❌ marcarEntregada error: " . $e->getMessage());
         return false;
     }
