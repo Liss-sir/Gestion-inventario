@@ -4,7 +4,7 @@
 const RAE_API_URL = "src/controllers/rae_controller.php";
 const PROGRAMAS_API_URL = "src/controllers/programa_controller.php";
 
-// Variables globales
+// Global variables
 let currentRaes = [];
 let originalEditData = null; // For change validation during editing
 let currentRaeHasActiveActivities = false;
@@ -67,7 +67,7 @@ function validarSoloNumeros(event) {
     return true;
 }
 
-// Also prevent pasting non-numeric text
+    // Also prevent pasting non-numeric text
 document.addEventListener("DOMContentLoaded", () => {
     // For the creation field
     const createCodigoInput = document.getElementById("createRaeCodigo");
@@ -349,7 +349,7 @@ function closeDetailsModal() {
     document.getElementById("detailsModal").classList.add("hidden");
 }
 
-// Función auxiliar para abrir el modal de edición
+// Helper function to open the edit modal
 function abrirModalEdicion(id, descripcion, programa, codigo, programId, tieneActividades) {
     // Close all dropdown menus
     const allMenus = document.querySelectorAll('[id^="actionMenu"]');
@@ -550,9 +550,9 @@ function closeCreateModal() {
     document.getElementById("createModal").classList.add("hidden");
 }
 
-// -------------------------
+// ------------------------- 
 // Dynamic loading of RAE
-// -------------------------
+// ------------------------- 
 
 function _getField(obj, ...names) {
     for (const n of names) {
@@ -1219,8 +1219,6 @@ async function loadProgramLevels() {
                 window._programLevelMap[id] = nivel;
             }
         });
-
-        console.log("Niveles de programas cargados:", window._programLevelMap);
     } catch (err) {
         console.error("Error al cargar niveles de programas:", err);
         toastError("Error al cargar niveles de programas");

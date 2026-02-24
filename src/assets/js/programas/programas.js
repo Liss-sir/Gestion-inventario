@@ -197,14 +197,14 @@ function applyFilterAndUpdateEmptyStates() {
   }
 }
 
-// ========== VARIABLES GLOBALES PARA EL MODAL DE CREACIÓN ==========
+// ========== GLOBAL VARIABLES FOR CREATE MODAL ========== 
 let currentStep = 1;
 let selectedInstructors = []; // Array para almacenar ID de instructores seleccionados
 let allInstructors = []; // Array con todos los instructores disponibles
 
-// ========== FUNCIONES PARA EL MODAL DE 2 PASOS ==========
+// ========== FUNCTIONS FOR 2-STEP MODAL ========== 
 
-// Función para obtener todos los instructores
+// Function to get all instructors
 async function loadAllInstructors() {
     try {
         const response = await fetch(`${BASE_URL}src/controllers/programa_controller.php?accion=obtener_instructores`);
@@ -229,7 +229,7 @@ async function loadAllInstructors() {
     }
 }
 
-// Función para renderizar la lista de instructores
+// Function to render instructors list
 function renderInstructorsList(instructors) {
     const container = document.getElementById('instructorsListContainer');
     if (!container) return;
@@ -270,7 +270,7 @@ function renderInstructorsList(instructors) {
     container.innerHTML = html;
 }
 
-// Función para renderizar la lista de instructores seleccionados
+// Function to render selected instructors list
 function renderSelectedInstructorsList() {
     const container = document.getElementById('selectedInstructorsList');
     const countElement = document.getElementById('selectedCount');
@@ -322,7 +322,7 @@ function renderSelectedInstructorsList() {
     container.innerHTML = html;
 }
 
-// Función para alternar la selección de un instructor
+// Function to toggle instructor selection
 function toggleInstructorSelection(instructorId) {
     const index = selectedInstructors.indexOf(instructorId);
     
@@ -339,7 +339,7 @@ function toggleInstructorSelection(instructorId) {
     renderSelectedInstructorsList();
 }
 
-// ========== FUNCIONES DE VALIDACIÓN MEJORADAS ==========
+// ========== IMPROVED VALIDATION FUNCTIONS ========== 
 
 /**
  * Validates that code contains at least one letter and one number
@@ -450,7 +450,7 @@ function validateStep1Data(data, isEdit = false, excludeId = null) {
     return true;
 }
 
-// Función para validar datos del paso 1 (síncrona para uso inmediato)
+// Function to validate step 1 data (sync for immediate use)
 async function validateStep1(codigo, nombre, nivel, descripcion, duracionHoras, isEdit = false, excludeId = null) {
     // Crear objeto de datos para validación
     const data = {
@@ -476,7 +476,7 @@ async function validateStep1(codigo, nombre, nivel, descripcion, duracionHoras, 
     return true;
 }
 
-// Función para avanzar al siguiente paso
+// Function to go to next step
 async function nextStep() {
     const step1 = document.getElementById('createStep1');
     const step2 = document.getElementById('createStep2');
@@ -571,7 +571,7 @@ async function nextStep() {
     }
 }
 
-// Función para retroceder al paso anterior
+// Function to go to previous step
 function prevStep() {
     const step1 = document.getElementById('createStep1');
     const step2 = document.getElementById('createStep2');
@@ -604,7 +604,7 @@ function prevStep() {
     }
 }
 
-// Función para crear programa con instructores
+// Function to create program with instructors
 async function createProgramWithInstructors() {
     // Obtener datos del formulario
     const codigo = document.getElementById('create_codigo').value.trim();
@@ -622,9 +622,6 @@ async function createProgramWithInstructors() {
         duracion_horas: duracionHoras,
         estado: 1,
     };
-    
-    console.log("Creando programa con datos:", programData);
-    console.log("Instructores seleccionados:", selectedInstructors);
     
     // Validar datos (no validateProgramData para incluir instructores)
     if (!validateProgramData(programData, false, null)) {
@@ -646,7 +643,6 @@ async function createProgramWithInstructors() {
         });
         
         const createResult = await createResponse.json();
-        console.log("Resultado creación programa:", createResult);
         
         if (createResult.error) {
             toastError("Error al crear programa: " + createResult.error);
@@ -695,7 +691,6 @@ async function createProgramWithInstructors() {
                 });
                 
                 const instructorsResult = await instructorsResponse.json();
-                console.log("Resultado asignación instructores:", instructorsResult);
                 
                 if (instructorsResult.error) {
                     toastError("Programa creado pero error al asignar instructores: " + instructorsResult.error);
@@ -722,16 +717,16 @@ async function createProgramWithInstructors() {
     }
 }
 
-// ========== VARIABLES GLOBALES PARA EL MODAL DE EDICIÓN ==========
+// ========== GLOBAL VARIABLES FOR EDIT MODAL ========== 
 let currentEditStep = 1;
 let selectedEditInstructors = [];
 let allEditInstructors = [];
 let editingProgramId = null;
 let originalInstructorCount = 0; // Guardar cantidad original de instructores
 
-// ========== FUNCIONES PARA EL MODAL DE EDICIÓN (2 PASOS) ==========
+// ========== FUNCTIONS FOR EDIT MODAL (2 STEPS) ========== 
 
-// Función para abrir el modal de edición con 2 pasos
+// Function to open edit modal with 2 steps
 async function openEditModal(index) {
     const row = document.querySelector(`tr[data-index="${index}"]`) || document.querySelector(`div[data-index="${index}"]`);
     
@@ -789,7 +784,7 @@ async function openEditModal(index) {
     modal.classList.add("flex");
 }
 
-// Función para cargar instructores del programa
+// Function to load program instructors
 async function loadProgramInstructors(programId) {
     try {
         // Obtener instructores actuales del programa
@@ -826,7 +821,7 @@ async function loadProgramInstructors(programId) {
     }
 }
 
-// Función para renderizar la lista de instructores en edición
+// Function to render instructors list in edit
 function renderEditInstructorsList(instructors) {
     const container = document.getElementById('editInstructorsListContainer');
     if (!container) return;
@@ -871,7 +866,7 @@ function renderEditInstructorsList(instructors) {
     container.innerHTML = html;
 }
 
-// Función para renderizar la lista de instructores seleccionados en edición
+// Function to render selected instructors list in edit
 function renderEditSelectedInstructorsList() {
     const container = document.getElementById('editSelectedInstructorsList');
     const countElement = document.getElementById('editSelectedCount');
@@ -914,7 +909,7 @@ function renderEditSelectedInstructorsList() {
     container.innerHTML = html;
 }
 
-// Función para alternar la selección de un instructor en edición
+// Function to toggle instructor selection in edit
 function toggleEditInstructorSelection(instructorId) {
     const index = selectedEditInstructors.indexOf(instructorId);
     
@@ -937,7 +932,7 @@ function toggleEditInstructorSelection(instructorId) {
     renderEditSelectedInstructorsList();
 }
 
-// Función para avanzar al siguiente paso en edición
+// Function to go to next step in edit
 async function nextEditStep() {
     if (currentEditStep === 1) {
         // Validar datos del paso 1
@@ -997,7 +992,7 @@ async function nextEditStep() {
     }
 }
 
-// Función para retroceder al paso anterior en edición
+// Function to go to previous step in edit
 function prevEditStep() {
     if (currentEditStep === 2) {
         // Cambiar al paso 1
@@ -1017,7 +1012,7 @@ function prevEditStep() {
     }
 }
 
-// Función para guardar los cambios del programa (ambos pasos)
+// Function to save program changes (both steps)
 async function saveEditedProgram() {
     const idPrograma = document.getElementById('edit_id_programa').value;
     const index = document.getElementById('edit_index').value;
@@ -1059,8 +1054,6 @@ async function saveEditedProgram() {
         duracion_horas: duracionHoras,
         estado: estado, // AHORA ESTÁ DEFINIDO
     };
-    
-    console.log("Datos a enviar para actualizar:", programData);
     
     // Obtener datos originales para comparar cambios
     const originalData = {
@@ -1141,7 +1134,7 @@ async function saveEditedProgram() {
     }
 }
 
-// Función auxiliar para verificar cambios en instructores
+// Helper function to check changes in instructors
 async function hasChangesInInstructors(row, newInstructorIds) {
     // Obtener instructores originales del programa
     const programId = row.dataset.idPrograma;
@@ -1175,7 +1168,7 @@ async function hasChangesInInstructors(row, newInstructorIds) {
     }
 }
 
-// Función para cerrar el modal de edición
+// Function to close edit modal
 function closeEditModal() {
     const modal = document.getElementById("editProgramModal");
     
@@ -1220,7 +1213,7 @@ function closeEditModal() {
     modal.classList.remove("flex");
 }
 
-// Función para cerrar el modal de creación
+// Function to close create modal
 function closeCreateModal() {
     const modal = document.getElementById("createProgramModal");
     
@@ -1374,7 +1367,7 @@ function checkAndShowEmptyStates(currentView) {
   }
 }
 
-// También modifica applyFilterAndUpdateEmptyStates para usar la nueva función
+// Also modifies applyFilterAndUpdateEmptyStates to use the new function
 function applyFilterAndUpdateEmptyStates() {
   const searchInput = document.querySelector('input[placeholder="Buscar por nombre..."]')
   const searchTerm = (searchInput?.value ?? '').toLowerCase().trim()
@@ -1479,7 +1472,7 @@ function getLevelStyles(nivel) {
     }
 }
 
-// Busca la función openViewModal en programas.js y actualízala así:
+// Find the openViewModal function in programas.js and update it as follows:
 function openViewModal(index) {
     const modal = document.getElementById("viewProgramModal");
     const row = document.querySelector(`tr[data-index="${index}"]`) || document.querySelector(`div[data-index="${index}"]`);
@@ -1808,8 +1801,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const basePath =
     pathParts.slice(0, pathParts.findIndex((p) => p === "views" || p === "programas.php") || -1).join("/") || ""
   const BASE_URL = window.location.origin + basePath + "/"
-
-  console.log("[v0] BASE_URL configured as:", BASE_URL)
 
   // Variable to store original data when editing
   let originalEditData = null;

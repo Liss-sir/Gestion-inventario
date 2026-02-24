@@ -56,7 +56,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       </div>
 
       <!-- ================================== -->
-      <!-- INSTRUCTOR SIN FICHA - ALERTA      -->
+      <!-- INSTRUCTOR WITHOUT FICHA - ALERT   -->
       <!-- ================================== -->
       <?php if ($esInstructor && !$tieneFicha): ?>
       <div class="rounded-xl border border-amber-200 bg-amber-50 shadow-sm p-6">
@@ -80,7 +80,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
       <?php endif; ?>
 
       <!-- ================================== -->
-      <!-- STATISTICS (OCULTO SI INSTRUCTOR SIN FICHA) -->
+      <!-- STATISTICS (HIDDEN IF INSTRUCTOR WITHOUT FICHA) -->
       <!-- ================================== -->
       <?php if (!($esInstructor && !$tieneFicha)): ?>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -502,7 +502,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   </div>
 
   <!-- ========================================= -->
-  <!-- ASSIGN LEARNERS MODAL (GRUPAL - CREACIÓN) -->
+  <!-- ASSIGN LEARNERS MODAL (GROUP - CREATION) -->
   <!-- ========================================= -->
   <div id="modalAsignarAprendices" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
     <div class="bg-card rounded-xl border border-border shadow-xl w-[68vh] max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -555,7 +555,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
   </div>
 
   <!-- ========================================= -->
-  <!-- EDIT LEARNERS MODAL (GRUPAL - EDICIÓN)   -->
+  <!-- EDIT LEARNERS MODAL (GROUP - EDITION)   -->
   <!-- ========================================= -->
   <div id="modalEditAprendices" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
     <div class="bg-card rounded-xl border border-border shadow-xl w-[68vh] max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -613,9 +613,6 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
     };
     
     window.INSTRUCTOR_SIN_FICHA = <?= json_encode($esInstructor && !$tieneFicha) ?>;
-    
-    console.log("USUARIO SESIÓN:", window.USUARIO_SESION);
-    console.log("INSTRUCTOR SIN FICHA:", window.INSTRUCTOR_SIN_FICHA);
   </script>
 
   <script src="<?= ASSETS_URL ?>js/obras/obras.js"></script>

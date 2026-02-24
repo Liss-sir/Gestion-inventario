@@ -2,8 +2,8 @@
 $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
 $sidebarWidth = $collapsed ? "70px" : "260px";
 
-// Permisos
-require_once __DIR__ . "/../../utils/permisos_helper.php"; // ajusta la ruta si tu view está en otra carpeta
+// Permissions
+require_once __DIR__ . "/../../utils/permisos_helper.php"; // adjust the path if your view is in another folder
 
 $CAN_CREAR_RAE = function_exists("hasPermiso")
   ? (hasPermiso("raes.crear") || hasPermiso("raes.gestionar"))
@@ -66,7 +66,7 @@ $CAN_CAMBIAR_ESTADO_RAE = function_exists("hasPermiso")
         }
     </script>
     
-    <!-- Just we import global.css of SENA -->
+    <!-- Only import SENA's global.css -->
     <link rel="stylesheet" href="<?= BASE_URL ?>src/assets/css/globals.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -260,7 +260,7 @@ $CAN_CAMBIAR_ESTADO_RAE = function_exists("hasPermiso")
         class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 w-full max-w-md"
     ></div>
 
-    <!-- RAE Details Modality -->
+    <!-- RAE Details Modal -->
     <div id="detailsModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-card rounded-2xl shadow-2xl max-w-md w-full border border-border overflow-hidden">
             <!-- Modal header -->
@@ -331,7 +331,7 @@ $CAN_CAMBIAR_ESTADO_RAE = function_exists("hasPermiso")
 
             <!-- Edit Form -->
             <div class="p-6 pt-0 pb-2 space-y-4">
-                <!-- Hidden ID del RAE -->
+                <!-- Hidden RAE ID -->
                 <input type="hidden" id="editRaeId" value="">
 
                 <!-- RAE Code -->
