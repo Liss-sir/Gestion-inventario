@@ -133,7 +133,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                     <button type="button" onclick="openMovimientoModal()"
                         class="inline-flex items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 gap-2">
                         <i data-lucide="plus" class="h-4 w-4"></i>
-                        Agregar Movimiento
+                        <?= $esInstructor ? 'Realizar devolución' : 'Agregar Movimiento' ?>
                     </button>
                 </div>
             </div>
@@ -423,7 +423,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                 <form id="formMovimiento" class="space-y-5" onsubmit="registrarEntrada(event)">
 
 
-                    <input type="hidden" id="tipoMovimiento" name="tipo_movimiento" value="entrada">
+                    <input type="hidden" id="tipoMovimiento" name="tipo_movimiento" value="<?= $esInstructor ? 'devolucion' : 'entrada' ?>">
                     <input type="hidden" name="materiales_json" id="materiales_json">
 
                     <!-- =====================
@@ -577,7 +577,7 @@ $collParam = isset($_GET['coll']) ? '&coll=' . urlencode($_GET['coll']) : '';
                             type="submit"
                             class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-md bg-secondary px-4 py-2 text-xs sm:text-sm font-medium text-primary-foreground shadow-sm hover:opacity-90 transition-all">
                             <i data-lucide="check-circle" class="h-4 w-4"></i>
-                            Registrar entrada
+                            <?= $esInstructor ? 'Registrar devolución' : 'Registrar entrada' ?>
                         </button>
 
                     </div>
