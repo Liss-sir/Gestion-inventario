@@ -135,21 +135,12 @@ class MaterialFormacionModel {
     public function getAllDisponiblesWithStockTotal()
     {
         $sql = "SELECT
-                    m.*,
-                    (
-                        COALESCE((
-                            SELECT SUM(sb.stock_actual)
-                            FROM stock_bodega sb
-                            WHERE sb.id_material = m.id_material
-                        ), 0)
-                        +
-                        COALESCE((
-                            SELECT SUM(ss.stock_actual)
-                            FROM stock_subbodega ss
-                            WHERE ss.id_material = m.id_material
-                        ), 0)
-                    ) AS stock_actual
+                    m.*, 
+                    COALESCE(SUM(sb.stock_actual), 0) AS stock_actual
                 FROM material_formacion m
+                LEFT JOIN stock_bodega sb ON m.id_material = sb.id_material
+                WHERE m.estado IS NULL OR m.estado <> 'Agotado'
+                GROUP BY m.id_material
                 ORDER BY m.nombre ASC";
 
         $stmt = $this->db->prepare($sql);
