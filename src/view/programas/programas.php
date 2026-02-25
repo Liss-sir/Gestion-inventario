@@ -1,26 +1,26 @@
 ﻿<?php
-// Incluir configuración y modelo
+// Include config and model
 include_once __DIR__ . '/../../../Config/database.php';
 include_once __DIR__ . '/../../models/programa.php';
 
-// Crear instancia del modelo
+// Create model instance
 $programaModel = new Programa($conn);
 
-// Obtener todos los programas
+// Get all programs
 try {
     $programas = $programaModel->listar();
     
-    // Verificar si hay error en la consulta
+    // Check if there is an error in the query
     if (isset($programas['error'])) {
-        error_log("Error al listar programas: " . $programas['error']);
-        $programas = []; // Asegurar que sea un array vacío
+        error_log("Error listing programs: " . $programas['error']);
+        $programas = []; // Ensure it is an empty array
     }
     
-    // Debug: Ver qué datos se obtienen
-    error_log("Programas obtenidos: " . print_r($programas, true));
+    // Debug: See what data is obtained
+    error_log("Programs obtained: " . print_r($programas, true));
     
 } catch (Exception $e) {
-    error_log("Excepción al listar programas: " . $e->getMessage());
+    error_log("Exception listing programs: " . $e->getMessage());
     $programas = [];
 }
 ?>

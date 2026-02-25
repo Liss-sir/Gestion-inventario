@@ -47,10 +47,22 @@ class RaeController {
     }
 
     /* ==========================
+       VERIFICAR ACTIVIDADES ACTIVAS
+    ========================== */
+    public function verificarActividades() {
+        $idRae = $_GET['id_rae'] ?? null;
+        if (!$idRae) {
+            $this->jsonResponse(['error' => 'id_rae requerido'], 400);
+            return;
+        }
+        $tiene = $this->model->tieneActividadesActivas((int)$idRae);
+        $this->jsonResponse(['tiene_actividades_activas' => $tiene]);
+    }
+
+    /* ==========================
        CREAR
     ========================== */
     public function crear() {
-
         $data = $this->getJson();
 
         if (!$data) {
@@ -95,7 +107,6 @@ class RaeController {
        ACTUALIZAR
     ========================== */
     public function actualizar() {
-
         $data = $this->getJson();
 
         if (!isset($data["id_rae"])) {
@@ -103,19 +114,37 @@ class RaeController {
             return;
         }
 
-        // VALIDAR CÓDIGO RAE ÚNICO (si se envía)
+        $idRae = (int)$data["id_rae"];
+        $tieneActividades = $this->model->tieneActividadesActivas($idRae);
+
+        // Validación de código
         if (isset($data["codigo_rae"])) {
-            if ($this->model->existeCodigo($data["codigo_rae"], (int)$data["id_rae"])) {
-                $this->jsonResponse(
-                    ["error" => "El código RAE ya existe en otro registro"],
-                    400
-                );
+            // Si tiene actividades activas, no se permite cambiar el código
+            if ($tieneActividades) {
+                $this->jsonResponse([
+                    "error" => "No se puede modificar el código del RAE porque tiene actividades activas asociadas."
+                ], 400);
+                return;
+            }
+            // Verificar unicidad (excluyendo el RAE actual)
+            if ($this->model->existeCodigo($data["codigo_rae"], $idRae)) {
+                $this->jsonResponse(["error" => "El código RAE ya existe en otro registro"], 400);
+                return;
+            }
+        }
+
+        // Validación de programa
+        if (isset($data["id_programa"])) {
+            if ($tieneActividades) {
+                $this->jsonResponse([
+                    "error" => "No se puede modificar el programa de formación porque el RAE tiene actividades activas asociadas."
+                ], 400);
                 return;
             }
         }
 
         $ok = $this->model->actualizar(
-            (int)$data["id_rae"],
+            $idRae,
             $data["codigo_rae"] ?? null,
             isset($data["id_programa"]) ? (int)$data["id_programa"] : null,
             $data["descripcion_rae"] ?? null,
@@ -134,7 +163,6 @@ class RaeController {
        CAMBIAR ESTADO
     ========================== */
     public function cambiar_estado() {
-
         $data = $this->getJson();
 
         if (!isset($data["id_rae"], $data["estado"])) {
@@ -185,6 +213,10 @@ switch ($accion) {
 
     case "cambiar_estado":
         $controller->cambiar_estado();
+        break;
+
+    case "verificar_actividades":
+        $controller->verificarActividades();
         break;
 
     default:

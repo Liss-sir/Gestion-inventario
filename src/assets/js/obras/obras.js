@@ -1,11 +1,11 @@
 ﻿﻿/* ============================================================
-   GUARD GLOBAL
+  GLOBAL GUARD
 ============================================================ */
 if (!window.__obrasJSLoaded) {
   window.__obrasJSLoaded = true;
 
   // ==============================
-  // VARIABLES GLOBALES
+  // GLOBAL VARIABLES
   // ==============================
   let obras = [];
   let fichas = [];
@@ -33,10 +33,9 @@ if (!window.__obrasJSLoaded) {
     : null;
   
   const instructorSinFicha = window.INSTRUCTOR_SIN_FICHA || false;
-  console.log("VERIFICACIÓN INSTRUCTOR:", { esInstructor, fichaInstructor, instructorSinFicha, usuarioActual });
 
   // ==============================
-  // PERMISOS FRONT
+  // FRONTEND PERMISSIONS
   // ==============================
   const OBRAS_PERMS = (function () {
     const p = window.OBRAS_PERMS || {};
@@ -56,13 +55,11 @@ if (!window.__obrasJSLoaded) {
     };
   })();
 
-  console.log("PERMISOS OBRAS:", OBRAS_PERMS);
 
   const API_URL = "src/controllers/obra_controller.php";
-  console.log("API URL configurada:", API_URL);
 
   // ==============================
-  // FUNCIONES AUXILIARES
+  // HELPER FUNCTIONS
   // ==============================
   function actualizarContadorDescripcion(textareaId, counterId) {
     const textarea = document.getElementById(textareaId);
@@ -74,7 +71,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // DETECCIÓN DEL SIDEBAR
+  // SIDEBAR DETECTION
   // ==============================
   function setupSidebarDetection() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -99,7 +96,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // APLICAR PERMISOS A LA UI
+  // APPLY PERMISSIONS TO UI
   // ==============================
   function aplicarPermisosUI() {
     if (!OBRAS_PERMS.canCrear) {
@@ -117,7 +114,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // FUNCIONES DE API
+  // API FUNCTIONS
   // ==============================
   async function fetchAPI(params = {}) {
     try {
@@ -128,7 +125,6 @@ if (!window.__obrasJSLoaded) {
         url += `?${queryParams}`;
       }
 
-      console.log("Fetching:", url);
 
       const response = await fetch(url);
 
@@ -152,7 +148,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // CARGAR OBRAS
+  // LOAD WORKS
   // ==============================
   async function cargarObras() {
     try {
@@ -189,10 +185,7 @@ if (!window.__obrasJSLoaded) {
         return;
       }
       
-      console.log("Cargando obras...");
       const data = await fetchAPI({ accion: "listar" });
-
-      console.log("Datos recibidos:", data);
 
       if (data && data.error) {
         mostrarError(`Error del servidor: ${data.error}`);
@@ -205,11 +198,9 @@ if (!window.__obrasJSLoaded) {
       
       if (esInstructor && fichaInstructor) {
         obrasData = obrasData.filter(obra => obra.id_ficha === fichaInstructor);
-        console.log(`Obras filtradas para instructor (ficha ${fichaInstructor}): ${obrasData.length}`);
       }
       
       obras = obrasData;
-      console.log(`${obras.length} obras cargadas`);
 
       updateEstadisticas();
       renderObras(obras);
@@ -230,23 +221,19 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // DATOS MAESTROS
+  // MASTER DATA
   // ==============================
   async function cargarDatosMaestros() {
     try {
-      console.log("Cargando datos maestros...");
 
       const fichasData = await fetchAPI({ accion: "obtener_fichas" });
       fichas = Array.isArray(fichasData) ? fichasData : [];
-      console.log(`${fichas.length} fichas cargadas`);
 
       const raesData = await fetchAPI({ accion: "obtener_raes" });
       raes = Array.isArray(raesData) ? raesData : [];
-      console.log(`${raes.length} RAEs cargados`);
 
       const instructoresData = await fetchAPI({ accion: "obtener_instructores" });
       instructores = Array.isArray(instructoresData) ? instructoresData : [];
-      console.log(`${instructores.length} instructores cargados`);
 
       llenarSelectFichas();
       llenarSelectRaes();
@@ -258,7 +245,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // SELECTS CREATE
+  // CREATE SELECTS
   // ==============================
   function llenarSelectFichas() {
     const select = document.getElementById("create_ficha");
@@ -282,7 +269,6 @@ if (!window.__obrasJSLoaded) {
     select.disabled = false;
     
     if (esInstructor) {
-        console.log("Fichas disponibles para instructor:", fichas.length);
         if (fichas.length === 1) {
             select.value = fichas[0].id_ficha;
             setTimeout(() => {
@@ -293,7 +279,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // CARGAR RAES POR FICHA
+  // LOAD RAES BY FICHA
   // ==============================
   async function cargarRaesPorFicha(idFicha) {
     try {
@@ -302,7 +288,6 @@ if (!window.__obrasJSLoaded) {
         return;
       }
       
-      console.log("Cargando RAEs para ficha ID:", idFicha);
       
       const data = await fetchAPI({
         accion: "obtener_raes_por_ficha",
@@ -335,7 +320,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // CARGAR INSTRUCTORES POR FICHA
+  // LOAD INSTRUCTORS BY FICHA
   // ==============================
   async function cargarInstructoresPorFicha(idFicha) {
     try {
@@ -344,7 +329,6 @@ if (!window.__obrasJSLoaded) {
         return;
       }
       
-      console.log("Cargando instructores para ficha ID:", idFicha);
       
       const data = await fetchAPI({
         accion: "obtener_instructores_por_ficha",
@@ -480,7 +464,6 @@ if (!window.__obrasJSLoaded) {
     if (esInstructor && usuarioActual.usuarioId) {
       select.value = usuarioActual.usuarioId;
       select.disabled = true;
-      console.log("✅ Instructor preseleccionado:", usuarioActual.usuarioId);
     }
   }
 
@@ -507,7 +490,6 @@ if (!window.__obrasJSLoaded) {
     if (esInstructor && usuarioActual.usuarioId) {
       select.value = usuarioActual.usuarioId;
       select.disabled = true;
-      console.log("✅ Instructor preseleccionado:", usuarioActual.usuarioId);
     }
   }
 
@@ -759,7 +741,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // BUSCAR
+  // SEARCH
   // ==============================
   function searchObras() {
     if (instructorSinFicha) return;
@@ -790,7 +772,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // CAMBIAR ESTADO
+  // CHANGE STATE
   // ==============================
   async function toggleEstado(id, estado) {
     if (instructorSinFicha) {
@@ -833,7 +815,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // FUNCIONES PARA MENÚ DE ACCIONES
+  // FUNCTIONS FOR ACTION MENU
   // ==============================
   function toggleActionMenu(index) {
     if (instructorSinFicha) return;
@@ -858,7 +840,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // CONFIRMACIÓN PERSONALIZADA
+  // CUSTOM CONFIRMATION
   // ==============================
   function showConfirmationDialog(title, message) {
     return new Promise((resolve) => {
@@ -933,7 +915,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // MANEJAR CAMBIO DE FICHA
+  // HANDLE FICHA CHANGE
   // ==============================
   async function handleFichaChange() {
     const fichaId = this.value;
@@ -977,7 +959,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // MODAL CREAR
+  // CREATE MODAL
   // ==============================
   async function openCreateModal() {
     if (instructorSinFicha) {
@@ -996,8 +978,11 @@ if (!window.__obrasJSLoaded) {
 
     const modal = document.getElementById("modalCreate");
     const form = document.getElementById("formCreate");
-
     if (form) form.reset();
+
+    llenarSelectFichas();
+    resetearSelectsCreate();
+
     if (modal) modal.classList.remove("hidden");
 
     const tipo = document.getElementById("create_tipo");
@@ -1044,28 +1029,24 @@ if (!window.__obrasJSLoaded) {
   }
 
   function closeCreateModal() {
-    const modal = document.getElementById("modalCreate");
-    if (modal) modal.classList.add("hidden");
-    
-    const form = document.getElementById("formCreate");
-    if (form) form.reset();
-    
-    resetearCreacion();
+      const modal = document.getElementById("modalCreate");
+      if (modal) modal.classList.add("hidden");
+      
+      const form = document.getElementById("formCreate");
+      if (form) form.reset();
+      
+      resetearSelectsCreate();
+      resetearCreacion();
   }
 
   // ==============================
-  // CREAR OBRA
+  // CREATE WORK
   // ==============================
   async function handleCreateObra(e) {
     e.preventDefault();
 
     if (instructorSinFicha) {
       toastError("No puede crear obras porque no tiene una ficha vinculada.");
-      return;
-    }
-
-    if (isCreatingObra) {
-      console.log("Creación ya en progreso, ignorando clic adicional");
       return;
     }
 
@@ -1161,7 +1142,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // MODAL EDITAR
+  // EDIT MODAL
   // ==============================
   async function openEditModal(id) {
     if (instructorSinFicha) {
@@ -1189,8 +1170,6 @@ if (!window.__obrasJSLoaded) {
         console.error("No se encontró obra con ID:", id);
         return;
       }
-
-      console.log("Datos de obra para editar:", obra);
 
       editIdActividad = id;
 
@@ -1378,7 +1357,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // FUNCIONES PARA EDICIÓN DE APRENDICES (GRUPAL)
+  // FUNCTIONS FOR LEARNERS EDITION (GROUP)
   // ==============================
   function mostrarResumenAprendicesEdit(aprendices) {
     const container = document.getElementById('editListaAprendices');
@@ -1529,7 +1508,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // MODAL DETALLES
+  // DETAILS MODAL
   // ==============================
   async function openDetailsModal(id) {
     try {
@@ -1585,7 +1564,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // ERRORES EN PANTALLA
+  // ERRORS ON SCREEN
   // ==============================
   function mostrarError(mensaje) {
     const container = document.getElementById("obrasContainer");
@@ -1604,7 +1583,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // ==============================
-  // SELECTS EDIT
+  // EDIT SELECTS
   // ==============================
   function llenarSelectFichasEdit(selectedId = null) {
     const select = document.getElementById("edit_ficha");
@@ -1781,7 +1760,7 @@ if (!window.__obrasJSLoaded) {
   }
 
   // =========================
-  // VALIDACIONES
+  // VALIDATIONS
   // =========================
   function hasChanges(originalData, currentData) {
     const normalize = (obj) => ({
@@ -1933,10 +1912,8 @@ if (!window.__obrasJSLoaded) {
   // ==============================
   async function cargarAprendicesFicha(idFicha) {
     try {
-      console.log("Cargando aprendices para ficha ID:", idFicha);
 
       const url = API_URL + "?accion=obtener_aprendices_ficha&id_ficha=" + idFicha;
-      console.log("URL de solicitud:", url);
 
       const response = await fetch(url);
 
@@ -1949,11 +1926,8 @@ if (!window.__obrasJSLoaded) {
       }
 
       const data = await response.json();
-      console.log("Datos recibidos:", data);
-
       if (data && !data.error) {
         aprendicesFicha = Array.isArray(data) ? data : [];
-        console.log(`Cargados ${aprendicesFicha.length} aprendices`);
         return true;
       } else {
         const errorMsg = "Error al cargar aprendices: " + (data?.error || "Desconocido");
@@ -2224,11 +2198,29 @@ if (!window.__obrasJSLoaded) {
     aprendicesFicha = [];
   }
 
+  function resetearSelectsCreate() {
+    const raeSelect = document.getElementById("create_rae");
+    const instructorSelect = document.getElementById("create_instructor");
+    const aprendizSelect = document.getElementById("create_aprendiz_individual");
+
+    if (raeSelect) {
+      raeSelect.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona primero una ficha</option>';
+      raeSelect.disabled = true;
+    }
+    if (instructorSelect) {
+      instructorSelect.innerHTML = '<option value="" disabled selected class="text-gray-500">Selecciona primero una ficha</option>';
+      instructorSelect.disabled = true;
+    }
+    if (aprendizSelect) {
+      aprendizSelect.innerHTML = '<option value="" disabled selected>Selecciona primero una ficha</option>';
+      aprendizSelect.disabled = true;
+    }
+  }
+
   // ==============================
   // INICIALIZACIÓN
   // ==============================
   document.addEventListener("DOMContentLoaded", () => {
-    console.log("Inicializando módulo de obras...");
 
     let emptySearchObrasContainer = document.getElementById("emptySearchObras");
 
@@ -2465,21 +2457,4 @@ if (!window.__obrasJSLoaded) {
   window.agregarAprendizEdit = agregarAprendizEdit;
   window.removerAprendizEdit = removerAprendizEdit;
   window.guardarEditAprendices = guardarEditAprendices;
-
-  function verificarEstadoSelects() {
-    console.log("Estado de selects:");
-    
-    const create_ficha = document.getElementById("create_ficha");
-    const edit_ficha = document.getElementById("edit_ficha");
-    const create_instructor = document.getElementById("create_instructor");
-    const edit_instructor = document.getElementById("edit_instructor");
-    
-    if (create_ficha) console.log("create_ficha disabled:", create_ficha.disabled, "value:", create_ficha.value);
-    if (edit_ficha) console.log("edit_ficha disabled:", edit_ficha.disabled, "value:", edit_ficha.value);
-    if (create_instructor) console.log("create_instructor disabled:", create_instructor.disabled, "value:", create_instructor.value);
-    if (edit_instructor) console.log("edit_instructor disabled:", edit_instructor.disabled, "value:", edit_instructor.value);
-    
-    console.log("esInstructor:", esInstructor);
-    console.log("fichas disponibles:", fichas.length);
-  }
 }
