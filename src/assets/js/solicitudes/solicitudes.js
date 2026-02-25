@@ -506,6 +506,15 @@ const utilidades = {
       id_usuario: s.id_usuario ?? s.id_solicitante ?? s.usuario_id ?? s.usuarioId ?? null,
     };
   },
+  mostrarError(msg) {
+    if (typeof toastError === "function") return toastError(String(msg || "Ocurrió un error."));
+    alert(String(msg || "Ocurrió un error."));
+  },
+
+  mostrarExito(msg) {
+    if (typeof toastSuccess === "function") return toastSuccess(String(msg || "Operación exitosa."));
+    alert(String(msg || "Operación exitosa."));
+  },
 };
 
 // ============================================================
