@@ -393,7 +393,7 @@ function pedirMotivoRechazo() {
           </button>
 
           <button type="button" data-motivo-ok
-            class="px-4 py-2 rounded-xl bg-[#c24141] text-white">
+            class="px-4 py-2 rounded-sm bg-[#c24141] text-white">
             Rechazar
           </button>
         </div>
@@ -1485,7 +1485,7 @@ const render = {
             <div class="flex gap-2">
               
               ${mostrarBtnAceptar ? `
-                <button class="sol-btn-aceptar flex-1 py-2 px-3 bg-primary text-white rounded-lg flex items-center justify-center gap-2"
+                <button class="sol-btn-aceptar flex-1 py-2 px-3 bg-secondary text-white rounded-lg flex items-center justify-center gap-2"
                         data-id="${s.id}">
                   <i data-lucide="check-circle" class="w-4 h-4"></i>
                   Aceptar
@@ -1493,7 +1493,7 @@ const render = {
               ` : ""}
 
               ${mostrarBtnRechazar ? `
-                <button class="sol-btn-rechazar flex-1 py-2 px-3 bg-[#c24141] text-white rounded-lg flex items-center justify-center gap-2"
+                <button class="sol-btn-rechazar flex-1 py-2 px-3 bg-[#c24141] text-white rounded-sm flex items-center justify-center gap-2"
                         data-id="${s.id}">
                   <i data-lucide="x-circle" class="w-4 h-4"></i>
                   Rechazar
