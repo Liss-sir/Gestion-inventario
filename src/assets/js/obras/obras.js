@@ -1863,47 +1863,53 @@ if (!window.__obrasJSLoaded) {
       if (!select) return;
 
       if (!idFicha || idFicha === "") {
-        select.innerHTML = '<option value="" disabled selected>Selecciona primero una ficha</option>';
-        return;
+          select.innerHTML = '<option value="" disabled selected>Selecciona primero una ficha</option>';
+          select.disabled = true;
+          return;
       }
 
       select.innerHTML = '<option value="" disabled selected>Cargando aprendices...</option>';
+      select.disabled = true; // Mientras carga, deshabilitado
 
       const url = API_URL + "?accion=obtener_aprendices_ficha&id_ficha=" + idFicha;
-
       const response = await fetch(url);
       const textResponse = await response.text();
-
       let data;
       try {
-        data = JSON.parse(textResponse);
+          data = JSON.parse(textResponse);
       } catch (jsonError) {
-        console.error("No se pudo parsear como JSON:", jsonError);
-        select.innerHTML = '<option value="" disabled selected>Error al cargar aprendices</option>';
-        return;
+          console.error("No se pudo parsear como JSON:", jsonError);
+          select.innerHTML = '<option value="" disabled selected>Error al cargar aprendices</option>';
+          select.disabled = true;
+          return;
       }
 
       if (data && !data.error) {
-        if (data.length === 0) {
-          select.innerHTML = '<option value="" disabled selected>No hay aprendices en esta ficha</option>';
-        } else {
-          select.innerHTML = '<option value="" disabled selected>Selecciona un aprendiz</option>';
-
-          data.forEach((aprendiz) => {
-            const option = document.createElement("option");
-            option.value = aprendiz.id_usuario;
-            option.textContent = `${aprendiz.nombre_completo} (${aprendiz.documento || "Sin documento"})`;
-            select.appendChild(option);
-          });
-        }
+          if (data.length === 0) {
+              select.innerHTML = '<option value="" disabled selected>No hay aprendices en esta ficha</option>';
+              select.disabled = true;
+          } else {
+              select.innerHTML = '<option value="" disabled selected>Selecciona un aprendiz</option>';
+              data.forEach((aprendiz) => {
+                  const option = document.createElement("option");
+                  option.value = aprendiz.id_usuario;
+                  option.textContent = `${aprendiz.nombre_completo} (${aprendiz.documento || "Sin documento"})`;
+                  select.appendChild(option);
+              });
+              select.disabled = false; // <-- HABILITAR AQUÍ
+          }
       } else {
-        select.innerHTML = '<option value="" disabled selected>Error al cargar aprendices</option>';
-        console.error("Error del servidor:", data?.error);
+          select.innerHTML = '<option value="" disabled selected>Error al cargar aprendices</option>';
+          select.disabled = true;
+          console.error("Error del servidor:", data?.error);
       }
     } catch (error) {
       console.error("Error en cargarAprendicesParaSelect:", error);
       const select = document.getElementById("create_aprendiz_individual");
-      if (select) select.innerHTML = '<option value="" disabled selected>Error de conexión</option>';
+      if (select) {
+          select.innerHTML = '<option value="" disabled selected>Error de conexión</option>';
+          select.disabled = true;
+      }
     }
   }
 
@@ -2450,7 +2456,6 @@ if (!window.__obrasJSLoaded) {
   window.resetearCreacion = resetearCreacion;
   window.cargarRaesPorFicha = cargarRaesPorFicha;
   window.handleFichaChange = handleFichaChange;
-  window.verificarEstadoSelects = verificarEstadoSelects;
 
   window.openEditAprendicesModal = openEditAprendicesModal;
   window.closeEditAprendicesModal = closeEditAprendicesModal;
