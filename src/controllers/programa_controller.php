@@ -86,11 +86,18 @@ switch ($accion) {
             exit;
         }
 
-        // Normalizar nivel
+        // Normalizar campos
+        $nombre = trim($nombre);
         $nivel = str_replace(['Tecnico', 'Tecnologo'], ['Técnico', 'Tecnólogo'], $nivel);
 
         if (!in_array($nivel, ['Técnico','Tecnólogo'], true)) {
             echo json_encode(['error'=>'Nivel invalido']);
+            exit;
+        }
+
+        // Verificar nombre único
+        if ($programa->nombreExiste($nombre)) {
+            echo json_encode(['error' => 'Ya existe un programa con este nombre']);
             exit;
         }
 
@@ -151,6 +158,12 @@ switch ($accion) {
 
         if (!in_array($nivel, ['Técnico','Tecnólogo'], true)) {
             echo json_encode(['error'=>'Nivel inválido']);
+            exit;
+        }
+
+        // Verificar nombre único (permitir el mismo nombre solo para el programa que se está editando)
+        if ($programa->nombreExiste($nombre, $id)) {
+            echo json_encode(['error' => 'Ya existe otro programa con este nombre']);
             exit;
         }
 
@@ -299,6 +312,26 @@ switch ($accion) {
             echo json_encode(['error' => 'Error al asignar instructores: ' . $e->getMessage()]);
         }
         break;
+    // =========================
+    // OBTENER POR NOMBRE (para validación)
+    // =========================
+    case 'obtener_por_nombre':
+        $nombre = $_GET['nombre'] ?? null;
+        $exclude_id = $_GET['exclude_id'] ?? null;
+        if (!$nombre) {
+            echo json_encode(['error' => 'Debe especificar nombre del programa']);
+            exit;
+        }
+
+        try {
+            $p = $programa->obtenerPorNombre($nombre, $exclude_id);
+            echo json_encode($p ?: ['error' => 'Programa no encontrado']);
+        } catch (PDOException $e) {
+            echo json_encode(['error' => 'Error al buscar programa por nombre: ' . $e->getMessage()]);
+        }
+        break;
+
     default:
         echo json_encode(['error'=>'Acción inválida']);
+        break;
 }

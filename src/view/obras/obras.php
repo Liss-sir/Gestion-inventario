@@ -248,7 +248,7 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
         </button>
       </div>
 
-      <form id="formCreate" class="p-6 space-y-4" onsubmit="handleCreateObra(event)">
+      <form id="formCreate" class="p-6 space-y-4">
         <div>
           <label class="block text-xs text-muted-foreground mb-1">Ficha *</label>
           <select id="create_ficha" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm input-siga" required>
