@@ -377,6 +377,74 @@ async function codeAlreadyExistsAPI(codigo, excludeId = null) {
 }
 
 /**
+ * Checks if a name already exists in the current programs table/grid
+ * excludeIndex: if provided, exclude this program from the check
+ */
+function nameAlreadyExists(name, excludeIndex = null) {
+    const tableRows = document.querySelectorAll('#tableView tbody tr[data-index]');
+    const gridCards = document.querySelectorAll('#gridView [data-index]');
+    const targetName = (name || '').trim().toLowerCase();
+
+    for (let row of tableRows) {
+        const rowIndex = row.dataset.index;
+        const rowName = (row.dataset.nombre || '').trim().toLowerCase();
+
+        // Skip if this is the row being edited
+        if (excludeIndex !== null && rowIndex === excludeIndex) {
+            continue;
+        }
+
+        if (rowName === targetName) {
+            return true;
+        }
+    }
+
+    for (let card of gridCards) {
+        const cardIndex = card.dataset.index;
+        const cardName = (card.dataset.nombre || '').trim().toLowerCase();
+
+        // Skip if this is the card being edited
+        if (excludeIndex !== null && cardIndex === excludeIndex) {
+            continue;
+        }
+
+        if (cardName === targetName) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Checks if a name already exists using the server API. Useful when data might not be present in the current UI.
+ */
+async function nameAlreadyExistsAPI(name, excludeId = null) {
+    try {
+        const params = new URLSearchParams({
+            accion: 'obtener_por_nombre',
+            nombre: name
+        });
+        if (excludeId) {
+            params.set('exclude_id', excludeId);
+        }
+
+        const response = await fetch(`${BASE_URL}src/controllers/programa_controller.php?${params.toString()}`);
+        const result = await response.json();
+
+        // Si hay un error (como que no se encontró), devolver falso
+        if (result.error) {
+            return false;
+        }
+
+        return true; // Nombre existe
+    } catch (error) {
+        console.error("Error checking name existence:", error);
+        return false; // En caso de error, asumir que no existe
+    }
+}
+
+/**
  * Validates program data before sending to server - for step 1 validation
  */
 function validateStep1Data(data, isEdit = false, excludeId = null) {
@@ -472,7 +540,14 @@ async function validateStep1(codigo, nombre, nivel, descripcion, duracionHoras, 
         toastError("Ya hay un programa de formación con el código ingresado");
         return false;
     }
-    
+
+    // Verificar si el nombre ya existe (llamada a API)
+    const nameExists = await nameAlreadyExistsAPI(nombre, excludeId);
+    if (nameExists) {
+        toastError("Ya hay un programa de formación con el nombre ingresado");
+        return false;
+    }
+
     return true;
 }
 
@@ -1743,6 +1818,12 @@ function validateProgramData(data, isEdit = false, excludeIndex = null) {
   // Check if code already exists (excluding current program in edit mode)
   if (codeAlreadyExists(data.codigo_programa, isEdit ? excludeIndex : null)) {
     toastError("Ya hay un programa de formación con el código ingresado");
+    return false;
+  }
+
+  // Check if name already exists (excluding current program in edit mode)
+  if (nameAlreadyExists(data.nombre_programa, isEdit ? excludeIndex : null)) {
+    toastError("Ya hay un programa de formación con el nombre ingresado");
     return false;
   }
 

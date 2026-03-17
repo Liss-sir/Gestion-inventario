@@ -67,6 +67,36 @@ class Programa {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    // Verificar existencia de un nombre de programa (opcionalmente excluyendo un ID)
+    public function nombreExiste($nombre, $excludeId = null) {
+        $query = "SELECT id_programa FROM {$this->table} WHERE LOWER(nombre_programa) = LOWER(?)";
+        $params = [$nombre];
+
+        if ($excludeId) {
+            $query .= " AND id_programa != ?";
+            $params[] = $excludeId;
+        }
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute($params);
+        return (bool) $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    public function obtenerPorNombre($nombre, $excludeId = null) {
+        $query = "SELECT id_programa, nombre_programa FROM {$this->table} WHERE LOWER(nombre_programa) = LOWER(?)";
+        $params = [$nombre];
+
+        if ($excludeId) {
+            $query .= " AND id_programa != ?";
+            $params[] = $excludeId;
+        }
+
+        $query .= " LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute($params);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     // Crear programa
     public function crear($codigo, $nombre, $nivel, $descripcion, $duracion, $estado) {
         $stmt = $this->conn->prepare("
