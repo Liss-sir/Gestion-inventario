@@ -122,174 +122,26 @@ $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
       </section>
 
       <!-- TIMELINE -->
-      <section id="timeline" class="bg-card rounded-xl shadow-sm border border-border p-5 w-full">
-        <div class="flex items-center gap-2">
-          <i data-lucide="file-text" class="h-5 w-5 text-card-foreground"></i>
-          <h2 class="text-base font-semibold text-card-foreground">Línea de Tiempo</h2>
+<section id="timeline" class="bg-card rounded-xl shadow-sm border border-border p-5 w-full">
+    <div class="flex items-center gap-2">
+        <i data-lucide="file-text" class="h-5 w-5 text-card-foreground"></i>
+        <h2 class="text-base font-semibold text-card-foreground">Línea de Tiempo</h2>
+    </div>
+
+    <!-- ✅ CONTENEDOR DE CARGA/ERROR -->
+    <div id="timeline-status" class="mt-4 hidden"></div>
+
+    <!-- ✅ CONTENEDOR DE ITEMS -->
+    <div id="timeline-items" class="mt-6 space-y-6">
+        <!-- Esqueleto de carga (skeleton) -->
+        <div class="flex items-center justify-center py-12">
+            <div class="text-center">
+                <i data-lucide="loader-circle" class="h-8 w-8 animate-spin text-primary mx-auto"></i>
+                <p class="mt-2 text-sm text-muted-foreground">Cargando historial...</p>
+            </div>
         </div>
-
-        <div class="mt-6 space-y-6">
-          <!-- ITEM 1 -->
-          <div class="timeline-item group relative flex gap-4" data-modulo="Movimientos" data-accion="Entrada">
-            <div class="relative w-11 shrink-0">
-              <div
-                class="absolute left-[22px] top-[36px] bottom-[-24px] w-px group-last:hidden"
-                style="background-color: var(--border);"
-              ></div>
-
-              <div class="absolute left-[4px] top-0 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
-                <i data-lucide="history" class="h-5 w-5"></i>
-              </div>
-            </div>
-
-            <div class="w-full rounded-xl border border-border bg-card p-6 shadow-sm">
-              <div class="flex flex-wrap items-center gap-2">
-                <span
-                  class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
-                  style="background-color: color-mix(in srgb, var(--chart-5) 14%, white); color: var(--chart-5);"
-                >
-                  Entrada
-                </span>
-                <span class="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
-                  Movimientos
-                </span>
-              </div>
-
-              <p class="mt-3 text-base font-semibold text-card-foreground">
-                Registró entrada de 50 bolsas de Cemento Gris
-              </p>
-
-              <p class="mt-2 text-sm text-muted-foreground">
-                Bodega: <span class="text-card-foreground/80">Bodega Construcción</span>
-              </p>
-
-              <div class="mt-4 flex flex-wrap items-center gap-5 text-xs text-muted-foreground">
-                <span class="inline-flex items-center gap-2">
-                  <i data-lucide="user" class="h-4 w-4"></i>
-                  María Elena Rodríguez Gómez <span class="text-muted-foreground">(Encargado de Inventario)</span>
-                </span>
-
-                <span class="inline-flex items-center gap-2">
-                  <i data-lucide="calendar" class="h-4 w-4"></i>
-                  17 de noviembre, 2024
-                </span>
-
-                <span class="inline-flex items-center gap-2">
-                  <i data-lucide="clock" class="h-4 w-4"></i>
-                  10:00
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- ITEM 2 -->
-          <div class="timeline-item group relative flex gap-4" data-modulo="Movimientos" data-accion="Salida">
-            <div class="relative w-11 shrink-0">
-              <div
-                class="absolute left-[22px] top-[36px] bottom-[-24px] w-px group-last:hidden"
-                style="background-color: var(--border);"
-              ></div>
-
-              <div class="absolute left-[4px] top-0 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
-                <i data-lucide="history" class="h-5 w-5"></i>
-              </div>
-            </div>
-
-            <div class="w-full rounded-xl border border-border bg-card p-6 shadow-sm">
-              <div class="flex flex-wrap items-center gap-2">
-                <span
-                  class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
-                  style="background-color: color-mix(in srgb, var(--chart-5) 14%, white); color: var(--chart-5);"
-                >
-                  Salida
-                </span>
-                <span class="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
-                  Movimientos
-                </span>
-              </div>
-
-              <p class="mt-3 text-base font-semibold text-card-foreground">
-                Registró salida de 10 bolsas de Cemento Gris para Ficha 2567890
-              </p>
-
-              <p class="mt-2 text-sm text-muted-foreground">
-                Instructor: <span class="text-card-foreground/80">Juan Pablo Hernández Castro</span>
-              </p>
-
-              <div class="mt-4 flex flex-wrap items-center gap-5 text-xs text-muted-foreground">
-                <span class="inline-flex items-center gap-2">
-                  <i data-lucide="user" class="h-4 w-4"></i>
-                  Diego Fernando Torres Ríos <span class="text-muted-foreground">(Encargado de Bodega)</span>
-                </span>
-
-                <span class="inline-flex items-center gap-2">
-                  <i data-lucide="calendar" class="h-4 w-4"></i>
-                  19 de noviembre, 2024
-                </span>
-
-                <span class="inline-flex items-center gap-2">
-                  <i data-lucide="clock" class="h-4 w-4"></i>
-                  08:30
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- ITEM 3 -->
-          <div class="timeline-item group relative flex gap-4" data-modulo="Movimientos" data-accion="Salida">
-            <div class="relative w-11 shrink-0">
-              <div
-                class="absolute left-[22px] top-[36px] bottom-[-24px] w-px group-last:hidden"
-                style="background-color: var(--border);"
-              ></div>
-
-              <div class="absolute left-[4px] top-0 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
-                <i data-lucide="history" class="h-5 w-5"></i>
-              </div>
-            </div>
-
-            <div class="w-full rounded-xl border border-border bg-card p-6 shadow-sm">
-              <div class="flex flex-wrap items-center gap-2">
-                <span
-                  class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
-                  style="background-color: color-mix(in srgb, var(--chart-5) 14%, white); color: var(--chart-5);"
-                >
-                  Salida
-                </span>
-                <span class="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-muted-foreground">
-                  Movimientos
-                </span>
-              </div>
-
-              <p class="mt-3 text-base font-semibold text-card-foreground">
-                Registró salida de 2 m3 de Arena de Río para Ficha 2567890
-              </p>
-
-              <p class="mt-2 text-sm text-muted-foreground">
-                Instructor: <span class="text-card-foreground/80">Juan Pablo Hernández Castro</span>
-              </p>
-
-              <div class="mt-4 flex flex-wrap items-center gap-5 text-xs text-muted-foreground">
-                <span class="inline-flex items-center gap-2">
-                  <i data-lucide="user" class="h-4 w-4"></i>
-                  Diego Fernando Torres Ríos <span class="text-muted-foreground">(Encargado de Bodega)</span>
-                </span>
-
-                <span class="inline-flex items-center gap-2">
-                  <i data-lucide="calendar" class="h-4 w-4"></i>
-                  19 de noviembre, 2024
-                </span>
-
-                <span class="inline-flex items-center gap-2">
-                  <i data-lucide="clock" class="h-4 w-4"></i>
-                  08:35
-                </span>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </section>
+    </div>
+</section>
     </div>
 
   </main>
