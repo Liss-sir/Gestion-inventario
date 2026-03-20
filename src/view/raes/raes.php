@@ -78,8 +78,8 @@ $CAN_CAMBIAR_ESTADO_RAE = function_exists("hasPermiso")
         <!-- Page title -->
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
             <div>
-                <h1 class="text-3xl">Resultados de Aprendizaje (RAE)</h1>
-                <p class="text-muted-foreground mt-1">Administra los RAEs asociados a los programas de formación</p>
+                <h1 class="text-2xl font-bold tracking-tight">Resultados de Aprendizaje (RAE)</h1>
+                <p class="text-muted-foreground">Administra los RAEs asociados a los programas de formación</p>
             </div>
 
             <!-- Action buttons (next to title) -->
