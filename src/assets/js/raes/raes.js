@@ -292,14 +292,33 @@ function toggleActionMenu(id) {
     menu.classList.toggle("hidden");
 }
 
+function toggleActionMenuCard(button) {
+    const menu = button.nextElementSibling;
+    const allMenus = document.querySelectorAll('.action-menu-card');
+
+    // Close all other menus
+    allMenus.forEach((m) => {
+        if (m !== menu) {
+            m.classList.add("hidden");
+        }
+    });
+
+    // Toggle current menu
+    menu.classList.toggle("hidden");
+}
+
 // Close menus when clicking outside them
 document.addEventListener("click", (event) => {
     const isMenuButton = event.target.closest('[onclick^="toggleActionMenu"]');
     const isInsideMenu = event.target.closest('[id^="actionMenu"]');
+    const isMenuButtonCard = event.target.closest('[onclick^="toggleActionMenuCard"]');
+    const isInsideMenuCard = event.target.closest('.action-menu-card');
 
-    if (!isMenuButton && !isInsideMenu) {
+    if (!isMenuButton && !isInsideMenu && !isMenuButtonCard && !isInsideMenuCard) {
         const allMenus = document.querySelectorAll('[id^="actionMenu"]');
         allMenus.forEach((menu) => menu.classList.add("hidden"));
+        const allMenusCard = document.querySelectorAll('.action-menu-card');
+        allMenusCard.forEach((menu) => menu.classList.add("hidden"));
     }
 });
 
@@ -307,6 +326,8 @@ function openDetailsModal(id, descripcion, programa, estado, codigo) {
     // Close all dropdown menus
     const allMenus = document.querySelectorAll('[id^="actionMenu"]');
     allMenus.forEach((menu) => menu.classList.add("hidden"));
+    const allMenusCard = document.querySelectorAll('.action-menu-card');
+    allMenusCard.forEach((menu) => menu.classList.add("hidden"));
 
     // Decode values in case they come encoded from HTML
     try {
@@ -354,6 +375,8 @@ function abrirModalEdicion(id, descripcion, programa, codigo, programId, tieneAc
     // Close all dropdown menus
     const allMenus = document.querySelectorAll('[id^="actionMenu"]');
     allMenus.forEach((menu) => menu.classList.add("hidden"));
+    const allMenusCard = document.querySelectorAll('.action-menu-card');
+    allMenusCard.forEach((menu) => menu.classList.add("hidden"));
 
     // Decode values in case they come encoded from HTML
     try {
@@ -817,6 +840,12 @@ async function updateRae() {
 
 // Change the status of a RAE (activate / deactivate)
 async function changeRaeEstado(id, estado) {
+    // Close all dropdown menus
+    const allMenus = document.querySelectorAll('[id^="actionMenu"]');
+    allMenus.forEach((menu) => menu.classList.add("hidden"));
+    const allMenusCard = document.querySelectorAll('.action-menu-card');
+    allMenusCard.forEach((menu) => menu.classList.add("hidden"));
+
     const p = window.RAES_PERMS || {};
     // ✅ Instructor: por permisos, esto quedará bloqueado y el switch no se renderiza
     if (!p.canCambiarEstado) {
@@ -1059,7 +1088,6 @@ function renderGrid(items) {
         const descripcion = _getField(r, "descripcion", "descripcion_rae");
         let programa = _getField(r, "programa", "nombre_programa") || "";
         const ed = encodeURIComponent(descripcion);
-        const ep = encodeURIComponent(programa);
 
         // program id
         const pid = _getField(r, "id_programa", "id_programa", "id_programa");
@@ -1077,10 +1105,11 @@ function renderGrid(items) {
                 programa = pid;
             }
         }
+        const ep = encodeURIComponent(programa);
         const estado = _getField(r, "estado") || "";
 
         const card = document.createElement("div");
-        card.className = "bg-card border border-border rounded-2xl p-6 hover:shadow-lg transition-all";
+        card.className = "bg-card border border-border rounded-2xl p-6";
         card.setAttribute("data-pid", pid || "");
         card.setAttribute("data-nivel", nivelPrograma || "");
 
@@ -1089,22 +1118,64 @@ function renderGrid(items) {
                 <div class="w-14 h-14 bg-avatar-secondary-39 rounded-md flex items-center justify-center flex-shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" width="33" height="33" viewBox="0 0 24 24" fill="none" stroke="#007832" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-book-open-icon lucide-book-open"><path d="M12 7v14"></path><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"></path></svg>
                 </div>
-                <div class="flex-1">
-                    <h3 class="text-lg text-foreground leading-tight">${descripcion}</h3>
+                <div class="min-w-0 flex-1">
+                    <h3 class="font-semibold text-foreground truncate" title="RAE #${codigo || id}">
+                        RAE #${codigo || id}
+                    </h3>
+                    <p class="text-sm text-muted-foreground opacity-75 line-clamp-4" title="${descripcion}">
+                        ${descripcion}
+                    </p>
                 </div>
 
-                ${
-                    canEditar
-                        ? `
-                            <button onclick="openEditModal('${id}', '${ed}', '${ep}', '${codigo ? encodeURIComponent(codigo) : ""}', '${pid ?? ""}')"
-                                class="text-muted-foreground hover:text-foreground transition flex-shrink-0" title="Editar RAE">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                                </svg>
-                            </button>
-                        `
-                        : ""
-                }
+                <div class="relative">
+                    <button onclick="toggleActionMenuCard(this)" class="text-muted-foreground hover:text-foreground transition-colors p-2 hover:bg-muted rounded flex-shrink-0">
+                        <i class="fas fa-ellipsis-h"></i>
+                    </button>
+
+                    <div class="hidden absolute right-0 mt-2 w-48 rounded-xl border border-border bg-popover shadow-md py-1 z-50 action-menu-card">
+                        <button onclick="openDetailsModal('${id}', '${ed}', '${ep}', '${estado}', '${codigo ? encodeURIComponent(codigo) : ""}')" class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted transition-colors">
+                            <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M1 12S4.5 5 12 5s11 7 11 7-3.5 7-11 7S1 12 1 12z"/>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            Ver detalles
+                        </button>
+
+                        ${
+                            canEditar
+                                ? `
+                                    <button onclick="openEditModal('${id}', '${ed}', '${ep}', '${codigo ? encodeURIComponent(codigo) : ""}', '${pid ?? ""}')" class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted transition-colors">
+                                        <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.5a2.121 2.121 0 0 1 3 3L9 17l-4 1 1-4 10.5-10.5z"/>
+                                        </svg>
+                                        Editar
+                                    </button>
+                                `
+                                : ``
+                        }
+
+                        ${
+                            canCambiarEstado
+                                ? `
+                                    ${
+                                        canEditar
+                                            ? `<hr class="border-border my-1">`
+                                            : ``
+                                    }
+
+                                    <button onclick="changeRaeEstado('${id}', '${estado.toLowerCase() === "activo" ? "Inactivo" : "Activo"}')" class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted transition-colors">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="mr-2 h-4 w-4">
+                                            <path d="M12 2v10"/>
+                                            <path d="M18.4 6.6a9 9 0 1 1-12.77.04"/>
+                                        </svg>
+                                        ${estado.toLowerCase() === "activo" ? "Desactivar" : "Activar"}
+                                    </button>
+                                `
+                                : ``
+                        }
+                    </div>
+                </div>
             </div>
 
             <div class="border-t border-border mb-4"></div>

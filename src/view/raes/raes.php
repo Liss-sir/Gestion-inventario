@@ -306,7 +306,7 @@ $CAN_CAMBIAR_ESTADO_RAE = function_exists("hasPermiso")
                             <path d="M22 10v6"></path>
                             <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"></path>
                         </svg>
-                        <span id="detailsPrograma" class="text-sm"></span>
+                        <span id="detailsPrograma" class="text-sm"></span>  
                     </div>
                 </div>
             </div>
