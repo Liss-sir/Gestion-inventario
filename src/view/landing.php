@@ -113,7 +113,7 @@ $stats = [
       </section>
 
       <!-- Features -->
-      <section class="border-t border-border bg-card py-20">
+  <section class="border-t border-border bg-card py-20">
   <div class="container mx-auto px-4">
     <div class="mb-12 text-center">
       <h2 class="text-3xl font-bold">Características principales</h2>
@@ -146,34 +146,41 @@ $stats = [
   </div>
 </section>
 
+<section class="border-t border-border bg-card py-20">
+  <div class="container mx-auto px-4">
+    <div class="mb-12 text-center">
+      <h2 class="text-3xl font-bold">Nuestro Equipo</h2>
+      <p class="mt-2 text-muted-foreground">
+        Las personas detrás del Sistema de Gestión de Almacén
+      </p>
+    </div>
 
-      <!-- Stats -->
-      <section class="py-20 hero-bg">
-        <div class="container mx-auto px-4">
-          <div class="grid gap-8 md:grid-cols-4">
-            <?php foreach ($stats as $index => $stat): ?>
-              <div class="text-center">
-                <p class="text-4xl font-bold text-secondary">
-                  <?php echo htmlspecialchars($stat['value']); ?>
-                </p>
-                <p class="mt-1 text-muted-foreground">
-                  <?php echo htmlspecialchars($stat['label']); ?>
-                </p>
-              </div>
-            <?php endforeach; ?>
-          </div>
-        </div>
-      </section>
+    <div class="grid grid-cols-5 grid-rows-2 gap-4 text-center">
+      <div class="bg-gray-200 p-4"><img src="src/assets/img/logo-sena-negro.png" alt="Aló"></div>
+      <div class="bg-gray-200 p-4">2</div>
+      <div class="bg-gray-200 p-4">3</div>
+      <div class="bg-gray-200 p-4">4</div>
+      <div class="bg-gray-200 p-4">5</div>
+      <div class="bg-gray-200 p-4">6</div>
+      <div class="bg-gray-200 p-4">7</div>
+      <div class="bg-gray-200 p-4">8</div>
+      <div class="bg-gray-200 p-4">9</div>
+      <div class="bg-gray-200 p-4">10</div>
+    </div>
+
+  </div>
+
+</section>
+
     </main>
 
     <!-- Footer -->
     <footer class="border-t border-border bg-card py-8">
       <div class="container mx-auto px-4 text-center text-sm text-muted-foreground">
-        <p>© 2025 SIGA - Sistema de Gestión de Almacén. Todos los derechos reservados.</p>
+        <p>© 2026 SIGA - Sistema de Gestión de Almacén. Todos los derechos reservados.</p>
       </div>
     </footer>
 
-    <?php include "src/includes/footer.php"; ?>
   </div>
 
   <script>
