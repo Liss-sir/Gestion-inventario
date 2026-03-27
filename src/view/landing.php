@@ -46,6 +46,106 @@ $stats = [
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
 
+  <style>
+    @keyframes teamFloat {
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-8px);
+      }
+    }
+
+    @keyframes teamShine {
+      0% {
+        transform: translateX(-140%) rotate(20deg);
+      }
+      100% {
+        transform: translateX(220%) rotate(20deg);
+      }
+    }
+
+    .team-member {
+      animation: teamFloat 4.5s ease-in-out infinite;
+      animation-delay: var(--delay, 0s);
+      transition: transform 0.35s ease;
+    }
+
+    .team-photo {
+      position: relative;
+      border: 3px solid #39A90066;
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.2), 0 0 0 0 #00783266;
+      transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+    }
+
+    .team-member:nth-child(even) .team-photo {
+      border-color: #00783266;
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.2), 0 0 0 0 #39A90066;
+    }
+
+    .team-photo::after {
+      content: "";
+      position: absolute;
+      top: -40%;
+      left: -70%;
+      width: 40%;
+      height: 180%;
+      opacity: 0.7;
+      pointer-events: none;
+      background: linear-gradient(
+        120deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.25) 45%,
+        rgba(255, 255, 255, 0.75) 50%,
+        rgba(255, 255, 255, 0.25) 55%,
+        transparent 100%
+      );
+      transform: translateX(-140%) rotate(20deg);
+    }
+
+    .team-photo img {
+      transition: transform 0.35s ease, filter 0.35s ease;
+    }
+
+    .team-member:hover {
+      transform: translateY(-6px);
+    }
+
+    .team-member:hover .team-photo {
+      transform: scale(1.06) rotate(-2deg);
+      border-color: #007832;
+      box-shadow: 0 18px 34px rgba(15, 23, 42, 0.3), 0 0 0 8px #39A9004D;
+    }
+
+    .team-member:nth-child(even):hover .team-photo {
+      border-color: #39A900;
+      box-shadow: 0 18px 34px rgba(15, 23, 42, 0.3), 0 0 0 8px #0078324D;
+    }
+
+    .team-member:hover .team-photo::after {
+      animation: teamShine 0.85s ease;
+    }
+
+    .team-member:hover .team-photo img {
+      transform: scale(1.12);
+      filter: saturate(1.15) contrast(1.05);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .team-member,
+      .team-member:hover .team-photo::after {
+        animation: none;
+      }
+
+      .team-member,
+      .team-photo,
+      .team-photo img {
+        transition: none;
+      }
+    }
+  </style>
+
 </head>
 <body class="min-h-screen bg-background">
 
@@ -146,6 +246,7 @@ $stats = [
   </div>
 </section>
 
+<!-- Nuestro equipo -->
 <section class="border-t border-border bg-card py-20">
   <div class="container mx-auto px-4">
     <div class="mb-12 text-center">
@@ -155,17 +256,86 @@ $stats = [
       </p>
     </div>
 
-    <div class="grid grid-cols-5 grid-rows-2 gap-4 text-center">
-      <div class="bg-gray-200 p-4"><img src="src/assets/img/logo-sena-negro.png" alt="Aló"></div>
-      <div class="bg-gray-200 p-4">2</div>
-      <div class="bg-gray-200 p-4">3</div>
-      <div class="bg-gray-200 p-4">4</div>
-      <div class="bg-gray-200 p-4">5</div>
-      <div class="bg-gray-200 p-4">6</div>
-      <div class="bg-gray-200 p-4">7</div>
-      <div class="bg-gray-200 p-4">8</div>
-      <div class="bg-gray-200 p-4">9</div>
-      <div class="bg-gray-200 p-4">10</div>
+    <div class="grid grid-cols-5 grid-rows-2 gap-x-6 gap-y-7 text-center mx-auto max-w-6xl">
+      <div class="team-member p-4" style="--delay: 0s;">
+        <div class="team-photo h-32 w-32 mx-auto overflow-hidden rounded-full bg-gray-300">
+          <img src="src/assets/img/Jhonatan.jpeg" alt="Jhonatan" class="h-full w-full rounded-full object-cover">
+        </div>
+          <h2 class="mt-3 whitespace-nowrap font-semibold text-sm">Jhonatan Stiven Acevedo</h2>
+          <h3 class="text-xs font-light">Líder de Proyecto</h3>
+      </div>
+
+      <div class="team-member p-4" style="--delay: 0.08s;">
+        <div class="team-photo h-32 w-32 mx-auto overflow-hidden rounded-full bg-gray-300">
+          <img src="src/assets/img/Isaac.jpeg" alt="Isaac" class="h-full w-full rounded-full object-cover">
+        </div>
+          <h2 class="mt-3 whitespace-nowrap font-semibold text-sm">Isaac Echeverry</h2>
+          <h3 class="text-xs font-light">Diseñador y Desarrollador Frontend</h3>
+      </div>
+
+      <div class="team-member p-4" style="--delay: 0.16s;">
+        <div class="team-photo h-32 w-32 mx-auto overflow-hidden rounded-full bg-gray-300">
+          <img src="src/assets/img/Catalina.jpeg" alt="Laura" class="h-full w-full rounded-full object-cover">
+        </div>
+          <h2 class="mt-3 whitespace-nowrap font-semibold text-sm">Laura Catalina Rubio</h2>
+          <h3 class="text-xs font-light">Diseñadora y Desarrolladora Frontend</h3>
+      </div>
+
+      <div class="team-member p-4" style="--delay: 0.24s;">
+        <div class="team-photo h-32 w-32 mx-auto overflow-hidden rounded-full bg-gray-300">
+          <img src="src/assets/img/Juan_Esteban.jpeg" alt="Juan Esteban" class="h-full w-full rounded-full object-cover">
+        </div>
+          <h2 class="mt-3 whitespace-nowrap font-semibold text-sm">Juan Esteban Soto</h2>
+          <h3 class="text-xs font-light">Diseñador y Desarrollador Frontend</h3>
+      </div>
+
+      <div class="team-member p-4" style="--delay: 0.32s;">
+        <div class="team-photo h-32 w-32 mx-auto overflow-hidden rounded-full bg-gray-300">
+          <img src="src/assets/img/Juan_Jose.jpeg" alt="Juan José" class="h-full w-full rounded-full object-cover">
+        </div>
+          <h2 class="mt-3 whitespace-nowrap font-semibold text-sm">Juan José Candamil</h2>
+          <h3 class="text-xs font-light">Administrador Base de Datos</h3>
+      </div>
+
+      <div class="team-member p-4" style="--delay: 0.4s;">
+        <div class="team-photo h-32 w-32 mx-auto overflow-hidden rounded-full bg-gray-300">
+          <img src="src/assets/img/Julian.jpeg" alt="Julián" class="h-full w-full rounded-full object-cover">
+        </div>
+          <h2 class="mt-3 whitespace-nowrap font-semibold text-sm">Julián Osorio</h2>
+          <h3 class="text-xs font-light">Diseñador y Desarrollador Frontend</h3>
+      </div>
+
+      <div class="team-member p-4" style="--delay: 0.48s;">
+        <div class="team-photo h-32 w-32 mx-auto overflow-hidden rounded-full bg-gray-300">
+          <img src="src/assets/img/Kevin.jpeg" alt="Kevin" class="h-full w-full rounded-full object-cover">
+        </div>
+          <h2 class="mt-3 whitespace-nowrap font-semibold text-sm">Kevin Andrés Duarte</h2>
+          <h3 class="text-xs font-light">Diseñador y Desarrollador Frontend</h3>
+      </div>
+
+      <div class="team-member p-4" style="--delay: 0.56s;">
+        <div class="team-photo h-32 w-32 mx-auto overflow-hidden rounded-full bg-gray-300">
+          <img src="src/assets/img/Kevin_Leandro.jpeg" alt="Kevin Leandro" class="h-full w-full rounded-full object-cover">
+        </div>
+          <h2 class="mt-3 whitespace-nowrap font-semibold text-sm">Kevin Leandro Muñoz</h2>
+          <h3 class="text-xs font-light">Desarrollador Backend y Tester</h3>
+      </div>
+
+      <div class="team-member p-4" style="--delay: 0.64s;">
+        <div class="team-photo h-32 w-32 mx-auto overflow-hidden rounded-full bg-gray-300">
+          <img src="src/assets/img/Luis.jpeg" alt="Luis" class="h-full w-full rounded-full object-cover">
+        </div>
+          <h2 class="mt-3 whitespace-nowrap font-semibold text-sm">Luis Carlos Hernández</h2>
+          <h3 class="text-xs font-light">Diseñador y Desarrollador Frontend</h3>
+      </div>
+
+      <div class="team-member p-4" style="--delay: 0.72s;">
+        <div class="team-photo h-32 w-32 mx-auto overflow-hidden rounded-full bg-gray-300">
+          <img src="src/assets/img/Samuel.jpeg" alt="Samuel" class="h-full w-full rounded-full object-cover">
+        </div>
+          <h2 class="mt-3 whitespace-nowrap font-semibold text-sm">Samuel Monsalve</h2>
+          <h3 class="text-xs font-light">Desarrollador Backend</h3>
+      </div>
     </div>
 
   </div>
