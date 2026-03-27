@@ -49,8 +49,8 @@ $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
       <!-- CABECERA -->
       <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div>
-          <h1 class="text-2xl font-bold tracking-tight">Historial de Actividad</h1>
-          <p class="text-muted-foreground">
+          <h1 class="text-3xl font-bold text-card-foreground">Historial de Actividad</h1>
+          <p class="text-base text-muted-foreground mt-1">
             Registro completo de todas las acciones realizadas en el sistema
           </p>
         </div>
@@ -85,21 +85,7 @@ $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
           </div>
 
           <!-- Select módulo -->
-          <div class="w-full lg:w-[260px]">
-            <select
-              id="moduloFilter"
-              class="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">Todos los módulos</option>
-              <option value="Movimientos">Movimientos</option>
-              <option value="Solicitudes">Solicitudes</option>
-              <option value="Materiales">Materiales</option>
-              <option value="Bodegas">Bodegas</option>
-              <option value="Usuarios">Usuarios</option>
-              <option value="Programas">Programas</option>
-              <option value="Fichas">Fichas</option>
-            </select>
-          </div>
+          
 
           <!-- Select acción -->
           <div class="w-full lg:w-[260px]">
@@ -108,13 +94,7 @@ $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
               class="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="">Todas las acciones</option>
-              <option value="Entrada">Entrada</option>
-              <option value="Salida">Salida</option>
               <option value="Creacion">Creación</option>
-              <option value="Devolucion">Devolución</option>
-              <option value="Aprobacion">Aprobación</option>
-              <option value="Desactivacion">Desactivación</option>
-              <option value="Rechazo">Rechazo</option>
               <option value="Edicion">Edición</option>
             </select>
           </div>
