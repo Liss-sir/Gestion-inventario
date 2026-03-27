@@ -14,7 +14,7 @@ if (empty($_SESSION['usuario']) || empty($_SESSION['usuario']['id_usuario'])) {
     // header("Location: login.php"); exit;
 }
 
-?>
+?>  
 
 
 
@@ -48,7 +48,7 @@ if (empty($_SESSION['usuario']) || empty($_SESSION['usuario']['id_usuario'])) {
     ==================================== -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
-                <h1 class="text-2xl font-semibold tracking-tight">
+                <h1 class="text-2xl font-bold tracking-tight">
                     Solicitudes de Material
                 </h1>
                 <p class="text-sm text-muted-foreground">

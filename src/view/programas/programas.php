@@ -80,7 +80,7 @@ try {
         <!-- Page title + controls (aligned) -->
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
             <div>
-                <h1 class="text-3xl font-bold">Programas de Formación</h1>
+                <h1 class="text-2xl font-bold tracking-tight">Programas de Formación</h1>
                 <p class="text-muted-foreground">Gestiona los programas técnicos y tecnológicos</p>
             </div>
 
@@ -313,7 +313,7 @@ try {
                                 <div class="relative inline-block text-left">
                                     <button 
                                         onclick="toggleActionMenu(<?php echo $index; ?>)" 
-                                        class="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted text-slate-800 transition-colors"
+                                        class="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-800 transition-colors"
                                     >
                                         <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
                                             <circle cx="5" cy="12" r="1.5"></circle>
@@ -364,7 +364,7 @@ try {
 
                 <?php foreach ($programas as $index => $programa): ?>
                 <?php $isActive = (isset($programa['estado']) && (strtolower(trim((string)$programa['estado'])) === 'activo' || (string)$programa['estado'] === '1' || $programa['estado'] == 1)); ?>
-                <div class="bg-card border border-border rounded-lg p-6 hover:shadow-md transition-all hover:-translate-y-1 h-full flex flex-col"
+                <div class="bg-card border border-border rounded-lg p-6 h-full flex flex-col"
                     data-index="<?php echo $index; ?>"
                     data-id-programa="<?php echo htmlspecialchars($programa['id_programa']); ?>"
                     data-codigo="<?php echo htmlspecialchars($programa['codigo']); ?>"
@@ -397,13 +397,48 @@ try {
                             </div>
                         </div>
 
-                        <!-- Changed link to button that opens edit modal -->
-                        <button onclick="openEditModal(<?php echo $index; ?>)" 
-                        class="text-muted-foreground hover:text-foreground transition flex-shrink-0 ml-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                            </svg>
-                        </button>
+                        <div class="relative inline-block text-left flex-shrink-0 ml-2">
+                            <button 
+                                onclick="toggleActionMenu('grid<?php echo $index; ?>')" 
+                                class="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-800 transition-colors"
+                            >
+                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                                    <circle cx="5" cy="12" r="1.5"></circle>
+                                    <circle cx="12" cy="12" r="1.5"></circle>
+                                    <circle cx="19" cy="12" r="1.5"></circle>
+                                </svg>
+                            </button>
+                            
+                            <div id="actionMenugrid<?php echo $index; ?>" class="hidden absolute right-0 mt-2 w-48 rounded-xl border border-border bg-popover shadow-md py-1 z-50">
+                                <button onclick="openViewModal(<?php echo $index; ?>)" class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted transition-colors">
+                                    <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M1 12S4.5 5 12 5s11 7 11 7-3.5 7-11 7S1 12 1 12z"/>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                    Ver detalles
+                                </button>
+
+                                <button onclick="openEditModal(<?php echo $index; ?>)" class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted transition-colors">
+                                    <svg class="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.5a2.121 2.121 0 0 1 3 3L9 17l-4 1 1-4 10.5-10.5z"/>
+                                    </svg>
+                                    Editar
+                                </button>
+                                
+                                <hr class="border-border my-1">
+                                
+                                <button data-action="toggle-estado" class="flex w-full items-center px-3 py-2 text-sm text-slate-700 hover:bg-muted transition-colors">
+                                    <?php if($isActive): ?>
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-power-icon lucide-power mr-2 h-4 w-4"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg>
+                                        Deshabilitar
+                                    <?php else: ?>
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-power-icon lucide-power mr-2 h-4 w-4"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg>
+                                        Habilitar
+                                    <?php endif; ?>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Level + Duration -->

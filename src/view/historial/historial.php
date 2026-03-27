@@ -49,8 +49,8 @@ $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
       <!-- CABECERA -->
       <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div>
-          <h1 class="text-3xl font-bold text-card-foreground">Historial de Actividad</h1>
-          <p class="text-base text-muted-foreground mt-1">
+          <h1 class="text-2xl font-bold tracking-tight">Historial de Actividad</h1>
+          <p class="text-muted-foreground">
             Registro completo de todas las acciones realizadas en el sistema
           </p>
         </div>

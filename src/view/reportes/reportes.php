@@ -237,7 +237,7 @@ try {
             <!-- Header -->
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 class="text-2xl font-bold tracking-tight text-foreground">Reportes y Estadísticas</h1>
+                    <h1 class="text-2xl font-bold tracking-tight">Reportes y Estadísticas</h1>
                     <p class="text-muted-foreground">
                         Genera reportes detallados y visualiza estadísticas del inventario
                     </p>
