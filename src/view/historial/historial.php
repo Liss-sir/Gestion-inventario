@@ -95,7 +95,7 @@ $collapsed = isset($_GET["coll"]) && $_GET["coll"] == "1";
             >
               <option value="">Todas las acciones</option>
               <option value="Creacion">Creación</option>
-              <option value="Edicion">Edición</option>
+              <option value="Edicion">Actualización</option>
             </select>
           </div>
         </div>

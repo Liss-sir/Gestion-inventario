@@ -105,7 +105,7 @@ if (in_array($paginaActual, $paginasConHTMLCompleto)) {
 <head>
     <meta charset="UTF-8">
     <title>Gestion Inventario</title>
-    <link rel="icon" type="image/png" href="">
+    <link rel="icon" type="" href="./src/assets/img/logo-sena-negro.png">
 </head>
 
 <body class="flex flex-col min-h-screen font-sans bg-white text-gray-900 transition-all duration-300">

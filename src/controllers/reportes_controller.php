@@ -185,17 +185,65 @@ function buildPdfHeaderHtml($title, $subtitle, $filters)
     $fechaDescarga = date("d/m/Y");
     $horaDescarga  = date("h:i A");
 
-    $fechaInicioLabel = !empty($filters["fecha_inicio"])
-        ? date("d/m/Y", strtotime($filters["fecha_inicio"]))
-        : "N/A";
+    // ===============================
+    // FORMATEO SEGURO DE FECHAS
+    // ===============================
+    $fechaInicioLabel = "";
+    if (!empty($filters["fecha_inicio"]) && 
+        $filters["fecha_inicio"] !== "null" && 
+        $filters["fecha_inicio"] !== "undefined") {
+        $fechaInicioLabel = date("d/m/Y", strtotime($filters["fecha_inicio"]));
+    }
 
-    $fechaFinLabel = !empty($filters["fecha_fin"])
-        ? date("d/m/Y", strtotime($filters["fecha_fin"]))
-        : "N/A";
+    $fechaFinLabel = "";
+    if (!empty($filters["fecha_fin"]) && 
+        $filters["fecha_fin"] !== "null" && 
+        $filters["fecha_fin"] !== "undefined") {
+        $fechaFinLabel = date("d/m/Y", strtotime($filters["fecha_fin"]));
+    }
 
-    $programaLabel = ($filters["programa"] ?? "all") === "all" ? "Todos" : (string)($filters["programa"] ?? "Todos");
-    $fichaLabel = ($filters["ficha"] ?? "all") === "all" ? "Todas" : (string)($filters["ficha"] ?? "Todas");
+    // ===============================
+    // OTROS FILTROS
+    // ===============================
+    $programaLabel = (!empty($filters["programa"]) && $filters["programa"] !== "all")
+        ? (string)$filters["programa"]
+        : "Todos";
 
+    $fichaLabel = (!empty($filters["ficha"]) && $filters["ficha"] !== "all")
+        ? (string)$filters["ficha"]
+        : "Todas";
+
+    $bodegaLabel = (!empty($filters["bodega"]) && $filters["bodega"] !== "all")
+        ? (string)$filters["bodega"]
+        : "Todas";
+
+    $subbodegaLabel = (!empty($filters["subbodega"]) && $filters["subbodega"] !== "all")
+        ? (string)$filters["subbodega"]
+        : "Todas";
+
+    // ===============================
+    // CONSTRUIR FILTROS DINÁMICAMENTE
+    // ===============================
+    $filtrosTexto = [];
+
+    if ($fechaInicioLabel) {
+        $filtrosTexto[] = "Fecha inicio: " . e($fechaInicioLabel);
+    }
+
+    if ($fechaFinLabel) {
+        $filtrosTexto[] = "Fecha fin: " . e($fechaFinLabel);
+    }
+
+    $filtrosTexto[] = "Programa: " . e($programaLabel);
+    $filtrosTexto[] = "Ficha: " . e($fichaLabel);
+    $filtrosTexto[] = "Bodega: " . e($bodegaLabel);
+    $filtrosTexto[] = "Subbodega: " . e($subbodegaLabel);
+
+    $filtrosFinal = implode(" | ", $filtrosTexto);
+
+    // ===============================
+    // LOGO DINÁMICO
+    // ===============================
     $logoCandidates = [
         __DIR__ . "/../assets/img/logo-sena-negro.png",
         __DIR__ . "/../assets/img/sena-negro.png",
@@ -214,9 +262,11 @@ function buildPdfHeaderHtml($title, $subtitle, $filters)
         }
     }
 
+    // ===============================
+    // HTML DEL HEADER
+    // ===============================
     return "
     <style>
-        /* ✅ Margen inferior extra para que el footer no tape contenido */
         @page { margin: 18mm 15mm 26mm 15mm; }
 
         body { 
@@ -227,26 +277,39 @@ function buildPdfHeaderHtml($title, $subtitle, $filters)
             padding: 0;
         }
 
-        .header { width: 100%; margin-bottom: 14px; border-bottom: 2px solid #0f172a; padding-bottom: 10px; }
+        .header { 
+            width: 100%; 
+            margin-bottom: 14px; 
+            border-bottom: 2px solid #0f172a; 
+            padding-bottom: 10px; 
+        }
+
         .header-table { width: 100%; border-collapse: collapse; }
         .header-left { vertical-align: top; }
         .header-right { text-align: right; vertical-align: top; }
+
         .title { font-size: 18px; font-weight: 700; margin: 0 0 4px 0; }
         .subtitle { font-size: 12px; color:#475569; margin: 0; }
-        .meta { margin-top: 8px; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; font-size: 11px; color: #334155; line-height: 1.5; }
+
+        .meta { 
+            margin-top: 8px; 
+            padding: 8px 10px; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 8px; 
+            background: #f8fafc; 
+            font-size: 11px; 
+            color: #334155; 
+            line-height: 1.5; 
+        }
+
         .logo { width: 70px; height: auto; }
+
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { padding: 9px; border: 1px solid #e2e8f0; }
         th { background: #f1f5f9; text-align: left; }
         td.num, th.num { text-align: right; }
         tfoot td { font-weight: 700; background: #f8fafc; }
-        .badge { display:inline-block; padding:4px 10px; border:1px solid #cbd5e1; border-radius: 999px; font-size: 11px; }
-        .muted { color:#64748b; font-size: 11px; }
-        .chart-title { font-size: 12px; font-weight: 700; margin-top: 14px; }
-        .chart-box { margin: 10px 0 12px 0; padding: 10px; border:1px solid #e2e8f0; border-radius: 10px; background:#ffffff; }
-        .page-break { page-break-before: always; }
 
-        /* ✅ Footer real abajo */
         .pdf-footer{
             position: fixed;
             bottom: -10mm;
@@ -278,10 +341,7 @@ function buildPdfHeaderHtml($title, $subtitle, $filters)
             <div><strong>Hora descarga:</strong> " . e($horaDescarga) . "</div>
             <div style='margin-top:6px;'>
                 <strong>Filtros:</strong><br>
-                Fecha inicio: " . e($fechaInicioLabel) . " |
-                Fecha fin: " . e($fechaFinLabel) . " |
-                Programa: " . e($programaLabel) . " |
-                Ficha: " . e($fichaLabel) . "
+                " . $filtrosFinal . "
             </div>
         </div>
     </div>
@@ -478,14 +538,20 @@ if (isset($_GET["action"]) && $_GET["action"] === "check_data") {
             exit;
         }
 
-        $filters = [
-            "fecha_inicio" => $_GET["fecha_inicio"] ?? null,
-            "fecha_fin"    => $_GET["fecha_fin"] ?? null,
-            "programa"     => $_GET["programa"] ?? "all",
-            "ficha"        => $_GET["ficha"] ?? "all",
-            "bodega"       => $_GET["bodega"] ?? "all",
-            "subbodega"    => $_GET["subbodega"] ?? "all",
-        ];
+       $filters = [
+    "fecha_inicio" => isset($_GET["fecha_inicio"]) && $_GET["fecha_inicio"] !== ""
+        ? $_GET["fecha_inicio"]
+        : null,
+
+    "fecha_fin" => isset($_GET["fecha_fin"]) && $_GET["fecha_fin"] !== ""
+        ? $_GET["fecha_fin"]
+        : null,
+
+    "programa" => $_GET["programa"] ?? "all",
+    "ficha" => $_GET["ficha"] ?? "all",
+    "bodega" => $_GET["bodega"] ?? "all",
+    "subbodega" => $_GET["subbodega"] ?? "all",
+];
 
         // ✅ PRIORIDAD (FIX GLOBAL)
         applyLocationPriority($filters);

@@ -1168,23 +1168,48 @@ try {
             iframe.src = urlFile + sep + "t=" + Date.now();
         }
 
-        // =====================================================================
-        // ✅✅✅ FIX CENTRAL: AHORA LOS FILTROS INCLUYEN BODEGA/SUBBODEGA
-        // =====================================================================
         function __getReportFiltersFromURL() {
-          const params = new URLSearchParams(window.location.search);
 
-          return {
-            fecha_inicio: params.get("fecha_inicio") || "",
-            fecha_fin:    params.get("fecha_fin") || "",
-            programa:     params.get("programa") || "all",
-            ficha:        params.get("ficha") || "all",
+  const params = new URLSearchParams(window.location.search);
 
-            // ✅ NUEVO (FIX)
-            bodega:       params.get("bodega") || "all",
-            subbodega:    params.get("subbodega") || "all",
-          };
-        }
+  // 🔹 Leer desde URL primero
+  let fecha_inicio = params.get("fecha_inicio");
+  let fecha_fin    = params.get("fecha_fin");
+  let programa     = params.get("programa");
+  let ficha        = params.get("ficha");
+  let bodega       = params.get("bodega");
+  let subbodega    = params.get("subbodega");
+
+  // 🔹 Si no están en URL, leer directamente de los inputs
+  if (!fecha_inicio) {
+    const el = document.getElementById("fecha-inicio");
+    fecha_inicio = el ? el.value : "";
+  }
+
+  if (!fecha_fin) {
+    const el = document.getElementById("fecha-fin");
+    fecha_fin = el ? el.value : "";
+  }
+
+  if (!programa) {
+    const el = document.getElementById("programa");
+    programa = el ? el.value : "all";
+  }
+
+  if (!ficha) {
+    const el = document.getElementById("ficha");
+    ficha = el ? el.value : "all";
+  }
+
+  return {
+    fecha_inicio: fecha_inicio || "",
+    fecha_fin:    fecha_fin || "",
+    programa:     programa || "all",
+    ficha:        ficha || "all",
+    bodega:       bodega || "all",
+    subbodega:    subbodega || "all",
+  };
+}
 
         async function __checkReportHasData(type) {
           const f = __getReportFiltersFromURL();
