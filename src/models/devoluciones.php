@@ -10,7 +10,7 @@ class devolucion {
     /**
      * Obtener solicitudes con movimientos de salida disponibles para devolución
      */
-    public function getSolicitudesConSalida() {
+    public function getSolicitudesConSalida($idUsuario = null, $esInstructor = false) {
                 $sql = "SELECT DISTINCT
                                         mm.id_movimiento,
                                         mm.fecha_hora as fecha_salida,
@@ -21,11 +21,21 @@ class devolucion {
                                 FROM movimientos_material mm
                                 LEFT JOIN solicitudes_material s ON mm.id_solicitud = s.id_solicitud
                                 LEFT JOIN usuarios u ON u.id_usuario = s.id_usuario_solicitante
-                                WHERE LOWER(mm.tipo_movimiento) = 'salida'
-                                ORDER BY mm.fecha_hora DESC";
-        
+                                WHERE LOWER(mm.tipo_movimiento) = 'salida'";
+
+                $params = [];
+                if ($esInstructor && $idUsuario) {
+                    // Mostrar salidas que el instructor realizó directamente,
+                    // o salidas relacionadas a solicitudes solicitadas por el instructor.
+                    $sql .= " AND (mm.id_usuario = ? OR s.id_usuario_solicitante = ?)";
+                    $params[] = $idUsuario;
+                    $params[] = $idUsuario;
+                }
+
+                $sql .= " ORDER BY mm.fecha_hora DESC";
+
         $stmt = $this->conn->prepare($sql);
-        $stmt->execute();
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 

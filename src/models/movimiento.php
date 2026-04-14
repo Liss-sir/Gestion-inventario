@@ -391,9 +391,37 @@ public function registrarEntrada(array $data): string
 
     public function listarMovimientos($idUsuario = null, $esInstructor = false)
     {
-        // Si es instructor, filtra SOLO devoluciones del usuario actual
+        // Si es instructor, filtra solo los movimientos del usuario actual
         if ($esInstructor && $idUsuario) {
             $sql = "
+                SELECT 
+                    m.id_movimiento,
+                    m.tipo_movimiento,
+                    m.fecha_hora,
+                    m.observaciones,
+                    m.id_bodega,
+                    b.nombre AS bodega,
+                    m.id_subbodega,
+                    sb.nombre_subbodega AS subbodega,
+                    m.id_programa,
+                    COALESCE(pr.nombre_programa, 'N/A') AS nombre_programa,
+                    m.id_ficha,
+                    COALESCE(f.numero_ficha, 'N/A') AS numero_ficha,
+                    m.id_rae,
+                    COALESCE(r.codigo_rae, 'N/A') AS codigo_rae,
+                    m.id_usuario,
+                    m.id_solicitud,
+                    m.id_material
+                FROM movimientos_material m
+                LEFT JOIN bodegas b ON b.id_bodega = m.id_bodega
+                LEFT JOIN subbodegas sb ON sb.id_subbodega = m.id_subbodega
+                LEFT JOIN programas_formacion pr ON pr.id_programa = m.id_programa
+                LEFT JOIN fichas f ON f.id_ficha = m.id_ficha
+                LEFT JOIN raes r ON r.id_rae = m.id_rae
+                WHERE m.id_usuario = ?
+
+                UNION ALL
+
                 SELECT 
                     CONCAT('DEV-', d.id_devolucion) as id_movimiento,
                     'devolucion' as tipo_movimiento,
@@ -404,27 +432,26 @@ public function registrarEntrada(array $data): string
                     b.nombre AS bodega,
                     d.id_subbodega,
                     sb.nombre_subbodega AS subbodega,
-                    d.id_programa,
-                    COALESCE(pr.nombre_programa, 'N/A') AS nombre_programa,
-                    d.id_ficha,
-                    COALESCE(f.numero_ficha, 'N/A') AS numero_ficha,
-                    d.id_rae,
-                    COALESCE(r.codigo_rae, 'N/A') AS codigo_rae,
+                    NULL as id_programa,
+                    'N/A' as nombre_programa,
+                    NULL as id_ficha,
+                    'N/A' as numero_ficha,
+                    NULL as id_rae,
+                    'N/A' as codigo_rae,
                     d.id_usuario,
-                    d.id_solicitud,
+                    mm.id_solicitud,
                     d.id_material
                 FROM devoluciones_material d
                 LEFT JOIN bodegas b ON b.id_bodega = d.id_bodega
                 LEFT JOIN subbodegas sb ON sb.id_subbodega = d.id_subbodega
-                LEFT JOIN programas_formacion pr ON pr.id_programa = d.id_programa
-                LEFT JOIN fichas f ON f.id_ficha = d.id_ficha
-                LEFT JOIN raes r ON r.id_rae = d.id_rae
+                LEFT JOIN movimientos_material mm ON mm.id_movimiento = d.id_movimiento_salida
                 WHERE d.id_usuario = ?
-                ORDER BY d.fecha_hora DESC
+
+                ORDER BY fecha_hora DESC
             ";
             
             $stmt = $this->conn->prepare($sql);
-            $stmt->execute([$idUsuario]);
+            $stmt->execute([$idUsuario, $idUsuario]);
             
             return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         }

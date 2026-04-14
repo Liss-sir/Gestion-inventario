@@ -16,7 +16,16 @@ if ($method === 'GET') {
     switch ($action) {
         case 'listarSolicitudes':
             try {
-                $solicitudes = $devolucion->getSolicitudesConSalida();
+                $esInstructor = isset($_GET['es_instructor']) && ($_GET['es_instructor'] === '1' || $_GET['es_instructor'] === 'true');
+                $idUsuario = (int)($_GET['id_usuario'] ?? $_SESSION['usuario_id'] ?? $_SESSION['id_usuario'] ?? 0);
+
+                // Si se envía id_usuario desde el frontend y es instructor, usarlo.
+                if ($esInstructor && $idUsuario > 0) {
+                    $solicitudes = $devolucion->getSolicitudesConSalida($idUsuario, true);
+                } else {
+                    $solicitudes = $devolucion->getSolicitudesConSalida();
+                }
+
                 echo json_encode(['success' => true, 'data' => $solicitudes]);
             } catch (Exception $e) {
                 echo json_encode(['success' => false, 'message' => 'Error al obtener solicitudes: ' . $e->getMessage()]);
@@ -84,7 +93,7 @@ if ($method === 'POST') {
 
     if ($action === 'registrar') {
         $id_movimiento_salida = $_POST['id_movimiento_salida'] ?? null;
-        $id_usuario = $_SESSION['id_usuario'] ?? 1; // Usar 1 si no hay sesión (para testing)
+        $id_usuario = $_SESSION['usuario_id'] ?? $_SESSION['id_usuario'] ?? 1; // Usar 1 si no hay sesión (para testing)
         $id_material = $_POST['id_material'] ?? null;
         $id_bodega = $_POST['id_bodega'] ?? null;
         $id_subbodega = $_POST['id_subbodega'] ?? null;

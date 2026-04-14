@@ -32,8 +32,8 @@ foreach ($rolesFuncionales as $rf) {
 }
 $esInstructor = ($cargoActual === "instructor" && !$tieneRolFuncPoderoso);
 
-// Obtener ID del usuario de la sesi├│n
-$idUsuario = $_SESSION['id_usuario'] ?? 1; // Por defecto 1 si no hay sesi├│n
+// Obtener ID del usuario de la sesión (soporta usuario_id o id_usuario)
+$idUsuario = $_SESSION['usuario_id'] ?? $_SESSION['id_usuario'] ?? 0;
 $movimientos = [];
 $movimientosPage = [];
 $total = 0;
