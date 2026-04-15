@@ -86,19 +86,24 @@ class EvidenciaController {
 
     /* POST - Create evidence */
     public function store() {
-    try {
-        // 1. Validar datos
-        if (
-            !isset($_POST["id_usuario"]) ||
-            !isset($_POST["id_movimiento_salida"]) ||
-            !isset($_POST["descripcion_obra"]) ||
-            !isset($_FILES["foto"])
-        ) {
-            sendJSON(["mensaje" => "Datos incompletos"], 400);
-        }
+        try {
+            session_start();
 
-        $id_usuario = $_POST["id_usuario"];
-        $id_movimiento_salida = $_POST["id_movimiento_salida"];
+            // 1. Validar datos
+            if (
+                !isset($_POST["id_movimiento_salida"]) ||
+                !isset($_POST["descripcion_obra"]) ||
+                !isset($_FILES["foto"])
+            ) {
+                sendJSON(["mensaje" => "Datos incompletos"], 400);
+            }
+
+            $id_usuario = $_SESSION['usuario_id'] ?? $_SESSION['id_usuario'] ?? $_POST["id_usuario"] ?? null;
+            if (!$id_usuario) {
+                sendJSON(["mensaje" => "Usuario no autenticado"], 401);
+            }
+
+            $id_movimiento_salida = $_POST["id_movimiento_salida"];
 
         // 2. Subir imagen
         $foto = $this->savePhoto($_FILES["foto"]);
@@ -251,10 +256,21 @@ $method = $_SERVER["REQUEST_METHOD"];
 $accion = $_GET["accion"] ?? null;
 $id_usuario = $_GET["id_usuario"] ?? null;
 
-if ($method === "GET" && $accion === "salidas_pendientes" && $id_usuario) {
-    sendJSON($controller->model->obtenerSalidasPendientesPorUsuario($id_usuario));
-} elseif ($method === "GET" && $accion === "salidas_pendientes") {
-    sendJSON($controller->model->obtenerSalidasSinEvidencia());
+if ($method === "GET" && $accion === "salidas_pendientes") {
+    session_start();
+    $cargo = strtolower($_SESSION['usuario_cargo'] ?? $_SESSION['cargo'] ?? '');
+    $esCoordinador = in_array($cargo, ['coordinador', 'subcoordinador']);
+
+    if ($esCoordinador) {
+        sendJSON($controller->model->obtenerSalidasSinEvidencia());
+    }
+
+    $id_usuario = $id_usuario ?: ($_SESSION['usuario_id'] ?? $_SESSION['id_usuario'] ?? null);
+    if ($id_usuario) {
+        sendJSON($controller->model->obtenerSalidasPendientesPorUsuario($id_usuario));
+    } else {
+        sendJSON(['success' => false, 'message' => 'Usuario no autenticado'], 401);
+    }
 } elseif ($method === "GET" && isset($_GET["id"])) {
     $controller->show($_GET["id"]);
 } elseif ($method === "GET") {

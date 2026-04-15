@@ -93,7 +93,7 @@ if ($method === 'POST') {
 
     if ($action === 'registrar') {
         $id_movimiento_salida = $_POST['id_movimiento_salida'] ?? null;
-        $id_usuario = $_SESSION['usuario_id'] ?? $_SESSION['id_usuario'] ?? 1; // Usar 1 si no hay sesión (para testing)
+        $id_usuario = $_SESSION['usuario_id'] ?? $_SESSION['id_usuario'] ?? null;
         $id_material = $_POST['id_material'] ?? null;
         $id_bodega = $_POST['id_bodega'] ?? null;
         $id_subbodega = $_POST['id_subbodega'] ?? null;

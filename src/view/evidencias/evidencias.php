@@ -206,6 +206,11 @@ $sidebarWidth = $collapsed ? "70px" : "260px";
                     </div>
                     
                     <div>
+                        <p class="text-xs text-muted-foreground mb-1">Creador</p>
+                        <p id="detailCreator" class="font-medium">-</p>
+                    </div>
+                    
+                    <div>
                         <p class="text-xs text-muted-foreground mb-1">Fecha</p>
                         <p id="detailDate" class="font-medium flex items-center gap-1">
                             <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 2v4M8 2v4M3 10h18"/></svg>

@@ -234,7 +234,7 @@ class EvidenciaModel {
                 LEFT JOIN actividades_formacion a
                     ON s.id_actividad = a.id_actividad
                 WHERE m.tipo_movimiento = 'Salida'
-                AND m.id_usuario = :id_usuario
+                AND (m.id_usuario = :id_usuario OR s.id_usuario_solicitante = :id_usuario)
                 AND m.id_movimiento NOT IN (
                     SELECT id_movimiento_salida FROM {$this->table}
                 )

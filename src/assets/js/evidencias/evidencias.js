@@ -536,7 +536,8 @@ function renderEvidenceCards() {
           <span class="text-xs text-muted-foreground">${evidence.fecha}</span>
         </div>
         </div>
-        <p class="text-sm text-foreground line-clamp-2 mb-3">${evidence.descripcion}</p>
+        <p class="text-sm text-foreground line-clamp-2 mb-2">${evidence.descripcion}</p>
+        <p class="text-xs text-muted-foreground mb-3">Creado por: <span class="text-foreground font-semibold">${evidence.usuario}</span></p>
         <div class="flex flex-wrap gap-2">
           ${evidence.materiales
             .slice(0, 2)
@@ -573,6 +574,7 @@ function openDetailsModal(id) {
   document.getElementById("detailEvidenceId").textContent = `Evidencia #${evidence.id}`
   document.getElementById("detailObra").textContent = evidence.obra
   document.getElementById("detailFicha").textContent = evidence.ficha
+  document.getElementById("detailCreator").textContent = evidence.usuario
   document.getElementById("detailDate").innerHTML = `
     <svg class="h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M16 2v4M8 2v4M3 10h18"/></svg>
     ${evidence.fecha}
@@ -734,8 +736,9 @@ function removeImage() {
 async function loadPendingSalidas() {
   const select = document.getElementById("salidaSelect")
   try {
-    const res = await fetch(`${EVIDENCIAS_API_URL}?accion=salidas_pendientes&id_usuario=1`, {
-      method: "GET"
+    const res = await fetch(`${resolveEndpoint(EVIDENCIAS_API_URL)}?accion=salidas_pendientes`, {
+      method: "GET",
+      credentials: "same-origin",
     })
     
     if (!res.ok) throw new Error("Error al cargar salidas")
@@ -811,7 +814,6 @@ async function createEvidence() {
 
   try {
     const formData = new FormData()
-    formData.append("id_usuario", 1) // Cambiar por el ID del usuario logueado
     formData.append("id_movimiento_salida", salidaSelect.value)
     formData.append("foto", file)
     formData.append("descripcion_obra", descripcion)

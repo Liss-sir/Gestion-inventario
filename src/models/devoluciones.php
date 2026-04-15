@@ -21,7 +21,17 @@ class devolucion {
                                 FROM movimientos_material mm
                                 LEFT JOIN solicitudes_material s ON mm.id_solicitud = s.id_solicitud
                                 LEFT JOIN usuarios u ON u.id_usuario = s.id_usuario_solicitante
-                                WHERE LOWER(mm.tipo_movimiento) = 'salida'";
+                                WHERE LOWER(mm.tipo_movimiento) = 'salida'
+                                AND EXISTS (
+                                    SELECT 1
+                                    FROM movimientos_material mm2
+                                    LEFT JOIN devoluciones_material dm 
+                                        ON dm.id_movimiento_salida = mm2.id_movimiento 
+                                        AND dm.id_material = mm2.id_material
+                                    WHERE mm2.id_movimiento = mm.id_movimiento
+                                    GROUP BY mm2.id_material, mm2.cantidad
+                                    HAVING (mm2.cantidad - COALESCE(SUM(dm.cantidad_devuelta),0)) > 0
+                                )";
 
                 $params = [];
                 if ($esInstructor && $idUsuario) {
