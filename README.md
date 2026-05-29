@@ -138,7 +138,7 @@ Centro de Diseño e Innovación Tecnológica Industrial (CDITI)
 | Kevin Andrés Duarte Hurtado| [hh.andress78@gmail.com](mailto:hh.andress78@gmail.com) | [Kev-dev-v](https://github.com/Kev-dev-v) |
 | Isaac Echeverry García | [isaacecheverry53@gmail.com](mailto:isaacecheverry53@gmail.com) | [EGIsaac](https://github.com/EGIsaac) |
 | Luis Carlos Hernández Henao| [lchernandez4474@gmail.com](mailto:lchernandez4474@gmail.com) | [Astherdev](https://github.com/Astherdev) |
-| Samuel Monsalve Gomez | [Monsalvegomezsamuel2@gmail.com](mailto:Monsalvegomezsamuel2@gmail.com) | [Samuel-Print](https://github.com/SamuelMG1088) |
+| Samuel Monsalve Gomez | [Monsalvegomezsamuel2@gmail.com](mailto:Monsalvegomezsamuel2@gmail.com) | [Samuel-Print](https://github.com/Samuel-Print) |
 | Kevin Leandro Muñoz Duque | [kevinx7276@gmail.com](mailto:kevinx7276@gmail.com) | [Kevinx7276](https://github.com/Kevinx7276) |
 | Laura Catalina Rubio Villa | [lauracrubiov@gmail.com](mailto:lauracrubiov@gmail.com) | [Laucrv](https://github.com/Laucrv) |
 | Juan Esteban Soto Cardona | [juanestebansotoc8@gmail.com](mailto:juanestebansotoc8@gmail.com) | [juanessoto17](https://github.com/juanessoto17) |
